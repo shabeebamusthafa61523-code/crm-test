@@ -1,0 +1,202 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-midnight: #f8fafc;
+  --color-glass-border: rgba(0, 0, 0, 0.08);
+}
+
+:root {
+  --grid-color: #9dd384;
+}
+
+.dark {
+  --grid-color: #374b69;
+}
+
+/* 1. Global Styles */
+@keyframes gradient-bg {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+body {
+  background-color: #849db6;
+  /* light slate */
+  color: #1e293b;
+  /* slate-800 */
+  font-family: 'Inter', system-ui, sans-serif;
+  min-height: 100vh;
+  /* Premium radial/linear moving gradient background */
+  background-image: linear-gradient(-45deg,
+      rgba(79, 70, 229, 0.08) 0%,
+      rgba(132, 204, 22, 0.05) 25%,
+      rgba(79, 70, 229, 0.04) 50%,
+      rgba(132, 204, 22, 0.06) 75%,
+      rgba(79, 70, 229, 0.08) 100%);
+  background-size: 400% 400%;
+  animation: gradient-bg 15s ease infinite;
+  background-attachment: fixed;
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+.dark body {
+  background-color: #0b0c10;
+  /* ultra-dark tech space */
+  color: #7b96b1;
+  /* slate-50 */
+  background-image: linear-gradient(-45deg,
+      rgba(147, 51, 234, 0.12) 0%,
+      rgba(191, 255, 0, 0.06) 25%,
+      rgba(147, 51, 234, 0.07) 50%,
+      rgba(191, 255, 0, 0.07) 75%,
+      rgba(147, 51, 234, 0.12) 100%);
+  background-size: 400% 400%;
+  animation: gradient-bg 15s ease infinite;
+}
+
+/* 2. Glassmorphism Card Utility */
+@utility glass-card {
+  background-color: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Hover logic nested correctly inside the utility */
+  &:hover {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    background-color: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    transform: translateY(-4px);
+  }
+
+  .dark & {
+    background-color: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+
+    &:hover {
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background-color: rgba(15, 23, 42, 0.9);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+    }
+  }
+}
+
+/* 3. Floating Sidebar/Dock Utility */
+@utility glass-dock {
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(30px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+
+  .dark & {
+    background-color: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* 4. Custom Scrollbar for Light Theme & Dark Theme */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #8d9dad;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* 5. Animated Ambient Mesh Blobs */
+@keyframes float-blob-1 {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+
+  33% {
+    transform: translate(40px, -60px) scale(1.15);
+  }
+
+  66% {
+    transform: translate(-30px, 30px) scale(0.9);
+  }
+
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+@keyframes float-blob-2 {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+
+  50% {
+    transform: translate(-50px, 50px) scale(1.2);
+  }
+
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+@keyframes float-blob-3 {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+
+  33% {
+    transform: translate(-20px, -40px) scale(0.85);
+  }
+
+  66% {
+    transform: translate(50px, 30px) scale(1.15);
+  }
+
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+.animate-blob-1 {
+  animation: float-blob-1 25s infinite alternate ease-in-out;
+}
+
+.animate-blob-2 {
+  animation: float-blob-2 30s infinite alternate ease-in-out;
+}
+
+.animate-blob-3 {
+  animation: float-blob-3 22s infinite alternate ease-in-out;
+}
