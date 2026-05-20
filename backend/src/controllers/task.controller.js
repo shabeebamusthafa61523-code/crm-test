@@ -1,156 +1,318 @@
-import Task from '../models/tasks.js'; // ✅ Fixed to match default export
+// ── src/controllers/task.controller.js ──
+import Task from '../models/task.model.js';
+import { AppError } from '../middleware/errorHandler.js';
+import { v2 as cloudinary } from 'cloudinary';
 
-/**
- * FETCH ALL TASKS
- * GET /api/tasks/all
- */
-export const getAllTasks = async (req, res) => {
-  try {
-    // Fetches all tasks from database. 
-    // The model's toJSON transform automatically maps _id to id for the frontend.
-    const tasks = await Task.find({});
-    return res.status(200).json(tasks);
-  } catch (err) {
-    console.error("Fetch Tasks Error:", err);
-    return res.status(500).json({ 
-      error: "Internal operational exception parsing pipeline arrays" 
+// Configure Cloudinary using project environment variables
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+// Helper: Upload file buffer to Cloudinary using upload_stream
+const uploadToCloudinary = (fileBuffer) => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: 'crm_tasks' },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve(result);
+      }
+    );
+    stream.end(fileBuffer);
+  });
+};
+
+// Helper: Delete asset from Cloudinary using public ID
+const deleteFromCloudinary = (publicId) => {
+  if (!publicId) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader.destroy(publicId, (error, result) => {
+      if (error) return reject(error);
+      resolve(result);
     });
-  }
+  });
 };
 
 /**
- * CREATE TASK
- * POST /api/tasks/create
+ * 1. CREATE TASK
+ * POST /api/v1/tasks/create
  */
-export const createTask = async (req, res) => {
+export const createTask = async (req, res, next) => {
   try {
     const { title, description, assigned_to, designation_id } = req.body;
+    const userId = req.user.id || req.user._id;
 
-    // Validation barrier
-    if (!title || !assigned_to || !designation_id) {
-      return res.status(400).json({ error: "Missing required core assignment parameters" });
+    let file_url = undefined;
+    let file_public_id = undefined;
+
+    if (req.file) {
+      const uploadResult = await uploadToCloudinary(req.file.buffer);
+      file_url = uploadResult.secure_url;
+      file_public_id = uploadResult.public_id;
     }
-    
-    const newTask = new Task({
+
+    const task = new Task({
       title,
       description: description || '',
       assigned_to,
-      designation_id,
-      status: 'pending', // Fresh tasks default to pending column
-      user_id: req.user.id, // Injected securely via verified JWT auth middleware
-      image: req.file ? req.file.path : null // Secure Cloudinary URL path from Multer
+      created_by: userId,
+      status: 'pending',
+      file_url,
+      file_public_id,
+      designation_id: designation_id || undefined
     });
-
-    await newTask.save();
-    return res.status(201).json(newTask);
-  } catch (err) {
-    console.error("Create Task Error:", err);
-    return res.status(500).json({ 
-      error: "Failed to persist new task structure initialization" 
-    });
-  }
-};
-
-/**
- * UPDATE TASK (Form-Data fields & optional Image rewrite)
- * PUT /api/tasks/update/:id
- */
-export const updateTask = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { title, description, assigned_to, designation_id } = req.body;
-
-    const task = await Task.findById(id);
-    if (!task) {
-      return res.status(404).json({ error: "Asset Reference not found" });
-    }
-
-    // Security Gate: Enforce the frontend's 'canModify' authorization rule
-    if (String(task.user_id) !== String(req.user.id)) {
-      return res.status(403).json({ error: "Unprivileged Modification Attempt Denied" });
-    }
-
-    // Fallbacks preserve existing state if optional fields aren't resent
-    task.title = title || task.title;
-    task.description = description !== undefined ? description : task.description;
-    task.assigned_to = assigned_to || task.assigned_to;
-    task.designation_id = designation_id || task.designation_id;
-    
-    // Replace current Cloudinary string if a new file payload exists
-    if (req.file) {
-      task.image = req.file.path;
-    }
 
     await task.save();
-    return res.status(200).json(task);
-  } catch (err) {
-    console.error("Update Task Error:", err);
-    return res.status(500).json({ 
-      error: "Failed executing atomic field mutation pipeline update" 
-    });
+
+    return res.status(201).json(task.toJSON());
+  } catch (error) {
+    next(error);
   }
 };
 
 /**
- * UPDATE TASK STATUS (Targets Drag-and-Drop column drops & Quick Selection options)
- * PUT /api/tasks/task-status/:id?status=...
+ * 2. GET ALL TASKS (Admin only)
+ * GET /api/v1/tasks/all
  */
-export const updateTaskStatus = async (req, res) => {
+export const getAllTasks = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const { status } = req.query; // Reads from URL query parameters string format: (?status=x)
-
-    const validStatuses = ['pending', 'current', 'preview', 'done'];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ error: "Invalid phase state declaration parameter" });
+    const role = req.user.role || req.user.role_id;
+    if (role !== 'admin') {
+      throw new AppError('Access denied. Admin access only.', 403);
     }
 
-    // Find and update single field atomically
-    const updatedTask = await Task.findByIdAndUpdate(
-      id, 
-      { status }, 
-      { new: true } // Returns revised document data instance
-    );
-    
-    if (!updatedTask) {
-      return res.status(404).json({ error: "Asset reference not located for phase mutation" });
-    }
+    const tasks = await Task.find()
+      .populate('assigned_to', 'name email')
+      .populate('created_by', 'name email')
+      .select('-file_public_id')
+      .lean();
 
-    return res.status(200).json(updatedTask);
-  } catch (err) {
-    console.error("Status Update Error:", err);
-    return res.status(500).json({ 
-      error: "Failure resolving network status update request" 
+    const formattedTasks = tasks.map(task => {
+      const id = task._id.toString();
+      const user_id = task.created_by ? (task.created_by._id || task.created_by).toString() : undefined;
+      const file = task.file_url;
+      const image = task.file_url;
+
+      const formatted = {
+        ...task,
+        id,
+        user_id,
+        file,
+        image
+      };
+
+      if (formatted.assigned_to && formatted.assigned_to._id) {
+        formatted.assigned_to.id = formatted.assigned_to._id.toString();
+        delete formatted.assigned_to._id;
+      }
+      if (formatted.created_by && formatted.created_by._id) {
+        formatted.created_by.id = formatted.created_by._id.toString();
+        delete formatted.created_by._id;
+      }
+
+      delete formatted._id;
+      delete formatted.__v;
+      return formatted;
     });
+
+    return res.status(200).json(formattedTasks);
+  } catch (error) {
+    next(error);
   }
 };
 
 /**
- * PURGE / DELETE TASK
- * DELETE /api/tasks/delete/:id
+ * 3. GET TASKS BY USER ID (Admin only)
+ * GET /api/v1/tasks/user/tasks?user_id=...
  */
-export const deleteTask = async (req, res) => {
+export const getUserTasks = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const task = await Task.findById(id);
+    const role = req.user.role || req.user.role_id;
+    if (role !== 'admin') {
+      throw new AppError('Access denied. Admin access only.', 403);
+    }
 
+    const { user_id } = req.query;
+
+    const tasks = await Task.find({ assigned_to: user_id })
+      .populate('assigned_to', 'name email')
+      .populate('created_by', 'name email')
+      .select('-file_public_id')
+      .lean();
+
+    const formattedTasks = tasks.map(task => {
+      const id = task._id.toString();
+      const user_id_val = task.created_by ? (task.created_by._id || task.created_by).toString() : undefined;
+      const file = task.file_url;
+      const image = task.file_url;
+
+      const formatted = {
+        ...task,
+        id,
+        user_id: user_id_val,
+        file,
+        image
+      };
+
+      if (formatted.assigned_to && formatted.assigned_to._id) {
+        formatted.assigned_to.id = formatted.assigned_to._id.toString();
+        delete formatted.assigned_to._id;
+      }
+      if (formatted.created_by && formatted.created_by._id) {
+        formatted.created_by.id = formatted.created_by._id.toString();
+        delete formatted.created_by._id;
+      }
+
+      delete formatted._id;
+      delete formatted.__v;
+      return formatted;
+    });
+
+    return res.status(200).json(formattedTasks);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 4. GET TASKS FOR CURRENT LOGGED IN USER
+ * GET /api/v1/tasks/current-user/tasks
+ */
+export const getCurrentUserTasks = async (req, res, next) => {
+  try {
+    const userId = req.user.id || req.user._id;
+
+    const tasks = await Task.find({ assigned_to: userId })
+      .populate('assigned_to', 'name email')
+      .populate('created_by', 'name email')
+      .select('-file_public_id')
+      .lean();
+
+    const formattedTasks = tasks.map(task => {
+      const id = task._id.toString();
+      const user_id = task.created_by ? (task.created_by._id || task.created_by).toString() : undefined;
+      const file = task.file_url;
+      const image = task.file_url;
+
+      const formatted = {
+        ...task,
+        id,
+        user_id,
+        file,
+        image
+      };
+
+      if (formatted.assigned_to && formatted.assigned_to._id) {
+        formatted.assigned_to.id = formatted.assigned_to._id.toString();
+        delete formatted.assigned_to._id;
+      }
+      if (formatted.created_by && formatted.created_by._id) {
+        formatted.created_by.id = formatted.created_by._id.toString();
+        delete formatted.created_by._id;
+      }
+
+      delete formatted._id;
+      delete formatted.__v;
+      return formatted;
+    });
+
+    return res.status(200).json(formattedTasks);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 5. DELETE TASK
+ * DELETE /api/v1/tasks/delete/:task_id
+ */
+export const deleteTask = async (req, res, next) => {
+  try {
+    const { task_id } = req.params;
+
+    const task = await Task.findById(task_id);
     if (!task) {
-      return res.status(404).json({ error: "Asset structure already clear or missing" });
+      throw new AppError('Task not found', 404);
     }
 
-    // Security Gate: Ensure only the creator account can delete this entry
-    if (String(task.user_id) !== String(req.user.id)) {
-      return res.status(403).json({ error: "Privileged structural purge action intercepted" });
+    if (task.file_public_id) {
+      await deleteFromCloudinary(task.file_public_id);
     }
 
     await task.deleteOne();
-    return res.status(200).json({ 
-      message: "Asset purged completely from active memory registers" 
+
+    return res.status(200).json({
+      success: true,
+      message: 'Task and associated file resources deleted successfully'
     });
-  } catch (err) {
-    console.error("Delete Task Error:", err);
-    return res.status(500).json({ 
-      error: "Failed to fulfill absolute system file wipe parameter" 
-    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 6. UPDATE TASK STATUS ONLY
+ * PUT /api/v1/tasks/task-status/:task_id?status=...
+ */
+export const updateTaskStatus = async (req, res, next) => {
+  try {
+    const { task_id } = req.params;
+    const { status } = req.query;
+
+    const task = await Task.findById(task_id);
+    if (!task) {
+      throw new AppError('Task not found', 404);
+    }
+
+    task.status = status;
+    await task.save();
+
+    return res.status(200).json(task.toJSON());
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 7. UPDATE TASK
+ * PUT /api/v1/tasks/update/:task_id
+ */
+export const updateTask = async (req, res, next) => {
+  try {
+    const { task_id } = req.params;
+    const { title, description, assigned_to, designation_id } = req.body;
+
+    const task = await Task.findById(task_id);
+    if (!task) {
+      throw new AppError('Task not found', 404);
+    }
+
+    if (title !== undefined) task.title = title;
+    if (description !== undefined) task.description = description;
+    if (assigned_to !== undefined) task.assigned_to = assigned_to;
+    
+    // Explicit check for designation_id updates (handles empty string resets)
+    if (designation_id !== undefined) {
+      task.designation_id = designation_id || undefined;
+    }
+
+    if (req.file) {
+      // Clean up the old asset first
+      if (task.file_public_id) {
+        await deleteFromCloudinary(task.file_public_id);
+      }
+
+      const uploadResult = await uploadToCloudinary(req.file.buffer);
+      task.file_url = uploadResult.secure_url;
+      task.file_public_id = uploadResult.public_id;
+    }
+
+    await task.save();
+
+    return res.status(200).json(task.toJSON());
+  } catch (error) {
+    next(error);
   }
 };

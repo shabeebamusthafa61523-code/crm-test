@@ -10,6 +10,7 @@ const userSchema = new mongoose.Schema({
   avatar: { type: String },
   passwordHash: { type: String, required: true },
   isActive: { type: Boolean, default: true },
+  status: { type: String, enum: ['active', 'inactive', 'suspended'], default: 'active' },
   lastLogin: { type: Date },
 }, { timestamps: true });
 

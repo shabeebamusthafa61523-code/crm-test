@@ -4,6 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import apiRoutes from './src/routes/api.js';
 import crmRoutes from './src/routes/index.js';
+import taskRoutes from './src/routes/task.routes.js';
 
 dotenv.config();
 const app = express();
@@ -22,8 +23,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api', apiRoutes);
 
 // CRM routes: auth, users, tasks, attendance, approvals
-// CRM routes: auth, users, tasks, attendance, approvals
 app.use('/api/v1', crmRoutes);
+app.use('/api/v1/tasks', taskRoutes);
 // Database connection
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/student_attendance_db';
 
