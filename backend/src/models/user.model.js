@@ -20,6 +20,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String },
   passwordHash: { type: String },
   isActive: { type: Boolean, default: true },
+  status: { type: String, enum: ['active', 'inactive', 'suspended'], default: 'active' },
   lastLogin: { type: Date },
 }, { timestamps: true });
 

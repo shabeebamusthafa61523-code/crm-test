@@ -3,12 +3,18 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
+
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 import authRoutes from './src/routes/auth.routes.js';
 import attendanceRoutes from './src/routes/attendance.routes.js';
 import apiRoutes from './src/routes/api.js'; 
+
+import apiRoutes from './src/routes/api.js';
+import crmRoutes from './src/routes/index.js';
+import taskRoutes from './src/routes/task.routes.js';
+
 
 dotenv.config();
 const app = express();
@@ -31,6 +37,12 @@ app.use('/api/attendance', attendanceRoutes); // Handles check-in, check-out, an
 
 // 2. Legacy/Catch-all router fallback
 app.use('/api', apiRoutes); 
+
+
+// CRM routes: auth, users, tasks, attendance, approvals
+app.use('/api/v1', crmRoutes);
+app.use('/api/v1/tasks', taskRoutes);
+// Database connection
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/student_attendance_db';
 
