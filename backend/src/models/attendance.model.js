@@ -1,16 +1,53 @@
+// ===============================
+// BACKEND: attendance.model.js
+// ===============================
+
 import mongoose from 'mongoose';
 
 const attendanceSchema = new mongoose.Schema({
-  user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  date: { type: String, required: true }, // Format: YYYY-MM-DD
-  status: { type: String, default: 'PRESENT' }, // PRESENT, ABSENT
-  check_in_time: { type: String, default: null }, // UTC ISO String
-  check_out_time: { type: String, default: null }, // UTC ISO String
-  working_hours: { type: String, default: '0.00' },
-  is_late: { type: Boolean, default: false },
-  overtime: { type: String, default: '0.00' }
+  user_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+
+  date: {
+    type: String,
+    required: true
+  },
+
+  status: {
+    type: String,
+    default: 'PRESENT'
+  },
+
+  check_in_time: {
+    type: Date,
+    default: null
+  },
+
+  check_out_time: {
+    type: Date,
+    default: null
+  },
+
+  working_hours: {
+    type: String,
+    default: '0.00'
+  },
+
+  is_late: {
+    type: Boolean,
+    default: false
+  },
+
+  overtime: {
+    type: String,
+    default: '0.00'
+  }
+
 }, {
-  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
+  timestamps: true,
   toJSON: {
     transform: (doc, ret) => {
       ret.id = ret._id.toString();
@@ -21,7 +58,14 @@ const attendanceSchema = new mongoose.Schema({
   }
 });
 
-// Compound unique index to make sure a user only has one log entry per day
-attendanceSchema.index({ user_id: 1, date: 1 }, { unique: true });
+attendanceSchema.index(
+  { user_id: 1, date: 1 },
+  { unique: true }
+);
 
-export const Attendance = mongoose.model('Attendance', attendanceSchema);
+const Attendance = mongoose.model(
+  'Attendance',
+  attendanceSchema
+);
+
+export default Attendance;

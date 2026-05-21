@@ -57,11 +57,18 @@ export const createTask = async (req, res, next) => {
       title,
       description: description || '',
       assigned_to,
+
+      designation_id,
+      status: 'pending', // Fresh tasks default to pending column
+      user_id: req.user.id, // Injected securely via verified JWT auth middleware
+      image: req.file ? `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}` : null
+
       created_by: userId,
       status: 'pending',
       file_url,
       file_public_id,
       designation_id: designation_id || undefined
+
     });
 
     await task.save();
@@ -241,7 +248,19 @@ export const deleteTask = async (req, res, next) => {
       await deleteFromCloudinary(task.file_public_id);
     }
 
+
+    // Fallbacks preserve existing state if optional fields aren't resent
+    task.title = title || task.title;
+    task.description = description !== undefined ? description : task.description;
+    task.assigned_to = assigned_to || task.assigned_to;
+    task.designation_id = designation_id || task.designation_id;
+    
+    if (req.file) {
+      task.image = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    }
+
     await task.deleteOne();
+
 
     return res.status(200).json({
       success: true,

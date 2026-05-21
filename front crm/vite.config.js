@@ -1,22 +1,16 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 
-// https://vite.dev/config/
 export default defineConfig({
-  plugins: [
-    react(),
-    tailwindcss(),
-  ],
+  plugins: [react(), tailwindcss()],
   server: {
     proxy: {
-      // This creates a virtual bridge to bypass CORS
       '/api': {
-        target: 'http://localhost:6379', // ✅ Changed from Render URL to your local backend
+        target: 'http://localhost:5000', // Points directly to your Express backend server
         changeOrigin: true,
-        secure: false, // Useful if the target has certificate issues
-        // rewrite: (path) => path.replace(/^\/api/, ''),
+        secure: false,
       },
     },
   },
-})
+});
