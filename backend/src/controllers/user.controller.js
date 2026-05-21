@@ -28,8 +28,11 @@ export const userController = {
         email: u.email,
         phone: u.phone,
         role: u.role,
+        role_id: u.role_id,
+        designation_id: u.designation_id,
         employeeId: u.employeeId,
-        avatar: u.avatar,
+        avatar: u.avatar || u.profile_image,
+        profile_image: u.profile_image,
         isActive: u.isActive
       }));
 

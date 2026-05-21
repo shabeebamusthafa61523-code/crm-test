@@ -1,12 +1,16 @@
+// src/routes/attendance.routes.js
 import { Router } from 'express';
-import { getAttendanceByDate, checkIn, checkOut } from '../controllers/attendance.controller.js';
-import authenticate from '../middleware/auth.middleware.js';
+import protectRoute from '../middleware/auth.middleware.js'; 
+import { checkIn, checkOut, getAttendanceByDate } from '../controllers/attendance.controller.js';
 
 const router = Router();
 
-// Secure all attendance tracking actions behind authorization tokens
-router.get('/:date', authenticate, getAttendanceByDate);
-router.post('/check-in', authenticate, checkIn);
-router.post('/check-out', authenticate, checkOut);
+// Secure all endpoints below this line
+router.use(protectRoute);
+
+// Place explicit paths BEFORE dynamic parameters (:date)
+router.post('/check-in', checkIn);
+router.post('/check-out', checkOut);
+router.get('/:date', getAttendanceByDate);
 
 export default router;

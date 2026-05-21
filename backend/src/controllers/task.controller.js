@@ -38,7 +38,7 @@ export const createTask = async (req, res) => {
       designation_id,
       status: 'pending', // Fresh tasks default to pending column
       user_id: req.user.id, // Injected securely via verified JWT auth middleware
-      image: req.file ? req.file.path : null // Secure Cloudinary URL path from Multer
+      image: req.file ? `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}` : null
     });
 
     await newTask.save();
@@ -76,9 +76,8 @@ export const updateTask = async (req, res) => {
     task.assigned_to = assigned_to || task.assigned_to;
     task.designation_id = designation_id || task.designation_id;
     
-    // Replace current Cloudinary string if a new file payload exists
     if (req.file) {
-      task.image = req.file.path;
+      task.image = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
     }
 
     await task.save();
