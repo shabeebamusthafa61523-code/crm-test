@@ -42,39 +42,49 @@ const deleteFromCloudinary = (publicId) => {
 export const createTask = async (req, res, next) => {
   try {
     const { title, description, assigned_to, designation_id } = req.body;
+
     const userId = req.user.id || req.user._id;
 
-    let file_url = undefined;
-    let file_public_id = undefined;
+    let file_url;
+    let file_public_id;
 
+    // Upload file to Cloudinary
     if (req.file) {
       const uploadResult = await uploadToCloudinary(req.file.buffer);
+
       file_url = uploadResult.secure_url;
       file_public_id = uploadResult.public_id;
     }
 
     const task = new Task({
-      title,
-      description: description || '',
+      title: title?.trim(),
+      description: description?.trim() || "",
+
       assigned_to,
+      designation_id: designation_id || undefined,
 
-      designation_id,
-      status: 'pending', // Fresh tasks default to pending column
-      user_id: req.user.id, // Injected securely via verified JWT auth middleware
-      image: req.file ? `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}` : null
+      status: "pending",
 
+      // creator
       created_by: userId,
-      status: 'pending',
+      user_id: userId,
+
+      // image/file
       file_url,
       file_public_id,
-      designation_id: designation_id || undefined
 
+      image: file_url || null
     });
 
     await task.save();
 
-    return res.status(201).json(task.toJSON());
+    return res.status(201).json({
+      success: true,
+      task
+    });
+
   } catch (error) {
+    console.error("CREATE TASK ERROR:", error);
     next(error);
   }
 };
@@ -86,9 +96,9 @@ export const createTask = async (req, res, next) => {
 export const getAllTasks = async (req, res, next) => {
   try {
     const role = req.user.role || req.user.role_id;
-    if (role !== 'admin') {
-      throw new AppError('Access denied. Admin access only.', 403);
-    }
+    if (role !== 'admin' && role !== 'employee' && role !== '3') {
+  throw new AppError('Access denied.', 403);
+}
 
     const tasks = await Task.find()
       .populate('assigned_to', 'name email')
@@ -244,23 +254,17 @@ export const deleteTask = async (req, res, next) => {
       throw new AppError('Task not found', 404);
     }
 
+    // Permission check: only creator can delete
+    const userId = req.user.id || req.user._id;
+    if (String(task.created_by) !== String(userId)) {
+      throw new AppError('Access denied. Only the creator can delete this task.', 403);
+    }
+
     if (task.file_public_id) {
       await deleteFromCloudinary(task.file_public_id);
     }
 
-
-    // Fallbacks preserve existing state if optional fields aren't resent
-    task.title = title || task.title;
-    task.description = description !== undefined ? description : task.description;
-    task.assigned_to = assigned_to || task.assigned_to;
-    task.designation_id = designation_id || task.designation_id;
-    
-    if (req.file) {
-      task.image = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-    }
-
     await task.deleteOne();
-
 
     return res.status(200).json({
       success: true,
@@ -283,6 +287,12 @@ export const updateTaskStatus = async (req, res, next) => {
     const task = await Task.findById(task_id);
     if (!task) {
       throw new AppError('Task not found', 404);
+    }
+
+    // Permission check: only creator can change status
+    const userId = req.user.id || req.user._id;
+    if (String(task.created_by) !== String(userId)) {
+      throw new AppError('Access denied. Only the creator can update task status.', 403);
     }
 
     task.status = status;
@@ -308,10 +318,13 @@ export const updateTask = async (req, res, next) => {
       throw new AppError('Task not found', 404);
     }
 
-    if (title !== undefined) task.title = title;
+    // Permission check: only creator can update
+    const userId = req.user.id || req.user._id;
+    if (String(task.created_by) !== String(userId)) {
+      throw new AppError('Access denied. Only the creator can update this task.', 403);
+    }
     if (description !== undefined) task.description = description;
     if (assigned_to !== undefined) task.assigned_to = assigned_to;
-    
     // Explicit check for designation_id updates (handles empty string resets)
     if (designation_id !== undefined) {
       task.designation_id = designation_id || undefined;

@@ -15,10 +15,12 @@ export const createTaskSchema = z.object({
     .min(1, { message: 'Title cannot be empty' }),
   description: z.string().trim().optional(),
   assigned_to: objectIdSchema('assigned_to'),
-  designation_id: objectIdSchema('designation_id')
-    .optional()
-    .or(z.literal(''))
-    .transform(val => val === '' ? undefined : val)
+ // CREATE
+designation_id: z
+  .string()
+  .optional()
+  .or(z.literal(''))
+  .transform(val => val === '' ? undefined : val)
 });
 
 // Body validation for updating a task
@@ -26,17 +28,19 @@ export const updateTaskSchema = z.object({
   title: z.string().trim().min(1, { message: 'Title cannot be empty' }).optional(),
   description: z.string().trim().optional(),
   assigned_to: objectIdSchema('assigned_to').optional(),
-  designation_id: objectIdSchema('designation_id')
-    .optional()
-    .or(z.literal(''))
-    .or(z.literal(null))
-    .transform(val => val === '' ? undefined : val)
+ // UPDATE
+designation_id: z
+  .string()
+  .optional()
+  .or(z.literal(''))
+  .or(z.literal(null))
+  .transform(val => val === '' ? undefined : val)
 });
 
 // Query validation for updating task status
 export const updateStatusQuerySchema = z.object({
-  status: z.enum(['pending', 'in_progress', 'completed', 'cancelled'], {
-    errorMap: () => ({ message: "Status must be one of: 'pending', 'in_progress', 'completed', 'cancelled'" })
+  status: z.enum(['pending', 'current', 'preview', 'done'], {
+    errorMap: () => ({ message: "Status must be one of: 'pending', 'current', 'preview', 'done'" })
   })
 });
 

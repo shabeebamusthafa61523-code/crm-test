@@ -370,7 +370,7 @@ const Attendance = () => {
                       todayLog?.check_out_time
                     }
                     onClick={() => handleAction('check-out')}
-                    className="bg-slate-200 dark:bg-slate-800 disabled:opacity-30 p-6 rounded-3xl"
+                    className="bg-red-200 dark:bg-red-800 bdisabled:opacity-30 p-6 rounded-3xl"
                   >
                     <LogOut size={24} />
                     <span className="text-xs uppercase tracking-widest">

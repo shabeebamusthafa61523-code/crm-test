@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import prisma from '../config/db.js';
-import redis from '../config/redis.js';
+// import redis from '../config/redis.js';
 import { notificationService } from './notification.service.js';
 import { kpiService } from './kpi.service.js';
 import { payrollService } from './payroll.service.js';

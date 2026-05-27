@@ -22,7 +22,7 @@ const taskSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'in_progress', 'completed', 'cancelled'],
+    enum: ['pending', 'current', 'preview', 'done'],
     default: 'pending'
   },
   file_url: {
@@ -31,44 +31,58 @@ const taskSchema = new mongoose.Schema({
   file_public_id: {
     type: String
   },
-  designation_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Designation'
-  }
+ designation_id: {
+  type: Number
+}
 }, {
   timestamps: true,
   toJSON: {
-    transform: (doc, ret) => {
-      ret.id = ret._id.toString();
-      if (ret.created_by) {
-        ret.user_id = ret.created_by.toString();
-      }
-      if (ret.file_url) {
-        ret.file = ret.file_url;
-        ret.image = ret.file_url;
-      }
-      delete ret._id;
-      delete ret.file_public_id;
-      delete ret.__v;
-      return ret;
+  transform: (doc, ret) => {
+    ret.id = ret._id.toString();
+
+    if (ret.created_by) {
+      ret.user_id =
+        ret.created_by?._id
+          ? ret.created_by._id.toString()
+          : ret.created_by.toString();
     }
-  },
-  toObject: {
-    transform: (doc, ret) => {
-      ret.id = ret._id.toString();
-      if (ret.created_by) {
-        ret.user_id = ret.created_by.toString();
-      }
-      if (ret.file_url) {
-        ret.file = ret.file_url;
-        ret.image = ret.file_url;
-      }
-      delete ret._id;
-      delete ret.file_public_id;
-      delete ret.__v;
-      return ret;
+
+    if (ret.file_url) {
+      ret.file = ret.file_url;
+      ret.image = ret.file_url;
     }
+
+    delete ret._id;
+    delete ret.file_public_id;
+    delete ret.__v;
+
+    return ret;
   }
+},
+
+toObject: {
+  transform: (doc, ret) => {
+    ret.id = ret._id.toString();
+
+    if (ret.created_by) {
+      ret.user_id =
+        ret.created_by?._id
+          ? ret.created_by._id.toString()
+          : ret.created_by.toString();
+    }
+
+    if (ret.file_url) {
+      ret.file = ret.file_url;
+      ret.image = ret.file_url;
+    }
+
+    delete ret._id;
+    delete ret.file_public_id;
+    delete ret.__v;
+
+    return ret;
+  }
+}
 });
 
 const Task = mongoose.model('Task', taskSchema);

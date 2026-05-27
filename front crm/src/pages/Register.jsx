@@ -17,7 +17,7 @@ const Register = () => {
     { id: "1", name: "hr" },
     { id: "2", name: "admin" },
     { id: "3", name: "employee" },
-    { id: "57db5d1e-0117-4e89-aed7-e6667946cf79", name: "student" }
+    { id: "10", name: "student" }
   ]);
 
   const [designations] = useState([
@@ -29,7 +29,8 @@ const Register = () => {
     { id: "6", name: "Flutter Developer" },
     { id: "7", name: "Fullstack Developer" },
     { id: "8", name: "Admin" },
-    { id: "9", name: "Manager" }
+    { id: "9", name: "Manager" },
+    { id: "10", name: "Student" }
   ]);
 
   const [formData, setFormData] = useState({
