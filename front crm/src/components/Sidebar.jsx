@@ -6,6 +6,7 @@ import {
   UserCheck, 
   ListCheck, 
   Users, 
+  GraduationCap,
   Settings, 
   LogOut,
   Building
@@ -13,10 +14,15 @@ import {
 
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+  { 
+    icon: Users, 
+    label: 'Users', 
+    path: '/users', 
+    allowedRoles: ['1', '2', 'hr', 'admin'] // Strictly whitelisted roles
+  },
   { icon: UserCheck, label: 'Attendance', path: '/attendance' },
   { icon: ListCheck, label: 'To-Do', path: '/todo' },
   { icon: Users, label: 'Student Attendance', path: '/student-attendance' },
-  { icon: Building, label: 'Departments', path: '/departments' },
   // { icon: Settings, label: 'Settings', path: '/settings' },
 ];
 
@@ -24,10 +30,33 @@ const Sidebar = () => {
   const location = useLocation();
   const activePath = location.pathname;
 
+  // Dynamically filters and constructs visibility list based on system profile privileges
+ // Dynamically filters and constructs visibility list based on system profile privileges
+  const getVisibleMenuItems = () => {
+    try {
+      const savedUser = localStorage.getItem('user');
+      if (!savedUser) return menuItems.filter(item => !item.allowedRoles);
+
+      const userObj = JSON.parse(savedUser);
+      
+      // FIX: Added userObj.role_id to match your exact backend response payload
+      const currentUserRole = String(userObj.role_id || userObj.roleId || userObj.role || '').toLowerCase().trim();
+
+      return menuItems.filter(item => {
+        if (!item.allowedRoles) return true;
+        return item.allowedRoles.includes(currentUserRole);
+      });
+    } catch (e) {
+      console.error("Error reading operator authorization layout paths:", e);
+      return menuItems.filter(item => !item.allowedRoles);
+    }
+  };
+  const visibleMenuItems = getVisibleMenuItems();
+
   return (
     <motion.aside
       className={`
-       mt-18 fixed z-50 transition-all duration-500
+        mt-18 fixed z-50 transition-all duration-500
         /* Mobile: Bottom Center Dock */
         bottom-6 left-1/2 -translate-x-1/2 flex-row py-3 px-6 gap-3 rounded-full 
         /* Desktop: Left Center Dock */
@@ -39,20 +68,8 @@ const Sidebar = () => {
       animate={{ x: 0, opacity: 1 }}
       transition={{ type: 'spring', damping: 25, stiffness: 120 }}
     >
-      {/* Brand Logo Section */}
-      {/* <div className="hidden lg:flex mb-2 items-center justify-center">
-        <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/20 group cursor-pointer">
-          <motion.span 
-            whileHover={{ rotate: 10, scale: 1.1 }}
-            className="text-white font-black text-xl italic"
-          >
-            S
-          </motion.span>
-        </div>
-      </div> */}
-
       <div className="flex lg:flex-col gap-3 lg:gap-4">
-        {menuItems.map((item) => (
+        {visibleMenuItems.map((item) => (
           <NavItem 
             key={item.path}
             icon={<item.icon size={22} />} 
