@@ -5,7 +5,7 @@ import {
   Briefcase, Folder, UserCheck, ShieldAlert, Image as ImageIcon,
   Loader2, User, ChevronRight, CheckCircle2, AlertTriangle, Shield
 } from 'lucide-react';
-
+import axios from 'axios';
 const API_BASE = "http://localhost:5000/api/v1";
 
 const ROLES = [
@@ -39,7 +39,7 @@ const Users = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all'); // all, active, inactive, blocked
-  
+  // Ensure it is initialized like this inside your component:
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -51,6 +51,7 @@ const Users = () => {
     const cleanToken = rawToken ? rawToken.replace(/"/g, '') : '';
     return { 'Authorization': cleanToken.startsWith('Bearer ') ? cleanToken : `Bearer ${cleanToken}` };
   }, []);
+
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -434,6 +435,7 @@ const CreateModal = ({ onClose, refresh, getAuthHeaders }) => {
   });
   const [preview, setPreview] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+const [departments, setDepartments] = useState([]);
 
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
@@ -442,7 +444,27 @@ const CreateModal = ({ onClose, refresh, getAuthHeaders }) => {
       setPreview(URL.createObjectURL(file));
     }
   };
+  useEffect(() => {
+  const fetchDepartments = async () => {
+    try {
+      // 1. Grab your token from localStorage (or your auth context state)
+      const token = localStorage.getItem('token'); 
 
+      // 2. Pass the token in the Authorization header
+      const response = await axios.get(`${API_BASE}/departments`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+setDepartments(response.data?.data || []);
+    } catch (error) {
+      console.error('Error fetching departments:', error);
+    }
+  };
+
+  fetchDepartments();
+}, []);
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
@@ -550,9 +572,32 @@ const CreateModal = ({ onClose, refresh, getAuthHeaders }) => {
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Department Assignment</label>
-              <input required name="department" className="w-full" placeholder="DEPARTMENT" value={form.department} onChange={handleInputChange} />
-            </div>
+  <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">
+    Department Assignment
+  </label>
+  
+  <select 
+    required 
+    name="department" 
+    value={form.department} 
+    onChange={handleInputChange}
+    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500 dark:focus:border-indigo-400 cursor-pointer"
+  >
+    <option value="" disabled>
+      SELECT DEPARTMENT
+    </option>
+    
+    {departments.map((dept) => (
+      <option 
+        key={dept._id || dept.id} 
+        value={dept._id || dept.id}
+        className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+      >
+        {dept.name.toUpperCase()}
+      </option>
+    ))}
+  </select>
+</div>
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Reporting Manager</label>
               <input required name="reportingManager" className="w-full" placeholder="MANAGER" value={form.reportingManager} onChange={handleInputChange} />
