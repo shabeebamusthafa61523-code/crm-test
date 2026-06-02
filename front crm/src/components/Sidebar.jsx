@@ -7,7 +7,8 @@ import {
   ListCheck, 
   Users, 
   Settings, 
-  LogOut 
+  LogOut,
+  Building
 } from 'lucide-react';
 
 const menuItems = [
@@ -15,6 +16,7 @@ const menuItems = [
   { icon: UserCheck, label: 'Attendance', path: '/attendance' },
   { icon: ListCheck, label: 'To-Do', path: '/todo' },
   { icon: Users, label: 'Student Attendance', path: '/student-attendance' },
+  { icon: Building, label: 'Departments', path: '/departments' },
   // { icon: Settings, label: 'Settings', path: '/settings' },
 ];
 

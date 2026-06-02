@@ -96,9 +96,9 @@ export const createTask = async (req, res, next) => {
 export const getAllTasks = async (req, res, next) => {
   try {
     const role = req.user.role || req.user.role_id;
-    if (role !== 'admin' && role !== 'employee' && role !== '3') {
-  throw new AppError('Access denied.', 403);
-}
+    if (role !== 'admin' && role !== 'employee' && role !== '3' && role !== '10') {
+      throw new AppError('Access denied.', 403);
+    }
 
     const tasks = await Task.find()
       .populate('assigned_to', 'name email')

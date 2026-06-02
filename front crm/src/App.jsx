@@ -12,6 +12,7 @@ import Users from './pages/Users';
 import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
 import StudentAttendance from './pages/StudentAttendance';
+import DepartmentsPage from './modules/departments/DepartmentsPage';
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
         <Route path="/users" element={<MainLayout><Users /></MainLayout>} />
         <Route path="/settings" element={<MainLayout><Settings /></MainLayout>} />
         <Route path="/student-attendance" element={<MainLayout><StudentAttendance /></MainLayout>} />
+        <Route path="/departments" element={<MainLayout><DepartmentsPage /></MainLayout>} />
 
         <Route path="/404" element={<NotFound />} />
         <Route path="*" element={<Navigate to="/404" />} />
