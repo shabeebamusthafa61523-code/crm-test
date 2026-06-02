@@ -84,23 +84,67 @@ const Login = () => {
         <div className="glass-card p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/60 backdrop-blur-2xl shadow-xl">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-2">Email</label>
-              <div className="relative group">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-450 group-focus-within:text-indigo-400" size={18} />
-                <input required name="email" type="email" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-2xl py-4 pl-12 pr-4 text-slate-900 dark:text-slate-100 focus:border-indigo-500/50 outline-none" onChange={handleChange} />
-              </div>
-            </div>
+  <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-2">
+    Email
+  </label>
+
+  <div className="relative">
+
+    {/* ICON */}
+    <Mail
+      className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none transition-all duration-200 text-slate-500
+      ${loginData.email ? "opacity-0" : "opacity-100"}`}
+      size={18}
+    />
+
+    {/* INPUT */}
+    <input
+      required
+      name="email"
+      type="email"
+      value={loginData.email}
+      onChange={handleChange}
+      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-2xl py-4 pl-12 pr-4 text-slate-900 dark:text-slate-100 focus:border-indigo-500/50 outline-none transition-all"
+    />
+
+  </div>
+</div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-2">Password</label>
-              <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-455 group-focus-within:text-indigo-400" size={18} />
-                <input required name="password" type={showPassword ? "text" : "password"} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-855 rounded-2xl py-4 pl-12 pr-12 text-slate-900 dark:text-slate-100 focus:border-indigo-500/50 outline-none" onChange={handleChange} />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 cursor-pointer">
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
+  <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-2">
+    Password
+  </label>
+
+  <div className="relative">
+
+    {/* LOCK ICON */}
+    <Lock
+      className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none transition-all duration-200 text-slate-500
+      ${loginData.password ? "opacity-0" : "opacity-100"}`}
+      size={18}
+    />
+
+    {/* INPUT */}
+    <input
+      required
+      name="password"
+      value={loginData.password}
+      onChange={handleChange}
+      type={showPassword ? "text" : "password"}
+      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-855 rounded-2xl py-4 pl-12 pr-12 text-slate-900 dark:text-slate-100 focus:border-indigo-500/50 outline-none transition-all"
+    />
+
+    {/* SHOW / HIDE BUTTON */}
+    <button
+      type="button"
+      onClick={() => setShowPassword(!showPassword)}
+      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 cursor-pointer"
+    >
+      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+    </button>
+
+  </div>
+</div>
 
             <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} disabled={isLoading} type="submit" className="w-full py-5 bg-gradient-to-r from-indigo-600 to-cyan-600 text-white rounded-2xl font-black text-xs uppercase tracking-[0.3em] flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 cursor-pointer">
               {isLoading ? "Verifying..." : "Authorize Access"} 

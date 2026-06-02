@@ -88,6 +88,8 @@ export const login = async (req, res) => {
         name: user.name,
         email: user.email,
         role_id: user.role_id,
+        designation_id: user.designation_id, // ADD
+    joining_date: user.joining_date,
         profile_image: user.profile_image
       }
     });

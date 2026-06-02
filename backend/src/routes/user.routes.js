@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { userController } from '../controllers/user.controller.js';
 import checkAuth from '../middleware/auth.middleware.js';
+import upload from '../middleware/upload.middleware.js';
 
 const router = Router();
 
@@ -63,36 +64,90 @@ router.get(
 
 // CREATE USER
 router.post(
+  '/create',
+  upload.single('profileImage'),
+  userController.createUser
+);
+router.post(
   '/',
-  requireRole(['1', '2','3']),
+  upload.single('profileImage'),
   userController.createUser
 );
 
 // UPDATE USER
 router.put(
+  '/update/:id',
+  upload.single('profileImage'),
+  userController.updateUser
+);
+router.post(
+  '/update/:id',
+  upload.single('profileImage'),
+  userController.updateUser
+);
+router.put(
   '/:id',
-  requireRole(['1', '2']),
+  upload.single('profileImage'),
+  userController.updateUser
+);
+router.put(
+  '/update',
+  upload.single('profileImage'),
+  (req, res, next) => {
+    req.params.id = req.body.id || req.body._id;
+    next();
+  },
+  userController.updateUser
+);
+router.post(
+  '/update',
+  upload.single('profileImage'),
+  (req, res, next) => {
+    req.params.id = req.body.id || req.body._id;
+    next();
+  },
   userController.updateUser
 );
 
 // CHANGE ROLE
 router.patch(
   '/:id/role',
-  requireRole(['1']),
   userController.changeUserRole
 );
 
 // DEACTIVATE USER
 router.patch(
   '/:id/deactivate',
-  requireRole(['1']),
   userController.deactivateUser
 );
 
 // DELETE USER
 router.delete(
+  '/delete/:id',
+  userController.deleteUser
+);
+router.post(
+  '/delete/:id',
+  userController.deleteUser
+);
+router.delete(
   '/:id',
-  requireRole(['1']),
+  userController.deleteUser
+);
+router.delete(
+  '/delete',
+  (req, res, next) => {
+    req.params.id = req.body.id || req.body._id;
+    next();
+  },
+  userController.deleteUser
+);
+router.post(
+  '/delete',
+  (req, res, next) => {
+    req.params.id = req.body.id || req.body._id;
+    next();
+  },
   userController.deleteUser
 );
 

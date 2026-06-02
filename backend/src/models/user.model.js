@@ -4,10 +4,11 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true, lowercase: true },
   phone: { type: String, required: true },
-  role: { type: String },
+  role: { type: String, default: 'employee' },
   role_id: { type: String, default: '3' },
-  status: { type: String, default: 'active' },
-  designation_id: { type: String },
+  designation: { type: String },
+  department: { type: String },
+  reportingManager: { type: String },
   joining_date: { type: Date },
   salary: { type: Number, default: 0 },
   address: { type: String },
@@ -20,7 +21,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String },
   passwordHash: { type: String },
   isActive: { type: Boolean, default: true },
-  status: { type: String, enum: ['active', 'inactive', 'suspended'], default: 'active' },
+  status: { type: String, enum: ['active', 'inactive', 'blocked'], default: 'active' },
   lastLogin: { type: Date },
 }, { timestamps: true });
 

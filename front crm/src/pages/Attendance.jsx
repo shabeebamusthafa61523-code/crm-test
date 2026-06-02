@@ -353,7 +353,7 @@ const Attendance = () => {
                         !todayLog?.check_out_time)
                     }
                     onClick={() => handleAction('check-in')}
-                    className="bg-indigo-600 disabled:opacity-30 hover:bg-indigo-500 p-6 rounded-3xl text-white font-bold flex flex-col items-center gap-3"
+                    className="bg-emerald-500 disabled:opacity-30 hover:bg-emerald-600 p-6 rounded-3xl text-slate-900 font-bold flex flex-col items-center gap-3 cursor-pointer"
                   >
                     <LogIn size={24} />
                     <span className="text-xs uppercase tracking-widest">
@@ -370,7 +370,7 @@ const Attendance = () => {
                       todayLog?.check_out_time
                     }
                     onClick={() => handleAction('check-out')}
-                    className="bg-red-200 dark:bg-red-800 bdisabled:opacity-30 p-6 rounded-3xl"
+                    className="bg-red-500 disabled:opacity-30 hover:bg-red-600 p-6 rounded-3xl text-white font-bold flex flex-col items-center gap-3 cursor-pointer"
                   >
                     <LogOut size={24} />
                     <span className="text-xs uppercase tracking-widest">
