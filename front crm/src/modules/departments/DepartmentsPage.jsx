@@ -1,12 +1,21 @@
 // src/modules/departments/DepartmentsPage.jsx
 
 import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react';
-import { Plus, Search, Building, Users, Activity, EyeOff, Loader, RefreshCw } from 'lucide-react';
+import { Plus, Search, Building, Users, Activity, EyeOff, Loader, RefreshCw, Edit3, Trash2, User, LayoutGrid, List } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams } from 'react-router-dom';
 import { getAllDepartments, getDepartmentById } from '../../services/departmentService';
 import StatsCard from '../../components/StatsCard';
 import DepartmentCard from './DepartmentCard';
+import StatusBadge from '../../components/StatusBadge';
+
+// Helper to extract initials for manager avatar
+const getInitials = (user) => {
+  if (!user || !user.name) return '??';
+  const parts = user.name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+};
 
 // Lazy-loaded dialog components to minimize initial bundle size
 const CreateDepartmentModal = lazy(() => import('./CreateDepartmentModal'));
@@ -23,6 +32,7 @@ export const DepartmentsPage = () => {
   // Search and Tab Filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'active' | 'inactive'
+  const [viewMode, setViewMode] = useState('table'); // 'table' | 'grid'
 
   // Modal and Drawer visibility states
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -155,10 +165,10 @@ export const DepartmentsPage = () => {
         />
       </div>
 
-      {/* Filter tabs and search control */}
+      {/* Filter tabs, search control and view toggle */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-3xl bg-slate-50/50 dark:bg-slate-900/55 border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-md">
         {/* Tabs */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {['all', 'active', 'inactive'].map(tab => (
             <button
               key={tab}
@@ -175,18 +185,45 @@ export const DepartmentsPage = () => {
           ))}
         </div>
 
-        {/* Search */}
-        <div className="relative max-w-sm w-full">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-            <Search size={18} />
-          </span>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search department name or code..."
-            className="w-full pl-12 pr-4 py-3 rounded-2xl bg-white dark:bg-slate-850 border border-slate-200/50 dark:border-slate-800/50 text-slate-800 dark:text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-400"
-          />
+        {/* Search and View Toggle */}
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+          <div className="relative w-full sm:w-64 max-w-sm">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+              <Search size={18} />
+            </span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search department name or code..."
+              className="w-full pl-12 pr-4 py-3 rounded-2xl bg-white dark:bg-slate-850 border border-slate-200/50 dark:border-slate-800/50 text-slate-800 dark:text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-400"
+            />
+          </div>
+
+          <div className="flex items-center gap-1 bg-white dark:bg-slate-850 p-1 rounded-2xl border border-slate-200/50 dark:border-slate-800/50 self-end sm:self-auto">
+            <button
+              onClick={() => setViewMode('table')}
+              className={`p-2.5 rounded-xl transition-all cursor-pointer ${
+                viewMode === 'table'
+                  ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-lime-400 border border-slate-200/50 dark:border-slate-750 shadow-sm'
+                  : 'text-slate-400 dark:text-slate-500 hover:text-slate-650 dark:hover:text-slate-350'
+              }`}
+              title="Table View"
+            >
+              <List size={18} />
+            </button>
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2.5 rounded-xl transition-all cursor-pointer ${
+                viewMode === 'grid'
+                  ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-lime-400 border border-slate-200/50 dark:border-slate-750 shadow-sm'
+                  : 'text-slate-400 dark:text-slate-500 hover:text-slate-650 dark:hover:text-slate-350'
+              }`}
+              title="Grid View"
+            >
+              <LayoutGrid size={18} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -221,6 +258,158 @@ export const DepartmentsPage = () => {
               : 'Try adjusting your search criteria or filter tags.'}
           </p>
         </div>
+      ) : viewMode === 'table' ? (
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border border-slate-200/50 dark:border-slate-800/50 rounded-[2rem] shadow-xl overflow-hidden"
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[900px]">
+              <thead>
+                <tr className="bg-slate-50/50 dark:bg-slate-950/40 border-b border-slate-200/50 dark:border-slate-800/50">
+                  <th className="px-8 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+                    Department Info
+                  </th>
+                  <th className="px-8 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+                    Manager Details
+                  </th>
+                  <th className="px-8 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] text-center">
+                    Members
+                  </th>
+                  <th className="px-8 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] text-center">
+                    Status
+                  </th>
+                  <th className="px-8 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] text-right">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+                {filteredDepartments.map(dept => {
+                  const { name, code, description, managerId, status, memberCount = 0 } = dept;
+                  return (
+                    <tr 
+                      key={dept._id}
+                      className="hover:bg-slate-50/50 dark:hover:bg-slate-950/25 transition-colors"
+                    >
+                      {/* Department Info */}
+                      <td className="px-8 py-5">
+                        <div className="flex items-start gap-4">
+                          <span className="mt-1 flex-shrink-0 px-2.5 py-1 text-[10px] font-black tracking-widest uppercase bg-indigo-600/10 dark:bg-indigo-600/20 text-indigo-600 dark:text-indigo-400 rounded-lg border border-indigo-500/10">
+                            {code}
+                          </span>
+                          <div className="min-w-0">
+                            <h3 className="text-base font-black text-slate-800 dark:text-white tracking-tight leading-tight mb-1">
+                              {name}
+                            </h3>
+                            <p className="text-xs text-slate-400 dark:text-slate-500 font-semibold line-clamp-2 max-w-md">
+                              {description || 'No description provided.'}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Manager */}
+                      <td className="px-8 py-5">
+                        <div className="flex items-center gap-3">
+                          {managerId ? (
+                            <>
+                              {managerId.avatar ? (
+                                <img
+                                  src={managerId.avatar}
+                                  alt={managerId.name}
+                                  className="w-10 h-10 rounded-xl object-cover ring-2 ring-indigo-500/20 flex-shrink-0"
+                                />
+                              ) : (
+                                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 text-white font-bold text-sm flex items-center justify-center ring-2 ring-indigo-500/20 flex-shrink-0">
+                                  {getInitials(managerId)}
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <p className="text-sm font-bold text-slate-800 dark:text-white truncate">
+                                  {managerId.name}
+                                </p>
+                                <p className="text-[11px] font-semibold text-indigo-500 dark:text-lime-400 truncate">
+                                  {managerId.designation || 'Department Manager'}
+                                </p>
+                                {managerId.email && (
+                                  <p className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold truncate">
+                                    {managerId.email}
+                                  </p>
+                                )}
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 flex items-center justify-center border border-dashed border-slate-300 dark:border-slate-700 flex-shrink-0">
+                                <User size={16} />
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider italic">
+                                  Unassigned
+                                </p>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Members Count */}
+                      <td className="px-8 py-5 text-center">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs rounded-xl border border-slate-200/30 dark:border-slate-800/30">
+                          <Users size={14} className="text-slate-400" />
+                          <span>{memberCount}</span>
+                        </div>
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-8 py-5 text-center">
+                        <StatusBadge status={status} />
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-8 py-5">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => {
+                              setSelectedDept(dept);
+                              setIsDrawerOpen(true);
+                            }}
+                            className="p-2 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-500/10 transition-all duration-300 cursor-pointer"
+                            title="View Members"
+                          >
+                            <Users size={16} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedDept(dept);
+                              setIsEditOpen(true);
+                            }}
+                            className="p-2 rounded-xl text-slate-400 hover:text-emerald-500 hover:bg-emerald-500/10 transition-all duration-300 cursor-pointer"
+                            title="Edit Department"
+                          >
+                            <Edit3 size={16} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedDept(dept);
+                              setIsDeleteOpen(true);
+                            }}
+                            className="p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-all duration-300 cursor-pointer"
+                            title="Delete Department"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredDepartments.map(dept => (
@@ -286,6 +475,7 @@ export const DepartmentsPage = () => {
           onClose={() => {
             setIsDrawerOpen(false);
             setSelectedDept(null);
+            fetchDepartments();
           }}
           department={selectedDept}
         />

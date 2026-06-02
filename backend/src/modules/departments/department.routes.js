@@ -22,6 +22,21 @@ router.get('/:id/analytics', departmentController.getAnalytics);
 // MUTATING ROUTES (Restricted to Admin/Manager only)
 // ==========================================
 router.post(
+  '/:id/users',
+  requireRole(['admin', 'manager']),
+  [
+    body('userId').trim().notEmpty().withMessage('User ID is required')
+  ],
+  departmentController.addUser
+);
+
+router.delete(
+  '/:id/users/:userId',
+  requireRole(['admin', 'manager']),
+  departmentController.removeUser
+);
+
+router.post(
   '/create',
   requireRole(['admin', 'manager']),
   [
