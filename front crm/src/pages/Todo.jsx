@@ -6,6 +6,7 @@ import {
   Trash2, Edit3, Save, Upload, Image as ImageIcon, 
   Loader2, Camera, ShieldCheck, User, Target, Info
 } from 'lucide-react';
+import { useToast } from '../components/ToastProvider';
 
 const API_BASE = "http://localhost:5000/api";
 // --- UTILS & CONSTANTS ---
@@ -277,6 +278,7 @@ const CreateModal = ({ onClose, users, refresh, getAuthHeaders }) => {
   const [form, setForm] = useState({ title: '', description: '', assigned_to: '', designation_id: '', image: null });
   const [preview, setPreview] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { showToast } = useToast();
 
   const handleImage = (e) => {
     const file = e.target.files[0];
@@ -324,7 +326,7 @@ fd.append('designation_id', parseInt(form.designation_id));
 console.log("RESPONSE:", data);
 console.log("ERRORS FULL:", JSON.stringify(data.errors, null, 2));
     if (!res.ok) {
-      alert(data.message || "Task creation failed");
+      showToast(data.message || "Task creation failed", 'error');
       return;
     }
 

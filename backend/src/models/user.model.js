@@ -7,6 +7,7 @@ const userSchema = new mongoose.Schema({
   role: { type: String, default: 'employee' },
   role_id: { type: String, default: '3' },
   designation: { type: String },
+  designationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Designation' },
   department: { type: String },
   reportingManager: { type: String },
   joining_date: { type: Date },

@@ -9,6 +9,7 @@ import Register from './pages/Register';
 import Attendance from './pages/Attendance';
 import Todo from './pages/Todo';
 import Users from './pages/Users';
+import Leads from './pages/Leads';
 import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
 import StudentAttendance from './pages/StudentAttendance';
@@ -27,6 +28,7 @@ function App() {
         <Route path="/attendance" element={<MainLayout><Attendance /></MainLayout>} />
         <Route path="/todo" element={<MainLayout><Todo /></MainLayout>} />
         <Route path="/users" element={<MainLayout><Users /></MainLayout>} />
+        <Route path="/leads" element={<MainLayout><Leads /></MainLayout>} />
         <Route path="/settings" element={<MainLayout><Settings /></MainLayout>} />
         <Route path="/student-attendance" element={<MainLayout><StudentAttendance /></MainLayout>} />
         <Route path="/departments" element={<MainLayout><DepartmentsPage /></MainLayout>} />

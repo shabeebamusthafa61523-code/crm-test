@@ -9,7 +9,8 @@ import {
   GraduationCap,
   Settings, 
   LogOut,
-  Building
+  Building,
+  TrendingUp
 } from 'lucide-react';
 
 const menuItems = [
@@ -20,10 +21,11 @@ const menuItems = [
     path: '/users', 
     allowedRoles: ['1', '2', 'hr', 'admin'] // Strictly whitelisted roles
   },
+  { icon: TrendingUp, label: 'Leads', path: '/leads' },
   { icon: UserCheck, label: 'Attendance', path: '/attendance' },
   { icon: ListCheck, label: 'To-Do', path: '/todo' },
   { icon: Users, label: 'Student Attendance', path: '/student-attendance' },
-  { icon: Building, label: 'Departments', path: '/departments' },
+  { icon: Building, label: 'Departments', path: '/departments' ,allowedRoles: ['1', '2', 'hr', 'admin']},
   // { icon: Settings, label: 'Settings', path: '/settings' },
 ];
 

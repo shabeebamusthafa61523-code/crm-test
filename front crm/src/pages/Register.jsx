@@ -6,12 +6,14 @@ import {
   Eye, EyeOff, MapPin, Calendar, Image as ImageIcon, Loader2, AlertTriangle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '../components/ToastProvider';
 
 const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const [roles] = useState([
     { id: "1", name: "hr" },
@@ -82,7 +84,7 @@ const Register = () => {
       const result = await response.json();
 
       if (response.ok) {
-        alert("Staff Registration Successful!");
+        showToast("Staff Registration Successful!", 'success');
         navigate('/login');
       } else {
         // Handle FastAPI validation array or string detail

@@ -5,27 +5,13 @@ import {
   Briefcase, Folder, UserCheck, ShieldAlert, Image as ImageIcon,
   Loader2, User, ChevronRight, CheckCircle2, AlertTriangle, Shield
 } from 'lucide-react';
-import axios from 'axios';
+import { useToast } from '../components/ToastProvider';
 const API_BASE = "http://localhost:5000/api/v1";
 
 const ROLES = [
   { id: "1", name: "hr" },
   { id: "2", name: "admin" },
   { id: "3", name: "employee" }
-];
-
-const DESIGNATIONS = [
-  { id: "1", name: "Hr Manager" },
-  { id: "2", name: "Graphic Designer" },
-  { id: "3", name: "Digital Marketer" },
-  { id: "4", name: "React Developer" },
-  { id: "5", name: "Node Developer" },
-  { id: "6", name: "Flutter Developer" },
-  { id: "7", name: "Fullstack Developer" },
-  { id: "8", name: "Admin" },
-  { id: "9", name: "Manager" },
-  { id: "10", name: "Student" }
-
 ];
 
 const STATUS_META = {
@@ -45,6 +31,9 @@ const Users = () => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [designations, setDesignations] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const { showToast } = useToast();
 
   const getAuthHeaders = useCallback(() => {
     const rawToken = localStorage.getItem('token');
@@ -84,13 +73,65 @@ const Users = () => {
     }
   }, [getAuthHeaders]);
 
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+  const fetchDesignations = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/designations`, {
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      setDesignations(Array.isArray(data.data) ? data.data : []);
+    } catch (e) {
+      console.error("Failed to fetch designations:", e);
+      setDesignations([]);
+    }
+  }, [getAuthHeaders]);
+
+  const fetchDepartments = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/departments`, {
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      setDepartments(Array.isArray(data.data) ? data.data : []);
+    } catch (e) {
+      console.error("Failed to fetch departments:", e);
+      setDepartments([]);
+    }
+  }, [getAuthHeaders]);
 
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers]);
+    fetchDesignations();
+    fetchDepartments();
+  }, [fetchUsers, fetchDesignations, fetchDepartments]);
+
+  const handleDesignationCreated = useCallback((designation) => {
+    setDesignations(prev => {
+      const exists = prev.some(item => String(item.id) === String(designation.id));
+      return exists ? prev : [...prev, designation].sort((a, b) => a.name.localeCompare(b.name));
+    });
+  }, []);
+
+  const designationMap = useMemo(() => {
+    return new Map(designations.map(designation => [String(designation.id), designation.name]));
+  }, [designations]);
+
+  const getDesignationName = useCallback((user) => {
+    const id = user.designationId || user.designation;
+    return user.designationName || designationMap.get(String(id)) || user.designation || 'General Staff';
+  }, [designationMap]);
+
+  const departmentMap = useMemo(() => {
+    return new Map(departments.map(department => [
+      String(department.id || department._id),
+      department.name
+    ]));
+  }, [departments]);
+
+  const getDepartmentName = useCallback((user) => {
+    const departmentId = user.departmentId?._id || user.departmentId || user.department;
+    return user.departmentId?.name || departmentMap.get(String(departmentId)) || user.departmentName || user.department || 'Unassigned';
+  }, [departmentMap]);
 
   // Tab counts
   const tabCounts = useMemo(() => {
@@ -116,11 +157,11 @@ const Users = () => {
         user.name?.toLowerCase().includes(query) ||
         user.email?.toLowerCase().includes(query) ||
         user.employeeId?.toLowerCase().includes(query) ||
-        user.designation?.toLowerCase().includes(query) ||
-        user.department?.toLowerCase().includes(query)
+        getDesignationName(user).toLowerCase().includes(query) ||
+        getDepartmentName(user).toLowerCase().includes(query)
       );
     });
-  }, [users, activeTab, searchQuery]);
+  }, [users, activeTab, searchQuery, getDesignationName, getDepartmentName]);
 
   const handleDeleteUser = async (id, name) => {
     if (!window.confirm(`Are you absolutely sure you want to delete employee "${name}"? This action is permanent.`)) {
@@ -134,13 +175,13 @@ const Users = () => {
       const data = await res.json();
       if (res.ok || data.success) {
         setUsers(prev => prev.filter(u => u.id !== id && u._id !== id));
-        alert('Employee records purged successfully.');
+        showToast('Employee records purged successfully.', 'success');
       } else {
-        alert(data.message || 'Deletion failed.');
+        showToast(data.message || 'Deletion failed.', 'error');
       }
     } catch (e) {
       console.error("Deletion failed:", e);
-      alert('Network or server error during deletion.');
+      showToast('Network or server error during deletion.', 'error');
     }
   };
 
@@ -317,8 +358,7 @@ const Users = () => {
   <div className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1">
     <Briefcase size={12} className="text-slate-400" />
     <span>
-      {/* If designation is an ID, find its name; otherwise fallback to the string or 'General Staff' */}
-      {DESIGNATIONS.find(d => String(d.id) === String(user.designation))?.name || user.designation || 'General Staff'}
+      {getDesignationName(user)}
     </span>
   </div>
   <span className="text-[10px] font-black uppercase text-indigo-500 tracking-widest bg-indigo-500/10 px-2 py-0.5 rounded inline-block">
@@ -331,7 +371,7 @@ const Users = () => {
                         <td className="py-4.5 px-6 text-xs space-y-1">
                           <div className="font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1">
                             <Folder size={12} className="text-slate-400" />
-                            <span>{user.department || 'Unassigned'}</span>
+                            <span>{getDepartmentName(user)}</span>
                           </div>
                           {user.reportingManager && (
                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
@@ -392,6 +432,10 @@ const Users = () => {
             onClose={() => setIsCreateOpen(false)} 
             refresh={fetchUsers} 
             getAuthHeaders={getAuthHeaders} 
+            designations={designations}
+            onDesignationCreated={handleDesignationCreated}
+            departments={departments}
+            showToast={showToast}
           />
         )}
         {isEditOpen && selectedUser && (
@@ -403,11 +447,17 @@ const Users = () => {
             }} 
             refresh={fetchUsers} 
             getAuthHeaders={getAuthHeaders} 
+            designations={designations}
+            onDesignationCreated={handleDesignationCreated}
+            departments={departments}
+            showToast={showToast}
           />
         )}
         {isViewOpen && selectedUser && (
           <ViewModal 
             user={selectedUser}
+            getDesignationName={getDesignationName}
+            getDepartmentName={getDepartmentName}
             onClose={() => {
               setIsViewOpen(false);
               setSelectedUser(null);
@@ -419,15 +469,72 @@ const Users = () => {
   );
 };
 
+const DesignationSelect = ({ value, onChange, designations, getAuthHeaders, onDesignationCreated, showToast }) => {
+  const [isAdding, setIsAdding] = useState(false);
+
+  const handleAddDesignation = async () => {
+    const name = window.prompt('Enter designation name');
+    if (!name?.trim()) return;
+
+    setIsAdding(true);
+    try {
+      const res = await fetch(`${API_BASE}/designations`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ name: name.trim() })
+      });
+      const data = await res.json();
+
+      if (!res.ok && !data.success) {
+        showToast(data.message || data.error || 'Failed to add designation.', 'error');
+        return;
+      }
+
+      const designation = data.data;
+      onDesignationCreated(designation);
+      onChange(String(designation.id));
+      showToast('Designation added successfully.', 'success');
+    } catch (e) {
+      console.error(e);
+      showToast('Error creating designation.', 'error');
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  return (
+    <div className="flex gap-2">
+      <select required name="designation" className="w-full" value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">Select Designation</option>
+        {designations.map(d => (
+          <option key={d.id} value={d.id}>{d.name}</option>
+        ))}
+      </select>
+      <button
+        type="button"
+        onClick={handleAddDesignation}
+        disabled={isAdding}
+        title="Add designation"
+        className="shrink-0 h-11 w-11 rounded-xl bg-indigo-600 text-white dark:bg-indigo-500 dark:text-slate-950 flex items-center justify-center transition-all duration-300 hover:scale-[1.03] active:scale-95 disabled:opacity-60"
+      >
+        {isAdding ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+      </button>
+    </div>
+  );
+};
+
 // --- CREATE MODAL ---
-const CreateModal = ({ onClose, refresh, getAuthHeaders }) => {
+const CreateModal = ({ onClose, refresh, getAuthHeaders, designations, onDesignationCreated, departments, showToast }) => {
   const [form, setForm] = useState({
     employeeId: `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
     name: '',
     phone: '',
     email: '',
     designation: '',
-    department: '',
+    departmentId: '',
     reportingManager: '',
     status: 'active',
     role: 'employee',
@@ -435,7 +542,6 @@ const CreateModal = ({ onClose, refresh, getAuthHeaders }) => {
   });
   const [preview, setPreview] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-const [departments, setDepartments] = useState([]);
 
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
@@ -444,27 +550,6 @@ const [departments, setDepartments] = useState([]);
       setPreview(URL.createObjectURL(file));
     }
   };
-  useEffect(() => {
-  const fetchDepartments = async () => {
-    try {
-      // 1. Grab your token from localStorage (or your auth context state)
-      const token = localStorage.getItem('token'); 
-
-      // 2. Pass the token in the Authorization header
-      const response = await axios.get(`${API_BASE}/departments`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-
-setDepartments(response.data?.data || []);
-    } catch (error) {
-      console.error('Error fetching departments:', error);
-    }
-  };
-
-  fetchDepartments();
-}, []);
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
@@ -494,15 +579,15 @@ setDepartments(response.data?.data || []);
 
       const data = await res.json();
       if (res.ok || data.success) {
-        alert('Employee created successfully.');
+        showToast('Employee created successfully.', 'success');
         await refresh();
         onClose();
       } else {
-        alert(data.message || 'Failed to onboard employee.');
+        showToast(data.message || 'Failed to onboard employee.', 'error');
       }
     } catch (e) {
       console.error(e);
-      alert('Error connecting to the onboard api.');
+      showToast('Error connecting to the onboard api.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -564,12 +649,14 @@ setDepartments(response.data?.data || []);
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Corporate Designation</label>
-              <select required name="designation" className="w-full" value={form.designation} onChange={handleInputChange}>
-                <option value="">Select Designation</option>
-                {DESIGNATIONS.map(d => (
-                  <option key={d.id} value={d.name}>{d.name}</option>
-                ))}
-              </select>
+              <DesignationSelect
+                value={form.designation}
+                onChange={(designation) => setForm(prev => ({ ...prev, designation }))}
+                designations={designations}
+                getAuthHeaders={getAuthHeaders}
+                onDesignationCreated={onDesignationCreated}
+                showToast={showToast}
+              />
             </div>
             <div className="space-y-2">
   <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">
@@ -578,8 +665,8 @@ setDepartments(response.data?.data || []);
   
   <select 
     required 
-    name="department" 
-    value={form.department} 
+    name="departmentId" 
+    value={form.departmentId} 
     onChange={handleInputChange}
     className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500 dark:focus:border-indigo-400 cursor-pointer"
   >
@@ -638,14 +725,14 @@ setDepartments(response.data?.data || []);
 };
 
 // --- EDIT MODAL ---
-const EditModal = ({ user, onClose, refresh, getAuthHeaders }) => {
+const EditModal = ({ user, onClose, refresh, getAuthHeaders, designations, onDesignationCreated, departments, showToast }) => {
   const [form, setForm] = useState({
     employeeId: user.employeeId || '',
     name: user.name || '',
     phone: user.phone || '',
     email: user.email || '',
-    designation: user.designation || '',
-    department: user.department || '',
+    designation: user.designationId || user.designation || '',
+    departmentId: user.departmentId?._id || user.departmentId || user.department || '',
     reportingManager: user.reportingManager || '',
     status: user.status || 'active',
     role: user.role || 'employee',
@@ -653,6 +740,24 @@ const EditModal = ({ user, onClose, refresh, getAuthHeaders }) => {
   });
   const [preview, setPreview] = useState(user.avatar || user.profile_image || null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!form.designation || designations.some(d => String(d.id) === String(form.designation))) return;
+
+    const matchingDesignation = designations.find(d => d.name.toLowerCase() === String(form.designation).toLowerCase());
+    if (matchingDesignation) {
+      setForm(prev => ({ ...prev, designation: String(matchingDesignation.id) }));
+    }
+  }, [designations, form.designation]);
+
+  useEffect(() => {
+    if (!form.departmentId || departments.some(d => String(d.id || d._id) === String(form.departmentId))) return;
+
+    const matchingDepartment = departments.find(d => d.name.toLowerCase() === String(form.departmentId).toLowerCase());
+    if (matchingDepartment) {
+      setForm(prev => ({ ...prev, departmentId: String(matchingDepartment.id || matchingDepartment._id) }));
+    }
+  }, [departments, form.departmentId]);
 
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
@@ -689,15 +794,15 @@ const EditModal = ({ user, onClose, refresh, getAuthHeaders }) => {
 
       const data = await res.json();
       if (res.ok || data.success) {
-        alert('Employee data synchronized successfully.');
+        showToast('Employee data synchronized successfully.', 'success');
         await refresh();
         onClose();
       } else {
-        alert(data.message || 'Synchronization failed.');
+        showToast(data.message || 'Synchronization failed.', 'error');
       }
     } catch (e) {
       console.error(e);
-      alert('Error reaching the synchronizer api.');
+      showToast('Error reaching the synchronizer api.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -759,16 +864,35 @@ const EditModal = ({ user, onClose, refresh, getAuthHeaders }) => {
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Corporate Designation</label>
-              <select required name="designation" className="w-full" value={form.designation} onChange={handleInputChange}>
-                <option value="">Select Designation</option>
-                {DESIGNATIONS.map(d => (
-                  <option key={d.id} value={d.name}>{d.name}</option>
-                ))}
-              </select>
+              <DesignationSelect
+                value={form.designation}
+                onChange={(designation) => setForm(prev => ({ ...prev, designation }))}
+                designations={designations}
+                getAuthHeaders={getAuthHeaders}
+                onDesignationCreated={onDesignationCreated}
+                showToast={showToast}
+              />
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Department Assignment</label>
-              <input required name="department" className="w-full" placeholder="DEPARTMENT" value={form.department} onChange={handleInputChange} />
+              <select
+                required
+                name="departmentId"
+                value={form.departmentId}
+                onChange={handleInputChange}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500 dark:focus:border-indigo-400 cursor-pointer"
+              >
+                <option value="" disabled>SELECT DEPARTMENT</option>
+                {departments.map((dept) => (
+                  <option
+                    key={dept._id || dept.id}
+                    value={dept._id || dept.id}
+                    className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                  >
+                    {dept.name.toUpperCase()}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Reporting Manager</label>
@@ -810,7 +934,7 @@ const EditModal = ({ user, onClose, refresh, getAuthHeaders }) => {
 };
 
 // --- VIEW DOSSIER MODAL ---
-const ViewModal = ({ user, onClose }) => {
+const ViewModal = ({ user, onClose, getDesignationName, getDepartmentName }) => {
   const statusKey = user.status || (user.isActive ? 'active' : 'inactive');
   const meta = STATUS_META[statusKey] || STATUS_META.active;
   return (
@@ -859,7 +983,7 @@ const ViewModal = ({ user, onClose }) => {
           <div className="space-y-6">
             <div>
               <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none">{user.name}</h3>
-              <p className="text-xs font-semibold text-indigo-500 dark:text-indigo-400 mt-1 uppercase tracking-widest">{user.designation || 'General Staff'}</p>
+              <p className="text-xs font-semibold text-indigo-500 dark:text-indigo-400 mt-1 uppercase tracking-widest">{getDesignationName(user)}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-6 bg-slate-50 dark:bg-slate-950/40 p-5 rounded-2xl border border-slate-100 dark:border-slate-800/40">
@@ -873,7 +997,7 @@ const ViewModal = ({ user, onClose }) => {
               </div>
               <div className="space-y-1">
                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Department Assignment</span>
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{user.department || 'Unassigned'}</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{getDepartmentName(user)}</span>
               </div>
               <div className="space-y-1">
                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Reporting Manager</span>

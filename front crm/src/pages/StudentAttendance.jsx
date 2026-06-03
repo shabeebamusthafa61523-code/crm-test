@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable'; 
+import { useToast } from '../components/ToastProvider';
 
 const API_BASE = "http://localhost:5000/api";
 const STUDENT_ROLE_ID = "10"; 
@@ -33,6 +34,7 @@ const FormInput = ({ label, name, type = "text", icon, onChange, value, placehol
 
 const StudentAttendance = () => {
   const [students, setStudents] = useState([]);
+  const { showToast } = useToast();
   const [totalStudents, setTotalStudents] = useState(0);
   const [attendanceData, setAttendanceData] = useState({}); 
   const [searchQuery, setSearchQuery] = useState("");
@@ -196,10 +198,10 @@ const StudentAttendance = () => {
           address: '', identityType: 'aadhaar', identityNumber: '', profile_image: ''
         });
       } else {
-        alert("Enrollment failed. Please check registration fields.");
+        showToast("Enrollment failed. Please check registration fields.", 'error');
       }
     } catch (error) {
-      alert("Database connection timeout.");
+      showToast("Database connection timeout.", 'error');
     } finally {
       setIsAddingStudent(false);
     }
@@ -232,11 +234,11 @@ const StudentAttendance = () => {
         await syncAttendance(); 
       } else {
         setAttendanceData(previousState); 
-        alert("Action failed to write on cluster logs.");
+        showToast("Action failed to write on cluster logs.", 'error');
       }
     } catch (e) { 
       setAttendanceData(previousState);
-      alert("Network disruption detected."); 
+      showToast("Network disruption detected.", 'error'); 
     }
   };
 

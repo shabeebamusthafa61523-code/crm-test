@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ChevronRight, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useToast } from '../components/ToastProvider';
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const [loginData, setLoginData] = useState({ email: '', password: '' });
+  const { showToast } = useToast();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -57,7 +59,7 @@ const Login = () => {
 
         navigate('/');
       } else {
-        alert(result.detail || "Authentication Failed");
+        showToast(result.detail || "Authentication Failed", 'error');
       }
     } catch (error) {
       console.error("Login Error:", error);
