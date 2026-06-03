@@ -10,8 +10,7 @@ import {
 import { useToast } from '../components/ToastProvider';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
-
+import autoTable from 'jspdf-autotable'; // 👈 Import it as a direct function
 const API_BASE = "http://localhost:5000/api/v1";
 
 const STATUS_META = {
@@ -166,14 +165,87 @@ const [activePriority, setActivePriority] = useState('all');
 
   // Tab counts
   const tabCounts = useMemo(() => {
-    return {
-      all: leads.length,
-      assigned: leads.filter(l => l.assignedTo).length,
-      'follow-up': leads.filter(l => l.status === 'Follow Up').length,
-      converted: leads.filter(l => l.status === 'Converted').length,
-      lost: leads.filter(l => l.status === 'Lost').length
-    };
-  }, [leads]);
+  // 1. Get leads that have passed all filters EXCEPT status/tab filters
+  const leadsForStatusCounting = leads.filter(lead => {
+    // Priority filter
+    if (activePriority !== 'all' && lead.priority?.toLowerCase() !== activePriority.toLowerCase()) return false;
+    // City dropdown filter
+    if (cityFilter !== 'all' && lead.city?.trim().toLowerCase() !== cityFilter.toLowerCase()) return false;
+    // Date range filter
+    if (dateFrom && new Date(lead.createdAt) < new Date(dateFrom)) return false;
+    if (dateTo) {
+      const toDate = new Date(dateTo);
+      toDate.setHours(23, 59, 59, 999);
+      if (new Date(lead.createdAt) > toDate) return false;
+    }
+    // Search query filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      return (
+        lead.leadName?.toLowerCase().includes(query) ||
+        lead.phone?.toLowerCase().includes(query) ||
+        lead.email?.toLowerCase().includes(query) ||
+        lead.companyName?.toLowerCase().includes(query) ||
+        lead.city?.toLowerCase().includes(query) ||
+        lead.source?.toLowerCase().includes(query) ||
+        lead.interestedService?.toLowerCase().includes(query)
+      );
+    }
+    return true;
+  });
+
+  // 2. Get leads that have passed all filters EXCEPT the priority filter itself
+  const leadsForPriorityCounting = leads.filter(lead => {
+    // Local tab filter
+    if (activeTab === 'assigned' && !lead.assignedTo) return false;
+    if (activeTab === 'follow-up' && lead.status !== 'Follow Up') return false;
+    if (activeTab === 'converted' && lead.status !== 'Converted') return false;
+    if (activeTab === 'lost' && lead.status !== 'Lost') return false;
+    if (activeTab !== 'all' && !['assigned', 'follow-up', 'converted', 'lost'].includes(activeTab)) {
+      if (lead.status !== activeTab) return false;
+    }
+    // City dropdown filter
+    if (cityFilter !== 'all' && lead.city?.trim().toLowerCase() !== cityFilter.toLowerCase()) return false;
+    // Date range filter
+    if (dateFrom && new Date(lead.createdAt) < new Date(dateFrom)) return false;
+    if (dateTo) {
+      const toDate = new Date(dateTo);
+      toDate.setHours(23, 59, 59, 999);
+      if (new Date(lead.createdAt) > toDate) return false;
+    }
+    // Search query filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      return (
+        lead.leadName?.toLowerCase().includes(query) ||
+        lead.phone?.toLowerCase().includes(query) ||
+        lead.email?.toLowerCase().includes(query) ||
+        lead.companyName?.toLowerCase().includes(query) ||
+        lead.city?.toLowerCase().includes(query) ||
+        lead.source?.toLowerCase().includes(query) ||
+        lead.interestedService?.toLowerCase().includes(query)
+      );
+    }
+    return true;
+  });
+
+  // 3. Tally up the final counts from our matched sets
+  const counts = {
+    all: leadsForStatusCounting.length,
+    assigned: leadsForStatusCounting.filter(l => l.assignedTo).length,
+    'follow-up': leadsForStatusCounting.filter(l => l.status === 'Follow Up').length,
+    converted: leadsForStatusCounting.filter(l => l.status === 'Converted').length,
+    lost: leadsForStatusCounting.filter(l => l.status === 'Lost').length,
+    
+    // Priority counts dynamically respond to Status/Search adjustments
+    priorityAll: leadsForPriorityCounting.length,
+    priorityHigh: leadsForPriorityCounting.filter(l => l.priority?.toLowerCase() === 'high').length,
+    priorityMedium: leadsForPriorityCounting.filter(l => l.priority?.toLowerCase() === 'medium').length,
+    priorityLow: leadsForPriorityCounting.filter(l => l.priority?.toLowerCase() === 'low').length
+  };
+
+  return counts;
+}, [leads, activeTab, activePriority, searchQuery, cityFilter, dateFrom, dateTo]);
 
   // Unique cities extracted from loaded leads for the city dropdown
   const uniqueCities = useMemo(() => {
@@ -185,65 +257,70 @@ const [activePriority, setActivePriority] = useState('all');
   }, [leads]);
 
   // Filtered, searched & sorted leads
-  const filteredLeads = useMemo(() => {
-    let result = leads.filter(lead => {
-      // Local tab filter (backup check)
-      if (activeTab === 'assigned' && !lead.assignedTo) return false;
-      if (activeTab === 'follow-up' && lead.status !== 'Follow Up') return false;
-      if (activeTab === 'converted' && lead.status !== 'Converted') return false;
-      if (activeTab === 'lost' && lead.status !== 'Lost') return false;
-      if (activeTab !== 'all' && activeTab !== 'assigned' && activeTab !== 'follow-up' && activeTab !== 'converted' && activeTab !== 'lost') {
-        if (lead.status !== activeTab) return false;
-      }
+ const filteredLeads = useMemo(() => {
+  let result = leads.filter(lead => {
+    // Local tab filter (backup check)
+    if (activeTab === 'assigned' && !lead.assignedTo) return false;
+    if (activeTab === 'follow-up' && lead.status !== 'Follow Up') return false;
+    if (activeTab === 'converted' && lead.status !== 'Converted') return false;
+    if (activeTab === 'lost' && lead.status !== 'Lost') return false;
+    if (activeTab !== 'all' && activeTab !== 'assigned' && activeTab !== 'follow-up' && activeTab !== 'converted' && activeTab !== 'lost') {
+      if (lead.status !== activeTab) return false;
+    }
 
-      // City dropdown filter (client-side)
-      if (cityFilter !== 'all') {
-        if (lead.city?.trim().toLowerCase() !== cityFilter.toLowerCase()) return false;
-      }
+    // Priority filter (added)
+    if (activePriority !== 'all') {
+      if (lead.priority?.toLowerCase() !== activePriority.toLowerCase()) return false;
+    }
 
-      // Date range filter (client-side backup – backend already filters, but keep for safety)
-      if (dateFrom) {
-        const leadDate = new Date(lead.createdAt);
-        const fromDate = new Date(dateFrom);
-        if (leadDate < fromDate) return false;
-      }
-      if (dateTo) {
-        const leadDate = new Date(lead.createdAt);
-        const toDate = new Date(dateTo);
-        toDate.setHours(23, 59, 59, 999);
-        if (leadDate > toDate) return false;
-      }
+    // City dropdown filter (client-side)
+    if (cityFilter !== 'all') {
+      if (lead.city?.trim().toLowerCase() !== cityFilter.toLowerCase()) return false;
+    }
 
-      if (!searchQuery) return true;
-      const query = searchQuery.toLowerCase();
-      return (
-        lead.leadName?.toLowerCase().includes(query) ||
-        lead.phone?.toLowerCase().includes(query) ||
-        lead.email?.toLowerCase().includes(query) ||
-        lead.companyName?.toLowerCase().includes(query) ||
-        lead.city?.toLowerCase().includes(query) ||
-        lead.source?.toLowerCase().includes(query) ||
-        lead.interestedService?.toLowerCase().includes(query)
-      );
-    });
+    // Date range filter (client-side backup – backend already filters, but keep for safety)
+    if (dateFrom) {
+      const leadDate = new Date(lead.createdAt);
+      const fromDate = new Date(dateFrom);
+      if (leadDate < fromDate) return false;
+    }
+    if (dateTo) {
+      const leadDate = new Date(lead.createdAt);
+      const toDate = new Date(dateTo);
+      toDate.setHours(23, 59, 59, 999);
+      if (leadDate > toDate) return false;
+    }
 
-    // Sort
-    result = [...result].sort((a, b) => {
-      if (sortOrder === 'name_asc') {
-        return (a.leadName || '').localeCompare(b.leadName || '');
-      } else if (sortOrder === 'name_desc') {
-        return (b.leadName || '').localeCompare(a.leadName || '');
-      } else if (sortOrder === 'asc') {
-        return new Date(a.createdAt) - new Date(b.createdAt);
-      } else {
-        // desc — newest first (default)
-        return new Date(b.createdAt) - new Date(a.createdAt);
-      }
-    });
+    // Search query filter
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      lead.leadName?.toLowerCase().includes(query) ||
+      lead.phone?.toLowerCase().includes(query) ||
+      lead.email?.toLowerCase().includes(query) ||
+      lead.companyName?.toLowerCase().includes(query) ||
+      lead.city?.toLowerCase().includes(query) ||
+      lead.source?.toLowerCase().includes(query) ||
+      lead.interestedService?.toLowerCase().includes(query)
+    );
+  });
 
-    return result;
-  }, [leads, activeTab, searchQuery, cityFilter, dateFrom, dateTo, sortOrder]);
+  // Sort
+  result = [...result].sort((a, b) => {
+    if (sortOrder === 'name_asc') {
+      return (a.leadName || '').localeCompare(b.leadName || '');
+    } else if (sortOrder === 'name_desc') {
+      return (b.leadName || '').localeCompare(a.leadName || '');
+    } else if (sortOrder === 'asc') {
+      return new Date(a.createdAt) - new Date(b.createdAt);
+    } else {
+      // desc — newest first (default)
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    }
+  });
 
+  return result;
+}, [leads, activeTab, activePriority, searchQuery, cityFilter, dateFrom, dateTo, sortOrder]); // added activePriority here
   const handleDeleteLead = async (id, name) => {
     if (!window.confirm(`Are you sure you want to delete lead "${name}"? This will clear all follow-up history.`)) {
       return;
@@ -296,47 +373,47 @@ const [activePriority, setActivePriority] = useState('all');
     showToast('Excel report downloaded successfully!', 'success');
   };
 
-  // Export to PDF
   const handleExportPDF = () => {
-    if (filteredLeads.length === 0) {
-      showToast('No leads available to export.', 'warning');
-      return;
-    }
+  if (filteredLeads.length === 0) {
+    showToast('No leads available to export.', 'warning');
+    return;
+  }
 
-    const doc = new jsPDF({ orientation: 'landscape' });
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.text('KOD.BRAND CRM - Leads Directory', 14, 15);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Export Tab: ${activeTab.toUpperCase()} | Generated: ${new Date().toLocaleString()}`, 14, 21);
+  const doc = new jsPDF({ orientation: 'landscape' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text('KOD.BRAND CRM - Leads Directory', 14, 15);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Export Tab: ${activeTab.toUpperCase()} | Generated: ${new Date().toLocaleString()}`, 14, 21);
 
-    const headers = [['Lead Name', 'Phone', 'Email', 'Company', 'Source', 'Service', 'Status', 'Priority', 'City / Place']];
-    const body = filteredLeads.map(l => [
-      l.leadName || '',
-      l.phone || '',
-      l.email || '',
-      l.companyName || '',
-      l.source || '',
-      l.interestedService || '',
-      l.status || 'New',
-      l.priority || 'Medium',
-      l.city || 'N/A'
-    ]);
+  const headers = [['Lead Name', 'Phone', 'Email', 'Company', 'Source', 'Service', 'Status', 'Priority', 'City / Place']];
+  const body = filteredLeads.map(l => [
+    l.leadName || '',
+    l.phone || '',
+    l.email || '',
+    l.companyName || '',
+    l.source || '',
+    l.interestedService || '',
+    l.status || 'New',
+    l.priority || 'Medium',
+    l.city || 'N/A'
+  ]);
 
-    doc.autoTable({
-      startY: 25,
-      head: headers,
-      body: body,
-      theme: 'grid',
-      headStyles: { fillColor: [79, 70, 229] }, // Indigo
-      styles: { fontSize: 8 },
-      margin: { top: 25 }
-    });
+  // ✅ FIX: Pass 'doc' explicitly as the first argument
+  autoTable(doc, {
+    startY: 25,
+    head: headers,
+    body: body,
+    theme: 'grid',
+    headStyles: { fillColor: [79, 70, 229] }, // Indigo
+    styles: { fontSize: 8 },
+    margin: { top: 25 }
+  });
 
-    doc.save(`CRM_Leads_${activeTab}_Report.pdf`);
-    showToast('PDF report generated successfully!', 'success');
-  };
+  doc.save(`CRM_Leads_${activeTab}_Report.pdf`);
+  showToast('PDF report generated successfully!', 'success');
+};
 
   return (
     <div className="min-h-screen p-4 lg:p-8 bg-slate-50/50 dark:bg-slate-950/20 text-slate-800 dark:text-slate-100">
@@ -679,6 +756,12 @@ const [activePriority, setActivePriority] = useState('all');
                 <span className="flex items-center gap-1 px-2.5 py-1 bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-500/20 rounded-full text-[10px] font-semibold">
                   📍 {cityFilter}
                   <button onClick={() => setCityFilter('all')} className="ml-0.5 hover:text-teal-800 cursor-pointer leading-none">×</button>
+                </span>
+              )}
+               {activePriority !== 'all' && (
+                <span className="flex items-center gap-1 px-2.5 py-1 bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-500/20 rounded-full text-[10px] font-semibold">
+                  ⚡ {activePriority}
+                  <button onClick={() => setPriorityFilter('all')} className="ml-0.5 hover:text-purple-800 cursor-pointer leading-none">×</button>
                 </span>
               )}
               {staffFilter !== 'all' && (
@@ -1274,8 +1357,8 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
   if (!isOpen || !lead) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm">
-      <motion.div
+<div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 backdrop-blur-sm p-4 pt-16 overflow-y-auto">    
+  <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
@@ -1476,8 +1559,7 @@ const ViewModal = ({ isOpen, onClose, lead, details, loading }) => {
   if (!isOpen || !lead) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm">
-      <motion.div
+<div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 backdrop-blur-sm p-4 pt-16 overflow-y-auto">      <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
@@ -1685,7 +1767,7 @@ const FollowUpModal = ({ isOpen, onClose, onFollowedUp, lead, getAuthHeaders, sh
   if (!isOpen || !lead) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm">
+<div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 backdrop-blur-sm p-4 pt-16 overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1975,7 +2057,7 @@ const ImportModal = ({ isOpen, onClose, onImported, getAuthHeaders, showToast })
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm">
+<div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 backdrop-blur-sm p-4 pt-16 overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
