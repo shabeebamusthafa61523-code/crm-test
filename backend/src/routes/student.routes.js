@@ -1,17 +1,13 @@
-import { Router } from 'express';
-import checkAuth from '../middleware/auth.middleware.js';
-import * as attendanceController from '../controllers/attendance.controller.js';
+import express from 'express';
+import {
+  markAttendance,
+  getAttendanceByDate
+} from '../controllers/student.controller.js';
 
-const router = Router();
+const router = express.Router();
 
-// Public Access Endpoints
-router.post('/auth/student/signup', attendanceController.studentSignup);
+router.post('/attendance/mark',markAttendance);
 
-// Authenticated/Administrative Routes
-router.get('/student/list', checkAuth, attendanceController.getStudentList);
-router.get('/attendance/:date', checkAuth, attendanceController.getAttendanceByDate);
-router.post('/attendance/admin/check-in', checkAuth, attendanceController.markPresent);
-router.post('/attendance/admin/mark-absent', checkAuth, attendanceController.markAbsent);
-router.post('/attendance/admin/check-out', checkAuth, attendanceController.checkOut);
+router.get('/attendance/student/:date',getAttendanceByDate);
 
 export default router;

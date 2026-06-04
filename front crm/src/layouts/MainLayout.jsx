@@ -140,21 +140,24 @@ const MainLayout = ({ children }) => {
 
           {/* Active Status Data Node 01 (Deep Charcoal / Light Silver Pulse) */}
           <motion.circle
-            cx="400" cy="300" r="3.5"
+            cx="400" cy="300" r={3.5}
+            initial={{ r: 3.5 }}
             className="fill-slate-800 dark:fill-slate-200 transition-colors duration-500"
             animate={{ opacity: [0.3, 1, 0.3], r: [3.5, 5, 3.5] }}
             transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
           />
           {/* Active Status Data Node 02 (Clean Slate Pulse) */}
           <motion.circle
-            cx="900" cy="300" r="3"
+            cx="900" cy="300" r={3}
+            initial={{ r: 3 }}
             className="fill-slate-500 dark:fill-slate-400 transition-colors duration-500"
             animate={{ opacity: [0.2, 0.8, 0.2], r: [3, 4.5, 3] }}
             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1 }}
           />
           {/* Active Status Data Node 03 (System Echo) */}
           <motion.circle
-            cx="950" cy="600" r="2.5"
+            cx="950" cy="600" r={2.5}
+            initial={{ r: 2.5 }}
             className="fill-slate-300 dark:fill-slate-600 transition-colors duration-500"
             animate={{ opacity: [0.1, 0.6, 0.1] }}
             transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}

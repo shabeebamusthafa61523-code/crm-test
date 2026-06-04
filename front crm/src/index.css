@@ -3,200 +3,301 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-midnight: #f8fafc;
-  --color-glass-border: rgba(0, 0, 0, 0.08);
+  /* Strict mapping to user-defined theme colors */
+  --color-indigo-50: #f4f6f9;
+  --color-indigo-100: #e8ecf1;
+  --color-indigo-200: #cbd5e1;
+  --color-indigo-300: #94a3b8;
+  --color-indigo-400: #64748b;
+  --color-indigo-500: #374b69; /* Primary deep blue-slate */
+  --color-indigo-600: #374b69; /* Primary deep blue-slate */
+  --color-indigo-700: #29384f; /* Darker hover */
+  --color-indigo-800: #1d2838;
+  --color-indigo-900: #121924;
+  --color-indigo-950: #0b0f16;
+
+  --color-lime-50: #f7fcf5;
+  --color-lime-100: #ebf7e6;
+  --color-lime-200: #d6f0cd;
+  --color-lime-300: #bde7b1;
+  --color-lime-400: #9dd384; /* Accent lime green */
+  --color-lime-500: #9dd384; /* Accent lime green */
+  --color-lime-600: #88c070; /* Darker hover */
+  --color-lime-700: #73aa5d;
+  --color-lime-800: #5f934b;
+  --color-lime-900: #4a7d3a;
+
+  --color-emerald-500: #9dd384;
+  --color-emerald-600: #88c070;
+
+  --color-cyan-400: #374b69;
+  --color-cyan-500: #374b69;
+  --color-cyan-600: #29384f;
+
+  --color-rose-500: #e26a6a; /* Premium soft corporate red */
+  --color-rose-600: #c95353;
+  --color-rose-700: #b03d3d;
+  
+  --color-red-500: #e26a6a;
+  --color-red-600: #c95353;
+
+  --color-orange-500: #374b69;
+  --color-orange-600: #29384f;
 }
 
-:root {
-  --grid-color: #9dd384;
-}
-
-.dark {
-  --grid-color: #374b69;
-}
-
-/* 1. Global Styles */
-@keyframes gradient-bg {
-  0% {
-    background-position: 0% 50%;
-  }
-
-  50% {
-    background-position: 100% 50%;
-  }
-
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
+/* 1. Global Core Reset */
 body {
-  background-color: #849db6;
-  /* light slate */
-  color: #1e293b;
-  /* slate-800 */
-  font-family: 'Inter', system-ui, sans-serif;
+  background-color: #f8fafc !important; /* Minimal Zoho Light Gray/Slate */
+  background-image: none !important;
+  animation: none !important;
+  color: #1e293b !important;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
   min-height: 100vh;
-  /* Premium radial/linear moving gradient background */
-  background-image: linear-gradient(-45deg,
-      rgba(79, 70, 229, 0.08) 0%,
-      rgba(132, 204, 22, 0.05) 25%,
-      rgba(79, 70, 229, 0.04) 50%,
-      rgba(132, 204, 22, 0.06) 75%,
-      rgba(79, 70, 229, 0.08) 100%);
-  background-size: 400% 400%;
-  animation: gradient-bg 15s ease infinite;
-  background-attachment: fixed;
-  transition: background-color 0.4s ease, color 0.4s ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .dark body {
-  background-color: #0b0c10;
-  /* ultra-dark tech space */
-  color: #7b96b1;
-  /* slate-50 */
-  background-image: linear-gradient(-45deg,
-      rgba(147, 51, 234, 0.12) 0%,
-      rgba(191, 255, 0, 0.06) 25%,
-      rgba(147, 51, 234, 0.07) 50%,
-      rgba(191, 255, 0, 0.07) 75%,
-      rgba(147, 51, 234, 0.12) 100%);
-  background-size: 400% 400%;
-  animation: gradient-bg 15s ease infinite;
+  background-color: #0f172a !important; /* Sleek Midnight Dark Slate */
+  background-image: none !important;
+  animation: none !important;
+  color: #cbd5e1 !important;
 }
 
-/* 2. Glassmorphism Card Utility */
-@utility glass-card {
-  background-color: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+/* Strip cyberpunk ambient mesh blobs and schematic backdrops completely */
+div[class*="-z-10"], 
+div[class*="-z-20"], 
+svg[class*="stroke-slate-300"] {
+  display: none !important;
+}
+div[class*="h-[2px]"][class*="bg-gradient-to-r"] {
+  display: none !important;
+}
 
-  /* Hover logic nested correctly inside the utility */
+/* 2. Flat panel utility replacing glassmorphism */
+@utility glass-card {
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  backdrop-filter: none !important;
+  transform: none !important;
+  transition: border-color 0.2s, box-shadow 0.2s !important;
+
   &:hover {
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    background-color: rgba(255, 255, 255, 0.9);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    transform: translateY(-4px);
+    border-color: #374b69 !important;
+    background-color: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(55, 75, 105, 0.08) !important;
+    transform: none !important;
   }
 
   .dark & {
-    background-color: rgba(15, 23, 42, 0.75);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+    background-color: #1e293b !important;
+    border: 1px solid #334155 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
 
     &:hover {
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      background-color: rgba(15, 23, 42, 0.9);
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+      border-color: #9dd384 !important;
+      background-color: #1e293b !important;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
     }
   }
 }
 
-/* 3. Floating Sidebar/Dock Utility */
 @utility glass-dock {
-  background-color: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(30px);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 12px rgba(55, 75, 105, 0.05) !important;
+  backdrop-filter: none !important;
 
   .dark & {
-    background-color: rgba(15, 23, 42, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+    background-color: #1e293b !important;
+    border: 1px solid #334155 !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
   }
 }
 
-/* 4. Custom Scrollbar for Light Theme & Dark Theme */
+/* Replace translucent glassmorphism utility classes globally */
+*[class*="bg-white/"],
+*[class*="bg-slate-50/"],
+*[class*="bg-slate-100/"] {
+  background-color: #ffffff !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.dark *[class*="bg-white/"],
+.dark *[class*="bg-slate-900/"],
+.dark *[class*="bg-slate-950/"],
+.dark *[class*="bg-indigo-950/"] {
+  background-color: #1e293b !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Clean solid card panels for Kanban/Todo boards */
+*[class*="bg-slate-50"][class*="border"],
+*[class*="bg-slate-100"][class*="border"] {
+  background-color: #ffffff !important;
+}
+.dark *[class*="bg-slate-950/30"] {
+  background-color: #1e293b !important;
+}
+
+/* High contrast crisp borders */
+*[class*="border-slate-200/"],
+*[class*="border-white/"] {
+  border-color: #e2e8f0 !important;
+}
+.dark *[class*="border-slate-800/"],
+.dark *[class*="border-slate-900/"] {
+  border-color: #334155 !important;
+}
+
+/* 3. Tame extreme rounded corners to professional corporate standard */
+*[class*="rounded-[2.5rem]"],
+*[class*="rounded-[3.5rem]"],
+*[class*="rounded-[3rem]"],
+*[class*="rounded-3xl"] {
+  border-radius: 10px !important;
+}
+
+*[class*="rounded-2xl"] {
+  border-radius: 8px !important;
+}
+
+*[class*="rounded-xl"] {
+  border-radius: 6px !important;
+}
+
+/* Maintain circular shape for icons and avatars */
+*[class*="rounded-full"][class*="w-"],
+*[class*="rounded-full"][class*="h-"],
+*[class*="rounded-full"][class*="avatar"] {
+  border-radius: 9999px !important;
+}
+
+/* 4. Sleek Minimal Sidebar & Header Overrides */
+aside[class*="fixed"] {
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 16px rgba(55, 75, 105, 0.05) !important;
+}
+
+.dark aside[class*="fixed"] {
+  background-color: #1e293b !important;
+  border: 1px solid #334155 !important;
+}
+
+/* Active sidebar item styling matching accent */
+div[class*="bg-indigo-600"][class*="shadow-xl"] {
+  background-color: #374b69 !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+  border: 1px solid #374b69 !important;
+}
+
+/* Indicator dots - map to Accent #9dd384 */
+div[class*="bg-lime-400"][class*="rounded-full"] {
+  background-color: #9dd384 !important;
+  box-shadow: 0 0 8px rgba(157, 211, 132, 0.6) !important;
+}
+
+header[class*="fixed"] > div {
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 2px 12px rgba(55, 75, 105, 0.04) !important;
+}
+
+.dark header[class*="fixed"] > div {
+  background-color: #1e293b !important;
+  border: 1px solid #334155 !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* 5. Typography Normalization to Upright Zoho Aesthetics */
+h1, h2, h3, h4, h5, h6 {
+  font-style: normal !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  letter-spacing: -0.01em !important;
+  text-transform: none !important;
+}
+h1[class*="italic"],
+h2[class*="italic"],
+h3[class*="italic"],
+span[class*="italic"] {
+  font-style: normal !important;
+}
+
+/* 6. Strict Custom Accent Colors Override for Badges, Dials and Icons */
+span[class*="bg-orange-500"],
+span[class*="bg-amber-500"],
+span[class*="text-orange-500"] {
+  background-color: rgba(55, 75, 105, 0.08) !important;
+  color: #374b69 !important;
+  border: 1px solid rgba(55, 75, 105, 0.15) !important;
+}
+
+div[class*="bg-slate-500"],
+div[class*="bg-amber-500"],
+div[class*="bg-indigo-500"] {
+  background-color: #374b69 !important;
+}
+
+div[class*="bg-emerald-500"] {
+  background-color: #9dd384 !important;
+  color: #1e293b !important;
+}
+
+/* Standardize shadows */
+*[class*="shadow-"] {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+}
+
+/* 7. Flat minimal forms and inputs */
+input, select, textarea {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 6px !important;
+  padding: 12px 16px !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  transition: border-color 0.2s, box-shadow 0.2s !important;
+}
+
+.dark input, .dark select, .dark textarea {
+  background-color: #0f172a !important;
+  color: #cbd5e1 !important;
+  border: 1px solid #334155 !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #374b69 !important;
+  box-shadow: 0 0 0 2px rgba(55, 75, 105, 0.15) !important;
+  outline: none !important;
+}
+
+/* 8. Sleek Minimal Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
+  height: 6px;
 }
-
 ::-webkit-scrollbar-track {
-  background: #8d9dad;
+  background: #f1f5f9;
 }
-
 .dark ::-webkit-scrollbar-track {
   background: #0f172a;
 }
-
 ::-webkit-scrollbar-thumb {
   background: #cbd5e1;
-  border-radius: 10px;
+  border-radius: 4px;
 }
-
 .dark ::-webkit-scrollbar-thumb {
   background: #334155;
 }
-
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
-
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #475569;
-}
-
-/* 5. Animated Ambient Mesh Blobs */
-@keyframes float-blob-1 {
-  0% {
-    transform: translate(0px, 0px) scale(1);
-  }
-
-  33% {
-    transform: translate(40px, -60px) scale(1.15);
-  }
-
-  66% {
-    transform: translate(-30px, 30px) scale(0.9);
-  }
-
-  100% {
-    transform: translate(0px, 0px) scale(1);
-  }
-}
-
-@keyframes float-blob-2 {
-  0% {
-    transform: translate(0px, 0px) scale(1);
-  }
-
-  50% {
-    transform: translate(-50px, 50px) scale(1.2);
-  }
-
-  100% {
-    transform: translate(0px, 0px) scale(1);
-  }
-}
-
-@keyframes float-blob-3 {
-  0% {
-    transform: translate(0px, 0px) scale(1);
-  }
-
-  33% {
-    transform: translate(-20px, -40px) scale(0.85);
-  }
-
-  66% {
-    transform: translate(50px, 30px) scale(1.15);
-  }
-
-  100% {
-    transform: translate(0px, 0px) scale(1);
-  }
-}
-
-.animate-blob-1 {
-  animation: float-blob-1 25s infinite alternate ease-in-out;
-}
-
-.animate-blob-2 {
-  animation: float-blob-2 30s infinite alternate ease-in-out;
-}
-
-.animate-blob-3 {
-  animation: float-blob-3 22s infinite alternate ease-in-out;
 }

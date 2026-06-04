@@ -7,21 +7,27 @@ import {
   Loader2, Camera, ShieldCheck, User, Target, Info
 } from 'lucide-react';
 
-const API_BASE = "/api";
-
+const API_BASE = "http://localhost:5000/api";
 // --- UTILS & CONSTANTS ---
 const getTaskImageUrl = (path) => {
+
   if (!path) return null;
-  if (path.startsWith('http')) return path;
-  const fileName = path.split(/[\\/]/).pop(); 
-  return `https://res.cloudinary.com/dgss26ev9/image/upload/v1776844261/tasks/${fileName}`;
+
+  if (path.startsWith("http")) {
+    return path;
+  }
+
+  const fileName = path.split(/[\\/]/).pop();
+
+  return `https://res.cloudinary.com/davmqgfsq/image/upload/v1776844261/tasks/${fileName}`;
+
 };
 
 const COLUMN_META = {
-  pending: { label: 'Pending', icon: Layout, color: 'bg-slate-500', glow: 'shadow-slate-500/20' },
-  current: { label: 'Current', icon: Clock, color: 'bg-amber-500', glow: 'shadow-amber-500/20' },
+  pending: { label: 'Pending', icon: Layout, color: 'bg-[#e26a6a]', glow: 'shadow-[#e26a6a]/20' },
+  current: { label: 'Current', icon: Clock, color: 'bg-[#e5a23a]', glow: 'shadow-[#e5a23a]/20' },
   preview: { label: 'Preview', icon: Eye, color: 'bg-indigo-500', glow: 'shadow-indigo-500/20' },
-  done: { label: 'Completed', icon: CheckCircle2, color: 'bg-emerald-500', glow: 'shadow-emerald-500/20' }
+  done: { label: 'Completed', icon: CheckCircle2, color: 'bg-[#9dd384]', glow: 'shadow-[#9dd384]/20' }
 };
 
 const DESIGNATIONS = [
@@ -38,10 +44,26 @@ const Todo = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   
-  // Simulation of current user ID - Replace with your Auth Context ID
-const [currentUserId] = useState(() => {
-  return localStorage.getItem('user_id'); // This pulls the '80ae0...' UUID
-});
+  // Determine current user ID from localStorage or JWT token
+  const getCurrentUserId = () => {
+    const stored = localStorage.getItem('user_id');
+    if (stored) {
+      return stored.replace(/"/g, '').trim();
+    }
+    const rawToken = localStorage.getItem('token');
+    if (rawToken) {
+      try {
+        const payload = JSON.parse(atob(rawToken.split('.')[1]));
+        // Common fields: id, _id, user_id
+        return (payload.id || payload._id || payload.user_id || '').toString().replace(/"/g, '').trim();
+      } catch (e) {
+        console.warn('Failed to decode JWT for user id', e);
+      }
+    }
+    return '';
+  };
+  const [currentUserId] = useState(getCurrentUserId);
+
   const getAuthHeaders = useCallback(() => {
     const rawToken = localStorage.getItem('token');
     const cleanToken = rawToken ? rawToken.replace(/"/g, '') : '';
@@ -49,27 +71,55 @@ const [currentUserId] = useState(() => {
   }, []);
 const fetchData = useCallback(async () => {
   try {
+
     const [tRes, uRes] = await Promise.all([
-      fetch(`${API_BASE}/tasks/all`, { headers: getAuthHeaders() }),
-      fetch(`${API_BASE}/user/list`, { headers: getAuthHeaders() })
+      fetch(`${API_BASE}/tasks/all`, {
+        headers: getAuthHeaders()
+      }),
+
+      fetch(`${API_BASE}/user/list`, {
+        headers: getAuthHeaders()
+      })
     ]);
-    
-    const tData = await tRes.json();
-    const uData = await uRes.json();
 
-    // 1. Correctly extract the array from the response
-    const rawTasks = Array.isArray(tData) ? tData : (tData.data || []);
+const responseText = await tRes.text();
 
-    // 2. Reverse it to put the newest entries (bottom of DB) at the top of the UI
-    const sortedTasks = [...rawTasks].reverse();
+console.log("STATUS:", tRes.status);
+console.log("RESPONSE:", responseText);
 
-    // 3. Update states
-    setTasks(sortedTasks);
-    setUsers(uData.users || []);
-  } catch (e) { 
-    console.error("Fetch Error:", e); 
-  } finally { 
-    setLoading(false); 
+const tData = JSON.parse(responseText);
+const uData = await uRes.json();
+
+const rawTasks = Array.isArray(tData)
+  ? tData
+  : (tData.data || []);
+
+const sortedTasks = [...rawTasks].reverse();
+const cleanedTasks = sortedTasks.map(task=>({
+
+  ...task,
+
+  assigned_to:
+    typeof task.assigned_to === "object"
+      ? task.assigned_to.id
+      : task.assigned_to
+
+}));
+setTasks(cleanedTasks);
+setUsers(
+  Array.isArray(uData)
+    ? uData.filter(
+        u => ["1","2","3"].includes(String(u.role_id))
+      )
+    : []
+);  } catch (e) {
+
+    console.error("Fetch Error:", e);
+
+  } finally {
+
+    setLoading(false);
+
   }
 }, [getAuthHeaders]);
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -96,9 +146,10 @@ const fetchData = useCallback(async () => {
       <p className="mt-6 text-[10px] font-black uppercase tracking-[0.5em] text-indigo-500/50">Syncing Nexus</p>
     </div>
   );
-
+console.log("TOKEN:", localStorage.getItem("token"));
+console.log("HEADERS:", getAuthHeaders());
   return (
-    <div className="text-slate-700 dark:text-slate-200 font-sans selection:bg-indigo-500/30 selection:text-white">
+    <div className="text-slate-700 dark:text-slate-200 font-sans selection:bg-white-500/30 selection:text-white">
       <style>{`.no-scrollbar::-webkit-scrollbar { display: none; }`}</style>
       
       <div className="max-w-[1700px] mx-auto px-6 py-10">
@@ -171,8 +222,17 @@ const fetchData = useCallback(async () => {
                                   {/* 1. We look through the 'users' array */}
                                   {/* 2. We match the user's ID to the task's assigned_to (UUID) */}
                                   {/* 3. We display the .name if found, otherwise the ID as a fallback */}
-                                  {users.find(u => String(u.id) === String(task.assigned_to))?.name || task.assigned_to || "No Agent"}
-                                </span>
+{
+typeof task.assigned_to === "object"
+? task.assigned_to?.name
+: users.find(
+    u=>String(u.id || u._id)===String(task.assigned_to)
+  )?.name
+  ||
+  task.assigned_to
+  ||
+  "No Agent"
+}                                </span>
                               </div>
                             </div>
                           )}
@@ -202,7 +262,6 @@ const fetchData = useCallback(async () => {
             currentUserId={currentUserId}
             onClose={() => setSelectedTask(null)} 
 onUpdate={fetchData}           // Pointing to your fetch function
-    onClose={() => setSelectedTask(null)} // Clearing the selection
            getAuthHeaders={getAuthHeaders}
             API_BASE={API_BASE} // <--- ADD THIS LINE
     DESIGNATIONS={DESIGNATIONS} 
@@ -228,36 +287,56 @@ const CreateModal = ({ onClose, users, refresh, getAuthHeaders }) => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    
-    const fd = new FormData();
-    fd.append('title', form.title);
-    fd.append('description', form.description);
-    // This will now correctly send the UUID/ID string
-    fd.append('assigned_to', form.assigned_to);
-    fd.append('designation_id', form.designation_id);
-    
-    if (form.image) {
-      fd.append('file', form.image); 
+
+  e.preventDefault();
+
+  setIsSubmitting(true);
+
+  const fd = new FormData();
+
+ 
+
+  fd.append('title', form.title);
+  fd.append('description', form.description || '');
+  fd.append('assigned_to', form.assigned_to);
+fd.append('designation_id', parseInt(form.designation_id));
+  fd.append('status', 'pending');
+
+  if (form.image) {
+    fd.append('file', form.image);
+  }
+
+  // DEBUG
+  for (let pair of fd.entries()) {
+    console.log(pair[0], pair[1]);
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/tasks/create`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: fd
+    });
+
+    const data = await res.json();
+
+    console.log("STATUS:", res.status);
+console.log("RESPONSE:", data);
+console.log("ERRORS FULL:", JSON.stringify(data.errors, null, 2));
+    if (!res.ok) {
+      alert(data.message || "Task creation failed");
+      return;
     }
 
-    try {
-      const res = await fetch(`${API_BASE}/tasks/create`, { 
-        method: "POST", 
-        headers: getAuthHeaders(), 
-        body: fd 
-      });
-      if (res.ok) { 
-        await refresh(); 
-        onClose(); 
-      }
-    } catch (e) { 
-      console.error(e); 
-    } finally { 
-      setIsSubmitting(false); 
-    }
-  };
+    await refresh();
+    onClose();
+
+  } catch (e) {
+    console.error("CREATE ERROR:", e);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   return (
     <motion.div 
@@ -296,29 +375,29 @@ const CreateModal = ({ onClose, users, refresh, getAuthHeaders }) => {
             <div className="space-y-2">
               <label className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.2em] ml-2">assign to</label>
               <div className="grid grid-cols-2 gap-3">
+                <select
+  required
+  className="appearance-none bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 p-5 rounded-2xl text-gray-900 dark:text-gray-200 text-[11px] font-bold outline-none"
+  value={form.assigned_to}
+  onChange={e => setForm({ ...form, assigned_to: e.target.value })}
+>
+  <option value="" staff>Assign to</option>
+  {users.map(u => (
+    <option key={u.id || u._id} value={u.id || u._id} className="bg-white text-gray-900">
+    
+      {u.name}
+    </option>
+  ))}
+</select>
                 <select 
                   required 
-                  className="bg-white border border-slate-200 p-5 rounded-2xl text-slate-900 text-[11px] font-bold outline-none" 
-                  value={form.assigned_to} 
-                  onChange={e => setForm({...form, assigned_to: e.target.value})}
-                >
-                  <option value="">staff</option>
-                  {/* CHANGED: value={u.id} ensures the backend receives the UUID */}
-                  {users.map(u => (
-                    <option key={u.id} value={u.id} className="bg-[#0c0d12]">
-                      {u.name}
-                    </option>
-                  ))}
-                </select>
-                <select 
-                  required 
-                  className="bg-white border border-slate-200 p-5 rounded-2xl text-slate-900 text-[11px] font-bold outline-none" 
+                  className="bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 p-5 rounded-2xl text-gray-900 dark:text-gray-200 text-[11px] font-bold outline-none" 
                   value={form.designation_id} 
                   onChange={e => setForm({...form, designation_id: e.target.value})}
                 >
                   <option value="">designation</option>
                   {DESIGNATIONS.map(d => (
-                    <option key={d.id} value={d.id} className="bg-[#0c0d12]">
+                    <option key={d.id} value={d.id} className="bg-white text-gray-900">
                       {d.name}
                     </option>
                   ))}
@@ -333,8 +412,10 @@ const CreateModal = ({ onClose, users, refresh, getAuthHeaders }) => {
           </div>
 
           <button disabled={isSubmitting} className="w-full py-6 bg-indigo-600 text-white hover:bg-indigo-700 hover:text-white rounded-2xl font-black uppercase text-[12px] tracking-[0.3em] transition-all flex items-center justify-center gap-3">
-            {isSubmitting ? <Loader2 className="animate-spin" /> : <ShieldCheck size={20} />}
-            Submit
+{isSubmitting ? <Loader2
+  size={18}
+  className="animate-spin"
+/> : <ShieldCheck size={20} />}            Submit
           </button>
         </form>
       </motion.div>
@@ -350,12 +431,13 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
   const [isDeleting, setIsDeleting] = useState(false);
   const [newFile, setNewFile] = useState(null);
 
-  // Authentication Logic
   const canModify = useMemo(() => {
-    if (!task?.user_id || !currentUserId) return false;
-    return String(task.user_id).trim().toLowerCase() === String(currentUserId).trim().toLowerCase();
-  }, [task?.user_id, currentUserId]);
-
+    const creatorId = task?.created_by?._id || task?.created_by?.id || task?.user_id || '';
+    const currentId = currentUserId || (localStorage.getItem('user_id') ?? '');
+    console.log('CREATOR ID =', creatorId);
+    console.log('CURRENT ID =', currentId);
+    return String(creatorId).trim() === String(currentId).trim();
+  }, [task, currentUserId]);
  useEffect(() => { 
     if (task) { 
       // 1. Scroll to the top of the page immediately or smoothly
@@ -458,6 +540,12 @@ const handleStatusChange = async (newStatus) => {
     setIsDeleting(false);
   }
 };
+console.log("TASK =", task);
+console.log("CURRENT USER =", currentUserId);
+
+console.log("FULL TASK =", task);
+console.log("CREATED_BY =", task?.created_by);
+console.log("USER_ID =", task?.user_id);
   return (
     <motion.div 
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -504,37 +592,30 @@ const handleStatusChange = async (newStatus) => {
   </button>
 
   <div>
-    {/* STATUS SELECTOR / DISPLAY */}
-    <div className="mb-10 group">
-      <label className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.3em] mb-3 block ml-1 opacity-70">
-        Deployment Phase
-      </label>
-
-      {isEditing ? (
-        <div className="relative">
-          <select
-            value={editForm.status}
-            onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-            className="w-full appearance-none bg-white border border-slate-200 p-5 pr-12 rounded-2xl text-slate-900 text-[11px] font-black uppercase tracking-[0.2em] outline-none focus:border-indigo-500/50 transition-all cursor-pointer hover:border-indigo-500/30 shadow-sm"
-          >
-            <option value="pending" className="bg-white text-slate-900">PENDING</option>
-            <option value="current" className="bg-white text-slate-900">CURRENT</option>
-            <option value="preview" className="bg-white text-slate-900">PREVIEW</option>
-            <option value="done" className="bg-white text-slate-900">COMPLETED</option>
-          </select>
-          <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-400/60">
-            <Layout size={16} />
-          </div>
-        </div>
-      ) : (
-        <div className="inline-flex items-center gap-3 px-6 py-3 bg-indigo-500/10 border border-indigo-500/20 rounded-full">
-          <div className={`w-2 h-2 rounded-full animate-pulse ${COLUMN_META[task.status]?.color || 'bg-slate-500'}`} />
-          <span className="text-indigo-600 font-black uppercase text-[11px] tracking-widest">
-            {task.status}
-          </span>
-        </div>
-      )}
+    {isEditing ? (
+  <div className="relative">
+    <select
+      value={editForm.status}
+      onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+      className="w-full appearance-none bg-white border border-slate-200 p-5 pr-12 rounded-2xl text-slate-900 text-[11px] font-black uppercase tracking-[0.2em] outline-none focus:border-indigo-500/50 transition-all cursor-pointer hover:border-indigo-500/30 shadow-sm"
+    >
+      <option value="pending" className="bg-white text-slate-900">PENDING</option>
+      <option value="current" className="bg-white text-slate-900">CURRENT</option>
+      <option value="preview" className="bg-white text-slate-900">PREVIEW</option>
+      <option value="done" className="bg-white text-slate-900">COMPLETED</option>
+    </select>
+    <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-400/60">
+      <Layout size={16} />
     </div>
+  </div>
+) : (
+  <div className="inline-flex items-center gap-3 px-6 py-3 bg-indigo-500/10 border border-indigo-500/20 rounded-full">
+    <div className={`w-2 h-2 rounded-full animate-pulse ${COLUMN_META[task.status]?.color || 'bg-slate-500'}`} />
+    <span className="text-indigo-600 font-black uppercase text-[11px] tracking-widest">
+      {task.status}
+    </span>
+  </div>
+)}
 
     {/* CONTENT SECTION */}
     {isEditing ? (
@@ -571,15 +652,27 @@ const handleStatusChange = async (newStatus) => {
   </div>
 
  
-          <div className="grid grid-cols-2 gap-8 py-8 border-y border-slate-100">
-           <div>
+<div className="grid grid-cols-2 gap-8 py-8 border-y border-slate-100 bg-slate-50 rounded-2xl px-6">           <div>
   <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] block mb-2">Staff</span>
   <div className="flex items-center gap-3">
     <div className="h-10 w-10 bg-indigo-500/10 rounded-full flex items-center justify-center border border-indigo-500/20 text-indigo-400">
       <User size={18} />
     </div>
     <span className="text-slate-900 font-bold tracking-tight uppercase text-sm">
-      {users?.find(u => String(u.id) === String(task.assigned_to))?.name || task.assigned_to}
+<span className="text-slate-900 font-bold tracking-tight uppercase text-sm">
+
+{
+typeof task.assigned_to === "object"
+  ? task.assigned_to?.name
+  : users?.find(
+      u =>
+        String(u.id || u._id) === String(task.assigned_to) &&
+        ["1","2","3"].includes(String(u.role_id))
+    )?.name
+    || "No Staff"
+}
+
+</span>
     </span>
   </div>
 </div>
@@ -619,7 +712,14 @@ const handleStatusChange = async (newStatus) => {
             ) : (
               <div className="w-full py-6 bg-slate-50 rounded-3xl border border-slate-200 flex flex-col items-center justify-center gap-2 text-slate-500 italic font-medium">
                 <span className="text-[11px] uppercase tracking-widest font-black">Authorized Creator Access Only</span>
-                <span className="text-[8px] opacity-40 uppercase">Visitor: {currentUserId?.slice(0, 8)}... | Owner: {task.user_id?.slice(0, 8)}...</span>
+                <span className="text-[8px] opacity-40 uppercase">Visitor: {currentUserId?.slice(0, 8)}... |Owner: {
+  (
+    task?.user_id ||
+    task?.created_by?._id ||
+    task?.created_by?.id ||
+    task?.created_by
+  )?.toString().slice(0,8)
+}...</span>
               </div>
             )}
           </div>
@@ -627,5 +727,5 @@ const handleStatusChange = async (newStatus) => {
       </motion.div>
     </motion.div>
   );
-};
+}
 export default Todo;

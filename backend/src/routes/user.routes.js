@@ -1,34 +1,154 @@
 import { Router } from 'express';
 import { userController } from '../controllers/user.controller.js';
-import checkAuth from '../middleware/auth.middleware.js'; // The actual middleware file you have
+import checkAuth from '../middleware/auth.middleware.js';
+import upload from '../middleware/upload.middleware.js';
 
 const router = Router();
 
-// Custom local fallback for role validation to prevent crashes
+// ==========================================
+// ROLE VALIDATION
+// ==========================================
+
 const requireRole = (allowedRoles) => {
   return (req, res, next) => {
-    const userRole = req.user?.role || req.user?.role_id; 
-    if (!userRole || !allowedRoles.includes(userRole)) {
-      return res.status(403).json({ detail: "Access denied. Insufficient permissions." });
+
+    const userRole =
+      req.user?.role ||
+      req.user?.role_id;
+
+    if (
+      !userRole ||
+      !allowedRoles.includes(String(userRole))
+    ) {
+      return res.status(403).json({
+        detail:
+          'Access denied. Insufficient permissions.'
+      });
     }
+
     next();
   };
 };
 
-// Apply global JWT handshake validation over user directory routes
+// ==========================================
+// AUTH MIDDLEWARE
+// ==========================================
+
 router.use(checkAuth);
 
-// Directory query endpoints 
-router.get('/', requireRole(['MD', 'COO', 'EXECUTIVE_DIRECTOR', 'DEPARTMENT_MANAGER', 'TEAM_LEADER']), userController.getUsers);
-router.get('/list', userController.getUserList);
-router.get('/:id', userController.getUserById);
+// ==========================================
+// USER ROUTES
+// ==========================================
 
-// Directory administration endpoints 
-router.post('/', requireRole(['MD', 'COO']), userController.createUser);
-router.put('/:id', requireRole(['MD', 'COO', 'DEPARTMENT_MANAGER']), userController.updateUser);
+// GET ALL USERS
+router.get(
+  '/',
+  userController.getUsers
+);
 
-router.patch('/:id/role', requireRole(['MD', 'COO']), userController.changeUserRole);
-router.patch('/:id/deactivate', requireRole(['MD', 'COO']), userController.deactivateUser);
-router.delete('/:id', requireRole(['MD']), userController.deleteUser);
+// SIMPLE USER LIST
+router.get(
+  '/list',
+  userController.getUserList
+);
+
+// GET USER BY ID
+router.get(
+  '/:id',
+  userController.getUserById
+);
+
+// ==========================================
+// ADMIN ROUTES
+// ==========================================
+
+// CREATE USER
+router.post(
+  '/create',
+  upload.single('profileImage'),
+  userController.createUser
+);
+router.post(
+  '/',
+  upload.single('profileImage'),
+  userController.createUser
+);
+
+// UPDATE USER
+router.put(
+  '/update/:id',
+  upload.single('profileImage'),
+  userController.updateUser
+);
+router.post(
+  '/update/:id',
+  upload.single('profileImage'),
+  userController.updateUser
+);
+router.put(
+  '/:id',
+  upload.single('profileImage'),
+  userController.updateUser
+);
+router.put(
+  '/update',
+  upload.single('profileImage'),
+  (req, res, next) => {
+    req.params.id = req.body.id || req.body._id;
+    next();
+  },
+  userController.updateUser
+);
+router.post(
+  '/update',
+  upload.single('profileImage'),
+  (req, res, next) => {
+    req.params.id = req.body.id || req.body._id;
+    next();
+  },
+  userController.updateUser
+);
+
+// CHANGE ROLE
+router.patch(
+  '/:id/role',
+  userController.changeUserRole
+);
+
+// DEACTIVATE USER
+router.patch(
+  '/:id/deactivate',
+  userController.deactivateUser
+);
+
+// DELETE USER
+router.delete(
+  '/delete/:id',
+  userController.deleteUser
+);
+router.post(
+  '/delete/:id',
+  userController.deleteUser
+);
+router.delete(
+  '/:id',
+  userController.deleteUser
+);
+router.delete(
+  '/delete',
+  (req, res, next) => {
+    req.params.id = req.body.id || req.body._id;
+    next();
+  },
+  userController.deleteUser
+);
+router.post(
+  '/delete',
+  (req, res, next) => {
+    req.params.id = req.body.id || req.body._id;
+    next();
+  },
+  userController.deleteUser
+);
 
 export default router;

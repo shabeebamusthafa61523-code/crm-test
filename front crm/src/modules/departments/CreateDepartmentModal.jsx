@@ -1,0 +1,268 @@
+// src/modules/departments/CreateDepartmentModal.jsx
+
+import React, { useState, useEffect } from 'react';
+import { X, Check, AlertCircle, Loader } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
+import { createDepartment } from '../../services/departmentService';
+
+export const CreateDepartmentModal = ({ isOpen, onClose, onSuccess }) => {
+  const [name, setName] = useState('');
+  const [code, setCode] = useState('');
+  const [description, setDescription] = useState('');
+  const [managerId, setManagerId] = useState('');
+  const [status, setStatus] = useState(true);
+
+  const [users, setUsers] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Field-specific validation errors and global error
+  const [errors, setErrors] = useState({});
+  const [globalError, setGlobalError] = useState('');
+
+  // Fetch users for manager dropdown when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      const fetchUsers = async () => {
+        setLoadingUsers(true);
+        try {
+          const API_URL = import.meta.env?.VITE_API_URL || import.meta.env?.REACT_APP_API_URL || 'http://localhost:5000/api/v1';
+          const token = localStorage.getItem('token');
+          const res = await axios.get(`${API_URL}/users/list`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          setUsers(Array.isArray(res.data) ? res.data : []);
+        } catch (err) {
+          console.error('Failed to load users for manager dropdown:', err);
+        } finally {
+          setLoadingUsers(false);
+        }
+      };
+      fetchUsers();
+      // Reset form fields
+      setName('');
+      setCode('');
+      setDescription('');
+      setManagerId('');
+      setStatus(true);
+      setErrors({});
+      setGlobalError('');
+    }
+  }, [isOpen]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setErrors({});
+    setGlobalError('');
+
+    try {
+      await createDepartment({
+        name,
+        code,
+        description,
+        managerId: managerId || null,
+        status
+      });
+      onSuccess('Department created successfully!');
+      onClose();
+    } catch (err) {
+      console.error(err);
+      if (err.errors && Array.isArray(err.errors)) {
+        // Map express-validator field errors
+        const mapped = {};
+        err.errors.forEach(e => {
+          mapped[e.path || e.param] = e.msg;
+        });
+        setErrors(mapped);
+      } else {
+        setGlobalError(err.message || 'Failed to create department');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
+        {/* Backdrop */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="fixed inset-0 bg-slate-950/40 backdrop-blur-md"
+        />
+
+        {/* Modal Window */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 15 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 15 }}
+          transition={{ type: 'spring', damping: 25, stiffness: 150 }}
+          className="relative w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-[2.5rem] shadow-2xl p-8 z-10"
+        >
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          >
+            <X size={20} />
+          </button>
+
+          {/* Header */}
+          <div className="mb-6">
+            <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">
+              Create Department
+            </h2>
+            <p className="text-sm font-semibold text-slate-400">
+              Register a new corporate business unit.
+            </p>
+          </div>
+
+          {globalError && (
+            <div className="mb-6 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 flex items-start gap-3">
+              <AlertCircle size={18} className="shrink-0 mt-0.5" />
+              <p className="text-xs font-bold leading-relaxed">{globalError}</p>
+            </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Name */}
+            <div>
+              <label className="block text-xs font-bold text-slate-400 tracking-wide uppercase mb-2">
+                Department Name *
+              </label>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Executive Management"
+                className={`w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border ${errors.name ? 'border-rose-500' : 'border-slate-200 dark:border-slate-800'} text-slate-800 dark:text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all`}
+              />
+              {errors.name && (
+                <p className="text-rose-500 text-[11px] font-bold mt-1.5 flex items-center gap-1">
+                  <AlertCircle size={12} /> {errors.name}
+                </p>
+              )}
+            </div>
+
+            {/* Code */}
+            <div>
+              <label className="block text-xs font-bold text-slate-400 tracking-wide uppercase mb-2">
+                Department Code *
+              </label>
+              <input
+                type="text"
+                required
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                placeholder="e.g. EXEC"
+                className={`w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border ${errors.code ? 'border-rose-500' : 'border-slate-200 dark:border-slate-800'} text-slate-800 dark:text-white text-sm font-black focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all`}
+              />
+              {errors.code && (
+                <p className="text-rose-500 text-[11px] font-bold mt-1.5 flex items-center gap-1">
+                  <AlertCircle size={12} /> {errors.code}
+                </p>
+              )}
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-xs font-bold text-slate-400 tracking-wide uppercase mb-2">
+                Description
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Describe the department's core function..."
+                rows={3}
+                className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all resize-none"
+              />
+            </div>
+
+            {/* Manager selection dropdown */}
+            <div>
+              <label className="block text-xs font-bold text-slate-400 tracking-wide uppercase mb-2">
+                Department Manager
+              </label>
+              <div className="relative">
+                <select
+                  value={managerId}
+                  onChange={(e) => setManagerId(e.target.value)}
+                  disabled={loadingUsers}
+                  className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all appearance-none cursor-pointer"
+                >
+                  <option value="">Unassigned</option>
+                  {users.map((user) => (
+                    <option key={user._id} value={user._id}>
+                      {user.name} ({user.email})
+                    </option>
+                  ))}
+                </select>
+                {loadingUsers && (
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                    <Loader size={16} className="animate-spin text-slate-400" />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Status Toggle */}
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/30 border border-slate-200/50 dark:border-slate-800/50">
+              <div>
+                <p className="text-sm font-bold text-slate-800 dark:text-white">Active Status</p>
+                <p className="text-xs font-semibold text-slate-400">Determine if department is open.</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={status}
+                  onChange={(e) => setStatus(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-200 dark:bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+              </label>
+            </div>
+
+            {/* Form actions */}
+            <div className="flex items-center justify-end gap-3 pt-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-5 py-3 rounded-2xl text-slate-500 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="px-6 py-3 rounded-2xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 disabled:bg-indigo-600/50 flex items-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95 transition-all duration-150"
+              >
+                {submitting ? (
+                  <>
+                    <Loader size={18} className="animate-spin" />
+                    <span>Creating...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check size={18} />
+                    <span>Create Unit</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+};
+
+export default CreateDepartmentModal;

@@ -1,9 +1,54 @@
 import { Router } from 'express';
 import { signup, login } from '../controllers/auth.controller.js';
+import verifyJWT from '../middleware/auth.middleware.js';
+import User from '../models/user.model.js';
+import { AppError } from '../middleware/errorHandler.js';
+import {
+  userIdParamsSchema,
+  userStatusBodySchema,
+  validateParams,
+  validateBody
+} from '../validators/task.validator.js';
 
 const router = Router();
 
 router.post('/signup', signup);
 router.post('/login', login);
+
+router.put(
+  '/update-status/:user_id',
+  verifyJWT,
+  validateParams(userIdParamsSchema),
+  validateBody(userStatusBodySchema),
+  async (req, res, next) => {
+    try {
+      const role = req.user.role || req.user.role_id;
+      if (role !== 'admin') {
+        throw new AppError('Access denied. Admin access only.', 403);
+      }
+
+      const { user_id } = req.params;
+      const { status } = req.body;
+
+      const user = await User.findById(user_id);
+      if (!user) {
+        throw new AppError('User profile not found', 404);
+      }
+
+      user.status = status;
+      // Sync status with the model's isActive boolean
+      user.isActive = (status === 'active');
+      await user.save();
+
+      const userJson = user.toJSON();
+      delete userJson.passwordHash;
+      delete userJson.password;
+
+      return res.status(200).json(userJson);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 export default router;

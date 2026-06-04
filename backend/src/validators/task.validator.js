@@ -1,33 +1,125 @@
+// ── src/validators/task.validator.js ──
 import { z } from 'zod';
 
-const priorityEnum = z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']);
-const statusEnum = z.enum(['PENDING', 'IN_PROGRESS', 'REVIEW', 'DONE', 'BLOCKED']);
+const objectIdRegex = /^[0-9a-fA-F]{24}$/;
 
+// Common Schemas
+const objectIdSchema = (fieldName) => 
+  z.string()
+    .regex(objectIdRegex, { message: `Invalid format for ${fieldName}` });
+
+// Body validation for creating a task
 export const createTaskSchema = z.object({
-  title: z.string().trim().min(3, 'Task title must be at least 3 characters.'),
-  description: z.string().trim().optional().nullable(),
-  priority: priorityEnum.default('MEDIUM'),
-  status: statusEnum.default('PENDING'),
-  deadline: z.string().datetime('Deadline must be a valid ISO-8601 date string.'),
-  departmentId: z.string().uuid('Invalid department ID.'),
-  assignedTo: z.array(z.string().uuid('Invalid employee ID in assignments.')).min(1, 'Task must be assigned to at least one user.'),
-  attachments: z.array(z.string().url()).optional(),
-  parentTaskId: z.string().uuid().optional().nullable(),
-  approvalRequired: z.boolean().default(false)
+  title: z.string({ required_error: 'Title is required' })
+    .trim()
+    .min(1, { message: 'Title cannot be empty' }),
+  description: z.string().trim().optional(),
+  assigned_to: objectIdSchema('assigned_to'),
+ // CREATE
+designation_id: z
+  .string()
+  .optional()
+  .or(z.literal(''))
+  .transform(val => val === '' ? undefined : val)
 });
 
+// Body validation for updating a task
 export const updateTaskSchema = z.object({
-  title: z.string().trim().min(3).optional(),
-  description: z.string().trim().optional().nullable(),
-  priority: priorityEnum.optional(),
-  status: statusEnum.optional(),
-  deadline: z.string().datetime().optional(),
-  departmentId: z.string().uuid().optional(),
-  attachments: z.array(z.string().url()).optional(),
-  parentTaskId: z.string().uuid().optional().nullable(),
-  approvalRequired: z.boolean().optional()
+  title: z.string().trim().min(1, { message: 'Title cannot be empty' }).optional(),
+  description: z.string().trim().optional(),
+  assigned_to: objectIdSchema('assigned_to').optional(),
+ // UPDATE
+designation_id: z
+  .string()
+  .optional()
+  .or(z.literal(''))
+  .or(z.literal(null))
+  .transform(val => val === '' ? undefined : val)
 });
 
-export const taskCommentSchema = z.object({
-  comment: z.string().trim().min(1, 'Comment body cannot be blank.')
+// Query validation for updating task status
+export const updateStatusQuerySchema = z.object({
+  status: z.enum(['pending', 'current', 'preview', 'done'], {
+    errorMap: () => ({ message: "Status must be one of: 'pending', 'current', 'preview', 'done'" })
+  })
 });
+
+// Params validation for task_id
+export const taskIdParamsSchema = z.object({
+  task_id: objectIdSchema('task_id')
+});
+
+// Query validation for fetching user tasks
+export const userTasksQuerySchema = z.object({
+  user_id: objectIdSchema('user_id')
+});
+
+// Params validation for user_id status update
+export const userIdParamsSchema = z.object({
+  user_id: objectIdSchema('user_id')
+});
+
+// Body validation for User status update
+export const userStatusBodySchema = z.object({
+  status: z.enum(['active', 'inactive', 'suspended'], {
+    errorMap: () => ({ message: "Status must be one of: 'active', 'inactive', 'suspended'" })
+  })
+});
+
+// Validation Middleware Helpers
+export const validateBody = (schema) => (req, res, next) => {
+  try {
+    req.body = schema.parse(req.body);
+    next();
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error in request body',
+        errors: error.errors.map(err => ({
+          field: err.path.join('.'),
+          message: err.message
+        }))
+      });
+    }
+    next(error);
+  }
+};
+
+export const validateQuery = (schema) => (req, res, next) => {
+  try {
+    req.query = schema.parse(req.query);
+    next();
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error in query parameters',
+        errors: error.errors.map(err => ({
+          field: err.path.join('.'),
+          message: err.message
+        }))
+      });
+    }
+    next(error);
+  }
+};
+
+export const validateParams = (schema) => (req, res, next) => {
+  try {
+    req.params = schema.parse(req.params);
+    next();
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error in route parameters',
+        errors: error.errors.map(err => ({
+          field: err.path.join('.'),
+          message: err.message
+        }))
+      });
+    }
+    next(error);
+  }
+};

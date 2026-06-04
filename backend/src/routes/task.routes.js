@@ -1,27 +1,92 @@
+// ── src/routes/task.routes.js ──
+
 import { Router } from 'express';
-import * as taskController from '../controllers/task.controller.js';
-import authenticate from '../middleware/auth.middleware.js';
+
+import verifyJWT from '../middleware/auth.middleware.js';
+import upload from '../middleware/upload.middleware.js';
+
+import {
+  createTask,
+  getAllTasks,
+  getUserTasks,
+  getCurrentUserTasks,
+  deleteTask,
+  updateTaskStatus,
+  updateTask
+} from '../controllers/task.controller.js';
+
+import {
+  createTaskSchema,
+  updateTaskSchema,
+  updateStatusQuerySchema,
+  taskIdParamsSchema,
+  userTasksQuerySchema,
+  validateBody,
+  validateQuery,
+  validateParams
+} from '../validators/task.validator.js';
 
 const router = Router();
 
-// 1. Pipeline Read Matrix
-// Maps to: GET /api/v1/tasks/all
-router.get('/all', authenticate, taskController.getAllTasks);
+// ===============================
+// Global Auth Middleware
+// ===============================
 
-// 2. Dossier Asset Structuring
-// Maps to: POST /api/v1/tasks/create
-router.post('/create', authenticate, taskController.createTask);
+router.use(verifyJWT);
 
-// 3. Multi-field Modification Pipeline
-// Maps to: PUT /api/v1/tasks/update/:id
-router.put('/update/:id', authenticate, taskController.updateTask);
+// ===============================
+// Routes
+// ===============================
 
-// 4. Fast Track Column Drop State Mutation
-// Maps to: PUT /api/v1/tasks/task-status/:id
-router.put('/task-status/:id', authenticate, taskController.updateTaskStatus);
+// CREATE TASK
+router.post(
+  '/create',
+  upload.single('file'),
+  validateBody(createTaskSchema),
+  createTask
+);
 
-// 5. Structural Asset Purge
-// Maps to: DELETE /api/v1/tasks/delete/:id
-router.delete('/delete/:id', authenticate, taskController.deleteTask);
+// GET ALL TASKS
+router.get(
+  '/all',
+  getAllTasks
+);
+
+// GET USER TASKS
+router.get(
+  '/user/tasks',
+  validateQuery(userTasksQuerySchema),
+  getUserTasks
+);
+
+// GET CURRENT USER TASKS
+router.get(
+  '/current-user/tasks',
+  getCurrentUserTasks
+);
+
+// DELETE TASK
+router.delete(
+  '/delete/:task_id',
+  validateParams(taskIdParamsSchema),
+  deleteTask
+);
+
+// UPDATE TASK STATUS
+router.put(
+  '/task-status/:task_id',
+  validateParams(taskIdParamsSchema),
+  validateQuery(updateStatusQuerySchema),
+  updateTaskStatus
+);
+
+// UPDATE TASK
+router.put(
+  '/update/:task_id',
+  validateParams(taskIdParamsSchema),
+  upload.single('file'),
+  validateBody(updateTaskSchema),
+  updateTask
+);
 
 export default router;

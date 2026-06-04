@@ -11,13 +11,36 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   const navigate = useNavigate();
+  const getISTDate = () => {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata'
+    }).format(new Date());
+  };
+const getAuthHeaders = useCallback(() => {
+  const rawToken = localStorage.getItem("token");
+  const cleanToken = rawToken ? rawToken.replace(/"/g, "") : "";
 
+  return {
+    Authorization: cleanToken.startsWith("Bearer ")
+      ? cleanToken
+      : `Bearer ${cleanToken}`,
+    accept: "application/json"
+  };
+}, []);
   // Helper to match Attendance Component's UTC parsing
   const parseAsUTC = (dateInput) => {
-    if (!dateInput) return null;
-    return new Date(dateInput.endsWith('Z') ? dateInput : dateInput + 'Z');
-  };
+  if (!dateInput) return null;
 
+  try {
+    return new Date(
+      dateInput.endsWith("Z")
+        ? dateInput
+        : `${dateInput}Z`
+    );
+  } catch {
+    return null;
+  }
+};
   // Integrated Working Hours Calculation (Matches Attendance Component)
   const liveWorkingHours = useMemo(() => {
     if (!attendanceRecord?.check_in_time) return "0.00";
@@ -31,41 +54,58 @@ const Dashboard = () => {
 
     // If still checked in, show live ticking hours
     const start = parseAsUTC(attendanceRecord.check_in_time);
-    const diffMs = currentTime - start;
+const diffMs = currentTime.getTime() - start.getTime();
     return Math.max(0, diffMs / 3600000).toFixed(2);
   }, [attendanceRecord, currentTime]);
 
   const fetchData = useCallback(async (userId) => {
-    try {
-      const token = localStorage.getItem("token")?.replace(/"/g, "");
-      const headers = { Authorization: `Bearer ${token}`, accept: "application/json" };
-      const todayStr = new Date().toISOString().split('T')[0];
+  try {
+    setLoading(true);
 
-      const [taskRes, attRes] = await Promise.all([
-        fetch("/api/tasks/all", { headers }),
-        fetch(`/api/attendance/${todayStr}`, { headers })
-      ]);
+    const todayStr = getISTDate();
 
-      if (taskRes.ok) {
-        const taskData = await taskRes.json();
-        setTasks(Array.isArray(taskData) ? taskData : taskData?.data || []);
-      }
+    const [taskRes, attRes] = await Promise.all([
+      fetch("/api/tasks/all", {
+        headers: getAuthHeaders()
+      }),
 
-      if (attRes.ok) {
-        const attData = await attRes.json();
-        // Matching Logic from Attendance.js
-        const myId = String(userId || '').trim().toLowerCase();
-        let recordsArray = Array.isArray(attData) ? attData : Object.values(attData);
-        const myRecord = recordsArray.find(r => String(r?.user_id || '').trim().toLowerCase() === myId);
-        setAttendanceRecord(myRecord || null);
-      }
-    } catch (err) {
-      console.error("Dashboard Sync Error:", err);
-    } finally {
-      setLoading(false);
+      fetch(`/api/attendance/${todayStr}`, {
+        headers: getAuthHeaders()
+      })
+    ]);
+
+    // TASKS
+    if (taskRes.ok) {
+      const taskData = await taskRes.json();
+
+      const rawTasks = Array.isArray(taskData)
+        ? taskData
+        : taskData?.data || [];
+
+      const cleanedTasks = rawTasks.map(task => ({
+        ...task,
+        assigned_to:
+          typeof task.assigned_to === "object"
+            ? (task.assigned_to.id || task.assigned_to._id)
+            : task.assigned_to
+      }));
+
+      setTasks(cleanedTasks);
     }
-  }, []);
 
+    // ATTENDANCE
+    if (attRes.ok) {
+      const attData = await attRes.json();
+      console.log("DASHBOARD ATTENDANCE RECORD =", attData);
+      setAttendanceRecord(attData || null);
+    }
+
+  } catch (err) {
+    console.error("Dashboard Fetch Error:", err);
+  } finally {
+    setLoading(false);
+  }
+}, [getAuthHeaders]);
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
     const storedUserId = localStorage.getItem("user_id")?.replace(/"/g, '');
@@ -82,15 +122,22 @@ const Dashboard = () => {
   }, [fetchData]);
 
   const myTasks = useMemo(() => {
-    if (!user?.user_id) return [];
-    return tasks.filter((t) =>
-      String(t?.assigned_to || "").trim().toLowerCase() === String(user.user_id).trim().toLowerCase()
-    );
-  }, [tasks, user]);
+  if (!user?.user_id) return [];
 
+  return tasks.filter(t => {
+
+    const assignedId =
+      typeof t.assigned_to === "object"
+        ? (t.assigned_to.id || t.assigned_to._id)
+        : t.assigned_to;
+
+    return String(assignedId).trim() === String(user.user_id).trim();
+  });
+
+}, [tasks, user]);
   const metrics = useMemo(() => {
     const total = myTasks.length;
-    const pending = myTasks.filter((t) => ["pending", "in_progress"].includes(t.status?.toLowerCase())).length;
+    const pending = myTasks.filter((t) => ["pending", "current"].includes(t.status?.toLowerCase())).length;
     const completed = myTasks.filter((t) => t.status?.toLowerCase() === "done").length;
     const rate = total ? Math.round((completed / total) * 100) : 0;
     return { total, pending, completed, rate };
@@ -127,7 +174,7 @@ const Dashboard = () => {
           onClick={() => navigate("/attendance")}
           className="cursor-pointer bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-[2rem] flex items-center gap-4 hover:border-indigo-500/30 dark:hover:border-indigo-500/50 transition-all shadow-sm"
         >
-          <div className="p-3 bg-indigo-500/10 dark:bg-indigo-500/20 rounded-xl text-indigo-500 dark:text-indigo-400"><Timer size={20} /></div>
+          <div className="p-3 bg-white-500/10 dark:bg-indigo-100/20 rounded-xl text-indigo-500 dark:text-indigo-400"><Timer size={20} /></div>
           <div>
             <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase">Shift Start</p>
             <p className="text-lg font-black text-slate-900 dark:text-slate-100 uppercase">

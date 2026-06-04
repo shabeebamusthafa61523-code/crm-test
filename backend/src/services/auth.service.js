@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import redis from '../config/redis.js';
+// import redis from '../config/redis.js';
 import { signToken } from '../utils/jwt.util.js';
 import { comparePassword, hashPassword } from '../utils/bcrypt.util.js';
 import { AppError } from '../middleware/errorHandler.js';
