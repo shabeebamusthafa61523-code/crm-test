@@ -51,6 +51,8 @@ export const signup = async (req, res) => {
   }
 };
 
+
+
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -69,28 +71,43 @@ export const login = async (req, res) => {
     }
 
     // 3. Sign Auth JWT Token
-   const token = jwt.sign(
-  {
-    id: user._id,
-    role_id: user.role_id
-  },
-  process.env.JWT_SECRET,
-  {
-    expiresIn: '7d'
-  }
-);
+    const token = jwt.sign(
+      {
+        id: user._id,
+        role_id: user.role_id
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: '7d'
+      }
+    );
 
     // 4. Return matching data structure required by your React components
     res.json({
+      success: true, // Added to match standard response handlers
+      message: "Login successful",
       token,
       user: {
-        id: user._id, // Maps to result.user.id to satisfy your login file framework
+        id: user._id,          // Standardized frontend fallback id
+        _id: user._id,        // Native MongoDB ID mapping
         name: user.name,
         email: user.email,
+        phone: user.phone || null,
+        role: user.role || "employee",
         role_id: user.role_id,
-        designation_id: user.designation_id, // ADD
-    joining_date: user.joining_date,
-        profile_image: user.profile_image
+        designation: user.designation,
+        designationId: user.designationId || user.designation_id, 
+        reportingManager: user.reportingManager || null,
+        salary: user.salary ?? 0,
+        profile_image: user.profile_image || null,
+        departmentId: user.departmentId || null,
+        employeeId: user.employeeId || null,
+        avatar: user.avatar || null,
+        isActive: user.isActive ?? true,
+        status: user.status || "active",
+        joining_date: user.joining_date,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
       }
     });
   } catch (error) {

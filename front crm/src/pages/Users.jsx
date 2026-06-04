@@ -237,7 +237,7 @@ const Users = () => {
               >
                 <span>{tab}</span>
                 <span className={`text-[10px] px-2 py-0.5 rounded-full ${
-                  activeTab === tab ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                  activeTab === tab ? 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
                 }`}>
                   {tabCounts[tab]}
                 </span>
@@ -555,43 +555,58 @@ const CreateModal = ({ onClose, refresh, getAuthHeaders, designations, onDesigna
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  setIsSubmitting(true);
 
-    try {
-      const fd = new FormData();
-      Object.keys(form).forEach(key => {
-        if (key === 'avatar') {
-          if (form.avatar) fd.append('profileImage', form.avatar);
-        } else {
-          fd.append(key, form[key]);
-        }
-      });
-      // Set random temporary password
-      fd.append('password', 'TempPass@123');
+  try {
+    const fd = new FormData();
 
-      const res = await fetch(`${API_BASE}/users/create`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: fd
-      });
+    // 1. Extract name and phone from the active form state
+    const employeeName = form.name || ""; 
+    const employeePhone = form.phone || "";
 
-      const data = await res.json();
-      if (res.ok || data.success) {
-        showToast('Employee created successfully.', 'success');
-        await refresh();
-        onClose();
+    // 2. Generate custom formula: FIRST 3 LETTERS (UPPERCASE) + LAST 3 DIGITS
+    const namePart = employeeName.trim().slice(0, 3).toUpperCase();
+    const phonePart = employeePhone.trim().slice(-3) || "123"; // Fallback if phone is empty
+    
+    const dynamicPassword = `${namePart}${phonePart}`; // e.g., "ABC454"
+
+    // 3. Append your standard state keys to FormData
+    Object.keys(form).forEach(key => {
+      if (key === 'avatar') {
+        if (form.avatar) fd.append('profileImage', form.avatar);
       } else {
-        showToast(data.message || 'Failed to onboard employee.', 'error');
+        fd.append(key, form[key]);
       }
-    } catch (e) {
-      console.error(e);
-      showToast('Error connecting to the onboard api.', 'error');
-    } finally {
-      setIsSubmitting(false);
+    });
+    
+    // 4. Inject the dynamically calculated password instead of a static string
+    fd.append('password', dynamicPassword);
+
+    // 5. Send payload to your backend API
+    const res = await fetch(`${API_BASE}/users/create`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: fd
+    });
+
+    const data = await res.json();
+    if (res.ok || data.success) {
+      // 💡 Displaying the generated password in the success toast so HR can copy it instantly
+      showToast(`Employee created! Temp Password: ${dynamicPassword}`, 'success');
+      await refresh();
+      onClose();
+    } else {
+      showToast(data.message || 'Failed to onboard employee.', 'error');
     }
-  };
+  } catch (e) {
+    console.error(e);
+    showToast('Error connecting to the onboard api.', 'error');
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   return (
     <motion.div 
@@ -626,7 +641,7 @@ const CreateModal = ({ onClose, refresh, getAuthHeaders, designations, onDesigna
             </div>
             <div>
               <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm">Profile Image File</h4>
-              <p className="text-xs text-slate-500 mt-1">Provide a high-fidelity JPG, PNG, or WEBP dossier asset. Max size: 5MB.</p>
+              <p className="text-xs text-slate-500 mt-1">Provide a high-fidelity JPG, PNG, or WEBP  asset. Max size: 5MB.</p>
             </div>
           </div>
 
@@ -820,7 +835,7 @@ const EditModal = ({ user, onClose, refresh, getAuthHeaders, designations, onDes
         <button onClick={onClose} className="absolute top-6 right-6 p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-500 transition-colors"><X size={20}/></button>
         
         <header className="mb-8">
-          <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-slate-100 italic uppercase tracking-tighter">EDIT <span className="text-indigo-600 dark:text-indigo-400">DOSSIER FILE</span></h2>
+          <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-slate-100 italic uppercase tracking-tighter">EDIT <span className="text-indigo-600 dark:text-indigo-400">EMPLOYEE FILE</span></h2>
           <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-1">Synchronizing Tactical Assets</p>
         </header>
 
@@ -934,9 +949,21 @@ const EditModal = ({ user, onClose, refresh, getAuthHeaders, designations, onDes
 };
 
 // --- VIEW DOSSIER MODAL ---
-const ViewModal = ({ user, onClose, getDesignationName, getDepartmentName }) => {
+const ViewModal = ({ user, getDesignationName, getDepartmentName, onClose }) => {
+  // Determine status configurations dynamically
   const statusKey = user.status || (user.isActive ? 'active' : 'inactive');
+  const STATUS_META = {
+    active: { color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-400', dot: 'bg-emerald-500' },
+    inactive: { color: 'bg-amber-500/10 text-amber-600 border-amber-500/20 dark:bg-amber-500/20 dark:text-amber-400', dot: 'bg-amber-500' },
+    blocked: { color: 'bg-rose-500/10 text-rose-500 border-rose-500/20 dark:bg-rose-500/20 dark:text-rose-400', dot: 'bg-rose-500' }
+  };
   const meta = STATUS_META[statusKey] || STATUS_META.active;
+
+  // Mirror the dynamic format: FIRST 3 LETTERS (UPPERCASE) + LAST 3 DIGITS OF PHONE
+  const namePart = (user.name || "").trim().slice(0, 3).toUpperCase();
+  const phonePart = (user.phone || "").trim().slice(-3) || "123";
+  const implicitPassword = `${namePart}${phonePart}`;
+
   return (
     <motion.div 
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -1017,11 +1044,28 @@ const ViewModal = ({ user, onClose, getDesignationName, getDepartmentName }) => 
                 </div>
               )}
             </div>
+
+            {/* --- NEW: Dynamic Account Credentials Section --- */}
+            <div className="mt-4 pt-4 border-t border-dashed border-slate-200 dark:border-slate-800/80">
+              <div className="flex items-center justify-between p-4 bg-indigo-500/5 dark:bg-lime-500/5 border border-indigo-500/10 dark:border-lime-500/10 rounded-xl">
+                <div className="space-y-0.5">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-indigo-500 dark:text-lime-400 block">
+                    Initial System Password
+                  </span>
+                  <p className="text-[10px] text-slate-400 font-medium">
+                    Formula: First 3 letters of name + last 3 digits of phone
+                  </p>
+                </div>
+                <div className="px-3 py-1.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg font-mono text-xs font-bold tracking-wider text-slate-800 dark:text-slate-100 select-all shadow-sm">
+                  {implicitPassword}
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </motion.div>
     </motion.div>
   );
 };
-
 export default Users;
