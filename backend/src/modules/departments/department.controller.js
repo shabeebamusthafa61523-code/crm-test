@@ -132,6 +132,47 @@ export const departmentController = {
   },
 
   /**
+   * POST /api/v1/departments/:id/users
+   */
+  async addUser(req, res, next) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        const error = new Error('Validation failed');
+        error.statusCode = 422;
+        error.data = errors.array();
+        throw error;
+      }
+
+      const { id } = req.params;
+      const { userId, roleInDepartment, isPrimary } = req.body;
+      const data = await departmentService.addUserToDepartment({
+        departmentId: id,
+        userId,
+        roleInDepartment,
+        isPrimary
+      });
+      return sendSuccess(res, 'User added to department successfully', data, 201);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * DELETE /api/v1/departments/:id/users/:userId
+   */
+  async removeUser(req, res, next) {
+    try {
+      const { id, userId } = req.params;
+      await departmentService.removeUserFromDepartment(id, userId);
+      return sendSuccess(res, 'User removed from department successfully', null, 200);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+
+  /**
    * PATCH /api/v1/departments/:id/status
    */
   async toggleStatus(req, res, next) {

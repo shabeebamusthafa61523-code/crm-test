@@ -1,42 +1,58 @@
 import { Router } from 'express';
 import { leadController } from '../controllers/lead.controller.js';
-import checkAuth from '../middleware/auth.middleware.js';
+import checkAuth, { restrictToRoles } from '../middleware/auth.middleware.js';
+import { validateBody, validateQuery, validateParams } from '../validators/task.validator.js';
+import {
+  createLeadSchema,
+  updateLeadSchema,
+  bulkUpdateStatusSchema,
+  addFollowUpSchema,
+  updateStatusSchema
+} from '../validators/lead.validator.js';
+import { apiRateLimiter, leadMutationRateLimiter } from '../middleware/rateLimiter.middleware.js';
 
 const router = Router();
 
-// Apply auth middleware to all lead endpoints
+// Apply authentication and digital_marketer/admin role checks globally to all lead endpoints
 router.use(checkAuth);
+router.use(restrictToRoles(['digital_marketer', '4', 'admin', '2']));
 
-// GET ALL LEADS
-router.get('/', leadController.getLeads);
+
+// GET ALL LEADS (supporting filters, search, and pagination)
+router.get('/', apiRateLimiter, leadController.getLeads);
 
 // GET SINGLE LEAD BY ID
-router.get('/:id', leadController.getLeadById);
+router.get('/:id', apiRateLimiter, leadController.getLeadById);
 
-// CREATE LEAD
-router.post('/create', leadController.createLead);
+// CREATE LEAD (with Zod validation, rate limiting)
+router.post('/create', leadMutationRateLimiter, validateBody(createLeadSchema), leadController.createLead);
 
-// UPDATE LEAD (Supporting POST and PUT formats, and both body / url param IDs)
-router.post('/update', leadController.updateLead);
-router.post('/update/:id', leadController.updateLead);
-router.put('/update/:id', leadController.updateLead);
+// BULK UPDATE LEAD STATUS
+router.put('/update', leadMutationRateLimiter, validateBody(bulkUpdateStatusSchema), leadController.bulkUpdateStatus);
 
-// ADD FOLLOWUP
-router.post('/followup', leadController.addFollowUp);
-router.post('/followup/:id', leadController.addFollowUp);
+// UPDATE SINGLE LEAD
+router.put('/:id', leadMutationRateLimiter, validateBody(updateLeadSchema), leadController.updateLead);
+router.post('/update/:id', leadMutationRateLimiter, validateBody(updateLeadSchema), leadController.updateLead);
+router.post('/update', leadMutationRateLimiter, validateBody(updateLeadSchema), leadController.updateLead);
 
-// STATUS UPDATE
-router.post('/status-update', leadController.updateStatus);
-router.post('/status-update/:id', leadController.updateStatus);
+// LOG FOLLOW-UP ACTION
+router.post('/followup', leadMutationRateLimiter, validateBody(addFollowUpSchema), leadController.addFollowUp);
+router.post('/followup/:id', leadMutationRateLimiter, validateBody(addFollowUpSchema), leadController.addFollowUp);
 
-// DELETE LEAD (Supporting DELETE and POST fallback formats)
-router.delete('/delete/:id', leadController.deleteLead);
-router.post('/delete/:id', leadController.deleteLead);
-router.delete('/:id', leadController.deleteLead);
-router.delete('/delete', leadController.deleteLead);
-router.post('/delete', leadController.deleteLead);
+// UPDATE LEAD STATUS
+router.patch('/status-update', leadMutationRateLimiter, validateBody(updateStatusSchema), leadController.updateStatus);
+router.patch('/status-update/:id', leadMutationRateLimiter, validateBody(updateStatusSchema), leadController.updateStatus);
+router.post('/status-update', leadMutationRateLimiter, validateBody(updateStatusSchema), leadController.updateStatus);
+router.post('/status-update/:id', leadMutationRateLimiter, validateBody(updateStatusSchema), leadController.updateStatus);
+
+// DELETE LEAD (with fallback mappings)
+router.delete('/delete/:id', leadMutationRateLimiter, leadController.deleteLead);
+router.post('/delete/:id', leadMutationRateLimiter, leadController.deleteLead);
+router.delete('/:id', leadMutationRateLimiter, leadController.deleteLead);
+router.delete('/delete', leadMutationRateLimiter, leadController.deleteLead);
+router.post('/delete', leadMutationRateLimiter, leadController.deleteLead);
 
 // BULK IMPORT LEADS
-router.post('/import', leadController.importLeads);
+router.post('/import', leadMutationRateLimiter, leadController.importLeads);
 
 export default router;

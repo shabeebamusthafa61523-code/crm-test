@@ -50,5 +50,9 @@ const leadFollowupSchema = new mongoose.Schema({
   }
 });
 
+leadFollowupSchema.index({ leadId: 1, createdAt: -1 });
+leadFollowupSchema.index({ createdBy: 1 });
+
 const LeadFollowup = mongoose.model('LeadFollowup', leadFollowupSchema);
 export default LeadFollowup;
+

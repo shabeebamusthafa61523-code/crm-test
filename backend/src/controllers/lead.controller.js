@@ -2,6 +2,38 @@ import Lead from '../models/lead.model.js';
 import LeadFollowup from '../models/leadFollowup.model.js';
 import User from '../models/user.model.js';
 import mongoose from 'mongoose';
+import logger from '../utils/logger.util.js';
+import redis from '../config/redis.js';
+
+// Audit logging helper
+const logAudit = (action, req, resourceId, details) => {
+  const userId = req.user?.id || req.user?._id || 'unknown';
+  const userRole = req.user?.role || 'unknown';
+  
+  logger.info({
+    message: `AUDIT: [${action}] executed by user [${userId}] (${userRole}) on resource [${resourceId}]`,
+    action,
+    userId,
+    userRole,
+    resourceId,
+    details,
+    timestamp: new Date().toISOString()
+  });
+};
+
+// Analytics cache invalidation helper
+const clearAnalyticsCache = async () => {
+  try {
+    const keys = await redis.keys('analytics:*');
+    if (keys.length > 0) {
+      await redis.del(keys);
+      console.log('🧹 Cleared analytics cache due to lead modification');
+    }
+  } catch (err) {
+    console.warn('Failed to clear Redis analytics cache:', err.message);
+  }
+};
+
 
 export const leadController = {
   /**
@@ -15,12 +47,11 @@ export const leadController = {
       // Base query
       const whereClause = {};
 
-      // Role check: Employee role (role_id === '3' or role === 'employee')
-      // can only view leads assigned to them.
+      // Role check: Employee (3) or Marketer (4/digital_marketer) see only assigned leads
       const userRole = String(req.user?.role || req.user?.role_id || '').toLowerCase().trim();
       const userId = req.user?.id || req.user?._id;
 
-      if (userRole === '3' || userRole === 'employee') {
+      if (userRole === '3' || userRole === 'employee' || userRole === 'digital_marketer' || userRole === '4') {
         whereClause.assignedTo = userId;
       } else if (assignedTo) {
         // Admin or HR filtering by staff member
@@ -84,14 +115,28 @@ export const leadController = {
       // Sort direction: default newest first
       const sortDirection = sortOrder === 'asc' ? 1 : -1;
 
+      // Pagination
+      const page = Math.max(1, parseInt(req.query.page) || 1);
+      const limit = Math.max(1, Math.min(100, parseInt(req.query.limit) || 50));
+      const skip = (page - 1) * limit;
+
+      const totalLeads = await Lead.countDocuments(whereClause);
       const leads = await Lead.find(whereClause)
         .populate('assignedTo', 'name email role profile_image')
         .populate('createdBy', 'name email')
-        .sort({ createdAt: sortDirection });
+        .sort({ createdAt: sortDirection })
+        .skip(skip)
+        .limit(limit);
 
       return res.status(200).json({
         success: true,
-        data: leads
+        data: leads,
+        pagination: {
+          total: totalLeads,
+          page,
+          limit,
+          pages: Math.ceil(totalLeads / limit)
+        }
       });
     } catch (error) {
       console.error('Error fetching leads:', error);
@@ -102,6 +147,7 @@ export const leadController = {
       });
     }
   },
+
 
   /**
    * GET /api/v1/leads/:id
@@ -223,6 +269,12 @@ export const leadController = {
       });
       await initialFollowup.save();
 
+      // Invalidate analytics cache
+      await clearAnalyticsCache();
+
+      // Audit Log
+      logAudit('CREATE_LEAD', req, newLead._id, { leadName, status: newLead.status });
+
       return res.status(201).json({
         success: true,
         message: 'Lead created successfully',
@@ -265,7 +317,7 @@ export const leadController = {
       // Permissions check
       const userRole = String(req.user?.role || req.user?.role_id || '').toLowerCase().trim();
       const userId = req.user?.id || req.user?._id;
-      if ((userRole === '3' || userRole === 'employee') && String(lead.assignedTo) !== String(userId)) {
+      if ((userRole === '3' || userRole === 'employee' || userRole === 'digital_marketer' || userRole === '4') && String(lead.assignedTo) !== String(userId)) {
         return res.status(403).json({
           success: false,
           message: 'Access Denied. You cannot update this lead.'
@@ -348,6 +400,12 @@ export const leadController = {
         });
         await changeFollowup.save();
       }
+
+      // Invalidate analytics cache
+      await clearAnalyticsCache();
+
+      // Audit Log
+      logAudit('UPDATE_LEAD', req, lead._id, { changes: changes.length > 0 ? changes : 'basic details updated' });
 
       return res.status(200).json({
         success: true,
@@ -437,6 +495,12 @@ export const leadController = {
 
       await lead.save();
 
+      // Invalidate analytics cache
+      await clearAnalyticsCache();
+
+      // Audit Log
+      logAudit('ADD_FOLLOWUP', req, lead._id, { statusChangedTo, nextFollowUpDate });
+
       return res.status(201).json({
         success: true,
         message: 'Follow-up logged successfully',
@@ -511,6 +575,12 @@ export const leadController = {
       });
       await followup.save();
 
+      // Invalidate analytics cache
+      await clearAnalyticsCache();
+
+      // Audit Log
+      logAudit('STATUS_UPDATE', req, lead._id, { previousStatus, newStatus: status });
+
       return res.status(200).json({
         success: true,
         message: 'Lead status updated successfully',
@@ -565,6 +635,12 @@ export const leadController = {
       await Lead.findByIdAndDelete(id);
       // Delete associated followups too to keep database clean
       await LeadFollowup.deleteMany({ leadId: id });
+
+      // Invalidate analytics cache
+      await clearAnalyticsCache();
+
+      // Audit Log
+      logAudit('DELETE_LEAD', req, id, { leadName: lead.leadName });
 
       return res.status(200).json({
         success: true,
@@ -626,6 +702,12 @@ export const leadController = {
       }));
       await LeadFollowup.insertMany(followupRecords);
 
+      // Invalidate analytics cache
+      await clearAnalyticsCache();
+
+      // Audit Log
+      logAudit('IMPORT_LEADS', req, 'bulk', { count: insertedLeads.length });
+
       return res.status(201).json({
         success: true,
         message: `Successfully imported ${insertedLeads.length} leads.`,
@@ -639,5 +721,108 @@ export const leadController = {
         error: error.message
       });
     }
+  },
+
+  /**
+   * PUT /api/v1/leads/update
+   * Bulk update status of multiple leads
+   */
+  bulkUpdateStatus: async (req, res) => {
+    try {
+      const { leadIds, status, lostReason } = req.body;
+
+      if (!leadIds || !Array.isArray(leadIds) || leadIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'An array of Lead IDs is required.'
+        });
+      }
+
+      if (!status) {
+        return res.status(400).json({
+          success: false,
+          message: 'Status is required for bulk update.'
+        });
+      }
+
+      const userId = req.user?.id || req.user?._id;
+      const userRole = String(req.user?.role || req.user?.role_id || '').toLowerCase().trim();
+      const isPrivileged = ['1', '2', 'hr', 'admin'].includes(userRole);
+
+      // Perform updates
+      const updatedLeads = [];
+      const failedLeads = [];
+
+      for (const id of leadIds) {
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+          failedLeads.push({ id, reason: 'Invalid Lead ID' });
+          continue;
+        }
+
+        const lead = await Lead.findById(id);
+        if (!lead) {
+          failedLeads.push({ id, reason: 'Lead not found' });
+          continue;
+        }
+
+        // Row-level security check
+        if ((userRole === '3' || userRole === 'employee' || userRole === 'digital_marketer' || userRole === '4') && String(lead.assignedTo) !== String(userId)) {
+          failedLeads.push({ id, reason: 'Access Denied (unassigned)' });
+          continue;
+        }
+
+        const previousStatus = lead.status;
+        lead.status = status;
+
+        if (status === 'Converted' && previousStatus !== 'Converted') {
+          lead.convertedAt = new Date();
+          lead.lostReason = undefined;
+        } else if (status === 'Lost') {
+          lead.lostReason = lostReason || 'Not specified';
+          lead.convertedAt = undefined;
+        } else {
+          lead.convertedAt = undefined;
+          lead.lostReason = undefined;
+        }
+
+        await lead.save();
+        updatedLeads.push(id);
+
+        // Record followup log
+        const followup = new LeadFollowup({
+          leadId: lead._id,
+          remarks: `Bulk status update from "${previousStatus}" to "${status}".`,
+          statusChangedTo: status,
+          nextFollowUpDate: lead.nextFollowUpDate,
+          createdBy: userId
+        });
+        await followup.save();
+
+        // Audit Log for item
+        logAudit('STATUS_UPDATE_BULK_ITEM', req, lead._id, { previousStatus, newStatus: status });
+      }
+
+      // Log bulk action overall
+      logAudit('BULK_STATUS_UPDATE', req, 'bulk', { totalRequested: leadIds.length, updatedCount: updatedLeads.length });
+
+      // Invalidate analytics cache
+      await clearAnalyticsCache();
+
+      return res.status(200).json({
+        success: true,
+        message: `Bulk status update complete. Updated ${updatedLeads.length} leads.`,
+        updatedCount: updatedLeads.length,
+        updatedLeads,
+        failedLeads
+      });
+    } catch (error) {
+      console.error('Error in bulk status update:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to execute bulk status update',
+        error: error.message
+      });
+    }
   }
 };
+

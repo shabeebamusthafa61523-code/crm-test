@@ -116,6 +116,26 @@ export const getDepartmentAnalytics = (id) => {
   return departmentApi.get(`/${id}/analytics`);
 };
 
+/**
+ * Add a user to a department
+ * @param {String} departmentId - Department ID
+ * @param {String} userId - User ID
+ * @param {String} roleInDepartment - User role (e.g. member)
+ * @param {Boolean} isPrimary - Whether department is primary for user
+ */
+export const addUserToDepartment = (departmentId, userId, roleInDepartment = 'member', isPrimary = true) => {
+  return departmentApi.post(`/${departmentId}/users`, { userId, roleInDepartment, isPrimary });
+};
+
+/**
+ * Remove a user from a department
+ * @param {String} departmentId - Department ID
+ * @param {String} userId - User ID
+ */
+export const removeUserFromDepartment = (departmentId, userId) => {
+  return departmentApi.delete(`/${departmentId}/users/${userId}`);
+};
+
 export default {
   getAllDepartments,
   getDepartmentById,
@@ -126,4 +146,7 @@ export default {
   getDepartmentUsers,
   updateDepartmentStatus,
   getDepartmentAnalytics,
+  addUserToDepartment,
+  removeUserFromDepartment,
 };
+

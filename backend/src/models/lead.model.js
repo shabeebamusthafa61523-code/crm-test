@@ -86,5 +86,13 @@ const leadSchema = new mongoose.Schema({
 // Index searching support
 leadSchema.index({ leadName: 'text', email: 'text', phone: 'text', companyName: 'text' });
 
+// Performance optimization indexes
+leadSchema.index({ status: 1 });
+leadSchema.index({ createdAt: -1 });
+leadSchema.index({ assignedTo: 1 });
+leadSchema.index({ priority: 1 });
+leadSchema.index({ city: 1 });
+
 const Lead = mongoose.model('Lead', leadSchema);
 export default Lead;
+

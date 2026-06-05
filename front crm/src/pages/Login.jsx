@@ -11,6 +11,18 @@ const Login = () => {
   const [loginData, setLoginData] = useState({ email: '', password: '' });
   const { showToast } = useToast();
 
+  React.useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get('timeout') === 'true') {
+      // Small timeout to allow toast provider to mount fully
+      setTimeout(() => {
+        showToast('Session expired due to inactivity. Please sign in again.', 'warning');
+      }, 300);
+      navigate('/login', { replace: true });
+    }
+  }, [showToast, navigate]);
+
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setLoginData(prev => ({ ...prev, [name]: value.trim() }));
