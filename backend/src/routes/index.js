@@ -4,6 +4,8 @@ import userRoutes from './user.routes.js';
 import taskRoutes from './task.routes.js';
 import attendanceRoutes from './attendance.routes.js';
 import departmentRoutes from '../modules/departments/department.routes.js';
+import designationRoutes from './designation.routes.js';
+import leadRoutes from './lead.routes.js';
 
 const router = Router();
 
@@ -13,5 +15,7 @@ router.use('/users', userRoutes);
 router.use('/tasks', taskRoutes);
 router.use('/attendance', attendanceRoutes);
 router.use('/departments', departmentRoutes);
+router.use('/designations', designationRoutes);
+router.use('/leads', leadRoutes);
 
 export default router;

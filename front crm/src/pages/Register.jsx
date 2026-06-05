@@ -6,12 +6,14 @@ import {
   Eye, EyeOff, MapPin, Calendar, Image as ImageIcon, Loader2, AlertTriangle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '../components/ToastProvider';
 
 const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const [roles] = useState([
     { id: "1", name: "hr" },
@@ -46,7 +48,7 @@ const Register = () => {
     address: '',
     identityType: 'aadhaar', 
     identityNumber: '',
-    profile_image: ''
+    // profile_image: ''
   });
 
   const handleChange = (e) => {
@@ -82,7 +84,7 @@ const Register = () => {
       const result = await response.json();
 
       if (response.ok) {
-        alert("Staff Registration Successful!");
+        showToast("Staff Registration Successful!", 'success');
         navigate('/login');
       } else {
         // Handle FastAPI validation array or string detail
@@ -102,7 +104,7 @@ const Register = () => {
   return (
     <div className="min-h-screen py-12 flex items-center justify-center p-6 bg-slate-50 dark:bg-[#0b0c10] transition-colors duration-500">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-5xl">
-        <div className="bg-white dark:bg-slate-900 p-10 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-xl transition-colors">
+        <div className="bg-white dark:bg-slate-900 p-10 rounded-2xl border border-[#374b69] dark:border-[#2c3e5a] shadow-xl transition-colors">
           <header className="mb-8">
             <h2 className="text-4xl font-black text-slate-900 dark:text-slate-100 tracking-tighter italic uppercase">Create Staff Profile</h2>
             <p className="text-slate-500 dark:text-slate-400 text-sm mt-2 font-medium uppercase tracking-widest">Enterprise Human Resources Portal</p>
@@ -131,12 +133,15 @@ const Register = () => {
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase ml-2 tracking-widest">Password</label>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-450" size={16}/>
-                <input 
+<Lock
+  className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none transition-all duration-200 text-slate-500
+  ${formData.password ? "opacity-0" : "opacity-100"}`}
+  size={16}
+/>                <input 
                   required 
                   name="password" 
                   type={showPassword ? "text" : "password"} 
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-2xl py-3 pl-12 pr-12 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all" 
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-2xl py-3 pl-12 pr-12 text-slate-900 dark:text-slate-100 outline-none focus:border-[#374b69] focus:ring-2 focus:ring-[#374b69] transition-all peer" 
                   onChange={handleChange} 
                   value={formData.password}
                 />
@@ -149,18 +154,40 @@ const Register = () => {
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase ml-2 tracking-widest">Role</label>
               <div className="relative">
-                <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-450" size={16}/>
-                <select name="role_id" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-2xl py-3 pl-12 text-slate-900 dark:text-slate-100 outline-none appearance-none focus:border-indigo-500 transition-all cursor-pointer" onChange={handleChange} value={formData.role_id}>
-                  {roles.map(r => <option key={r.id} value={r.id} className="dark:bg-slate-900">{r.name.toUpperCase()}</option>)}
-                </select>
-              </div>
+
+  {/* ICON */}
+  <ShieldCheck
+    className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none transition-all duration-200 text-slate-500
+    ${formData.role_id ? "opacity-0" : "opacity-100"}`}
+    size={16}
+  />
+
+  {/* SELECT */}
+  <select
+    name="role_id"
+    value={formData.role_id}
+    onChange={handleChange}
+    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-2xl py-3 pl-12 text-slate-900 dark:text-slate-100 outline-none appearance-none focus:border-[#374b69] focus:ring-2 focus:ring-[#374b69] transition-all cursor-pointer"
+  >
+    {roles.map(r => (
+      <option key={r.id} value={r.id}>
+        {r.name.toUpperCase()}
+      </option>
+    ))}
+  </select>
+
+</div>
             </div>
 
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase ml-2 tracking-widest">Designation</label>
               <div className="relative">
-                <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-450" size={16}/>
-                <select name="designation_id" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-2xl py-3 pl-12 text-slate-900 dark:text-slate-100 outline-none appearance-none focus:border-indigo-500 transition-all cursor-pointer" onChange={handleChange} value={formData.designation_id}>
+<Briefcase
+  className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none transition-all duration-200 text-slate-500
+  ${formData.designation_id ? "opacity-0" : "opacity-100"}`}
+  size={16}
+/>                <select name="designation_id" 
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-2xl py-3 pl-12 text-slate-900 dark:text-slate-100 outline-none appearance-none focus:border-[#374b69] focus:ring-2 focus:ring-[#374b69] transition-all cursor-pointer peer" onChange={handleChange} value={formData.designation_id}>
                   {designations.map(d => <option key={d.id} value={d.id} className="dark:bg-slate-900">{d.name}</option>)}
                 </select>
               </div>
@@ -173,8 +200,11 @@ const Register = () => {
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase ml-2 tracking-widest">Identity Type</label>
               <div className="relative">
-                <ShieldPlus className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-450" size={16}/>
-                <select name="identityType" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-2xl py-3 pl-12 text-slate-900 dark:text-slate-100 outline-none appearance-none focus:border-indigo-500 transition-all cursor-pointer" onChange={handleChange} value={formData.identityType}>
+<ShieldPlus
+  className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none transition-all duration-200 text-slate-500
+  ${formData.identityType ? "opacity-0" : "opacity-100"}`}
+  size={16}
+/>                <select name="identityType" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-2xl py-3 pl-12 text-slate-900 dark:text-slate-100 outline-none appearance-none focus:border-[#374b69] focus:ring-2 focus:ring-[#374b69] transition-all cursor-pointer peer" onChange={handleChange} value={formData.identityType}>
                   <option value="aadhaar" className="dark:bg-slate-900">Aadhar</option>
                   <option value="pancard" className="dark:bg-slate-900">PAN</option>
                   <option value="passport" className="dark:bg-slate-900">Passport</option>
@@ -186,20 +216,23 @@ const Register = () => {
 
             <FormInput label="Joining Date" name="joining_date" type="date" icon={<Calendar size={16}/>} onChange={handleChange} value={formData.joining_date} />
 
-            <FormInput label="Profile Image URL" name="profile_image" icon={<ImageIcon size={16}/>} onChange={handleChange} value={formData.profile_image} placeholder="https://..." required={false} />
+            {/* <FormInput label="Profile Image URL" name="profile_image" icon={<ImageIcon size={16}/>} onChange={handleChange} value={formData.profile_image} placeholder="https://..." required={false} /> */}
 
             <div className="lg:col-span-3 space-y-1">
               <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase ml-2 tracking-widest">Residential Address</label>
               <div className="relative">
-                <MapPin className="absolute left-4 top-6 text-slate-500" size={16}/>
-                <textarea required name="address" rows="2" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-2xl py-3 pl-12 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all" onChange={handleChange} value={formData.address}></textarea>
+<MapPin
+  className={`absolute left-4 top-6 text-slate-500 pointer-events-none transition-all duration-200
+  ${formData.address ? "opacity-0" : "opacity-100"}`}
+  size={16}
+/>                <textarea required name="address" rows="2" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-2xl py-3 pl-12 text-slate-900 dark:text-slate-100 outline-none focus:border-[#374b69] focus:ring-2 focus:ring-[#374b69] transition-all peer" onChange={handleChange} value={formData.address}></textarea>
               </div>
             </div>
 
             <button 
               type="submit" 
               disabled={isSubmitting}
-              className="lg:col-span-3 w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-indigo-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4"
+              className="lg:col-span-3 w-full py-4 bg-[#374b69] hover:bg-[#2c3e5a] text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-[#374b69]/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4"
             >
               {isSubmitting ? (
                 <>
@@ -231,20 +264,42 @@ const Register = () => {
 };
 
 // Fix 3: Updated Helper with proper value binding
-const FormInput = ({ label, name, type = "text", icon, onChange, value, placeholder = "", required = true }) => (
+const FormInput = ({
+  label,
+  name,
+  type = "text",
+  icon,
+  onChange,
+  value,
+  placeholder = "",
+  required = true
+}) => (
   <div className="space-y-1">
-    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase ml-2 tracking-widest">{label}</label>
+    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase ml-2 tracking-widest">
+      {label}
+    </label>
+
     <div className="relative">
-      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-450">{icon}</div>
-      <input 
-        required={required} 
-        name={name} 
-        type={type} 
-        value={value} // CRITICAL: This ensures state is synced
+
+      {/* ICON */}
+      <div
+        className={`absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none transition-all duration-200
+        ${value ? "opacity-0" : "opacity-100"}`}
+      >
+        {icon}
+      </div>
+
+      {/* INPUT */}
+      <input
+        required={required}
+        name={name}
+        type={type}
+        value={value}
         placeholder={placeholder}
-        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-2xl py-3 pl-12 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all" 
-        onChange={onChange} 
+        onChange={onChange}
+        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-2xl py-3 pl-12 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all"
       />
+
     </div>
   </div>
 );

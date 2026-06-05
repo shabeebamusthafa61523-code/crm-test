@@ -11,6 +11,11 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   const navigate = useNavigate();
+  const getISTDate = () => {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata'
+    }).format(new Date());
+  };
 const getAuthHeaders = useCallback(() => {
   const rawToken = localStorage.getItem("token");
   const cleanToken = rawToken ? rawToken.replace(/"/g, "") : "";
@@ -57,14 +62,14 @@ const diffMs = currentTime.getTime() - start.getTime();
   try {
     setLoading(true);
 
-    const todayStr = new Date().toISOString().split("T")[0];
+    const todayStr = getISTDate();
 
     const [taskRes, attRes] = await Promise.all([
-      fetch("http://localhost:5000/api/tasks/all", {
+      fetch("/api/tasks/all", {
         headers: getAuthHeaders()
       }),
 
-      fetch(`http://localhost:5000/api/attendance/${todayStr}`, {
+      fetch(`/api/attendance/${todayStr}`, {
         headers: getAuthHeaders()
       })
     ]);
@@ -91,20 +96,8 @@ const diffMs = currentTime.getTime() - start.getTime();
     // ATTENDANCE
     if (attRes.ok) {
       const attData = await attRes.json();
-
-      const records = Array.isArray(attData)
-        ? attData
-        : Object.values(attData || {});
-
-      const myId = String(userId).trim();
-
-      const myRecord = records.find(
-        r => String(r?.user_id).trim() === myId
-      );
-
-      console.log("ATTENDANCE RECORD =", myRecord);
-
-      setAttendanceRecord(myRecord || null);
+      console.log("DASHBOARD ATTENDANCE RECORD =", attData);
+      setAttendanceRecord(attData || null);
     }
 
   } catch (err) {
@@ -181,7 +174,7 @@ const diffMs = currentTime.getTime() - start.getTime();
           onClick={() => navigate("/attendance")}
           className="cursor-pointer bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-[2rem] flex items-center gap-4 hover:border-indigo-500/30 dark:hover:border-indigo-500/50 transition-all shadow-sm"
         >
-          <div className="p-3 bg-indigo-500/10 dark:bg-indigo-500/20 rounded-xl text-indigo-500 dark:text-indigo-400"><Timer size={20} /></div>
+          <div className="p-3 bg-white-500/10 dark:bg-indigo-100/20 rounded-xl text-indigo-500 dark:text-indigo-400"><Timer size={20} /></div>
           <div>
             <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase">Shift Start</p>
             <p className="text-lg font-black text-slate-900 dark:text-slate-100 uppercase">

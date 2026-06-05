@@ -24,10 +24,10 @@ const getTaskImageUrl = (path) => {
 };
 
 const COLUMN_META = {
-  pending: { label: 'Pending', icon: Layout, color: 'bg-slate-500', glow: 'shadow-slate-500/20' },
-  current: { label: 'Current', icon: Clock, color: 'bg-amber-500', glow: 'shadow-amber-500/20' },
+  pending: { label: 'Pending', icon: Layout, color: 'bg-[#e26a6a]', glow: 'shadow-[#e26a6a]/20' },
+  current: { label: 'Current', icon: Clock, color: 'bg-[#e5a23a]', glow: 'shadow-[#e5a23a]/20' },
   preview: { label: 'Preview', icon: Eye, color: 'bg-indigo-500', glow: 'shadow-indigo-500/20' },
-  done: { label: 'Completed', icon: CheckCircle2, color: 'bg-emerald-500', glow: 'shadow-emerald-500/20' }
+  done: { label: 'Completed', icon: CheckCircle2, color: 'bg-[#9dd384]', glow: 'shadow-[#9dd384]/20' }
 };
 
 const DESIGNATIONS = [
@@ -106,8 +106,13 @@ const cleanedTasks = sortedTasks.map(task=>({
 
 }));
 setTasks(cleanedTasks);
-setUsers(Array.isArray(uData) ? uData : []);
-  } catch (e) {
+setUsers(
+  Array.isArray(uData)
+    ? uData.filter(
+        u => ["1","2","3"].includes(String(u.role_id))
+      )
+    : []
+);  } catch (e) {
 
     console.error("Fetch Error:", e);
 
@@ -144,7 +149,7 @@ setUsers(Array.isArray(uData) ? uData : []);
 console.log("TOKEN:", localStorage.getItem("token"));
 console.log("HEADERS:", getAuthHeaders());
   return (
-    <div className="text-slate-700 dark:text-slate-200 font-sans selection:bg-indigo-500/30 selection:text-white">
+    <div className="text-slate-700 dark:text-slate-200 font-sans selection:bg-white-500/30 selection:text-white">
       <style>{`.no-scrollbar::-webkit-scrollbar { display: none; }`}</style>
       
       <div className="max-w-[1700px] mx-auto px-6 py-10">
@@ -370,34 +375,29 @@ console.log("ERRORS FULL:", JSON.stringify(data.errors, null, 2));
             <div className="space-y-2">
               <label className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.2em] ml-2">assign to</label>
               <div className="grid grid-cols-2 gap-3">
-                <select 
-  required 
-  className="bg-white border border-slate-200 p-5 rounded-2xl text-slate-900 text-[11px] font-bold outline-none" 
-  value={form.assigned_to} 
-  onChange={e => setForm({...form, assigned_to: e.target.value})}
+                <select
+  required
+  className="appearance-none bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 p-5 rounded-2xl text-gray-900 dark:text-gray-200 text-[11px] font-bold outline-none"
+  value={form.assigned_to}
+  onChange={e => setForm({ ...form, assigned_to: e.target.value })}
 >
-  <option value="">staff</option>
-
+  <option value="" staff>Assign to</option>
   {users.map(u => (
-  <option
-    key={u.id || u._id}
-    value={u.id || u._id}
-    className="bg-[#0c0d12]"
-  >
-    {u.name}
-  </option>
-
+    <option key={u.id || u._id} value={u.id || u._id} className="bg-white text-gray-900">
+    
+      {u.name}
+    </option>
   ))}
 </select>
                 <select 
                   required 
-                  className="bg-white border border-slate-200 p-5 rounded-2xl text-slate-900 text-[11px] font-bold outline-none" 
+                  className="bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 p-5 rounded-2xl text-gray-900 dark:text-gray-200 text-[11px] font-bold outline-none" 
                   value={form.designation_id} 
                   onChange={e => setForm({...form, designation_id: e.target.value})}
                 >
                   <option value="">designation</option>
                   {DESIGNATIONS.map(d => (
-                    <option key={d.id} value={d.id} className="bg-[#0c0d12]">
+                    <option key={d.id} value={d.id} className="bg-white text-gray-900">
                       {d.name}
                     </option>
                   ))}
@@ -652,8 +652,7 @@ console.log("USER_ID =", task?.user_id);
   </div>
 
  
-          <div className="grid grid-cols-2 gap-8 py-8 border-y border-slate-100">
-           <div>
+<div className="grid grid-cols-2 gap-8 py-8 border-y border-slate-100 bg-slate-50 rounded-2xl px-6">           <div>
   <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] block mb-2">Staff</span>
   <div className="flex items-center gap-3">
     <div className="h-10 w-10 bg-indigo-500/10 rounded-full flex items-center justify-center border border-indigo-500/20 text-indigo-400">
@@ -664,14 +663,13 @@ console.log("USER_ID =", task?.user_id);
 
 {
 typeof task.assigned_to === "object"
-? task.assigned_to?.name
-: users?.find(
-    u=>String(u.id || u._id)===String(task.assigned_to)
-  )?.name
-  ||
-  task.assigned_to
-  ||
-  "No Agent"
+  ? task.assigned_to?.name
+  : users?.find(
+      u =>
+        String(u.id || u._id) === String(task.assigned_to) &&
+        ["1","2","3"].includes(String(u.role_id))
+    )?.name
+    || "No Staff"
 }
 
 </span>

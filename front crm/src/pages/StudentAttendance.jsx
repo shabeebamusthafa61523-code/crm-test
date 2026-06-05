@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable'; 
+import { useToast } from '../components/ToastProvider';
 
 const API_BASE = "http://localhost:5000/api";
 const STUDENT_ROLE_ID = "10"; 
@@ -33,6 +34,7 @@ const FormInput = ({ label, name, type = "text", icon, onChange, value, placehol
 
 const StudentAttendance = () => {
   const [students, setStudents] = useState([]);
+  const { showToast } = useToast();
   const [totalStudents, setTotalStudents] = useState(0);
   const [attendanceData, setAttendanceData] = useState({}); 
   const [searchQuery, setSearchQuery] = useState("");
@@ -196,10 +198,10 @@ const StudentAttendance = () => {
           address: '', identityType: 'aadhaar', identityNumber: '', profile_image: ''
         });
       } else {
-        alert("Enrollment failed. Please check registration fields.");
+        showToast("Enrollment failed. Please check registration fields.", 'error');
       }
     } catch (error) {
-      alert("Database connection timeout.");
+      showToast("Database connection timeout.", 'error');
     } finally {
       setIsAddingStudent(false);
     }
@@ -232,11 +234,11 @@ const StudentAttendance = () => {
         await syncAttendance(); 
       } else {
         setAttendanceData(previousState); 
-        alert("Action failed to write on cluster logs.");
+        showToast("Action failed to write on cluster logs.", 'error');
       }
     } catch (e) { 
       setAttendanceData(previousState);
-      alert("Network disruption detected."); 
+      showToast("Network disruption detected.", 'error'); 
     }
   };
 
@@ -256,7 +258,7 @@ const StudentAttendance = () => {
   const unresolvedAbsentCount = Object.values(attendanceData).filter(v => v.status === 'ABSENT').length;
 
   return (
-    <div className="bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-600 dark:text-slate-200 font-sans selection:bg-indigo-500/30 transition-colors duration-300">
+    <div className="bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-600 dark:text-slate-200 font-sans selection:bg-white-500/30 transition-colors duration-300">
       <div className="relative max-w-[1600px] mx-auto px-4 md:px-8 py-12">
         
         <nav className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 mb-10">
@@ -298,7 +300,7 @@ const StudentAttendance = () => {
                 <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] mb-2">{stat.label}</p>
                 <p className="text-4xl font-bold text-slate-900 dark:text-slate-100 tracking-tighter">{stat.value}</p>
               </div>
-              <div className="p-5 rounded-2xl bg-indigo-500/5 dark:bg-indigo-950/20 text-indigo-500 border border-indigo-500/10 dark:border-indigo-500/20 group-hover:scale-110 transition-transform">
+              <div className="p-5 rounded-2xl bg-white-500/5 dark:bg-indigo-950/20 text-indigo-500 border border-indigo-500/10 dark:border-indigo-500/20 group-hover:scale-110 transition-transform">
                 <stat.icon size={28} />
               </div>
             </div>
