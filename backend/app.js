@@ -22,28 +22,26 @@ const __dirname = path.dirname(__filename);
 
 // 1. CORS Configuration
 const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
-  : ['https://crm-test.vercel.app',
-     'http://localhost:5173'
-    ];
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  : ['https://crm-test.vercel.app', 'http://localhost:5173'];
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow server-to-server requests or tools like Postman/Insomnia (where origin is undefined)
     if (!origin) return callback(null, true);
-    
+
     if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.error(`🚨 CORS Blocked: Origin "${origin}" is not allowed.`);
-      callback(new Error('Not allowed by CORS'));
+      return callback(null, true);
     }
+
+    console.log(`❌ Blocked CORS request from: ${origin}`);
+    return callback(null, false); // IMPORTANT FIX
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
 
+app.options('*', cors());
 // 2. Parsers Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
