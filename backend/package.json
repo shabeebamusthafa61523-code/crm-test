@@ -13,7 +13,6 @@
     "test": "jest"
   },
   "dependencies": {
-    "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.3",
     "bullmq": "^5.8.1",
     "cloudinary": "^1.41.3",
