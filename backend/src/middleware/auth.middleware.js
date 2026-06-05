@@ -2,6 +2,7 @@
 
 import jwt from 'jsonwebtoken';
 import { sendError } from '../utils/response.helper.js';
+import redis from '../config/redis.js';
 
 /**
  * Standard Token Verification Middleware for Departments Module
@@ -82,10 +83,35 @@ export const requireRole = (allowedRoles = []) => {
 };
 
 /**
- * Original default protectRoute middleware to prevent breaking existing routes
- * Restored EXACTLY to original implementation.
+ * Strict Role Access control middleware for leads and analytics
+ * Checks req.user.role (e.g. 'digital_marketer') and req.user.role_id (e.g. '4')
  */
-const protectRoute = (req, res, next) => {
+export const restrictToRoles = (allowedRoles = []) => {
+  return (req, res, next) => {
+    const userRole = String(req.user?.role || '').toLowerCase().trim();
+    const userRoleId = String(req.user?.role_id || '').trim();
+
+    const isAllowed = allowedRoles.some(role => {
+      const target = role.toLowerCase().trim();
+      return userRole === target || userRoleId === target;
+    });
+
+    if (!isAllowed) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Exclusive to digital marketing teams.'
+      });
+    }
+
+    next();
+  };
+};
+
+/**
+ * Original default protectRoute middleware to prevent breaking existing routes
+ * Restored EXACTLY to original implementation, with added Redis sliding session check.
+ */
+const protectRoute = async (req, res, next) => {
   try {
     console.log("HEADERS:", req.headers);
 
@@ -116,6 +142,23 @@ const protectRoute = (req, res, next) => {
 
     req.user = decoded;
 
+    // --- Inactivity sliding session check (30 mins = 1800 seconds) ---
+    try {
+      const sessionKey = `session:active:${decoded.id}`;
+      const sessionExists = await redis.exists(sessionKey);
+      
+      if (!sessionExists) {
+        return res.status(401).json({
+          detail: "Session expired due to inactivity. Please log in again."
+        });
+      }
+      
+      // Slide expiration forward
+      await redis.expire(sessionKey, 1800);
+    } catch (redisError) {
+      console.warn("Redis session verification failed, skipping check:", redisError.message);
+    }
+
     next();
 
   } catch (error) {
@@ -127,4 +170,4 @@ const protectRoute = (req, res, next) => {
   }
 };
 
-export default protectRoute;
+export default protectRoute;

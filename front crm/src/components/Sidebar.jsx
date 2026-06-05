@@ -16,27 +16,31 @@ import {
 
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+  {
+    icon: LayoutDashboard,
+    label: 'Lead Dashboard',
+    path: '/lead-dashboard',
+    allowedRoles: ['digital_marketer', '4', 'admin', '2']
+  },
+
   { 
     icon: Users, 
     label: 'Users', 
     path: '/users', 
-
     allowedRoles: ['1', '2', 'hr', 'admin'] 
   },
   { 
     icon: TrendingUp, 
-    label: 'Leads', 
+    label: 'Leads Directory', 
     path: '/leads',
-    allowedDepartments: ['6a211b6621f80bb8da167efb'] 
-
+    allowedRoles: ['digital_marketer', '4', 'admin', 'hr', '1', '2', 'employee']
   },
   { icon: UserCheck, label: 'Attendance', path: '/attendance' },
   { icon: ListCheck, label: 'To-Do', path: '/todo' },
   { icon: Users, label: 'Student Attendance', path: '/student-attendance' },
-
-  { icon: Building, label: 'Departments', path: '/departments' ,allowedRoles: ['1', '2', 'hr', 'admin']},
-
+  { icon: Building, label: 'Departments', path: '/departments', allowedRoles: ['1', '2', 'hr', 'admin'] },
 ];
+
 
 // Simple Portal implementation to render the badge safely outside of parent overflow cropping
 const PortalTooltip = ({ children }) => {

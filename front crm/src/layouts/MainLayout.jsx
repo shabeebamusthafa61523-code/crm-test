@@ -7,7 +7,46 @@ import { useLocation } from 'react-router-dom';
 const MainLayout = ({ children }) => {
   const location = useLocation();
 
+  // --- Inactivity sliding session timeout tracker (30 minutes) ---
+  React.useEffect(() => {
+    let timeoutId;
+    const timeoutDuration = 30 * 60 * 1000; // 30 minutes in milliseconds
+
+    const handleLogout = () => {
+      console.log("🕒 Session expired due to inactivity. Logging out.");
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('user_id');
+      window.location.href = '/login?timeout=true';
+    };
+
+    const resetTimer = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(handleLogout, timeoutDuration);
+    };
+
+    // User interaction events to reset timer
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    
+    // Register listeners
+    events.forEach(event => {
+      window.addEventListener(event, resetTimer);
+    });
+
+    // Initialize timer
+    resetTimer();
+
+    // Cleanup
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      events.forEach(event => {
+        window.removeEventListener(event, resetTimer);
+      });
+    };
+  }, []);
+
   // Polished, micro-movements for ambient monochrome contrast fields
+
   const blobVariants = {
     animateDark: {
       scale: [1, 1.15, 1.05, 1],

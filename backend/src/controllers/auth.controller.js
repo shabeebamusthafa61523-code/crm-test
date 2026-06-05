@@ -1,6 +1,7 @@
 import User from '../models/user.model.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import redis from '../config/redis.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key';
 
@@ -21,6 +22,15 @@ export const signup = async (req, res) => {
     // 2. Hash security password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    const roleMap = {
+      '1': 'hr',
+      '2': 'admin',
+      '3': 'employee',
+      '4': 'digital_marketer',
+      '10': 'student'
+    };
+    const userRole = roleMap[role_id] || String(role_id || 'employee');
+
     // 3. Create document instance
     const newUser = new User({
       name,
@@ -29,7 +39,7 @@ export const signup = async (req, res) => {
       passwordHash: hashedPassword,
       phone,
       role_id: String(role_id),
-      role: String(role_id || 'employee'),
+      role: userRole,
       status: status || 'active',
       isActive: (status || 'active') === 'active',
       designation_id: String(designation_id),
@@ -74,13 +84,22 @@ export const login = async (req, res) => {
     const token = jwt.sign(
       {
         id: user._id,
-        role_id: user.role_id
+        role_id: user.role_id,
+        role: user.role
       },
       process.env.JWT_SECRET,
       {
         expiresIn: '7d'
       }
     );
+
+    // Set Redis active session key for inactivity timeout (30 mins = 1800 seconds)
+    try {
+      await redis.set(`session:active:${user._id}`, 'active', 'EX', 1800);
+      console.log(`🔑 Redis active session key set for User: ${user._id}`);
+    } catch (redisError) {
+      console.warn("Failed to set Redis session key during login:", redisError.message);
+    }
 
     // 4. Return matching data structure required by your React components
     res.json({
@@ -113,4 +132,4 @@ export const login = async (req, res) => {
   } catch (error) {
     res.status(500).json({ detail: error.message });
   }
-};
+};

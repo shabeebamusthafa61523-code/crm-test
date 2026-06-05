@@ -4,6 +4,7 @@ import MainLayout from './layouts/MainLayout';
 
 // Page Imports
 import Dashboard from './pages/Dashboard';
+import LeadDashboard from './pages/LeadDashboard';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Attendance from './pages/Attendance';
@@ -25,6 +26,7 @@ function App() {
 
         {/* Protected Routes - Wrapped in MainLayout */}
         <Route path="/" element={<MainLayout><Dashboard /></MainLayout>} />
+        <Route path="/lead-dashboard" element={<MainLayout><LeadDashboard /></MainLayout>} />
         <Route path="/attendance" element={<MainLayout><Attendance /></MainLayout>} />
         <Route path="/todo" element={<MainLayout><Todo /></MainLayout>} />
         <Route path="/users" element={<MainLayout><Users /></MainLayout>} />
@@ -39,5 +41,6 @@ function App() {
     </Router>
   );
 }
+
 
 export default App;

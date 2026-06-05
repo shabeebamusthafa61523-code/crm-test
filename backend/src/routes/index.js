@@ -6,6 +6,7 @@ import attendanceRoutes from './attendance.routes.js';
 import departmentRoutes from '../modules/departments/department.routes.js';
 import designationRoutes from './designation.routes.js';
 import leadRoutes from './lead.routes.js';
+import analyticsRoutes from './analytics.routes.js';
 
 const router = Router();
 
@@ -17,5 +18,7 @@ router.use('/attendance', attendanceRoutes);
 router.use('/departments', departmentRoutes);
 router.use('/designations', designationRoutes);
 router.use('/leads', leadRoutes);
+router.use('/analytics', analyticsRoutes);
 
 export default router;
+
