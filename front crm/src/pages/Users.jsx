@@ -74,7 +74,7 @@ const Users = () => {
 
   const fetchDesignations = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/designations`, {
+      const res = await fetch(`${API_BASE}/v1/designations`, {
         headers: getAuthHeaders()
       });
       const data = await res.json();
@@ -87,7 +87,7 @@ const Users = () => {
 
   const fetchDepartments = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/departments`, {
+      const res = await fetch(`${API_BASE}/v1/departments`, {
         headers: getAuthHeaders()
       });
       const data = await res.json();
@@ -167,7 +167,7 @@ const Users = () => {
       return;
     }
     try {
-      const res = await fetch(`${API_BASE}/users/delete/${id}`, {
+      const res = await fetch(`${API_BASE}/v1/users/delete/${id}`, {
         method: 'DELETE',
         headers: getAuthHeaders()
       });
@@ -477,7 +477,7 @@ const DesignationSelect = ({ value, onChange, designations, getAuthHeaders, onDe
 
     setIsAdding(true);
     try {
-      const res = await fetch(`${API_BASE}/designations`, {
+      const res = await fetch(`${API_BASE}/v1/designations`, {
         method: 'POST',
         headers: {
           ...getAuthHeaders(),
@@ -584,7 +584,7 @@ const CreateModal = ({ onClose, refresh, getAuthHeaders, designations, onDesigna
     fd.append('password', dynamicPassword);
 
     // 5. Send payload to your backend API
-    const res = await fetch(`${API_BASE}/users/create`, {
+    const res = await fetch(`${API_BASE}/v1/users/create`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: fd
@@ -800,7 +800,7 @@ const EditModal = ({ user, onClose, refresh, getAuthHeaders, designations, onDes
         }
       });
 
-      const res = await fetch(`${API_BASE}/users/update/${user.id || user._id}`, {
+      const res = await fetch(`${API_BASE}/v1/users/update/${user.id || user._id}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: fd

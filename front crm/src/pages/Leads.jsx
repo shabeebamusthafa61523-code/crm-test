@@ -93,7 +93,7 @@ const [activePriority, setActivePriority] = useState('all');
       if (dateFrom) queryParams.append('dateFrom', dateFrom);
       if (dateTo) queryParams.append('dateTo', dateTo);
 
-      const res = await fetch(`${API_BASE}/leads?${queryParams.toString()}`, {
+      const res = await fetch(`${API_BASE}/v1/leads?${queryParams.toString()}`, {
         headers: getAuthHeaders()
       });
       const resJson = await res.json();
@@ -117,7 +117,7 @@ const [activePriority, setActivePriority] = useState('all');
   // Fetch staff list for assignments
   const fetchStaff = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/users/list`, {
+      const res = await fetch(`${API_BASE}/v1/users/list`, {
         headers: getAuthHeaders()
       });
       const data = await res.json();
@@ -145,7 +145,7 @@ const [activePriority, setActivePriority] = useState('all');
   const fetchLeadDetails = async (leadId) => {
     try {
       setDetailsLoading(true);
-      const res = await fetch(`${API_BASE}/leads/${leadId}`, {
+      const res = await fetch(`${API_BASE}/v1/leads/${leadId}`, {
         headers: getAuthHeaders()
       });
       const resJson = await res.json();
@@ -325,7 +325,7 @@ const [activePriority, setActivePriority] = useState('all');
       return;
     }
     try {
-      const res = await fetch(`${API_BASE}/leads/delete/${id}`, {
+      const res = await fetch(`${API_BASE}/v1/leads/delete/${id}`, {
         method: 'POST', // Supports POST/DELETE
         headers: getAuthHeaders()
       });
@@ -1054,7 +1054,7 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
 
     try {
       setSubmitting(true);
-      const res = await fetch(`${API_BASE}/leads/create`, {
+      const res = await fetch(`${API_BASE}/v1/leads/create`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(formData)
@@ -1329,7 +1329,7 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
 
     try {
       setSubmitting(true);
-      const res = await fetch(`${API_BASE}/leads/update`, {
+      const res = await fetch(`${API_BASE}/v1/leads/update`, {
         method: 'POST', // Supports POST update with body id
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -1739,7 +1739,7 @@ const FollowUpModal = ({ isOpen, onClose, onFollowedUp, lead, getAuthHeaders, sh
 
     try {
       setSubmitting(true);
-      const res = await fetch(`${API_BASE}/leads/followup`, {
+      const res = await fetch(`${API_BASE}/v1/leads/followup`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -2030,7 +2030,7 @@ const ImportModal = ({ isOpen, onClose, onImported, getAuthHeaders, showToast })
         return;
       }
 
-      const res = await fetch(`${API_BASE}/leads/import`, {
+      const res = await fetch(`${API_BASE}/v1/leads/import`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({ leads: payloadLeads })
