@@ -214,6 +214,62 @@ export const departmentService = {
   },
 
   /**
+   * Add a user to a department
+   * @param {Object} data - { departmentId, userId, roleInDepartment, isPrimary }
+   */
+  async addUserToDepartment(data) {
+    const { departmentId, userId, roleInDepartment, isPrimary } = data;
+
+    // Check if department exists
+    const dept = await Department.findById(departmentId);
+    if (!dept) {
+      const error = new Error('Department not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    // Check if user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      const error = new Error('User not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    // Check if user is already in department
+    const existing = await UserDepartment.findOne({ userId, departmentId });
+    if (existing) {
+      const error = new Error('User is already assigned to this department');
+      error.statusCode = 409;
+      throw error;
+    }
+
+    const newUserDept = await UserDepartment.create({
+      userId,
+      departmentId,
+      roleInDepartment: roleInDepartment || 'member',
+      isPrimary: isPrimary !== undefined ? isPrimary : true
+    });
+
+    return newUserDept;
+  },
+
+  /**
+   * Remove a user from a department
+   * @param {String} departmentId - Department ID
+   * @param {String} userId - User ID
+   */
+  async removeUserFromDepartment(departmentId, userId) {
+    const deleted = await UserDepartment.findOneAndDelete({ userId, departmentId });
+    if (!deleted) {
+      const error = new Error('User is not assigned to this department');
+      error.statusCode = 404;
+      throw error;
+    }
+    return deleted;
+  },
+
+  /**
    * Toggle only status field
    * @param {String} id - Department ID
    * @param {Boolean} status - New status
