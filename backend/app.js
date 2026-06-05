@@ -25,7 +25,7 @@ const __dirname = path.dirname(__filename);
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['http://localhost:5173'];
+  : ['https://crm-test.vercel.app','http://localhost:5173'];
 
 app.use(cors({
   origin: allowedOrigins,
@@ -41,15 +41,16 @@ app.use('/api/auth', authRoutes);
 app.use('/api/attendance', attendanceRoutes); // Handles check-in, check-out, and dates cleanly
 
 // 2. Legacy/Catch-all router fallback
-app.use('/api', apiRoutes); 
+// 1. Specific Dedicated Routers
+app.use('/api/auth', authRoutes);
+app.use('/api/attendance', attendanceRoutes); 
 app.use('/api/user', userRoutes); 
-
-
-// CRM routes: auth, users, tasks, attendance, approvals
-app.use('/api/v1', crmRoutes);
 app.use('/api/tasks', taskRoutes);
-app.use('/api', studentRoutes);
-// Database connection
+
+// 2. Versioned & Catch-all Fallbacks (Broadest paths go at the bottom)
+app.use('/api/v1', crmRoutes);
+app.use('/api', studentRoutes); // If student routes are specific (like /api/students), this is fine here
+app.use('/api', apiRoutes);      // Legacy/Catch-all goes LAST
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/student_attendance_db';
 
