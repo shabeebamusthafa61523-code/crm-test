@@ -685,6 +685,7 @@ typeof task.assigned_to === "object"
                 </span>
               </div>
             </div>
+             
           </div>
 
           {/* ACTION BUTTONS ROW */}
