@@ -1,5 +1,5 @@
 import StudentAttendance
-from '../models/StudentAttendance.js';
+from '../models/Studentattendance.js';
 
 export const markAttendance = async(req,res)=>{
   try{
