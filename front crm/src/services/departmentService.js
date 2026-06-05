@@ -7,7 +7,7 @@ const API_URL = import.meta.env?.VITE_API_URL || import.meta.env?.REACT_APP_API_
 
 // Create dedicated Axios instance for departments
 const departmentApi = axios.create({
-  baseURL: `${API_URL}/departments`,
+  baseURL: `${API_URL}/v1/departments`,
 });
 
 // Request interceptor to automatically attach authorization header

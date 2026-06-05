@@ -11,7 +11,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable'; 
 import { useToast } from '../components/ToastProvider';
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = import.meta.env.VITE_API_URL;
 const STUDENT_ROLE_ID = "10"; 
 
 const FormInput = ({ label, name, type = "text", icon, onChange, value, placeholder = "" }) => (
