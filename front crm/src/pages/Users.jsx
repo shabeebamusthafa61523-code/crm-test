@@ -6,8 +6,7 @@ import {
   Loader2, User, ChevronRight, CheckCircle2, AlertTriangle, Shield
 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
-const API_BASE = "http://localhost:5000/api/v1";
-
+const API_BASE = import.meta.env.VITE_API_URL;
 const ROLES = [
   { id: "1", name: "hr" },
   { id: "2", name: "admin" },

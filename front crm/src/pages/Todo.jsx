@@ -7,8 +7,7 @@ import {
   Loader2, Camera, ShieldCheck, User, Target, Info
 } from 'lucide-react';
 
-const API_BASE = "http://localhost:5000/api";
-// --- UTILS & CONSTANTS ---
+const API_BASE = import.meta.env.VITE_API_URL;// --- UTILS & CONSTANTS ---
 const getTaskImageUrl = (path) => {
 
   if (!path) return null;

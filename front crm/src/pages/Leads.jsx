@@ -11,8 +11,7 @@ import { useToast } from '../components/ToastProvider';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable'; // 👈 Import it as a direct function
-const API_BASE = "http://localhost:5000/api/v1";
-
+const API_BASE = import.meta.env.VITE_API_URL;
 const STATUS_META = {
   'New': { label: 'New', color: 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:bg-blue-500/20 dark:text-blue-400', dot: 'bg-blue-500' },
   'Contacted': { label: 'Contacted', color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:bg-indigo-500/20 dark:text-indigo-400', dot: 'bg-indigo-500' },
