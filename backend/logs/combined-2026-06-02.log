@@ -1,3 +1,4 @@
+
 {"level":"info","message":"🔑 JWT RS256 Key Pair loaded successfully from local files.","service":"kod-brand-crm","timestamp":"2026-06-02T04:25:50.877Z"}
 {"level":"info","message":"🔑 JWT RS256 Key Pair loaded successfully from local files.","service":"kod-brand-crm","timestamp":"2026-06-02T04:46:22.095Z"}
 {"level":"info","message":"🔑 JWT RS256 Key Pair loaded successfully from local files.","service":"kod-brand-crm","timestamp":"2026-06-02T04:46:32.953Z"}
@@ -27,3 +28,10 @@
 {"errorStack":"ReferenceError: prisma is not defined\n    at recordAudit (file:///C:/Users/Lenovo%20L460/Desktop/crm%20test/backend/src/middleware/audit.middleware.js:27:25)\n    at createUser (file:///C:/Users/Lenovo%20L460/Desktop/crm%20test/backend/src/controllers/user.controller.js:339:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)","level":"error","message":"❌ Failed to record Audit transaction: prisma is not defined","service":"kod-brand-crm","timestamp":"2026-06-02T08:04:25.077Z"}
 {"errorStack":"ReferenceError: prisma is not defined\n    at recordAudit (file:///C:/Users/Lenovo%20L460/Desktop/crm%20test/backend/src/middleware/audit.middleware.js:27:25)\n    at createUser (file:///C:/Users/Lenovo%20L460/Desktop/crm%20test/backend/src/controllers/user.controller.js:339:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)","level":"error","message":"❌ Failed to record Audit transaction: prisma is not defined","service":"kod-brand-crm","timestamp":"2026-06-02T08:27:10.354Z"}
 {"errorStack":"ReferenceError: prisma is not defined\n    at recordAudit (file:///C:/Users/Lenovo%20L460/Desktop/crm%20test/backend/src/middleware/audit.middleware.js:27:25)\n    at createUser (file:///C:/Users/Lenovo%20L460/Desktop/crm%20test/backend/src/controllers/user.controller.js:339:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)","level":"error","message":"❌ Failed to record Audit transaction: prisma is not defined","service":"kod-brand-crm","timestamp":"2026-06-02T08:50:21.224Z"}
+
+{"level":"info","message":"🔑 JWT RS256 Key Pair loaded successfully from local files.","service":"kod-brand-crm","timestamp":"2026-06-02T07:23:54.239Z"}
+{"level":"info","message":"🔑 JWT RS256 Key Pair loaded successfully from local files.","service":"kod-brand-crm","timestamp":"2026-06-02T07:53:48.057Z"}
+{"level":"info","message":"🔑 JWT RS256 Key Pair loaded successfully from local files.","service":"kod-brand-crm","timestamp":"2026-06-02T09:10:04.959Z"}
+{"level":"info","message":"🔑 JWT RS256 Key Pair loaded successfully from local files.","service":"kod-brand-crm","timestamp":"2026-06-02T09:15:07.318Z"}
+{"level":"info","message":"🔑 JWT RS256 Key Pair loaded successfully from local files.","service":"kod-brand-crm","timestamp":"2026-06-02T09:15:26.212Z"}
+
