@@ -45,7 +45,7 @@ const Users = () => {
     try {
       setLoading(true);
       // Appended roles parameter to query only explicit structural system role IDs
-      const res = await fetch(`${API_BASE}/users?roles=1,2,3`, {
+      const res = await fetch(`${API_BASE}/v1/users?roles=1,2,3`, {
         headers: getAuthHeaders()
       });
       const data = await res.json();

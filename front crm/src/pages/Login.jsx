@@ -20,12 +20,17 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
 
+    // 👇 Pull the URL from your environment variables, fallback to empty string if deployed together
+    const apiBaseUrl = import.meta.env.VITE_API_URL || '';
+
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch(`${apiBaseUrl}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(loginData),
       });
+
+      // ... rest of your code stays exactly the same
 
       const result = await response.json();
 

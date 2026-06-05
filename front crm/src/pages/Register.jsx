@@ -64,7 +64,9 @@ const Register = () => {
     setIsSubmitting(true);
     setError(null);
 
-    // Fix 2: Force-format payload to prevent nulls/empty strings in DB
+    // Pull Render backend target URL from env variables
+    const apiBaseUrl = import.meta.env.VITE_API_URL || '';
+
     const finalPayload = {
       ...formData,
       salary: parseFloat(formData.salary) || 0,
@@ -72,10 +74,8 @@ const Register = () => {
       designation_id: String(formData.designation_id || "4")
     };
 
-    console.log("Submitting Payload:", finalPayload);
-
     try {
-      const response = await fetch('/api/auth/signup', {
+      const response = await fetch(`${apiBaseUrl}/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(finalPayload),
@@ -87,7 +87,6 @@ const Register = () => {
         showToast("Staff Registration Successful!", 'success');
         navigate('/login');
       } else {
-        // Handle FastAPI validation array or string detail
         const errorMsg = Array.isArray(result.detail) 
           ? result.detail[0]?.msg 
           : result.detail || "Registration Failed";
