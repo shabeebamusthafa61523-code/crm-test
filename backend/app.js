@@ -23,18 +23,35 @@ const __dirname = path.dirname(__filename);
 // 1. CORS Configuration
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
-  : ['https://crm-test.vercel.app', 'http://localhost:5173'];
+  : ['https://crm-test.vercel.app', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'];
 
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
 
+    // Support wildcard '*' in ALLOWED_ORIGINS env
+    if (allowedOrigins.includes('*')) {
+      return callback(null, true);
+    }
+
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
 
+    // Dynamically allow common hosting platforms (Vercel, Netlify, Render) and localhost variants
+    const isAllowedDynamic =
+      /\.vercel\.app$/.test(origin) ||
+      /\.netlify\.app$/.test(origin) ||
+      /\.onrender\.com$/.test(origin) ||
+      /^http:\/\/localhost(:\d+)?$/.test(origin) ||
+      /^http:\/\/127\.0\.0\.1(:\d+)?$/.test(origin);
+
+    if (isAllowedDynamic) {
+      return callback(null, true);
+    }
+
     console.log(`❌ Blocked CORS request from: ${origin}`);
-    return callback(null, false); // IMPORTANT FIX
+    return callback(new Error('Not allowed by CORS'));
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -42,6 +59,7 @@ app.use(cors({
 }));
 
 app.options('*', cors());
+
 // 2. Parsers Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
