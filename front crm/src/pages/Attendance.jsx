@@ -15,13 +15,21 @@ import {
   Activity,
   AlertTriangle,
   CheckCircle2,
-  Fingerprint
+  Fingerprint,
+  ChevronLeft,
+  ChevronRight,
+  Calendar
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 // ===============================
 // HELPERS
 // ===============================
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
 
 const getISTDate = () => {
   return new Intl.DateTimeFormat('en-CA', {
@@ -133,6 +141,42 @@ const Attendance = () => {
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
 
+  // Calendar and Selected Date States
+  const [selectedDate, setSelectedDate] = useState(getISTDate());
+  const [selectedLog, setSelectedLog] = useState(null);
+  const [selectedLoading, setSelectedLoading] = useState(false);
+  const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
+  const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
+  const [showCalendar, setShowCalendar] = useState(false);
+
+  const prevMonth = () => {
+    setCalendarMonth((prev) => {
+      if (prev === 0) {
+        setCalendarYear((y) => y - 1);
+        return 11;
+      }
+      return prev - 1;
+    });
+  };
+
+  const nextMonth = () => {
+    setCalendarMonth((prev) => {
+      if (prev === 11) {
+        setCalendarYear((y) => y + 1);
+        return 0;
+      }
+      return prev + 1;
+    });
+  };
+
+  const daysInMonth = useMemo(() => {
+    return new Date(calendarYear, calendarMonth + 1, 0).getDate();
+  }, [calendarYear, calendarMonth]);
+
+  const firstDayIndex = useMemo(() => {
+    return new Date(calendarYear, calendarMonth, 1).getDay();
+  }, [calendarYear, calendarMonth]);
+
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
@@ -184,6 +228,34 @@ const Attendance = () => {
     fetchStatus();
   }, [fetchStatus]);
 
+  const fetchSelectedDateStatus = useCallback(async (dateStr) => {
+    try {
+      setSelectedLoading(true);
+      const response = await fetch(
+        `${API_BASE}/attendance/${dateStr}`,
+        {
+          headers: getHeaders()
+        }
+      );
+
+      if (!response.ok) {
+        setSelectedLog(null);
+        return;
+      }
+
+      const data = await response.json();
+      setSelectedLog(data || null);
+    } catch {
+      setSelectedLog(null);
+    } finally {
+      setSelectedLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSelectedDateStatus(selectedDate);
+  }, [selectedDate, fetchSelectedDateStatus]);
+
   const handleAction = async (type) => {
     setError(null);
     setSuccessMsg(null);
@@ -207,6 +279,9 @@ const Attendance = () => {
       setSuccessMsg(`${type.replace('-', ' ')} successful!`);
 
       await fetchStatus();
+      if (selectedDate === getISTDate()) {
+        fetchSelectedDateStatus(selectedDate);
+      }
 
       setTimeout(() => {
         setSuccessMsg(null);
@@ -426,31 +501,133 @@ const Attendance = () => {
 
           {/* RIGHT */}
           <aside className="lg:col-span-4">
-            <div className="bg-white dark:bg-slate-900 border rounded-[2.5rem] p-8 sticky top-12 shadow-sm">
+            
+            {/* SELECTED DATE DETAILS & DROPDOWN CALENDAR */}
+            <div className="bg-white dark:bg-slate-900 border rounded-[2.5rem] p-8 shadow-sm relative">
+              
+              <div className="flex justify-between items-center mb-6 relative">
+                <h2 className="text-[10px] font-black tracking-[0.3em] text-indigo-500 uppercase">
+                  Registry Logs
+                </h2>
+                
+                {/* Date Dropdown Button */}
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowCalendar(!showCalendar)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 border dark:border-slate-800 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer transition-all"
+                  >
+                    <Calendar size={13} className="text-indigo-500" />
+                    <span>{selectedDate === getISTDate() ? 'Today' : selectedDate}</span>
+                  </button>
 
-              <h2 className="text-[10px] font-black tracking-[0.3em] text-indigo-500 mb-8 flex justify-between items-center uppercase">
-                Registry Logs
-                <ShieldCheck size={16} />
-              </h2>
+                  {/* Dropdown Calendar Popup */}
+                  {showCalendar && (
+                    <>
+                      {/* Invisible backdrop to close dropdown on click outside */}
+                      <div 
+                        className="fixed inset-0 z-40 cursor-default" 
+                        onClick={() => setShowCalendar(false)}
+                      />
+                      
+                      <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xl z-50">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-[10px] font-black uppercase text-indigo-500">Select Date</span>
+                          <div className="flex gap-1">
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); prevMonth(); }} 
+                              className="p-1 hover:bg-slate-105 dark:hover:bg-slate-900 rounded text-slate-600 dark:text-slate-400 cursor-pointer"
+                            >
+                              <ChevronLeft size={14} />
+                            </button>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); nextMonth(); }} 
+                              className="p-1 hover:bg-slate-105 dark:hover:bg-slate-900 rounded text-slate-600 dark:text-slate-400 cursor-pointer"
+                            >
+                              <ChevronRight size={14} />
+                            </button>
+                          </div>
+                        </div>
 
-              <div className="space-y-6">
+                        <div className="text-center font-bold text-slate-800 dark:text-slate-200 mb-2 text-xs">
+                          {MONTH_NAMES[calendarMonth]} {calendarYear}
+                        </div>
 
-                <DetailRow
-                  label="System Check-In"
-                  value={formatToISTFull(todayLog?.check_in_time)}
-                />
+                        <div className="grid grid-cols-7 gap-0.5 text-center text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 mb-1">
+                          {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
+                            <div key={d} className="py-0.5">{d}</div>
+                          ))}
+                        </div>
 
-                <DetailRow
-                  label="System Check-Out"
-                  value={formatToISTFull(todayLog?.check_out_time)}
-                />
+                        <div className="grid grid-cols-7 gap-0.5">
+                          {Array.from({ length: firstDayIndex }).map((_, i) => (
+                            <div key={`empty-${i}`} />
+                          ))}
+                          
+                          {Array.from({ length: daysInMonth }).map((_, i) => {
+                            const day = i + 1;
+                            const dateStr = `${calendarYear}-${(calendarMonth + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                            const isSelected = dateStr === selectedDate;
+                            const isToday = dateStr === getISTDate();
 
-                <DetailRow
-                  label="Accrued Overtime"
-                  value={`${todayLog?.overtime || '0.00'} HRS`}
-                />
-
+                            return (
+                              <button
+                                key={day}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedDate(dateStr);
+                                  setShowCalendar(false);
+                                }}
+                                className={`text-[11px] p-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                                  isSelected 
+                                    ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20' 
+                                    : isToday
+                                      ? 'border border-indigo-500/50 text-indigo-500 hover:bg-indigo-500/10'
+                                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900'
+                                }`}
+                              >
+                                {day}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
+
+              {selectedLoading ? (
+                <div className="py-8 flex justify-center items-center">
+                  <Loader2 className="text-indigo-500 animate-spin" size={24} />
+                </div>
+              ) : selectedLog ? (
+                <div className="space-y-6">
+                  <DetailRow
+                    label="System Check-In"
+                    value={formatToISTFull(selectedLog.check_in_time)}
+                  />
+
+                  <DetailRow
+                    label="System Check-Out"
+                    value={formatToISTFull(selectedLog.check_out_time)}
+                  />
+
+                  <DetailRow
+                    label="Accrued Hours"
+                    value={`${calculateWorkingHours(selectedLog.check_in_time, selectedLog.check_out_time)} HRS`}
+                  />
+
+                  <DetailRow
+                    label="Entry Status"
+                    value={selectedLog.is_late ? "LATE_ENTRY" : "OPTIMAL"}
+                  />
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Clock size={24} className="mx-auto text-slate-350 dark:text-slate-650 mb-2" />
+                  <p className="text-xs text-slate-550 dark:text-slate-450 font-medium">No record for this date.</p>
+                </div>
+              )}
 
             </div>
           </aside>
