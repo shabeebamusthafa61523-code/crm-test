@@ -107,6 +107,36 @@ export const restrictToRoles = (allowedRoles = []) => {
   };
 };
 
+export const restrictToDepartment = (departmentId) => {
+  return async (req, res, next) => {
+    let userDeptId = req.user?.departmentId;
+
+    // Fallback: If departmentId is missing from token (e.g. active session), query from DB
+    if (!userDeptId && req.user?.id) {
+      try {
+        const User = (await import('../models/user.model.js')).default;
+        const userObj = await User.findById(req.user.id);
+        if (userObj) {
+          userDeptId = userObj.departmentId;
+        }
+      } catch (err) {
+        console.error("Failed to fetch user department fallback:", err);
+      }
+    }
+
+    userDeptId = String(userDeptId || '').trim();
+
+    if (userDeptId !== String(departmentId).trim()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Exclusive to the marketing department.'
+      });
+    }
+
+    next();
+  };
+};
+
 /**
  * Original default protectRoute middleware to prevent breaking existing routes
  * Restored EXACTLY to original implementation, with added Redis sliding session check.

@@ -72,6 +72,19 @@ const [activePriority, setActivePriority] = useState('all');
     return ['1', '2', 'hr', 'admin'].includes(roleId);
   }, [currentUser]);
 
+  const isMarketingDept = useMemo(() => {
+    if (!currentUser) return false;
+    let departmentId = '';
+    if (currentUser.departmentId) {
+      if (typeof currentUser.departmentId === 'object' && currentUser.departmentId._id) {
+        departmentId = String(currentUser.departmentId._id).trim();
+      } else {
+        departmentId = String(currentUser.departmentId).trim();
+      }
+    }
+    return departmentId === '6a211b6621f80bb8da167efb';
+  }, [currentUser]);
+
   const getAuthHeaders = useCallback(() => {
     const rawToken = localStorage.getItem('token');
     const cleanToken = rawToken ? rawToken.replace(/"/g, '') : '';
@@ -134,12 +147,16 @@ const [activePriority, setActivePriority] = useState('all');
   }, [getAuthHeaders]);
 
   useEffect(() => {
-    fetchLeads();
-  }, [fetchLeads]);
+    if (isMarketingDept) {
+      fetchLeads();
+    }
+  }, [fetchLeads, isMarketingDept]);
 
   useEffect(() => {
-    fetchStaff();
-  }, [fetchStaff]);
+    if (isMarketingDept) {
+      fetchStaff();
+    }
+  }, [fetchStaff, isMarketingDept]);
 
   // Fetch lead timeline/details
   const fetchLeadDetails = async (leadId) => {
@@ -413,6 +430,43 @@ const [activePriority, setActivePriority] = useState('all');
   doc.save(`CRM_Leads_${activeTab}_Report.pdf`);
   showToast('PDF report generated successfully!', 'success');
 };
+
+  if (!currentUser) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center py-20 bg-slate-50/50 dark:bg-slate-950/20">
+        <Loader2 className="animate-spin text-indigo-500 mb-4" size={40} />
+        <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest font-black">Loading Leads Directory...</p>
+      </div>
+    );
+  }
+
+  if (!isMarketingDept) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center p-6 text-slate-800 dark:text-slate-100">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="max-w-md w-full bg-white dark:bg-slate-900 border border-red-500/30 rounded-3xl p-8 shadow-2xl text-center backdrop-blur-md"
+        >
+          <div className="mx-auto w-16 h-16 bg-red-500/10 dark:bg-red-500/20 text-red-500 rounded-2xl flex items-center justify-center mb-6">
+            <Shield size={36} />
+          </div>
+          <h1 className="text-2xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white mb-2">
+            Access <span className="text-red-500">Restricted</span>
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
+            This Leads Directory is reserved exclusively for the <strong>Marketing Department</strong>. Your current department does not have authorization to view this data.
+          </p>
+          <button 
+            onClick={() => window.location.href = '/'}
+            className="w-full py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-black text-xs uppercase tracking-widest rounded-xl transition-all active:scale-95"
+          >
+            Return to Command Center
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen p-4 lg:p-8 bg-slate-50/50 dark:bg-slate-950/20 text-slate-800 dark:text-slate-100">

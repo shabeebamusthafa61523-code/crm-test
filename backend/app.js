@@ -23,7 +23,7 @@ const __dirname = path.dirname(__filename);
 // 1. CORS Configuration
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
-  : ['https://crm-test.vercel.app', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'];
+  : ['https://crm-test.vercel.app', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'];
 
 app.use(cors({
   origin: function (origin, callback) {

@@ -61,12 +61,18 @@ const LeadDashboard = () => {
     }
   }, []);
 
-  // Check if user has permission (Must be digital_marketer, admin, or role ID 4 or 2)
-  const isMarketer = useMemo(() => {
+  // Check if user has permission (Must belong to Marketing Department)
+  const isMarketingDept = useMemo(() => {
     if (!user) return false;
-    const role = String(user.role || '').toLowerCase().trim();
-    const roleId = String(user.role_id || '').trim();
-    return role === 'digital_marketer' || roleId === '4' || role === 'admin' || roleId === '2';
+    let departmentId = '';
+    if (user.departmentId) {
+      if (typeof user.departmentId === 'object' && user.departmentId._id) {
+        departmentId = String(user.departmentId._id).trim();
+      } else {
+        departmentId = String(user.departmentId).trim();
+      }
+    }
+    return departmentId === '6a211b6621f80bb8da167efb';
   }, [user]);
 
   const getAuthHeaders = useCallback(() => {
@@ -147,20 +153,20 @@ const LeadDashboard = () => {
   }, [leadsPage, leadsSearch, leadsStatusFilter, getAuthHeaders]);
 
   useEffect(() => {
-    if (user && isMarketer) {
+    if (user && isMarketingDept) {
       fetchAnalytics();
     }
-  }, [user, isMarketer, fetchAnalytics]);
+  }, [user, isMarketingDept, fetchAnalytics]);
 
   // Load leads list when leads tab becomes active or its query params change
   useEffect(() => {
-    if (user && isMarketer && activeTab === 'leads') {
+    if (user && isMarketingDept && activeTab === 'leads') {
       fetchLeadsList();
     }
-  }, [user, isMarketer, activeTab, fetchLeadsList]);
+  }, [user, isMarketingDept, activeTab, fetchLeadsList]);
 
   // Access Denied View
-  if (user && !isMarketer) {
+  if (user && !isMarketingDept) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center p-6 text-slate-800 dark:text-slate-100">
         <motion.div 
@@ -175,7 +181,7 @@ const LeadDashboard = () => {
             Access <span className="text-red-500">Restricted</span>
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
-            This Lead Management Analytics Dashboard is reserved exclusively for the <strong>Digital Marketing Team</strong>. Your current role does not have authorization to view this data.
+            This Lead Management Analytics Dashboard is reserved exclusively for the <strong>Marketing Department</strong>. Your current department does not have authorization to view this data.
           </p>
           <button 
             onClick={() => window.location.href = '/'}
