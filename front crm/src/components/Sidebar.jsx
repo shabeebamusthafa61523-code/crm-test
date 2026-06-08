@@ -15,12 +15,13 @@ import {
 } from 'lucide-react';
 
 const menuItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/'  ,   allowedRoles: ['1', '2', 'hr', 'admin'] 
+ },
   {
     icon: LayoutDashboard,
     label: 'Lead Dashboard',
     path: '/lead-dashboard',
-    allowedRoles: ['digital_marketer', '4', 'admin', '2']
+    allowedDepartments: ['6a211b6621f80bb8da167efb'] 
   },
 
   { 
@@ -33,7 +34,7 @@ const menuItems = [
     icon: TrendingUp, 
     label: 'Leads Directory', 
     path: '/leads',
-    allowedRoles: ['digital_marketer', '4', 'admin', 'hr', '1', '2', 'employee']
+    allowedDepartments: ['6a211b6621f80bb8da167efb'] 
   },
   { icon: UserCheck, label: 'Attendance', path: '/attendance' },
   { icon: ListCheck, label: 'To-Do', path: '/todo' },
