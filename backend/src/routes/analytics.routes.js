@@ -1,14 +1,14 @@
 import { Router } from 'express';
 import { analyticsController } from '../controllers/analytics.controller.js';
-import protectRoute, { restrictToRoles } from '../middleware/auth.middleware.js';
+import protectRoute, { restrictToRoles, restrictToDepartment } from '../middleware/auth.middleware.js';
 import { apiRateLimiter } from '../middleware/rateLimiter.middleware.js';
 
 const router = Router();
 
-// Secure all analytics routes with authentication, rate-limiting, and marketer/admin role restrictions
+// Secure all analytics routes with authentication, rate-limiting, and department restrictions
 router.use(protectRoute);
 router.use(apiRateLimiter);
-router.use(restrictToRoles(['digital_marketer', '4', 'admin', '2']));
+router.use(restrictToDepartment('6a211b6621f80bb8da167efb'));
 
 
 // Summary Overview Metrics

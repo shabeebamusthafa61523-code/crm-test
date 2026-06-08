@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { leadController } from '../controllers/lead.controller.js';
-import checkAuth, { restrictToRoles } from '../middleware/auth.middleware.js';
+import checkAuth, { restrictToDepartment } from '../middleware/auth.middleware.js';
 import { validateBody, validateQuery, validateParams } from '../validators/task.validator.js';
 import {
   createLeadSchema,
@@ -13,9 +13,9 @@ import { apiRateLimiter, leadMutationRateLimiter } from '../middleware/rateLimit
 
 const router = Router();
 
-// Apply authentication and digital_marketer/admin role checks globally to all lead endpoints
+// Apply authentication and department restriction checks globally to all lead endpoints
 router.use(checkAuth);
-router.use(restrictToRoles(['digital_marketer', '4', 'admin', '2']));
+router.use(restrictToDepartment('6a211b6621f80bb8da167efb'));
 
 
 // GET ALL LEADS (supporting filters, search, and pagination)
