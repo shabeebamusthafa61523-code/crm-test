@@ -1,7 +1,6 @@
 // middleware/auth.middleware.js
 
 import jwt from 'jsonwebtoken';
-import mongoose from 'mongoose';
 import { sendError } from '../utils/response.helper.js';
 import redis from '../config/redis.js';
 
@@ -115,7 +114,7 @@ export const restrictToDepartment = (departmentId) => {
     // Fallback: If departmentId is missing from token (e.g. active session), query from DB
     if (!userDeptId && req.user?.id) {
       try {
-        const User = mongoose.model('User');
+        const User = (await import('../models/user.model.js')).default;
         const userObj = await User.findById(req.user.id);
         if (userObj) {
           userDeptId = userObj.departmentId;

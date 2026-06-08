@@ -65,12 +65,8 @@ export const leadController = {
       const userRole = String(req.user?.role || req.user?.role_id || '').toLowerCase().trim();
       const userId = req.user?.id || req.user?._id;
 
-      // Access control mapping
-      const isRestrictedWorker = ['3', '4', 'employee', 'digital_marketer'].includes(userRole);
-
-      if (isRestrictedWorker) {
-        whereClause.assignedTo = userId;
-      } else if (assignedTo && mongoose.Types.ObjectId.isValid(assignedTo)) {
+      // Filter by Assigned User
+      if (assignedTo && mongoose.Types.ObjectId.isValid(assignedTo)) {
         whereClause.assignedTo = assignedTo;
       }
 
@@ -184,17 +180,7 @@ export const leadController = {
         return res.status(404).json({ success: false, message: 'Lead not found' });
       }
 
-      // Rule-level protection verification
-      const userRole = String(req.user?.role || req.user?.role_id || '').toLowerCase().trim();
-      const userId = String(req.user?.id || req.user?._id);
-      const isRestrictedWorker = ['3', 'employee'].includes(userRole);
 
-      if (isRestrictedWorker && String(lead.assignedTo?._id || lead.assignedTo) !== userId) {
-        return res.status(403).json({
-          success: false,
-          message: 'Access Denied. You are not assigned to this lead.'
-        });
-      }
 
       const followups = await LeadFollowup.find({ leadId: id })
         .populate('createdBy', 'name email role')
@@ -306,12 +292,7 @@ export const leadController = {
           throw new Error('NOT_FOUND_ERROR: Lead not found');
         }
 
-        const userRole = String(req.user?.role || req.user?.role_id || '').toLowerCase().trim();
-        const isRestrictedWorker = ['3', '4', 'employee', 'digital_marketer'].includes(userRole);
 
-        if (isRestrictedWorker && String(lead.assignedTo) !== String(userId)) {
-          throw new Error('FORBIDDEN_ERROR: Access Denied. You cannot update this lead.');
-        }
 
         const {
           leadName, companyName, email, phone, city, source,
