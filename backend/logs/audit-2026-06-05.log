@@ -1,3 +1,5 @@
+
+{"level":"info","message":"🔑 JWT RS256 Key Pair loaded successfully from local files.","service":"kod-brand-crm","timestamp":"2026-06-05T06:51:39.129Z"}
 {"level":"info","message":"🔑 JWT RS256 Key Pair loaded successfully from local files.","service":"kod-brand-crm","timestamp":"2026-06-05T04:18:56.440Z"}
 {"level":"info","message":"🔑 JWT RS256 Key Pair loaded successfully from local files.","service":"kod-brand-crm","timestamp":"2026-06-05T04:23:21.137Z"}
 {"level":"info","message":"🔑 JWT RS256 Key Pair loaded successfully from local files.","service":"kod-brand-crm","timestamp":"2026-06-05T04:34:46.787Z"}
@@ -21,7 +23,9 @@
 {"level":"info","message":"🔑 JWT RS256 Key Pair loaded successfully from local files.","service":"kod-brand-crm","timestamp":"2026-06-05T09:17:30.417Z"}
 {"level":"info","message":"🔑 JWT RS256 Key Pair loaded successfully from local files.","service":"kod-brand-crm","timestamp":"2026-06-05T09:18:56.554Z"}
 {"level":"info","message":"🔑 JWT RS256 Key Pair loaded successfully from local files.","service":"kod-brand-crm","timestamp":"2026-06-05T09:18:56.888Z"}
+
 {"level":"info","message":"🔑 JWT RS256 Key Pair loaded successfully from local files.","service":"kod-brand-crm","timestamp":"2026-06-05T09:20:13.009Z"}
 {"level":"info","message":"🔑 JWT RS256 Key Pair loaded successfully from local files.","service":"kod-brand-crm","timestamp":"2026-06-05T09:26:06.955Z"}
 {"level":"info","message":"🔑 JWT RS256 Key Pair loaded successfully from local files.","service":"kod-brand-crm","timestamp":"2026-06-05T10:57:54.657Z"}
 {"level":"info","message":"🔑 JWT RS256 Key Pair loaded successfully from local files.","service":"kod-brand-crm","timestamp":"2026-06-05T11:00:08.556Z"}
+

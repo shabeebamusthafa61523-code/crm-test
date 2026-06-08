@@ -16,6 +16,13 @@ import {
 
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+  {
+    icon: LayoutDashboard,
+    label: 'Lead Dashboard',
+    path: '/lead-dashboard',
+    allowedRoles: ['digital_marketer', '4', 'admin', '2']
+  },
+
   { 
     icon: Users, 
     label: 'Users', 
@@ -24,15 +31,16 @@ const menuItems = [
   },
   { 
     icon: TrendingUp, 
-    label: 'Leads', 
+    label: 'Leads Directory', 
     path: '/leads',
-    allowedDepartments: ['6a211b6621f80bb8da167efb'] 
+    allowedRoles: ['digital_marketer', '4', 'admin', 'hr', '1', '2', 'employee']
   },
   { icon: UserCheck, label: 'Attendance', path: '/attendance' },
   { icon: ListCheck, label: 'To-Do', path: '/todo' },
   { icon: Users, label: 'Student Attendance', path: '/student-attendance' },
-  { icon: Building, label: 'Departments', path: '/departments' ,allowedRoles: ['1', '2', 'hr', 'admin']},
+  { icon: Building, label: 'Departments', path: '/departments', allowedRoles: ['1', '2', 'hr', 'admin'] },
 ];
+
 
 // Simple Portal implementation to render the badge safely outside of parent overflow cropping
 const PortalTooltip = ({ children }) => {
@@ -42,6 +50,7 @@ const PortalTooltip = ({ children }) => {
 const Sidebar = () => {
   const location = useLocation();
   const activePath = location.pathname;
+
 
   const getVisibleMenuItems = () => {
     try {
@@ -65,6 +74,7 @@ const Sidebar = () => {
     }
   };
 
+
   const visibleMenuItems = getVisibleMenuItems();
 
   return (
@@ -82,7 +92,9 @@ const Sidebar = () => {
       animate={{ x: 0, opacity: 1 }}
       transition={{ type: 'spring', damping: 25, stiffness: 120 }}
     >
+
       <div className="flex lg:flex-col gap-3 lg:gap-4 overflow-x-auto lg:overflow-y-auto max-w-full lg:max-h-full scrollbar-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-0.5 px-0.5">
+
         {visibleMenuItems.map((item) => (
           <NavItem 
             key={item.path}

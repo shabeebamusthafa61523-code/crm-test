@@ -1,0 +1,318 @@
+openapi: 3.0.0
+info:
+  title: KOD.BRAND CRM Lead Management & Analytics API
+  version: 1.0.0
+  description: RESTful API spec for role-based Lead Management Dashboard with restricted digital_marketer access, analytics caching, and audit logging.
+servers:
+  - url: /api/v1
+    description: V1 Base API URL
+paths:
+  /leads:
+    get:
+      summary: Fetch all leads (paginated & filtered)
+      description: Returns a paginated list of leads. Regular employees see only their assigned leads; Admins/HR see all.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful retrieval
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Lead'
+                  pagination:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+                      pages:
+                        type: integer
+        '401':
+          description: Unauthorized / Inactivity timeout
+        '403':
+          description: Forbidden - Exclusive to digital marketers
+
+  /leads/create:
+    post:
+      summary: Create a new lead
+      description: Adds a new lead profile to the CRM database and records an audit log.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLeadInput'
+      responses:
+        '201':
+          description: Lead created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Lead'
+        '400':
+          description: Validation error
+
+  /leads/update:
+    put:
+      summary: Bulk update lead statuses
+      description: Modify the status for multiple leads at once.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - leadIds
+                - status
+              properties:
+                leadIds:
+                  type: array
+                  items:
+                    type: string
+                status:
+                  type: string
+                  enum: [New, Contacted, Follow Up, Interested, Converted, Lost]
+                lostReason:
+                  type: string
+      responses:
+        '200':
+          description: Bulk status update completed
+        '400':
+          description: Validation error
+
+  /leads/{id}:
+    get:
+      summary: Fetch single lead details
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Detailed lead profile with timeline history
+        '404':
+          description: Lead not found
+
+  /leads/followup:
+    post:
+      summary: Log a follow-up action
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FollowUpInput'
+      responses:
+        '201':
+          description: Follow-up logged successfully
+
+  /leads/status-update:
+    patch:
+      summary: Update lead status
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - leadId
+                - status
+              properties:
+                leadId:
+                  type: string
+                status:
+                  type: string
+                  enum: [New, Contacted, Follow Up, Interested, Converted, Lost]
+                lostReason:
+                  type: string
+      responses:
+        '200':
+          description: Lead status updated successfully
+
+  /analytics/summary:
+    get:
+      summary: Fetch general metrics summary
+      description: Returns card statistics including month-to-date and 24-hour calculations (cached for 5 mins).
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Metrics summary loaded
+
+  /analytics/conversion-rate:
+    get:
+      summary: Fetch conversion rate funnel breakdown
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Funnel metrics loaded
+
+  /analytics/staff-performance:
+    get:
+      summary: Fetch staff performance conversions
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Staff analytics loaded
+
+  /analytics/source-performance:
+    get:
+      summary: Fetch source channel attribution percentages
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Channel analytics loaded
+
+  /analytics/followup-metrics:
+    get:
+      summary: Fetch follow-up frequencies and timelines
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Follow-up analytics loaded
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Lead:
+      type: object
+      properties:
+        id:
+          type: string
+        leadName:
+          type: string
+        companyName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        city:
+          type: string
+        source:
+          type: string
+        interestedService:
+          type: string
+        assignedTo:
+          type: string
+        status:
+          type: string
+        priority:
+          type: string
+        remarks:
+          type: string
+        nextFollowUpDate:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    CreateLeadInput:
+      type: object
+      required:
+        - leadName
+        - phone
+      properties:
+        leadName:
+          type: string
+        companyName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        city:
+          type: string
+        source:
+          type: string
+        interestedService:
+          type: string
+        assignedTo:
+          type: string
+        status:
+          type: string
+        priority:
+          type: string
+        remarks:
+          type: string
+    FollowUpInput:
+      type: object
+      required:
+        - leadId
+      properties:
+        leadId:
+          type: string
+        remarks:
+          type: string
+        nextFollowUpDate:
+          type: string
+          format: date-time
+        callSummary:
+          type: string
+        meetingNotes:
+          type: string
+        statusChangedTo:
+          type: string
