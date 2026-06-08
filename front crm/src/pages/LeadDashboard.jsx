@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
 
-const API_BASE = import.meta.env.VITE_API_URL;
+const API_BASE = "http://localhost:5000/api/v1";
 
 const STATUS_META = {
   'New': { label: 'New', color: 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:bg-blue-500/20 dark:text-blue-400', dot: 'bg-blue-500' },
@@ -86,11 +86,11 @@ const LeadDashboard = () => {
     try {
       const headers = getAuthHeaders();
       const urls = [
-        `${API_BASE}/v1/analytics/summary`,
-        `${API_BASE}/v1/analytics/conversion-rate`,
-        `${API_BASE}/v1/analytics/staff-performance`,
-        `${API_BASE}/v1/analytics/source-performance`,
-        `${API_BASE}/v1/analytics/followup-metrics`
+        `${API_BASE}/analytics/summary`,
+        `${API_BASE}/analytics/conversion-rate`,
+        `${API_BASE}/analytics/staff-performance`,
+        `${API_BASE}/analytics/source-performance`,
+        `${API_BASE}/analytics/followup-metrics`
       ];
 
       const [summaryRes, funnelRes, staffRes, sourceRes, followupRes] = await Promise.all(
