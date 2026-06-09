@@ -15,7 +15,8 @@ import {
 } from 'lucide-react';
 
 const menuItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', allowedRoles: ['1', '2','3', 'hr', 'admin' ,'employee'] 
+ },
   {
     icon: LayoutDashboard,
     label: 'Lead Dashboard',
@@ -34,6 +35,13 @@ const menuItems = [
     label: 'Leads Directory', 
     path: '/leads',
     allowedDepartments: ['6a211b6621f80bb8da167efb']
+  },
+  { 
+    icon: TrendingUp, 
+    label: 'Telecaller Leads', 
+    path: '/leads-telecaller',
+    allowedRoles: ['3'],
+    allowedDepartments: ['6a26a7d72a56a1f9c49da8a3']
   },
   { icon: UserCheck, label: 'Attendance', path: '/attendance' },
   { icon: ListCheck, label: 'To-Do', path: '/todo' },
@@ -72,8 +80,15 @@ const Sidebar = () => {
       }
       
       return menuItems.filter(item => {
-        if (item.allowedRoles && !item.allowedRoles.includes(currentUserRole)) return false;
-        if (item.allowedDepartments && !item.allowedDepartments.includes(currentUserDept)) return false;
+        if (!item.allowedRoles && !item.allowedDepartments) return true;
+        const roleMatch = item.allowedRoles && item.allowedRoles.includes(currentUserRole);
+        const deptMatch = item.allowedDepartments && item.allowedDepartments.includes(currentUserDept);
+        
+        if (item.allowedRoles && item.allowedDepartments) {
+          return roleMatch || deptMatch;
+        }
+        if (item.allowedRoles) return roleMatch;
+        if (item.allowedDepartments) return deptMatch;
         return true;
       });
     } catch (e) {
@@ -121,7 +136,7 @@ const Sidebar = () => {
         <NavItem 
           icon={<LogOut size={22} />} 
           label="Logout" 
-          to="/login" 
+          to="/" 
           active={false} 
           isLogout={true}
           onClick={() => {

@@ -13,9 +13,44 @@ import { apiRateLimiter, leadMutationRateLimiter } from '../middleware/rateLimit
 
 const router = Router();
 
-// Apply authentication and department restriction checks globally to all lead endpoints
+// Middleware to check authorization for department (Marketing or Telecaller) or role ID 3 (Employee)
+const authorizeLeadsAccess = async (req, res, next) => {
+  let userDeptId = req.user?.departmentId;
+  const userRoleId = String(req.user?.role_id || req.user?.role || '').trim();
+
+  // Fallback: If departmentId is missing from token, query from DB
+  if (!userDeptId && req.user?.id) {
+    try {
+      const User = (await import('../models/user.model.js')).default;
+      const userObj = await User.findById(req.user.id);
+      if (userObj) {
+        userDeptId = userObj.departmentId;
+      }
+    } catch (err) {
+      console.error("Failed to fetch user department fallback:", err);
+    }
+  }
+
+  userDeptId = String(userDeptId || '').trim();
+
+  const allowedDepartments = ['6a211b6621f80bb8da167efb', '6a26a7d72a56a1f9c49da8a3'];
+  const allowedRoles = ['3', '1', '2', 'hr', 'admin'];
+
+  const hasDeptAccess = allowedDepartments.includes(userDeptId);
+  const hasRoleAccess = allowedRoles.includes(userRoleId);
+
+  if (!hasDeptAccess && !hasRoleAccess) {
+    return res.status(403).json({
+      success: false,
+      message: 'Access denied. Exclusive to marketing, telecallers, or authorized roles.'
+    });
+  }
+
+  next();
+};
+
 router.use(checkAuth);
-router.use(restrictToDepartment('6a211b6621f80bb8da167efb'));
+router.use(authorizeLeadsAccess);
 
 
 // GET ALL LEADS (supporting filters, search, and pagination)

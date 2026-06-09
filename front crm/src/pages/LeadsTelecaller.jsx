@@ -13,12 +13,28 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable'; // 👈 Import it as a direct function
 const API_BASE = import.meta.env.VITE_API_URL;
 
+const STATUS_META = {
+  'New': { label: 'New', color: 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:bg-blue-500/20 dark:text-blue-400', dot: 'bg-blue-500' },
+  'Contacted': { label: 'Contacted', color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:bg-indigo-500/20 dark:text-indigo-400', dot: 'bg-indigo-500' },
+  'Follow Up': { label: 'Follow Up', color: 'bg-amber-500/10 text-amber-600 border-amber-500/20 dark:bg-amber-500/20 dark:text-amber-400', dot: 'bg-amber-500' },
+  'Interested': { label: 'Interested', color: 'bg-purple-500/10 text-purple-600 border-purple-500/20 dark:bg-purple-500/20 dark:text-purple-400', dot: 'bg-purple-500' },
+  'Converted': { label: 'Converted', color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-400', dot: 'bg-emerald-500' },
+  'Lost': { label: 'Lost', color: 'bg-rose-500/10 text-rose-500 border-rose-500/20 dark:bg-rose-500/20 dark:text-rose-400', dot: 'bg-rose-500' }
+};
+
+const PRIORITY_META = {
+  'Low': { label: 'Low', color: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' },
+  'Medium': { label: 'Medium', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-400' },
+  'High': { label: 'High', color: 'bg-rose-100 text-rose-800 dark:bg-rose-950/30 dark:text-rose-400' }
+};
+
 const Leads = () => {
   const [leads, setLeads] = useState([]);
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all'); // all, assigned, follow-up, converted, lost, or specific statuses
+const [activePriority, setActivePriority] = useState('all');
 
   const [staffFilter, setStaffFilter] = useState('all');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -54,11 +70,14 @@ const Leads = () => {
   const isPrivilegedUser = useMemo(() => {
     if (!currentUser) return false;
     const roleId = String(currentUser.role_id || currentUser.roleId || currentUser.role || '').toLowerCase().trim();
-    return ['1', '2', 'hr', 'admin'].includes(roleId);
+    return ['1', '2', '3','hr', 'admin'].includes(roleId);
   }, [currentUser]);
 
-  const isMarketingDept = useMemo(() => {
+  const hasAccess = useMemo(() => {
     if (!currentUser) return false;
+    const roleId = String(currentUser.role_id || currentUser.roleId || currentUser.role || '').toLowerCase().trim();
+    if (roleId === '3') return true;
+
     let departmentId = '';
     if (currentUser.departmentId) {
       if (typeof currentUser.departmentId === 'object' && currentUser.departmentId._id) {
@@ -67,7 +86,7 @@ const Leads = () => {
         departmentId = String(currentUser.departmentId).trim();
       }
     }
-    return departmentId === '6a211b6621f80bb8da167efb';
+    return departmentId === '6a26a7d72a56a1f9c49da8a3';
   }, [currentUser]);
 
   const getAuthHeaders = useCallback(() => {
@@ -132,16 +151,16 @@ const Leads = () => {
   }, [getAuthHeaders]);
 
   useEffect(() => {
-    if (isMarketingDept) {
+    if (hasAccess) {
       fetchLeads();
     }
-  }, [fetchLeads, isMarketingDept]);
+  }, [fetchLeads, hasAccess]);
 
   useEffect(() => {
-    if (isMarketingDept) {
+    if (hasAccess) {
       fetchStaff();
     }
-  }, [fetchStaff, isMarketingDept]);
+  }, [fetchStaff, hasAccess]);
 
   // Fetch lead timeline/details
   const fetchLeadDetails = async (leadId) => {
@@ -164,38 +183,23 @@ const Leads = () => {
     }
   };
 
-  // Unique cities extracted from loaded leads for the city dropdown
-  const uniqueCities = useMemo(() => {
-    const cities = leads
-      .map(l => l.city)
-      .filter(c => c && c.trim())
-      .map(c => c.trim());
-    return [...new Set(cities)].sort();
-  }, [leads]);
-
-  // Filtered, searched & sorted leads
-  const filteredLeads = useMemo(() => {
-    let result = leads.filter(lead => {
-      // City dropdown filter (client-side)
-      if (cityFilter !== 'all') {
-        if (lead.city?.trim().toLowerCase() !== cityFilter.toLowerCase()) return false;
-      }
-
-      // Date range filter (client-side backup – backend already filters, but keep for safety)
-      if (dateFrom) {
-        const leadDate = new Date(lead.createdAt);
-        const fromDate = new Date(dateFrom);
-        if (leadDate < fromDate) return false;
-      }
-      if (dateTo) {
-        const leadDate = new Date(lead.createdAt);
-        const toDate = new Date(dateTo);
-        toDate.setHours(23, 59, 59, 999);
-        if (leadDate > toDate) return false;
-      }
-
-      // Search query filter
-      if (!searchQuery) return true;
+  // Tab counts
+  const tabCounts = useMemo(() => {
+  // 1. Get leads that have passed all filters EXCEPT status/tab filters
+  const leadsForStatusCounting = leads.filter(lead => {
+    // Priority filter
+    if (activePriority !== 'all' && lead.priority?.toLowerCase() !== activePriority.toLowerCase()) return false;
+    // City dropdown filter
+    if (cityFilter !== 'all' && lead.city?.trim().toLowerCase() !== cityFilter.toLowerCase()) return false;
+    // Date range filter
+    if (dateFrom && new Date(lead.createdAt) < new Date(dateFrom)) return false;
+    if (dateTo) {
+      const toDate = new Date(dateTo);
+      toDate.setHours(23, 59, 59, 999);
+      if (new Date(lead.createdAt) > toDate) return false;
+    }
+    // Search query filter
+    if (searchQuery) {
       const query = searchQuery.toLowerCase();
       return (
         lead.leadName?.toLowerCase().includes(query) ||
@@ -206,7 +210,120 @@ const Leads = () => {
         lead.source?.toLowerCase().includes(query) ||
         lead.interestedService?.toLowerCase().includes(query)
       );
-    });
+    }
+    return true;
+  });
+
+  // 2. Get leads that have passed all filters EXCEPT the priority filter itself
+  const leadsForPriorityCounting = leads.filter(lead => {
+    // Local tab filter
+    if (activeTab === 'assigned' && !lead.assignedTo) return false;
+    if (activeTab === 'follow-up' && lead.status !== 'Follow Up') return false;
+    if (activeTab === 'converted' && lead.status !== 'Converted') return false;
+    if (activeTab === 'lost' && lead.status !== 'Lost') return false;
+    if (activeTab !== 'all' && !['assigned', 'follow-up', 'converted', 'lost'].includes(activeTab)) {
+      if (lead.status !== activeTab) return false;
+    }
+    // City dropdown filter
+    if (cityFilter !== 'all' && lead.city?.trim().toLowerCase() !== cityFilter.toLowerCase()) return false;
+    // Date range filter
+    if (dateFrom && new Date(lead.createdAt) < new Date(dateFrom)) return false;
+    if (dateTo) {
+      const toDate = new Date(dateTo);
+      toDate.setHours(23, 59, 59, 999);
+      if (new Date(lead.createdAt) > toDate) return false;
+    }
+    // Search query filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      return (
+        lead.leadName?.toLowerCase().includes(query) ||
+        lead.phone?.toLowerCase().includes(query) ||
+        lead.email?.toLowerCase().includes(query) ||
+        lead.companyName?.toLowerCase().includes(query) ||
+        lead.city?.toLowerCase().includes(query) ||
+        lead.source?.toLowerCase().includes(query) ||
+        lead.interestedService?.toLowerCase().includes(query)
+      );
+    }
+    return true;
+  });
+
+  // 3. Tally up the final counts from our matched sets
+  const counts = {
+    all: leadsForStatusCounting.length,
+    assigned: leadsForStatusCounting.filter(l => l.assignedTo).length,
+    'follow-up': leadsForStatusCounting.filter(l => l.status === 'Follow Up').length,
+    converted: leadsForStatusCounting.filter(l => l.status === 'Converted').length,
+    lost: leadsForStatusCounting.filter(l => l.status === 'Lost').length,
+    
+    // Priority counts dynamically respond to Status/Search adjustments
+    priorityAll: leadsForPriorityCounting.length,
+    priorityHigh: leadsForPriorityCounting.filter(l => l.priority?.toLowerCase() === 'high').length,
+    priorityMedium: leadsForPriorityCounting.filter(l => l.priority?.toLowerCase() === 'medium').length,
+    priorityLow: leadsForPriorityCounting.filter(l => l.priority?.toLowerCase() === 'low').length
+  };
+
+  return counts;
+}, [leads, activeTab, activePriority, searchQuery, cityFilter, dateFrom, dateTo]);
+
+  // Unique cities extracted from loaded leads for the city dropdown
+  const uniqueCities = useMemo(() => {
+    const cities = leads
+      .map(l => l.city)
+      .filter(c => c && c.trim())
+      .map(c => c.trim());
+    return [...new Set(cities)].sort();
+  }, [leads]);
+
+  // Filtered, searched & sorted leads
+ const filteredLeads = useMemo(() => {
+  let result = leads.filter(lead => {
+    // Local tab filter (backup check)
+    if (activeTab === 'assigned' && !lead.assignedTo) return false;
+    if (activeTab === 'follow-up' && lead.status !== 'Follow Up') return false;
+    if (activeTab === 'converted' && lead.status !== 'Converted') return false;
+    if (activeTab === 'lost' && lead.status !== 'Lost') return false;
+    if (activeTab !== 'all' && activeTab !== 'assigned' && activeTab !== 'follow-up' && activeTab !== 'converted' && activeTab !== 'lost') {
+      if (lead.status !== activeTab) return false;
+    }
+
+    // Priority filter (added)
+    if (activePriority !== 'all') {
+      if (lead.priority?.toLowerCase() !== activePriority.toLowerCase()) return false;
+    }
+
+    // City dropdown filter (client-side)
+    if (cityFilter !== 'all') {
+      if (lead.city?.trim().toLowerCase() !== cityFilter.toLowerCase()) return false;
+    }
+
+    // Date range filter (client-side backup – backend already filters, but keep for safety)
+    if (dateFrom) {
+      const leadDate = new Date(lead.createdAt);
+      const fromDate = new Date(dateFrom);
+      if (leadDate < fromDate) return false;
+    }
+    if (dateTo) {
+      const leadDate = new Date(lead.createdAt);
+      const toDate = new Date(dateTo);
+      toDate.setHours(23, 59, 59, 999);
+      if (leadDate > toDate) return false;
+    }
+
+    // Search query filter
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      lead.leadName?.toLowerCase().includes(query) ||
+      lead.phone?.toLowerCase().includes(query) ||
+      lead.email?.toLowerCase().includes(query) ||
+      lead.companyName?.toLowerCase().includes(query) ||
+      lead.city?.toLowerCase().includes(query) ||
+      lead.source?.toLowerCase().includes(query) ||
+      lead.interestedService?.toLowerCase().includes(query)
+    );
+  });
 
   // Sort
   result = [...result].sort((a, b) => {
@@ -223,7 +340,7 @@ const Leads = () => {
   });
 
   return result;
-}, [leads, activeTab, searchQuery, cityFilter, dateFrom, dateTo, sortOrder]);
+}, [leads, activeTab, activePriority, searchQuery, cityFilter, dateFrom, dateTo, sortOrder]); // added activePriority here
   const handleDeleteLead = async (id, name) => {
     if (!window.confirm(`Are you sure you want to delete lead "${name}"? This will clear all follow-up history.`)) {
       return;
@@ -261,6 +378,8 @@ const Leads = () => {
       'Email': l.email || '',
       'Source': l.source || '',
       'Interested Service': l.interestedService || '',
+      'Status': l.status || 'New',
+      'Priority': l.priority || 'Medium',
       'City / Place': l.city || 'N/A',
       'Next Follow Up': l.nextFollowUpDate ? new Date(l.nextFollowUpDate).toLocaleDateString() : 'N/A',
       'Remarks': l.remarks || '',
@@ -288,7 +407,7 @@ const Leads = () => {
   doc.setFont('helvetica', 'normal');
   doc.text(`Export Tab: ${activeTab.toUpperCase()} | Generated: ${new Date().toLocaleString()}`, 14, 21);
 
-  const headers = [['Lead Name', 'Phone', 'Email', 'Company', 'Source', 'Service', 'City / Place']];
+  const headers = [['Lead Name', 'Phone', 'Email', 'Company', 'Source', 'Service', 'Status', 'Priority', 'City / Place']];
   const body = filteredLeads.map(l => [
     l.leadName || '',
     l.phone || '',
@@ -296,6 +415,8 @@ const Leads = () => {
     l.companyName || '',
     l.source || '',
     l.interestedService || '',
+    l.status || 'New',
+    l.priority || 'Medium',
     l.city || 'N/A'
   ]);
 
@@ -318,12 +439,12 @@ const Leads = () => {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center py-20 bg-slate-50/50 dark:bg-slate-950/20">
         <Loader2 className="animate-spin text-indigo-500 mb-4" size={40} />
-        <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest font-black">Loading Leads Directory...</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest font-black">Loading Telecaller Leads Directory...</p>
       </div>
     );
   }
 
-  if (!isMarketingDept) {
+  if (!hasAccess) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center p-6 text-slate-800 dark:text-slate-100">
         <motion.div 
@@ -338,10 +459,10 @@ const Leads = () => {
             Access <span className="text-red-500">Restricted</span>
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
-            This Leads Directory is reserved exclusively for the <strong>Marketing Department</strong>. Your current department does not have authorization to view this data.
+            This Leads Directory is reserved exclusively for the <strong>Telecallers Department</strong> or operators with <strong>Role 3</strong> access. Your current profile does not have authorization to view this data.
           </p>
           <button 
-            onClick={() => window.location.href = '/'}
+            onClick={() => window.location.href = '/dashboard'}
             className="w-full py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-black text-xs uppercase tracking-widest rounded-xl transition-all active:scale-95"
           >
             Return to Command Center
@@ -406,7 +527,7 @@ const Leads = () => {
         {/* Tab Filters */}
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
           {[
-            { id: 'all', label: 'All Leads', count: filteredLeads.length },
+            { id: 'all', label: 'All Leads', count: tabCounts.all },
             // { id: 'assigned', label: 'Assigned Leads', count: tabCounts.assigned },
             // { id: 'follow-up', label: 'Follow-Up', count: tabCounts['follow-up'] },
             // { id: 'converted', label: 'Converted', count: tabCounts.converted },
@@ -512,6 +633,7 @@ const Leads = () => {
                       <button
                         onClick={() => {
                           setActiveTab('all');
+                          setActivePriority('all');
                           setStaffFilter('all');
                           setCityFilter('all');
                           setDateFrom('');
@@ -566,6 +688,58 @@ const Leads = () => {
                       </select>
                     </div>
 
+                    {/* Status Filter */}
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</label>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {[
+                          { val: 'all',       label: 'All' },
+                          { val: 'New',       label: 'New' },
+                          { val: 'Contacted', label: 'Contacted' },
+                          { val: 'Follow Up', label: 'Follow Up' },
+                          { val: 'Interested',label: 'Interested' },
+                          { val: 'Converted', label: 'Converted' },
+                          { val: 'Lost',      label: 'Lost' }
+                        ].map(opt => (
+                          <button
+                            key={opt.val}
+                            onClick={() => { setActiveTab(opt.val === 'all' ? 'all' : opt.val); }}
+                            className={`py-2 rounded-xl text-[10px] font-semibold transition-all cursor-pointer ${
+                              activeTab === opt.val
+                                ? 'bg-indigo-600 text-white'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+
+                    <div className="space-y-1.5">
+  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Priority</label>
+  <div className="grid grid-cols-4 gap-1.5">
+    {[
+      { val: 'all',    label: 'All' },
+      { val: 'High',   label: 'High' },
+      { val: 'Medium', label: 'Medium' },
+      { val: 'Low',    label: 'Low' }
+    ].map(opt => (
+      <button
+        key={opt.val}
+        onClick={() => { setActivePriority(opt.val === 'all' ? 'all' : opt.val); }}
+        className={`py-2 rounded-xl text-[10px] font-semibold transition-all cursor-pointer text-center ${
+          activePriority === opt.val
+            ? 'bg-indigo-600 text-white'
+            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+        }`}
+      >
+        {opt.label}
+      </button>
+    ))}
+  </div>
+</div>
 
                     {/* Staff Filter (privileged only) */}
                     {isPrivilegedUser && (
@@ -626,13 +800,25 @@ const Leads = () => {
           </div>
 
           {/* Active filter chips */}
-          {(staffFilter !== 'all' || cityFilter !== 'all' || dateFrom || dateTo || sortOrder !== 'desc') && (
+          {(activeTab !== 'all' ||activePriority !== 'all'|| staffFilter !== 'all' || cityFilter !== 'all' || dateFrom || dateTo || sortOrder !== 'desc') && (
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Active:</span>
+              {activeTab !== 'all' && (
+                <span className="flex items-center gap-1 px-2.5 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20 rounded-full text-[10px] font-semibold">
+                  📋 {activeTab === 'follow-up' ? 'Follow Up' : activeTab === 'assigned' ? 'Assigned' : activeTab}
+                  <button onClick={() => setActiveTab('all')} className="ml-0.5 hover:text-indigo-800 cursor-pointer leading-none">×</button>
+                </span>
+              )}
               {cityFilter !== 'all' && (
                 <span className="flex items-center gap-1 px-2.5 py-1 bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-500/20 rounded-full text-[10px] font-semibold">
                   📍 {cityFilter}
                   <button onClick={() => setCityFilter('all')} className="ml-0.5 hover:text-teal-800 cursor-pointer leading-none">×</button>
+                </span>
+              )}
+               {activePriority !== 'all' && (
+                <span className="flex items-center gap-1 px-2.5 py-1 bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-500/20 rounded-full text-[10px] font-semibold">
+                  ⚡ {activePriority}
+                  <button onClick={() => setPriorityFilter('all')} className="ml-0.5 hover:text-purple-800 cursor-pointer leading-none">×</button>
                 </span>
               )}
               {staffFilter !== 'all' && (
@@ -660,7 +846,7 @@ const Leads = () => {
                 </span>
               )}
               <button
-                onClick={() => { setActiveTab('all'); setStaffFilter('all'); setCityFilter('all'); setDateFrom(''); setDateTo(''); setSortOrder('desc'); }}
+                onClick={() => { setActiveTab('all'); setActivePriority('all');setStaffFilter('all'); setCityFilter('all'); setDateFrom(''); setDateTo(''); setSortOrder('desc'); }}
                 className="text-[10px] text-slate-400 hover:text-rose-500 underline cursor-pointer transition-colors"
               >
                 Clear all
@@ -694,17 +880,24 @@ const Leads = () => {
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Context</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">City / Place</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Created</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {filteredLeads.map((lead) => {
+                    const statusMeta = STATUS_META[lead.status] || { label: lead.status, color: 'bg-slate-100 text-slate-600', dot: 'bg-slate-400' };
+                    const priorityMeta = PRIORITY_META[lead.priority] || { label: lead.priority, color: 'bg-slate-100 text-slate-600' };
+
                     return (
                       <tr key={lead.id || lead._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all duration-200">
                         {/* Name & Company */}
                         <td className="px-6 py-4.5">
                           <div className="font-semibold text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
                             {lead.leadName}
+                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${priorityMeta.color}`}>
+                              {priorityMeta.label}
+                            </span>
                           </div>
                           {lead.companyName && (
                             <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
@@ -762,7 +955,12 @@ const Leads = () => {
                             }
                           </div>
                         </td>
-
+                        <td className="px-6 py-4.5">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold ${statusMeta.color}`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${statusMeta.dot}`} />
+                            {statusMeta.label}
+                          </span>
+                        </td>
 
                         {/* Actions */}
                         <td className="px-6 py-4.5 text-right">
@@ -777,6 +975,16 @@ const Leads = () => {
                               title="View details & history"
                             >
                               <Eye size={15} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedLead(lead);
+                                setIsFollowUpOpen(true);
+                              }}
+                              className="p-2 text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-150 cursor-pointer"
+                              title="Add follow-up log"
+                            >
+                              <Clock size={15} />
                             </button>
                             <button
                               onClick={() => {
@@ -850,7 +1058,18 @@ const Leads = () => {
         showToast={showToast}
       />
 
-
+      {/* ADD FOLLOWUP MODAL */}
+      <FollowUpModal
+        isOpen={isFollowUpOpen}
+        onClose={() => {
+          setIsFollowUpOpen(false);
+          setSelectedLead(null);
+        }}
+        onFollowedUp={fetchLeads}
+        lead={selectedLead}
+        getAuthHeaders={getAuthHeaders}
+        showToast={showToast}
+      />
 
       {/* EXCEL IMPORT MODAL */}
       <ImportModal
@@ -878,6 +1097,8 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
     source: 'Manual Entry',
     interestedService: '',
     assignedTo: '',
+    status: 'New',
+    priority: 'Medium',
     remarks: ''
   });
   const [submitting, setSubmitting] = useState(false);
@@ -911,6 +1132,8 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
           source: 'Manual Entry',
           interestedService: '',
           assignedTo: '',
+          status: 'New',
+          priority: 'Medium',
           remarks: ''
         });
       } else {
@@ -1018,7 +1241,19 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
                 placeholder="e.g. Custom Web App Development"
               />
             </div>
-            {isPrivilegedUser && (
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Priority</label>
+              <select
+                value={formData.priority}
+                onChange={e => setFormData({ ...formData, priority: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              >
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+              </select>
+            </div>
+            {isPrivilegedUser ? (
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Assign to Representative</label>
                 <select
@@ -1032,6 +1267,39 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
                       {member.name} ({member.role === '1' || member.role === 'hr' ? 'HR' : member.role === '2' || member.role === 'admin' ? 'Admin' : 'Staff'})
                     </option>
                   ))}
+                </select>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Status</label>
+                <select
+                  value={formData.status}
+                  onChange={e => setFormData({ ...formData, status: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                >
+                  <option value="New">New</option>
+                  <option value="Contacted">Contacted</option>
+                  <option value="Follow Up">Follow Up</option>
+                  <option value="Interested">Interested</option>
+                  <option value="Converted">Converted</option>
+                  <option value="Lost">Lost</option>
+                </select>
+              </div>
+            )}
+            {isPrivilegedUser && (
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Initial Status</label>
+                <select
+                  value={formData.status}
+                  onChange={e => setFormData({ ...formData, status: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                >
+                  <option value="New">New</option>
+                  <option value="Contacted">Contacted</option>
+                  <option value="Follow Up">Follow Up</option>
+                  <option value="Interested">Interested</option>
+                  <option value="Converted">Converted</option>
+                  <option value="Lost">Lost</option>
                 </select>
               </div>
             )}
@@ -1084,7 +1352,10 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
     source: '',
     interestedService: '',
     assignedTo: '',
-    remarks: ''
+    status: '',
+    priority: '',
+    remarks: '',
+    lostReason: ''
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -1099,7 +1370,10 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
         source: lead.source || '',
         interestedService: lead.interestedService || '',
         assignedTo: lead.assignedTo?._id || lead.assignedTo || '',
-        remarks: lead.remarks || ''
+        status: lead.status || 'New',
+        priority: lead.priority || 'Medium',
+        remarks: lead.remarks || '',
+        lostReason: lead.lostReason || ''
       });
     }
   }, [lead]);
@@ -1224,7 +1498,19 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
                 className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
               />
             </div>
-            {isPrivilegedUser && (
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Priority</label>
+              <select
+                value={formData.priority}
+                onChange={e => setFormData({ ...formData, priority: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              >
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+              </select>
+            </div>
+            {isPrivilegedUser ? (
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Assign to Representative</label>
                 <select
@@ -1240,8 +1526,55 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
                   ))}
                 </select>
               </div>
+            ) : (
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Status</label>
+                <select
+                  value={formData.status}
+                  onChange={e => setFormData({ ...formData, status: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                >
+                  <option value="New">New</option>
+                  <option value="Contacted">Contacted</option>
+                  <option value="Follow Up">Follow Up</option>
+                  <option value="Interested">Interested</option>
+                  <option value="Converted">Converted</option>
+                  <option value="Lost">Lost</option>
+                </select>
+              </div>
+            )}
+            {isPrivilegedUser && (
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Status</label>
+                <select
+                  value={formData.status}
+                  onChange={e => setFormData({ ...formData, status: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                >
+                  <option value="New">New</option>
+                  <option value="Contacted">Contacted</option>
+                  <option value="Follow Up">Follow Up</option>
+                  <option value="Interested">Interested</option>
+                  <option value="Converted">Converted</option>
+                  <option value="Lost">Lost</option>
+                </select>
+              </div>
             )}
           </div>
+
+          {formData.status === 'Lost' && (
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Reason for Lost Status</label>
+              <input
+                type="text"
+                required
+                value={formData.lostReason}
+                onChange={e => setFormData({ ...formData, lostReason: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                placeholder="e.g. Budget constraints, chose competitor"
+              />
+            </div>
+          )}
 
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Remarks / Notes</label>
@@ -1338,7 +1671,10 @@ const ViewModal = ({ isOpen, onClose, lead, details, loading }) => {
                 <span className="text-[10px] text-slate-400 block font-semibold uppercase">Assigned Staff</span>
                 <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{lead.assignedTo?.name || 'Unassigned'}</span>
               </div>
-
+              <div>
+                <span className="text-[10px] text-slate-400 block font-semibold uppercase">Next Follow Up</span>
+                <span className="text-xs font-semibold text-amber-500">{lead.nextFollowUpDate ? new Date(lead.nextFollowUpDate).toLocaleDateString() : 'None Scheduled'}</span>
+              </div>
             </div>
           </div>
 
@@ -1393,7 +1729,19 @@ const ViewModal = ({ isOpen, onClose, lead, details, loading }) => {
                         </div>
                       )}
 
-
+                      <div className="mt-2 flex flex-wrap gap-2 text-[8px] font-bold">
+                        {item.statusChangedTo && (
+                          <span className="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border border-blue-200/30">
+                            Status: {item.statusChangedTo}
+                          </span>
+                        )}
+                        {item.nextFollowUpDate && (
+                          <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border border-amber-200/30 flex items-center gap-1">
+                            <Calendar size={8} />
+                            Next: {new Date(item.nextFollowUpDate).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1415,7 +1763,168 @@ const ViewModal = ({ isOpen, onClose, lead, details, loading }) => {
   );
 };
 
+/* ==========================================
+   FOLLOW UP LOGGING MODAL
+   ========================================== */
+const FollowUpModal = ({ isOpen, onClose, onFollowedUp, lead, getAuthHeaders, showToast }) => {
+  const [formData, setFormData] = useState({
+    remarks: '',
+    nextFollowUpDate: '',
+    callSummary: '',
+    meetingNotes: '',
+    statusChangedTo: ''
+  });
+  const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (lead) {
+      setFormData({
+        remarks: '',
+        nextFollowUpDate: lead.nextFollowUpDate ? new Date(lead.nextFollowUpDate).toISOString().split('T')[0] : '',
+        callSummary: '',
+        meetingNotes: '',
+        statusChangedTo: lead.status || 'Follow Up'
+      });
+    }
+  }, [lead]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.remarks && !formData.callSummary && !formData.meetingNotes && !formData.statusChangedTo) {
+      showToast('Please log some comments or status changes.', 'warning');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const res = await fetch(`${API_BASE}/v1/leads/followup`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          ...formData,
+          leadId: lead.id || lead._id
+        })
+      });
+      const data = await res.json();
+      if (res.ok || data.success) {
+        showToast('Follow-up activity recorded successfully!', 'success');
+        onFollowedUp();
+        onClose();
+      } else {
+        showToast(data.message || 'Failed to submit follow-up.', 'error');
+      }
+    } catch (e) {
+      console.error(e);
+      showToast('Error recording followup details.', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!isOpen || !lead) return null;
+
+  return (
+<div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 backdrop-blur-sm p-4 pt-16 overflow-y-auto">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 15 }}
+        className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden"
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+          <h2 className="text-base font-bold text-slate-850 dark:text-white flex items-center gap-2">
+            <Clock className="text-indigo-600" size={18} />
+            Log Follow-Up Activity: {lead.leadName}
+          </h2>
+          <button onClick={onClose} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer">
+            <X size={18} className="text-slate-400 hover:text-slate-600" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Interaction Notes / Remarks *</label>
+            <textarea
+              rows={3}
+              required
+              value={formData.remarks}
+              onChange={e => setFormData({ ...formData, remarks: e.target.value })}
+              className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition resize-none"
+              placeholder="Detail conversation, comments, or client reactions..."
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Update Status</label>
+              <select
+                value={formData.statusChangedTo}
+                onChange={e => setFormData({ ...formData, statusChangedTo: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              >
+                <option value="New">New</option>
+                <option value="Contacted">Contacted</option>
+                <option value="Follow Up">Follow Up</option>
+                <option value="Interested">Interested</option>
+                <option value="Converted">Converted</option>
+                <option value="Lost">Lost</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Next Follow-Up Date</label>
+              <input
+                type="date"
+                value={formData.nextFollowUpDate}
+                onChange={e => setFormData({ ...formData, nextFollowUpDate: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Call Details Summary (Optional)</label>
+            <input
+              type="text"
+              value={formData.callSummary}
+              onChange={e => setFormData({ ...formData, callSummary: e.target.value })}
+              className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              placeholder="e.g. Called at 2PM, answered. Discussed pricing details."
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Meeting Notes / Agenda (Optional)</label>
+            <input
+              type="text"
+              value={formData.meetingNotes}
+              onChange={e => setFormData({ ...formData, meetingNotes: e.target.value })}
+              className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              placeholder="e.g. Schedule Google Meet for Friday 10AM."
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border border-slate-200 dark:border-slate-850 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 transition cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 transition flex items-center gap-2 cursor-pointer"
+            >
+              {submitting && <Loader2 size={14} className="animate-spin" />}
+              Save History
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+};
 
 /* ==========================================
    DYNAMIC EXCEL IMPORT MAPPING MODAL
