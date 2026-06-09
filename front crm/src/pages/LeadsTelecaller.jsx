@@ -28,24 +28,68 @@ const PRIORITY_META = {
   'High': { label: 'High', color: 'bg-rose-100 text-rose-800 dark:bg-rose-950/30 dark:text-rose-400' }
 };
 
+const COURSE_INTEREST_COLORS = {
+  'HOT LEAD':     { bg: '#F0FDF4', text: '#15803D', border: '#86EFAC' },
+  'WARM LEAD':    { bg: '#F0F9FF', text: '#0369A1', border: '#7DD3FC' },
+  'COLD LEAD':    { bg: '#FEF2F2', text: '#DC2626', border: '#FCA5A5' },
+  'WRONG LEAD':   { bg: '#FEFCE8', text: '#A16207', border: '#FDE047' },
+  'RNT':          { bg: '#FAF5FF', text: '#7C3AED', border: '#C4B5FD' },
+  'SWITCHED OFF': { bg: '#FDF2F8', text: '#DB2777', border: '#F9A8D4' },
+  'CALL BACK':    { bg: '', text: '', border: '' },
+};
+
+const getCourseInterestStyle = (value) => {
+  const colors = COURSE_INTEREST_COLORS[String(value || '').trim().toUpperCase()];
+  if (!colors) return {};
+  return { backgroundColor: colors.bg, color: colors.text, borderColor: colors.border };
+};
+
 const getRowClass = (interestedService) => {
   const service = String(interestedService || '').trim().toUpperCase();
   if (service === 'HOT LEAD') {
-    return 'bg-orange-50/70 dark:bg-orange-950/20 hover:bg-orange-100/80 dark:hover:bg-orange-950/30 text-orange-950 dark:text-orange-200 transition-all duration-200 border-b border-slate-200/60 dark:border-slate-800';
+    return 'bg-green-200 dark:bg-green-900/60 hover:bg-green-300 dark:hover:bg-green-800/70 text-green-950 dark:text-green-100 transition-all duration-200 border-b border-green-300 dark:border-green-800';
   }
   if (service === 'WARM LEAD') {
-    return 'bg-emerald-50/70 dark:bg-emerald-950/20 hover:bg-emerald-100/80 dark:hover:bg-emerald-950/30 text-emerald-950 dark:text-emerald-200 transition-all duration-200 border-b border-slate-200/60 dark:border-slate-800';
-  }
-  if (service === 'WRONG LEAD') {
-    return 'bg-rose-50/70 dark:bg-rose-950/20 hover:bg-rose-100/80 dark:hover:bg-rose-950/30 text-rose-950 dark:text-rose-200 transition-all duration-200 border-b border-slate-200/60 dark:border-slate-800';
+    return 'bg-sky-200 dark:bg-sky-900/60 hover:bg-sky-300 dark:hover:bg-sky-800/70 text-sky-950 dark:text-sky-100 transition-all duration-200 border-b border-sky-300 dark:border-sky-800';
   }
   if (service === 'COLD LEAD') {
-    return 'bg-slate-100/70 dark:bg-slate-800/40 hover:bg-slate-200/50 dark:hover:bg-slate-850 text-slate-900 dark:text-slate-200 transition-all duration-200 border-b border-slate-200/60 dark:border-slate-800';
+    return 'bg-red-200 dark:bg-red-900/60 hover:bg-red-300 dark:hover:bg-red-800/70 text-red-950 dark:text-red-100 transition-all duration-200 border-b border-red-300 dark:border-red-800';
+  }
+  if (service === 'WRONG LEAD') {
+    return 'bg-yellow-200 dark:bg-yellow-900/60 hover:bg-yellow-300 dark:hover:bg-yellow-800/70 text-yellow-950 dark:text-yellow-100 transition-all duration-200 border-b border-yellow-300 dark:border-yellow-800';
+  }
+  if (service === 'RNT') {
+    return 'bg-purple-200 dark:bg-purple-900/60 hover:bg-purple-300 dark:hover:bg-purple-800/70 text-purple-950 dark:text-purple-100 transition-all duration-200 border-b border-purple-300 dark:border-purple-800';
+  }
+  if (service === 'SWITCHED OFF') {
+    return 'bg-pink-200 dark:bg-pink-900/60 hover:bg-pink-300 dark:hover:bg-pink-800/70 text-pink-950 dark:text-pink-100 transition-all duration-200 border-b border-pink-300 dark:border-pink-800';
   }
   return 'hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all duration-200 border-b border-slate-200/60 dark:border-slate-800';
 };
 
 const Leads = () => {
+  const formatDate = (dateString) => {
+    if (!dateString) return '—';
+    try {
+      const d = new Date(dateString);
+      if (isNaN(d.getTime())) return '—';
+      return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    } catch (e) {
+      return '—';
+    }
+  };
+
+  const formatDateForInput = (dateString) => {
+    if (!dateString) return '';
+    try {
+      const d = new Date(dateString);
+      if (isNaN(d.getTime())) return '';
+      return d.toISOString().split('T')[0];
+    } catch (e) {
+      return '';
+    }
+  };
+
   const [leads, setLeads] = useState([]);
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -200,89 +244,73 @@ const [activePriority, setActivePriority] = useState('all');
     }
   };
 
-  // Tab counts
-  const tabCounts = useMemo(() => {
-  // 1. Get leads that have passed all filters EXCEPT status/tab filters
-  const leadsForStatusCounting = leads.filter(lead => {
-    // Priority filter
-    if (activePriority !== 'all' && lead.priority?.toLowerCase() !== activePriority.toLowerCase()) return false;
-    // City dropdown filter
-    if (cityFilter !== 'all' && lead.city?.trim().toLowerCase() !== cityFilter.toLowerCase()) return false;
-    // Date range filter
-    if (dateFrom && new Date(lead.createdAt) < new Date(dateFrom)) return false;
-    if (dateTo) {
-      const toDate = new Date(dateTo);
-      toDate.setHours(23, 59, 59, 999);
-      if (new Date(lead.createdAt) > toDate) return false;
+  const handleInlineUpdate = async (leadId, fieldName, value) => {
+    try {
+      const res = await fetch(`${API_BASE}/v1/leads/update`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          id: leadId,
+          [fieldName]: value
+        })
+      });
+      const data = await res.json();
+      if (res.ok || data.success) {
+        showToast('Lead updated successfully!', 'success');
+        setLeads(prevLeads => prevLeads.map(l => {
+          const lId = l.id || l._id;
+          if (lId === leadId) {
+            return { ...l, [fieldName]: value };
+          }
+          return l;
+        }));
+      } else {
+        showToast(data.message || 'Failed to update lead.', 'error');
+      }
+    } catch (error) {
+      console.error(error);
+      showToast('Failed to update lead.', 'error');
     }
-    // Search query filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      return (
-        lead.leadName?.toLowerCase().includes(query) ||
-        lead.phone?.toLowerCase().includes(query) ||
-        lead.email?.toLowerCase().includes(query) ||
-        lead.companyName?.toLowerCase().includes(query) ||
-        lead.city?.toLowerCase().includes(query) ||
-        lead.source?.toLowerCase().includes(query) ||
-        lead.interestedService?.toLowerCase().includes(query)
-      );
-    }
-    return true;
-  });
-
-  // 2. Get leads that have passed all filters EXCEPT the priority filter itself
-  const leadsForPriorityCounting = leads.filter(lead => {
-    // Local tab filter
-    if (activeTab === 'assigned' && !lead.assignedTo) return false;
-    if (activeTab === 'follow-up' && lead.status !== 'Follow Up') return false;
-    if (activeTab === 'converted' && lead.status !== 'Converted') return false;
-    if (activeTab === 'lost' && lead.status !== 'Lost') return false;
-    if (activeTab !== 'all' && !['assigned', 'follow-up', 'converted', 'lost'].includes(activeTab)) {
-      if (lead.status !== activeTab) return false;
-    }
-    // City dropdown filter
-    if (cityFilter !== 'all' && lead.city?.trim().toLowerCase() !== cityFilter.toLowerCase()) return false;
-    // Date range filter
-    if (dateFrom && new Date(lead.createdAt) < new Date(dateFrom)) return false;
-    if (dateTo) {
-      const toDate = new Date(dateTo);
-      toDate.setHours(23, 59, 59, 999);
-      if (new Date(lead.createdAt) > toDate) return false;
-    }
-    // Search query filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      return (
-        lead.leadName?.toLowerCase().includes(query) ||
-        lead.phone?.toLowerCase().includes(query) ||
-        lead.email?.toLowerCase().includes(query) ||
-        lead.companyName?.toLowerCase().includes(query) ||
-        lead.city?.toLowerCase().includes(query) ||
-        lead.source?.toLowerCase().includes(query) ||
-        lead.interestedService?.toLowerCase().includes(query)
-      );
-    }
-    return true;
-  });
-
-  // 3. Tally up the final counts from our matched sets
-  const counts = {
-    all: leadsForStatusCounting.length,
-    assigned: leadsForStatusCounting.filter(l => l.assignedTo).length,
-    'follow-up': leadsForStatusCounting.filter(l => l.status === 'Follow Up').length,
-    converted: leadsForStatusCounting.filter(l => l.status === 'Converted').length,
-    lost: leadsForStatusCounting.filter(l => l.status === 'Lost').length,
-    
-    // Priority counts dynamically respond to Status/Search adjustments
-    priorityAll: leadsForPriorityCounting.length,
-    priorityHigh: leadsForPriorityCounting.filter(l => l.priority?.toLowerCase() === 'high').length,
-    priorityMedium: leadsForPriorityCounting.filter(l => l.priority?.toLowerCase() === 'medium').length,
-    priorityLow: leadsForPriorityCounting.filter(l => l.priority?.toLowerCase() === 'low').length
   };
 
-  return counts;
-}, [leads, activeTab, activePriority, searchQuery, cityFilter, dateFrom, dateTo]);
+  // Tab counts
+  const tabCounts = useMemo(() => {
+    const leadsForStatusCounting = leads.filter(lead => {
+      // City dropdown filter
+      if (cityFilter !== 'all' && lead.city?.trim().toLowerCase() !== cityFilter.toLowerCase()) return false;
+      // Date range filter
+      if (dateFrom && new Date(lead.createdAt) < new Date(dateFrom)) return false;
+      if (dateTo) {
+        const toDate = new Date(dateTo);
+        toDate.setHours(23, 59, 59, 999);
+        if (new Date(lead.createdAt) > toDate) return false;
+      }
+      // Search query filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        return (
+          lead.leadName?.toLowerCase().includes(query) ||
+          lead.phone?.toLowerCase().includes(query) ||
+          lead.email?.toLowerCase().includes(query) ||
+          lead.companyName?.toLowerCase().includes(query) ||
+          lead.city?.toLowerCase().includes(query) ||
+          lead.source?.toLowerCase().includes(query) ||
+          lead.interestedService?.toLowerCase().includes(query)
+        );
+      }
+      return true;
+    });
+
+    const counts = {
+      all: leadsForStatusCounting.length,
+      assigned: leadsForStatusCounting.filter(l => l.assignedTo).length,
+      'follow-up': leadsForStatusCounting.filter(l => l.status === 'Follow Up').length,
+      converted: leadsForStatusCounting.filter(l => l.status === 'Converted').length,
+      lost: leadsForStatusCounting.filter(l => l.status === 'Lost').length
+    };
+
+    return counts;
+  }, [leads, cityFilter, dateFrom, dateTo, searchQuery]);
 
   // Unique cities extracted from loaded leads for the city dropdown
   const uniqueCities = useMemo(() => {
@@ -305,10 +333,7 @@ const [activePriority, setActivePriority] = useState('all');
       if (lead.status !== activeTab) return false;
     }
 
-    // Priority filter (added)
-    if (activePriority !== 'all') {
-      if (lead.priority?.toLowerCase() !== activePriority.toLowerCase()) return false;
-    }
+
 
     // City dropdown filter (client-side)
     if (cityFilter !== 'all') {
@@ -357,7 +382,7 @@ const [activePriority, setActivePriority] = useState('all');
   });
 
   return result;
-}, [leads, activeTab, activePriority, searchQuery, cityFilter, dateFrom, dateTo, sortOrder]); // added activePriority here
+}, [leads, activeTab, searchQuery, cityFilter, dateFrom, dateTo, sortOrder]);
   const handleDeleteLead = async (id, name) => {
     if (!window.confirm(`Are you sure you want to delete lead "${name}"? This will clear all follow-up history.`)) {
       return;
@@ -400,6 +425,12 @@ const [activePriority, setActivePriority] = useState('all');
       'City / Place': l.city || 'N/A',
       'Client Meeting Fixed': l.clientMeetingFixed || 'Pending',
       'Admission Status': l.admissionYesNo || 'Pending',
+      'Leads Received Date': l.leadsReceivedDate ? new Date(l.leadsReceivedDate).toLocaleDateString() : 'N/A',
+      '1st Follow Up Date': l.followUpDate1 ? new Date(l.followUpDate1).toLocaleDateString() : 'N/A',
+      '2nd Follow Up Date': l.followUpDate2 ? new Date(l.followUpDate2).toLocaleDateString() : 'N/A',
+      '3rd Follow Up Date': l.followUpDate3 ? new Date(l.followUpDate3).toLocaleDateString() : 'N/A',
+      '4th Follow Up Date': l.followUpDate4 ? new Date(l.followUpDate4).toLocaleDateString() : 'N/A',
+      '5th Follow Up Date': l.followUpDate5 ? new Date(l.followUpDate5).toLocaleDateString() : 'N/A',
       'Next Follow Up': l.nextFollowUpDate ? new Date(l.nextFollowUpDate).toLocaleDateString() : 'N/A',
       'Remarks': l.remarks || '',
       'Created Date': new Date(l.createdAt).toLocaleDateString()
@@ -426,19 +457,22 @@ const [activePriority, setActivePriority] = useState('all');
   doc.setFont('helvetica', 'normal');
   doc.text(`Export Tab: ${activeTab.toUpperCase()} | Generated: ${new Date().toLocaleString()}`, 14, 21);
 
-  const headers = [['Lead Name', 'Phone', 'Email', 'Company', 'Source', 'Service', 'Client Meeting Fixed', 'Admission', 'Status', 'Priority', 'City / Place']];
+  const headers = [['Lead Name', 'Phone', 'Source', 'Service', 'Leads Received', '1st Followup', '2nd Followup', '3rd Followup', '4th Followup', '5th Followup', 'Remarks', 'Meeting', 'Admission', 'Status']];
   const body = filteredLeads.map(l => [
     l.leadName || '',
     l.phone || '',
-    l.email || '',
-    l.companyName || '',
     l.source || '',
     l.interestedService || '',
+    l.leadsReceivedDate ? new Date(l.leadsReceivedDate).toLocaleDateString() : 'N/A',
+    l.followUpDate1 ? new Date(l.followUpDate1).toLocaleDateString() : 'N/A',
+    l.followUpDate2 ? new Date(l.followUpDate2).toLocaleDateString() : 'N/A',
+    l.followUpDate3 ? new Date(l.followUpDate3).toLocaleDateString() : 'N/A',
+    l.followUpDate4 ? new Date(l.followUpDate4).toLocaleDateString() : 'N/A',
+    l.followUpDate5 ? new Date(l.followUpDate5).toLocaleDateString() : 'N/A',
+    l.remarks || '',
     l.clientMeetingFixed || 'Pending',
     l.admissionYesNo || 'Pending',
-    l.status || 'New',
-    l.priority || 'Medium',
-    l.city || 'N/A'
+    l.status || 'New'
   ]);
 
   // ✅ FIX: Pass 'doc' explicitly as the first argument
@@ -736,32 +770,6 @@ const [activePriority, setActivePriority] = useState('all');
                         ))}
                       </div>
                     </div>
-
-
-                    <div className="space-y-1.5">
-  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Priority</label>
-  <div className="grid grid-cols-4 gap-1.5">
-    {[
-      { val: 'all',    label: 'All' },
-      { val: 'High',   label: 'High' },
-      { val: 'Medium', label: 'Medium' },
-      { val: 'Low',    label: 'Low' }
-    ].map(opt => (
-      <button
-        key={opt.val}
-        onClick={() => { setActivePriority(opt.val === 'all' ? 'all' : opt.val); }}
-        className={`py-2 rounded-xl text-[10px] font-semibold transition-all cursor-pointer text-center ${
-          activePriority === opt.val
-            ? 'bg-indigo-600 text-white'
-            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-        }`}
-      >
-        {opt.label}
-      </button>
-    ))}
-  </div>
-</div>
-
                     {/* Staff Filter (privileged only) */}
                     {isPrivilegedUser && (
                       <div className="space-y-1.5">
@@ -836,12 +844,6 @@ const [activePriority, setActivePriority] = useState('all');
                   <button onClick={() => setCityFilter('all')} className="ml-0.5 hover:text-teal-800 cursor-pointer leading-none">×</button>
                 </span>
               )}
-               {activePriority !== 'all' && (
-                <span className="flex items-center gap-1 px-2.5 py-1 bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-500/20 rounded-full text-[10px] font-semibold">
-                  ⚡ {activePriority}
-                  <button onClick={() => setPriorityFilter('all')} className="ml-0.5 hover:text-purple-800 cursor-pointer leading-none">×</button>
-                </span>
-              )}
               {staffFilter !== 'all' && (
                 <span className="flex items-center gap-1 px-2.5 py-1 bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-500/20 rounded-full text-[10px] font-semibold">
                   👤 {staff.find(m => (m.id || m._id) === staffFilter)?.name || 'Staff'}
@@ -899,8 +901,16 @@ const [activePriority, setActivePriority] = useState('all');
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Lead Info</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Contact Details</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">City / Place</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Campaign/platform</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Course Interest</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Source</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Leads Received</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">1st Followup</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">2nd Followup</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">3rd Followup</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">4th Followup</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">5th Followup</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Remarks</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Client Meeting</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Admission</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Created</th>
@@ -919,9 +929,6 @@ const [activePriority, setActivePriority] = useState('all');
                         <td className="px-6 py-4.5">
                           <div className="font-semibold text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
                             {lead.leadName}
-                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${priorityMeta.color}`}>
-                              {priorityMeta.label}
-                            </span>
                           </div>
                           {lead.companyName && (
                             <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
@@ -929,6 +936,18 @@ const [activePriority, setActivePriority] = useState('all');
                               {lead.companyName}
                             </div>
                           )}
+                          {/* <div className="flex flex-wrap items-center gap-1 mt-1.5 max-w-[180px]">
+                            {lead.leadPlatform && (
+                              <span className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200/30 rounded font-semibold text-[8px] uppercase">
+                                {lead.leadPlatform}
+                              </span>
+                            )}
+                            {lead.campaignName && (
+                              <span className="px-1.5 py-0.5 bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 border border-teal-200/30 rounded font-semibold text-[8px] uppercase">
+                                {lead.campaignName}
+                              </span>
+                            )}
+                          </div> */}
                         </td>
 
                         {/* Contact */}
@@ -953,45 +972,150 @@ const [activePriority, setActivePriority] = useState('all');
                             </span>
                           )}
                         </td>
-
+ {/* Source & Interested Service */}
+                        <td className="px-6 py-4.5 text-xs">
+                          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 font-medium">
+                            <Tag size={12} className="text-slate-400" />
+                            {lead.campaignName || 'No Campaign'}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                            {lead.source && (
+                              <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded font-semibold text-[8px] uppercase">
+                                Source: {lead.source}
+                              </span>
+                            )}
+                            {lead.leadPlatform && (
+                              <span className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200/30 rounded font-semibold text-[8px] uppercase">
+                                Platform: {lead.leadPlatform}
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         {/* Course Interest */}
-                        <td className="px-6 py-4.5 text-xs font-semibold text-slate-700 dark:text-slate-200">
-                          {lead.interestedService || '—'}
+                        <td className="px-6 py-4.5 text-xs font-semibold">
+                          <select
+                            value={lead.interestedService || ''}
+                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'interestedService', e.target.value)}
+                            className="border rounded-lg px-2 py-1 text-xs font-bold focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                            style={lead.interestedService ? getCourseInterestStyle(lead.interestedService) : {}}
+                          >
+                            <option value="" disabled>Select</option>
+                            <option value="HOT LEAD" style={{ backgroundColor: '#F0FDF4', color: '#15803D' }}>🔥 HOT LEAD</option>
+                            <option value="WARM LEAD" style={{ backgroundColor: '#F0F9FF', color: '#0369A1' }}>🌤 WARM LEAD</option>
+                            <option value="COLD LEAD" style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}>❄️ COLD LEAD</option>
+                            <option value="RNT" style={{ backgroundColor: '#FAF5FF', color: '#7C3AED' }}>📵 RNT</option>
+                            <option value="SWITCHED OFF" style={{ backgroundColor: '#FDF2F8', color: '#DB2777' }}>📴 SWITCHED OFF</option>
+                            <option value="WRONG LEAD" style={{ backgroundColor: '#FEFCE8', color: '#A16207' }}>❌ WRONG LEAD</option>
+                            <option value="CALL BACK">📞 CALL BACK</option>
+                          </select>
                         </td>
 
                         {/* Source */}
                         <td className="px-6 py-4.5 text-xs">
-                          {lead.source ? (
-                            <span className="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-800 text-slate-750 dark:text-slate-200 rounded font-semibold text-[8px] uppercase">
-                              {lead.source}
-                            </span>
-                          ) : '—'}
+                          <select
+                            value={lead.source || ''}
+                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'source', e.target.value)}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                          >
+                            <option value="" disabled>Select</option>
+                            <option value="REFERENCE">REFERENCE</option>
+                            <option value="INBOUND CALLS">INBOUND CALLS</option>
+                            <option value="INBOUND MSG">INBOUND MSG</option>
+                            <option value="MARKETING">MARKETING</option>
+                          </select>
+                        </td>
+
+                        {/* Leads Received Date */}
+                        <td className="px-6 py-4.5 text-xs font-semibold text-slate-700 dark:text-slate-200">
+                          <input
+                            type="date"
+                            value={formatDateForInput(lead.leadsReceivedDate)}
+                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'leadsReceivedDate', e.target.value || null)}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                          />
+                        </td>
+
+                        {/* 1st Followup Date */}
+                        <td className="px-6 py-4.5 text-xs">
+                          <input
+                            type="date"
+                            value={formatDateForInput(lead.followUpDate1)}
+                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'followUpDate1', e.target.value || null)}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                          />
+                        </td>
+
+                        {/* 2nd Followup Date */}
+                        <td className="px-6 py-4.5 text-xs">
+                          <input
+                            type="date"
+                            value={formatDateForInput(lead.followUpDate2)}
+                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'followUpDate2', e.target.value || null)}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                          />
+                        </td>
+
+                        {/* 3rd Followup Date */}
+                        <td className="px-6 py-4.5 text-xs">
+                          <input
+                            type="date"
+                            value={formatDateForInput(lead.followUpDate3)}
+                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'followUpDate3', e.target.value || null)}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                          />
+                        </td>
+
+                        {/* 4th Followup Date */}
+                        <td className="px-6 py-4.5 text-xs">
+                          <input
+                            type="date"
+                            value={formatDateForInput(lead.followUpDate4)}
+                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'followUpDate4', e.target.value || null)}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                          />
+                        </td>
+
+                        {/* 5th Followup Date */}
+                        <td className="px-6 py-4.5 text-xs">
+                          <input
+                            type="date"
+                            value={formatDateForInput(lead.followUpDate5)}
+                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'followUpDate5', e.target.value || null)}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                          />
+                        </td>
+
+                        {/* Remarks */}
+                        <td className="px-6 py-4.5 text-xs text-slate-600 dark:text-slate-350 max-w-xs truncate">
+                          {lead.remarks || '—'}
                         </td>
 
                         {/* Client Meeting Fixed */}
                         <td className="px-6 py-4.5 text-xs">
-                          {lead.clientMeetingFixed === 'Yes' && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/30">Yes</span>
-                          )}
-                          {lead.clientMeetingFixed === 'No' && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-100 text-rose-800 dark:bg-rose-950/30 dark:text-rose-400 border border-rose-200/30">No</span>
-                          )}
-                          {(lead.clientMeetingFixed === 'Pending' || lead.clientMeetingFixed === '') && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200/30">Pending</span>
-                          )}
+                          <select
+                            value={lead.clientMeetingFixed || ''}
+                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'clientMeetingFixed', e.target.value)}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                          >
+                            <option value="" disabled>Select</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                          </select>
                         </td>
 
                         {/* Admission Status */}
                         <td className="px-6 py-4.5 text-xs">
-                          {lead.admissionYesNo === 'Yes' && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/30">Yes</span>
-                          )}
-                          {lead.admissionYesNo === 'No' && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-100 text-rose-800 dark:bg-rose-950/30 dark:text-rose-400 border border-rose-200/30">No</span>
-                          )}
-                          {(lead.admissionYesNo === 'Pending' || lead.admissionYesNo === '') && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200/30">Pending</span>
-                          )}
+                          <select
+                            value={lead.admissionYesNo || ''}
+                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'admissionYesNo', e.target.value)}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                          >
+                            <option value="" disabled>Select</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                          </select>
                         </td>
 
                         {/* Created Date */}
@@ -1004,11 +1128,20 @@ const [activePriority, setActivePriority] = useState('all');
                             }
                           </div>
                         </td>
-                        <td className="px-6 py-4.5">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold ${statusMeta.color}`}>
-                            <span className={`h-1.5 w-1.5 rounded-full ${statusMeta.dot}`} />
-                            {statusMeta.label}
-                          </span>
+                        <td className="px-6 py-4.5 text-xs">
+                          <select
+                            value={lead.status || ''}
+                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'status', e.target.value)}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                          >
+                            <option value="" disabled>Select</option>
+                            <option value="New">New</option>
+                            <option value="Contacted">Contacted</option>
+                            <option value="Follow Up">Follow Up</option>
+                            <option value="Interested">Interested</option>
+                            <option value="Converted">Converted</option>
+                            <option value="Lost">Lost</option>
+                          </select>
                         </td>
 
                         {/* Actions */}
@@ -1143,14 +1276,22 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
     email: '',
     phone: '',
     city: '',
-    source: 'REFERENCE',
-    interestedService: 'HOT LEAD',
+    source: '',
+    interestedService: '',
+    campaignName: '',
+    leadPlatform: '',
     assignedTo: '',
-    status: 'New',
-    priority: 'Medium',
-    clientMeetingFixed: 'Pending',
-    admissionYesNo: 'Pending',
-    remarks: ''
+    status: '',
+    priority: '',
+    clientMeetingFixed: '',
+    admissionYesNo: '',
+    remarks: '',
+    leadsReceivedDate: new Date().toISOString().split('T')[0],
+    followUpDate1: '',
+    followUpDate2: '',
+    followUpDate3: '',
+    followUpDate4: '',
+    followUpDate5: ''
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -1180,14 +1321,22 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
           email: '',
           phone: '',
           city: '',
-          source: 'REFERENCE',
-          interestedService: 'HOT LEAD',
+          source: '',
+          interestedService: '',
+          campaignName: '',
+          leadPlatform: '',
           assignedTo: '',
-          status: 'New',
-          priority: 'Medium',
-          clientMeetingFixed: 'Pending',
-          admissionYesNo: 'Pending',
-          remarks: ''
+          status: '',
+          priority: '',
+          clientMeetingFixed: '',
+          admissionYesNo: '',
+          remarks: '',
+          leadsReceivedDate: new Date().toISOString().split('T')[0],
+          followUpDate1: '',
+          followUpDate2: '',
+          followUpDate3: '',
+          followUpDate4: '',
+          followUpDate5: ''
         });
       } else {
         showToast(data.message || 'Failed to create lead.', 'error');
@@ -1281,27 +1430,50 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
                 onChange={e => setFormData({ ...formData, source: e.target.value })}
                 className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
               >
+                <option value="" disabled>Select</option>
                 <option value="REFERENCE">REFERENCE</option>
-                <option value="INBOUND CALL">INBOUND CALL</option>
+                <option value="INBOUND CALLS">INBOUND CALLS</option>
                 <option value="INBOUND MSG">INBOUND MSG</option>
                 <option value="MARKETING">MARKETING</option>
               </select>
             </div>
-            <div>
+             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Course Interest (Service)</label>
               <select
                 value={formData.interestedService}
                 onChange={e => setFormData({ ...formData, interestedService: e.target.value })}
-                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                className="w-full px-3.5 py-2.5 border rounded-xl text-xs font-bold focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                style={formData.interestedService ? getCourseInterestStyle(formData.interestedService) : {}}
               >
-                <option value="HOT LEAD">HOT LEAD</option>
-                <option value="WARM LEAD">WARM LEAD</option>
-                <option value="COLD LEAD">COLD LEAD</option>
-                <option value="RNT">RNT</option>
-                <option value="SWITCHED OFF">SWITCHED OFF</option>
-                <option value="WRONG LEAD">WRONG LEAD</option>
-                <option value="CALL BACK">CALL BACK</option>
+                <option value="" disabled>Select</option>
+                <option value="HOT LEAD" style={{ backgroundColor: '#F0FDF4', color: '#15803D' }}>🔥 HOT LEAD</option>
+                <option value="WARM LEAD" style={{ backgroundColor: '#F0F9FF', color: '#0369A1' }}>🌤 WARM LEAD</option>
+                <option value="COLD LEAD" style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}>❄️ COLD LEAD</option>
+                <option value="RNT" style={{ backgroundColor: '#FAF5FF', color: '#7C3AED' }}>📵 RNT</option>
+                <option value="SWITCHED OFF" style={{ backgroundColor: '#FDF2F8', color: '#DB2777' }}>📴 SWITCHED OFF</option>
+                <option value="WRONG LEAD" style={{ backgroundColor: '#FEFCE8', color: '#A16207' }}>❌ WRONG LEAD</option>
+                <option value="CALL BACK">📞 CALL BACK</option>
               </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Lead Platform</label>
+              <input
+                type="text"
+                value={formData.leadPlatform}
+                onChange={e => setFormData({ ...formData, leadPlatform: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                placeholder="e.g. Facebook Ads"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Campaign Name</label>
+              <input
+                type="text"
+                value={formData.campaignName}
+                onChange={e => setFormData({ ...formData, campaignName: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                placeholder="e.g. Summer Campaign"
+              />
             </div>
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Client Meeting Fixed</label>
@@ -1310,6 +1482,7 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
                 onChange={e => setFormData({ ...formData, clientMeetingFixed: e.target.value })}
                 className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
               >
+                <option value="" disabled>Select</option>
                 <option value="Pending">Pending</option>
                 <option value="Yes">Yes</option>
                 <option value="No">No</option>
@@ -1322,21 +1495,10 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
                 onChange={e => setFormData({ ...formData, admissionYesNo: e.target.value })}
                 className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
               >
+                <option value="" disabled>Select</option>
                 <option value="Pending">Pending</option>
                 <option value="Yes">Yes</option>
                 <option value="No">No</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Priority</label>
-              <select
-                value={formData.priority}
-                onChange={e => setFormData({ ...formData, priority: e.target.value })}
-                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
-              >
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
               </select>
             </div>
             {isPrivilegedUser ? (
@@ -1363,6 +1525,7 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
                   onChange={e => setFormData({ ...formData, status: e.target.value })}
                   className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
                 >
+                  <option value="" disabled>Select</option>
                   <option value="New">New</option>
                   <option value="Contacted">Contacted</option>
                   <option value="Follow Up">Follow Up</option>
@@ -1380,6 +1543,7 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
                   onChange={e => setFormData({ ...formData, status: e.target.value })}
                   className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
                 >
+                  <option value="" disabled>Select</option>
                   <option value="New">New</option>
                   <option value="Contacted">Contacted</option>
                   <option value="Follow Up">Follow Up</option>
@@ -1389,6 +1553,60 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
                 </select>
               </div>
             )}
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Leads Received Date</label>
+              <input
+                type="date"
+                value={formData.leadsReceivedDate}
+                onChange={e => setFormData({ ...formData, leadsReceivedDate: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">1st Followup Date</label>
+              <input
+                type="date"
+                value={formData.followUpDate1}
+                onChange={e => setFormData({ ...formData, followUpDate1: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">2nd Followup Date</label>
+              <input
+                type="date"
+                value={formData.followUpDate2}
+                onChange={e => setFormData({ ...formData, followUpDate2: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">3rd Followup Date</label>
+              <input
+                type="date"
+                value={formData.followUpDate3}
+                onChange={e => setFormData({ ...formData, followUpDate3: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">4th Followup Date</label>
+              <input
+                type="date"
+                value={formData.followUpDate4}
+                onChange={e => setFormData({ ...formData, followUpDate4: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">5th Followup Date</label>
+              <input
+                type="date"
+                value={formData.followUpDate5}
+                onChange={e => setFormData({ ...formData, followUpDate5: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              />
+            </div>
           </div>
 
           <div>
@@ -1429,6 +1647,17 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
    EDIT LEAD MODAL COMPONENT
    ========================================== */
 const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, showToast, isPrivilegedUser }) => {
+  const formatDateForInput = (dateString) => {
+    if (!dateString) return '';
+    try {
+      const d = new Date(dateString);
+      if (isNaN(d.getTime())) return '';
+      return d.toISOString().split('T')[0];
+    } catch (e) {
+      return '';
+    }
+  };
+
   const [formData, setFormData] = useState({
     leadName: '',
     companyName: '',
@@ -1437,13 +1666,21 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
     city: '',
     source: '',
     interestedService: '',
+    campaignName: '',
+    leadPlatform: '',
     assignedTo: '',
     status: '',
     priority: '',
     clientMeetingFixed: '',
     admissionYesNo: '',
     remarks: '',
-    lostReason: ''
+    lostReason: '',
+    leadsReceivedDate: '',
+    followUpDate1: '',
+    followUpDate2: '',
+    followUpDate3: '',
+    followUpDate4: '',
+    followUpDate5: ''
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -1457,13 +1694,21 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
         city: lead.city || '',
         source: lead.source || 'REFERENCE',
         interestedService: lead.interestedService || 'HOT LEAD',
+        campaignName: lead.campaignName || '',
+        leadPlatform: lead.leadPlatform || '',
         assignedTo: lead.assignedTo?._id || lead.assignedTo || '',
         status: lead.status || 'New',
         priority: lead.priority || 'Medium',
         clientMeetingFixed: lead.clientMeetingFixed || 'Pending',
         admissionYesNo: lead.admissionYesNo || 'Pending',
         remarks: lead.remarks || '',
-        lostReason: lead.lostReason || ''
+        lostReason: lead.lostReason || '',
+        leadsReceivedDate: formatDateForInput(lead.leadsReceivedDate),
+        followUpDate1: formatDateForInput(lead.followUpDate1),
+        followUpDate2: formatDateForInput(lead.followUpDate2),
+        followUpDate3: formatDateForInput(lead.followUpDate3),
+        followUpDate4: formatDateForInput(lead.followUpDate4),
+        followUpDate5: formatDateForInput(lead.followUpDate5)
       });
     }
   }, [lead]);
@@ -1577,27 +1822,50 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
                 onChange={e => setFormData({ ...formData, source: e.target.value })}
                 className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
               >
+                <option value="" disabled>Select</option>
                 <option value="REFERENCE">REFERENCE</option>
-                <option value="INBOUND CALL">INBOUND CALL</option>
+                <option value="INBOUND CALLS">INBOUND CALLS</option>
                 <option value="INBOUND MSG">INBOUND MSG</option>
                 <option value="MARKETING">MARKETING</option>
               </select>
             </div>
-            <div>
+             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Course Interest (Service)</label>
               <select
                 value={formData.interestedService}
                 onChange={e => setFormData({ ...formData, interestedService: e.target.value })}
-                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                className="w-full px-3.5 py-2.5 border rounded-xl text-xs font-bold focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                style={formData.interestedService ? getCourseInterestStyle(formData.interestedService) : {}}
               >
-                <option value="HOT LEAD">HOT LEAD</option>
-                <option value="WARM LEAD">WARM LEAD</option>
-                <option value="COLD LEAD">COLD LEAD</option>
-                <option value="RNT">RNT</option>
-                <option value="SWITCHED OFF">SWITCHED OFF</option>
-                <option value="WRONG LEAD">WRONG LEAD</option>
-                <option value="CALL BACK">CALL BACK</option>
+                <option value="" disabled>Select</option>
+                <option value="HOT LEAD" style={{ backgroundColor: '#F0FDF4', color: '#15803D' }}>🔥 HOT LEAD</option>
+                <option value="WARM LEAD" style={{ backgroundColor: '#F0F9FF', color: '#0369A1' }}>🌤 WARM LEAD</option>
+                <option value="COLD LEAD" style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}>❄️ COLD LEAD</option>
+                <option value="RNT" style={{ backgroundColor: '#FAF5FF', color: '#7C3AED' }}>📵 RNT</option>
+                <option value="SWITCHED OFF" style={{ backgroundColor: '#FDF2F8', color: '#DB2777' }}>📴 SWITCHED OFF</option>
+                <option value="WRONG LEAD" style={{ backgroundColor: '#FEFCE8', color: '#A16207' }}>❌ WRONG LEAD</option>
+                <option value="CALL BACK">📞 CALL BACK</option>
               </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Lead Platform</label>
+              <input
+                type="text"
+                value={formData.leadPlatform}
+                onChange={e => setFormData({ ...formData, leadPlatform: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                placeholder="e.g. Facebook Ads"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Campaign Name</label>
+              <input
+                type="text"
+                value={formData.campaignName}
+                onChange={e => setFormData({ ...formData, campaignName: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                placeholder="e.g. Summer Campaign"
+              />
             </div>
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Client Meeting Fixed</label>
@@ -1606,6 +1874,7 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
                 onChange={e => setFormData({ ...formData, clientMeetingFixed: e.target.value })}
                 className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
               >
+                <option value="" disabled>Select</option>
                 <option value="Pending">Pending</option>
                 <option value="Yes">Yes</option>
                 <option value="No">No</option>
@@ -1618,21 +1887,10 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
                 onChange={e => setFormData({ ...formData, admissionYesNo: e.target.value })}
                 className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
               >
+                <option value="" disabled>Select</option>
                 <option value="Pending">Pending</option>
                 <option value="Yes">Yes</option>
                 <option value="No">No</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Priority</label>
-              <select
-                value={formData.priority}
-                onChange={e => setFormData({ ...formData, priority: e.target.value })}
-                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
-              >
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
               </select>
             </div>
             {isPrivilegedUser ? (
@@ -1659,6 +1917,7 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
                   onChange={e => setFormData({ ...formData, status: e.target.value })}
                   className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
                 >
+                  <option value="" disabled>Select</option>
                   <option value="New">New</option>
                   <option value="Contacted">Contacted</option>
                   <option value="Follow Up">Follow Up</option>
@@ -1676,6 +1935,7 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
                   onChange={e => setFormData({ ...formData, status: e.target.value })}
                   className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
                 >
+                  <option value="" disabled>Select</option>
                   <option value="New">New</option>
                   <option value="Contacted">Contacted</option>
                   <option value="Follow Up">Follow Up</option>
@@ -1685,6 +1945,60 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
                 </select>
               </div>
             )}
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Leads Received Date</label>
+              <input
+                type="date"
+                value={formData.leadsReceivedDate}
+                onChange={e => setFormData({ ...formData, leadsReceivedDate: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">1st Followup Date</label>
+              <input
+                type="date"
+                value={formData.followUpDate1}
+                onChange={e => setFormData({ ...formData, followUpDate1: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">2nd Followup Date</label>
+              <input
+                type="date"
+                value={formData.followUpDate2}
+                onChange={e => setFormData({ ...formData, followUpDate2: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">3rd Followup Date</label>
+              <input
+                type="date"
+                value={formData.followUpDate3}
+                onChange={e => setFormData({ ...formData, followUpDate3: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">4th Followup Date</label>
+              <input
+                type="date"
+                value={formData.followUpDate4}
+                onChange={e => setFormData({ ...formData, followUpDate4: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">5th Followup Date</label>
+              <input
+                type="date"
+                value={formData.followUpDate5}
+                onChange={e => setFormData({ ...formData, followUpDate5: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              />
+            </div>
           </div>
 
           {formData.status === 'Lost' && (
@@ -1791,11 +2105,23 @@ const ViewModal = ({ isOpen, onClose, lead, details, loading }) => {
               </div>
             </div>
 
-            <div className="space-y-2.5">
+             <div className="space-y-2.5">
               <div>
                 <span className="text-[10px] text-slate-400 block font-semibold uppercase">Source</span>
                 <span className="px-2 py-0.5 text-[10px] font-bold bg-slate-200 dark:bg-slate-750 text-slate-750 dark:text-slate-250 rounded uppercase inline-block mt-0.5">{lead.source || 'Manual'}</span>
               </div>
+              {lead.leadPlatform && (
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-semibold uppercase">Lead Platform</span>
+                  <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">{lead.leadPlatform}</span>
+                </div>
+              )}
+              {lead.campaignName && (
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-semibold uppercase">Campaign Name</span>
+                  <span className="text-xs font-semibold text-teal-600 dark:text-teal-400">{lead.campaignName}</span>
+                </div>
+              )}
               <div>
                 <span className="text-[10px] text-slate-400 block font-semibold uppercase">Interested Service</span>
                 <span className="text-xs font-semibold text-slate-750 dark:text-slate-200">{lead.interestedService || 'General Sales Inquiry'}</span>
@@ -1807,6 +2133,34 @@ const ViewModal = ({ isOpen, onClose, lead, details, loading }) => {
               <div>
                 <span className="text-[10px] text-slate-400 block font-semibold uppercase">Next Follow Up</span>
                 <span className="text-xs font-semibold text-amber-500">{lead.nextFollowUpDate ? new Date(lead.nextFollowUpDate).toLocaleDateString() : 'None Scheduled'}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 block font-semibold uppercase">Leads Received Date</span>
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{lead.leadsReceivedDate ? new Date(lead.leadsReceivedDate).toLocaleDateString() : 'N/A'}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 block font-semibold uppercase">1st Follow Up Date</span>
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{lead.followUpDate1 ? new Date(lead.followUpDate1).toLocaleDateString() : 'N/A'}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 block font-semibold uppercase">2nd Follow Up Date</span>
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{lead.followUpDate2 ? new Date(lead.followUpDate2).toLocaleDateString() : 'N/A'}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 block font-semibold uppercase">3rd Follow Up Date</span>
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{lead.followUpDate3 ? new Date(lead.followUpDate3).toLocaleDateString() : 'N/A'}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 block font-semibold uppercase">4th Follow Up Date</span>
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{lead.followUpDate4 ? new Date(lead.followUpDate4).toLocaleDateString() : 'N/A'}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 block font-semibold uppercase">5th Follow Up Date</span>
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{lead.followUpDate5 ? new Date(lead.followUpDate5).toLocaleDateString() : 'N/A'}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 block font-semibold uppercase">Remarks</span>
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-pre-wrap">{lead.remarks || '—'}</span>
               </div>
             </div>
           </div>
@@ -2074,9 +2428,17 @@ const ImportModal = ({ isOpen, onClose, onImported, getAuthHeaders, showToast })
     city: '',
     source: '',
     interestedService: '',
+    campaignName: '',
+    leadPlatform: '',
     clientMeetingFixed: '',
     admissionYesNo: '',
-    remarks: ''
+    remarks: '',
+    leadsReceivedDate: '',
+    followUpDate1: '',
+    followUpDate2: '',
+    followUpDate3: '',
+    followUpDate4: '',
+    followUpDate5: ''
   });
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -2093,9 +2455,17 @@ const ImportModal = ({ isOpen, onClose, onImported, getAuthHeaders, showToast })
       city: '',
       source: '',
       interestedService: '',
+      campaignName: '',
+      leadPlatform: '',
       clientMeetingFixed: '',
       admissionYesNo: '',
-      remarks: ''
+      remarks: '',
+      leadsReceivedDate: '',
+      followUpDate1: '',
+      followUpDate2: '',
+      followUpDate3: '',
+      followUpDate4: '',
+      followUpDate5: ''
     });
   };
 
@@ -2138,9 +2508,17 @@ const ImportModal = ({ isOpen, onClose, onImported, getAuthHeaders, showToast })
           city: '',
           source: '',
           interestedService: '',
+          campaignName: '',
+          leadPlatform: '',
           clientMeetingFixed: '',
           admissionYesNo: '',
-          remarks: ''
+          remarks: '',
+          leadsReceivedDate: '',
+          followUpDate1: '',
+          followUpDate2: '',
+          followUpDate3: '',
+          followUpDate4: '',
+          followUpDate5: ''
         };
 
         rawHeaders.forEach(header => {
@@ -2155,9 +2533,13 @@ const ImportModal = ({ isOpen, onClose, onImported, getAuthHeaders, showToast })
             newMapping.city = header;
           } else if (lower.includes('company') || lower.includes('organization') || lower.includes('firm')) {
             newMapping.companyName = header;
-          } else if (lower.includes('source') || lower.includes('platform') || lower === 'utm_source') {
+          } else if (lower.includes('source') || lower === 'utm_source') {
             newMapping.source = header;
-          } else if (lower.includes('service') || lower.includes('interested') || lower.includes('campaign') || lower.includes('form') || lower.includes('service_interested')) {
+          } else if (lower.includes('platform') || lower.includes('lead_platform') || lower.includes('lead platform')) {
+            newMapping.leadPlatform = header;
+          } else if (lower.includes('campaign') || lower.includes('campaign_name') || lower.includes('campaign name') || lower === 'utm_campaign') {
+            newMapping.campaignName = header;
+          } else if (lower.includes('service') || lower.includes('interested') || lower.includes('form') || lower.includes('service_interested')) {
             newMapping.interestedService = header;
           } else if (lower.includes('meeting') || lower.includes('client_meeting') || lower.includes('client meeting')) {
             newMapping.clientMeetingFixed = header;
@@ -2165,6 +2547,18 @@ const ImportModal = ({ isOpen, onClose, onImported, getAuthHeaders, showToast })
             newMapping.admissionYesNo = header;
           } else if (lower.includes('remark') || lower.includes('note') || lower.includes('comment')) {
             newMapping.remarks = header;
+          } else if (lower.includes('received') || lower.includes('uploaded') || lower.includes('received date')) {
+            newMapping.leadsReceivedDate = header;
+          } else if (lower.includes('followup date 1') || lower.includes('1st followup') || lower.includes('1 st followup')) {
+            newMapping.followUpDate1 = header;
+          } else if (lower.includes('followup date 2') || lower.includes('2nd followup') || lower.includes('2 nd followup')) {
+            newMapping.followUpDate2 = header;
+          } else if (lower.includes('followup date 3') || lower.includes('3rd followup') || lower.includes('3 rd followup')) {
+            newMapping.followUpDate3 = header;
+          } else if (lower.includes('followup date 4') || lower.includes('4th followup') || lower.includes('4 th followup')) {
+            newMapping.followUpDate4 = header;
+          } else if (lower.includes('followup date 5') || lower.includes('5th followup') || lower.includes('5 th followup')) {
+            newMapping.followUpDate5 = header;
           }
         });
 
@@ -2191,6 +2585,8 @@ const ImportModal = ({ isOpen, onClose, onImported, getAuthHeaders, showToast })
       companyName: row[mapping.companyName] || '—',
       source: row[mapping.source] || '—',
       interestedService: row[mapping.interestedService] || '—',
+      campaignName: row[mapping.campaignName] || '—',
+      leadPlatform: row[mapping.leadPlatform] || '—',
       clientMeetingFixed: row[mapping.clientMeetingFixed] || '—',
       admissionYesNo: row[mapping.admissionYesNo] || '—'
     }));
@@ -2207,6 +2603,12 @@ const ImportModal = ({ isOpen, onClose, onImported, getAuthHeaders, showToast })
       setImporting(true);
 
       // Parse and construct the final payload
+      const parseExcelDate = (val) => {
+        if (!val) return null;
+        const d = new Date(val);
+        return isNaN(d.getTime()) ? null : d;
+      };
+
       const payloadLeads = excelRows.map(row => {
         // Retrieve source platform values, e.g. ig -> Instagram, fb -> Facebook
         let rawSource = row[mapping.source] || 'Excel Import';
@@ -2224,9 +2626,17 @@ const ImportModal = ({ isOpen, onClose, onImported, getAuthHeaders, showToast })
           city: row[mapping.city] || '',
           source: rawSource,
           interestedService: row[mapping.interestedService] || '',
+          campaignName: (row[mapping.campaignName] || '').trim().toLowerCase() === 'software development' ? '' : (row[mapping.campaignName] || ''),
+          leadPlatform: row[mapping.leadPlatform] || '',
           clientMeetingFixed: row[mapping.clientMeetingFixed] || '',
           admissionYesNo: row[mapping.admissionYesNo] || '',
-          remarks: row[mapping.remarks] || 'Imported from Excel spreadsheet.'
+          remarks: row[mapping.remarks] || 'Imported from Excel spreadsheet.',
+          leadsReceivedDate: parseExcelDate(row[mapping.leadsReceivedDate]),
+          followUpDate1: parseExcelDate(row[mapping.followUpDate1]),
+          followUpDate2: parseExcelDate(row[mapping.followUpDate2]),
+          followUpDate3: parseExcelDate(row[mapping.followUpDate3]),
+          followUpDate4: parseExcelDate(row[mapping.followUpDate4]),
+          followUpDate5: parseExcelDate(row[mapping.followUpDate5])
         };
       }).filter(item => item.leadName && item.phone); // Filter out rows missing core details
 
@@ -2403,12 +2813,38 @@ const ImportModal = ({ isOpen, onClose, onImported, getAuthHeaders, showToast })
                     </select>
                   </div>
 
-                  {/* Interested Service */}
+                   {/* Interested Service */}
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 mb-1">Interested Service</label>
                     <select
                       value={mapping.interestedService}
                       onChange={e => setMapping({ ...mapping, interestedService: e.target.value })}
+                      className="w-full p-2 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl outline-none"
+                    >
+                      <option value="">-- Ignore / Unmapped --</option>
+                      {headers.map(h => <option key={h} value={h}>{h}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Lead Platform */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Lead Platform</label>
+                    <select
+                      value={mapping.leadPlatform}
+                      onChange={e => setMapping({ ...mapping, leadPlatform: e.target.value })}
+                      className="w-full p-2 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl outline-none"
+                    >
+                      <option value="">-- Ignore / Unmapped --</option>
+                      {headers.map(h => <option key={h} value={h}>{h}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Campaign Name */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Campaign Name</label>
+                    <select
+                      value={mapping.campaignName}
+                      onChange={e => setMapping({ ...mapping, campaignName: e.target.value })}
                       className="w-full p-2 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl outline-none"
                     >
                       <option value="">-- Ignore / Unmapped --</option>
@@ -2435,6 +2871,84 @@ const ImportModal = ({ isOpen, onClose, onImported, getAuthHeaders, showToast })
                     <select
                       value={mapping.admissionYesNo}
                       onChange={e => setMapping({ ...mapping, admissionYesNo: e.target.value })}
+                      className="w-full p-2 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl outline-none"
+                    >
+                      <option value="">-- Ignore / Unmapped --</option>
+                      {headers.map(h => <option key={h} value={h}>{h}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Leads Received Date */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Leads Received Date</label>
+                    <select
+                      value={mapping.leadsReceivedDate}
+                      onChange={e => setMapping({ ...mapping, leadsReceivedDate: e.target.value })}
+                      className="w-full p-2 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl outline-none"
+                    >
+                      <option value="">-- Ignore / Unmapped --</option>
+                      {headers.map(h => <option key={h} value={h}>{h}</option>)}
+                    </select>
+                  </div>
+
+                  {/* 1st Followup Date */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">1st Followup Date</label>
+                    <select
+                      value={mapping.followUpDate1}
+                      onChange={e => setMapping({ ...mapping, followUpDate1: e.target.value })}
+                      className="w-full p-2 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl outline-none"
+                    >
+                      <option value="">-- Ignore / Unmapped --</option>
+                      {headers.map(h => <option key={h} value={h}>{h}</option>)}
+                    </select>
+                  </div>
+
+                  {/* 2nd Followup Date */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">2nd Followup Date</label>
+                    <select
+                      value={mapping.followUpDate2}
+                      onChange={e => setMapping({ ...mapping, followUpDate2: e.target.value })}
+                      className="w-full p-2 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl outline-none"
+                    >
+                      <option value="">-- Ignore / Unmapped --</option>
+                      {headers.map(h => <option key={h} value={h}>{h}</option>)}
+                    </select>
+                  </div>
+
+                  {/* 3rd Followup Date */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">3rd Followup Date</label>
+                    <select
+                      value={mapping.followUpDate3}
+                      onChange={e => setMapping({ ...mapping, followUpDate3: e.target.value })}
+                      className="w-full p-2 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl outline-none"
+                    >
+                      <option value="">-- Ignore / Unmapped --</option>
+                      {headers.map(h => <option key={h} value={h}>{h}</option>)}
+                    </select>
+                  </div>
+
+                  {/* 4th Followup Date */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">4th Followup Date</label>
+                    <select
+                      value={mapping.followUpDate4}
+                      onChange={e => setMapping({ ...mapping, followUpDate4: e.target.value })}
+                      className="w-full p-2 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl outline-none"
+                    >
+                      <option value="">-- Ignore / Unmapped --</option>
+                      {headers.map(h => <option key={h} value={h}>{h}</option>)}
+                    </select>
+                  </div>
+
+                  {/* 5th Followup Date */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">5th Followup Date</label>
+                    <select
+                      value={mapping.followUpDate5}
+                      onChange={e => setMapping({ ...mapping, followUpDate5: e.target.value })}
                       className="w-full p-2 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl outline-none"
                     >
                       <option value="">-- Ignore / Unmapped --</option>

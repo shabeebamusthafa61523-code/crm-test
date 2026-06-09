@@ -91,8 +91,7 @@ const StudentAttendance = () => {
   const fetchStudents = useCallback(async () => {
     setLoading(true);
     try {
-      const skip = (currentPage - 1) * PAGE_SIZE;
-      const res = await fetch(`${API_BASE}/user/?role=student&limit=${PAGE_SIZE}&skip=${skip}`, { headers: getHeaders() });
+      const res = await fetch(`${API_BASE}/user/?role=student&limit=${PAGE_SIZE}&page=${currentPage}`, { headers: getHeaders() });
       
       if (!res.ok) return;
       

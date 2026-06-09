@@ -1,7 +1,7 @@
 import { jest } from '@jest/globals';
 
 // Mock Redis connection to prevent open handles and test in isolation
-jest.mock('../config/redis.js', () => ({
+jest.unstable_mockModule('../config/redis.js', () => ({
   __esModule: true,
   default: {
     exists: jest.fn().mockResolvedValue(1),
@@ -14,12 +14,12 @@ jest.mock('../config/redis.js', () => ({
 }));
 
 // Mock responses and response helper to avoid other db/import issues
-jest.mock('../utils/response.helper.js', () => ({
+jest.unstable_mockModule('../utils/response.helper.js', () => ({
   sendError: (res, msg, status) => res.status(status).json({ success: false, message: msg })
 }));
 
-import { createLeadSchema, bulkUpdateStatusSchema } from '../validators/lead.validator.js';
-import { restrictToRoles } from '../middleware/auth.middleware.js';
+const { createLeadSchema, bulkUpdateStatusSchema } = await import('../validators/lead.validator.js');
+const { restrictToRoles } = await import('../middleware/auth.middleware.js');
 
 describe('Lead Module Unit Tests', () => {
   describe('Zod Validation Schemas', () => {
@@ -39,6 +39,26 @@ describe('Lead Module Unit Tests', () => {
         phone: '1234567890'
       });
       expect(result.success).toBe(false);
+    });
+
+    test('should validate lead with all new fields successfully', () => {
+      const result = createLeadSchema.safeParse({
+        leadName: 'New Leads Telecaller Client',
+        phone: '9876543210',
+        email: 'telecaller.lead@test.com',
+        source: 'MARKETING',
+        interestedService: 'HOT LEAD',
+        clientMeetingFixed: 'Yes',
+        admissionYesNo: 'Pending',
+        remarks: 'Highly interested student, callback scheduled.',
+        leadsReceivedDate: '2026-06-09',
+        followUpDate1: '2026-06-10',
+        followUpDate2: '2026-06-11',
+        followUpDate3: '',
+        followUpDate4: null,
+        followUpDate5: '2026-06-12'
+      });
+      expect(result.success).toBe(true);
     });
 
     test('should validate correct bulk update status input', () => {
@@ -83,8 +103,7 @@ describe('Lead Module Unit Tests', () => {
     test('should allow access if user has allowed role ID', () => {
       mockReq.user = { role: 'employee', role_id: '4' };
       const middleware = restrictToRoles(['4']);
-      middleware(middleware, mockRes, next); // note: passing mockReq, mockRes, next
-      restrictToRoles(['4'])(mockReq, mockRes, next);
+      middleware(mockReq, mockRes, next);
       expect(next).toHaveBeenCalled();
       expect(mockRes.status).not.toHaveBeenCalled();
     });

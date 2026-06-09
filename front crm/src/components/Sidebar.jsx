@@ -11,17 +11,26 @@ import {
   Settings, 
   LogOut,
   Building,
-  TrendingUp
+  TrendingUp,
+  BarChart3
 } from 'lucide-react';
 
 const menuItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', allowedRoles: ['1', '2','3', 'hr', 'admin' ,'employee'] 
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', allowedRoles: ['1', '2', 'hr', 'admin' ,'employee'] 
  },
   {
     icon: LayoutDashboard,
     label: 'Lead Dashboard',
     path: '/lead-dashboard',
-    allowedDepartments: ['6a211b6621f80bb8da167efb']
+    // allowedRoles: ['1', '2', '3', 'hr', 'admin'],
+    allowedDepartments: ['6a26a7d72a56a1f9c49da8a3']
+  },
+  {
+    icon: BarChart3,
+    label: 'Marketing Dashboard',
+    path: '/marketing-dashboard',
+    // allowedRoles: ['1', '2', '3', 'hr', 'admin', 'marketing'],
+    allowedDepartments: [ '6a211b6621f80bb8da167efb']
   },
 
   { 
@@ -42,6 +51,13 @@ const menuItems = [
     path: '/leads-telecaller',
     // allowedRoles: ['3'],
     allowedDepartments: ['6a26a7d72a56a1f9c49da8a3']
+  },
+  { 
+    icon: TrendingUp, 
+    label: 'Lead Counselor', 
+    path: '/lead-counselor',
+    // allowedRoles: ['1', '2', 'hr', 'admin'],
+    allowedDepartments: ['6a27f394558c220a47fff02e']
   },
   { icon: UserCheck, label: 'Attendance', path: '/attendance' },
   { icon: ListCheck, label: 'To-Do', path: '/todo' },

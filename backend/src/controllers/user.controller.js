@@ -97,7 +97,7 @@ export const userController = {
         status
       } = req.query;
 
-      const whereClause = { role: { $ne: 'student' } };
+      const whereClause = { role_id: { $ne: '10' } };
 
       if (department) {
         whereClause.$or = [
@@ -107,7 +107,12 @@ export const userController = {
       }
 
       if (role) {
-        whereClause.role = role;
+        if (role === 'student' || role === '10') {
+          whereClause.role_id = '10';
+        } else {
+          whereClause.role = role;
+          delete whereClause.role_id;
+        }
       }
 
       if (status !== undefined && status !== '') {

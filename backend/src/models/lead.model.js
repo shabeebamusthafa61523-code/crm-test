@@ -32,6 +32,14 @@ const leadSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  campaignName: {
+    type: String,
+    trim: true
+  },
+  leadPlatform: {
+    type: String,
+    trim: true
+  },
   assignedTo: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -61,6 +69,24 @@ const leadSchema = new mongoose.Schema({
     type: String
   },
   nextFollowUpDate: {
+    type: Date
+  },
+  leadsReceivedDate: {
+    type: Date
+  },
+  followUpDate1: {
+    type: Date
+  },
+  followUpDate2: {
+    type: Date
+  },
+  followUpDate3: {
+    type: Date
+  },
+  followUpDate4: {
+    type: Date
+  },
+  followUpDate5: {
     type: Date
   },
   createdBy: {
