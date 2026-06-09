@@ -74,7 +74,7 @@ const Login = () => {
         // 3. Save full user object for profile/other uses
         localStorage.setItem('user', JSON.stringify(result.user || { id: userId }));
 
-        navigate('/');
+        navigate('/dashboard');
       } else {
         showToast(result.detail || "Authentication Failed", 'error');
       }

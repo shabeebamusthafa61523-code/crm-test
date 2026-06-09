@@ -8,22 +8,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
 
-const API_BASE = "http://localhost:5000/api/v1";
-
-const STATUS_META = {
-  'New': { label: 'New', color: 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:bg-blue-500/20 dark:text-blue-400', dot: 'bg-blue-500' },
-  'Contacted': { label: 'Contacted', color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:bg-indigo-500/20 dark:text-indigo-400', dot: 'bg-indigo-500' },
-  'Follow Up': { label: 'Follow Up', color: 'bg-amber-500/10 text-amber-600 border-amber-500/20 dark:bg-amber-500/20 dark:text-amber-400', dot: 'bg-amber-500' },
-  'Interested': { label: 'Interested', color: 'bg-purple-500/10 text-purple-600 border-purple-500/20 dark:bg-purple-500/20 dark:text-purple-400', dot: 'bg-purple-500' },
-  'Converted': { label: 'Converted', color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-400', dot: 'bg-emerald-500' },
-  'Lost': { label: 'Lost', color: 'bg-rose-500/10 text-rose-500 border-rose-500/20 dark:bg-rose-500/20 dark:text-rose-400', dot: 'bg-rose-500' }
-};
-
-const PRIORITY_META = {
-  'Low': { label: 'Low', color: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-305' },
-  'Medium': { label: 'Medium', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-400' },
-  'High': { label: 'High', color: 'bg-rose-100 text-rose-850 dark:bg-rose-950/30 dark:text-rose-400' }
-};
+const API_BASE = import.meta.env.VITE_API_URL;
 
 const LeadDashboard = () => {
   const [user, setUser] = useState(null);
@@ -44,7 +29,6 @@ const LeadDashboard = () => {
   const [leadsPages, setLeadsPages] = useState(1);
   const [leadsTotal, setLeadsTotal] = useState(0);
   const [leadsSearch, setLeadsSearch] = useState('');
-  const [leadsStatusFilter, setLeadsStatusFilter] = useState('all');
   const [leadsLoading, setLeadsLoading] = useState(false);
 
   const { showToast } = useToast();
@@ -92,11 +76,11 @@ const LeadDashboard = () => {
     try {
       const headers = getAuthHeaders();
       const urls = [
-        `${API_BASE}/analytics/summary`,
-        `${API_BASE}/analytics/conversion-rate`,
-        `${API_BASE}/analytics/staff-performance`,
-        `${API_BASE}/analytics/source-performance`,
-        `${API_BASE}/analytics/followup-metrics`
+        `${API_BASE}/v1/analytics/summary`,
+        `${API_BASE}/v1/analytics/conversion-rate`,
+        `${API_BASE}/v1/analytics/staff-performance`,
+        `${API_BASE}/v1/analytics/source-performance`,
+        `${API_BASE}/v1/analytics/followup-metrics`
       ];
 
       const [summaryRes, funnelRes, staffRes, sourceRes, followupRes] = await Promise.all(
@@ -129,7 +113,6 @@ const LeadDashboard = () => {
       queryParams.append('page', leadsPage);
       queryParams.append('limit', 10);
       if (leadsSearch) queryParams.append('search', leadsSearch);
-      if (leadsStatusFilter !== 'all') queryParams.append('status', leadsStatusFilter);
 
       const res = await fetch(`${API_BASE}/leads?${queryParams.toString()}`, {
         headers: getAuthHeaders()
@@ -150,7 +133,7 @@ const LeadDashboard = () => {
     } finally {
       setLeadsLoading(false);
     }
-  }, [leadsPage, leadsSearch, leadsStatusFilter, getAuthHeaders]);
+  }, [leadsPage, leadsSearch, getAuthHeaders]);
 
   useEffect(() => {
     if (user && isMarketingDept) {
@@ -623,23 +606,7 @@ const LeadDashboard = () => {
                       />
                     </div>
 
-                    {/* Status Dropdown Filter */}
-                    <select
-                      value={leadsStatusFilter}
-                      onChange={(e) => {
-                        setLeadsStatusFilter(e.target.value);
-                        setLeadsPage(1); // Reset page on new query
-                      }}
-                      className="px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl text-xs outline-none focus:border-indigo-500 transition-all cursor-pointer"
-                    >
-                      <option value="all">All Statuses</option>
-                      <option value="New">New</option>
-                      <option value="Contacted">Contacted</option>
-                      <option value="Follow Up">Follow Up</option>
-                      <option value="Interested">Interested</option>
-                      <option value="Converted">Converted</option>
-                      <option value="Lost">Lost</option>
-                    </select>
+
                   </div>
                 </div>
 
@@ -661,13 +628,10 @@ const LeadDashboard = () => {
                           <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Context</th>
                           <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">City / Place</th>
                           <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Created</th>
-                          <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                         {leadsList.map((lead) => {
-                          const statusMeta = STATUS_META[lead.status] || { label: lead.status, color: 'bg-slate-100 text-slate-600', dot: 'bg-slate-400' };
-                          const priorityMeta = PRIORITY_META[lead.priority] || { label: lead.priority, color: 'bg-slate-100 text-slate-600' };
 
                           return (
                             <tr key={lead.id || lead._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition duration-150">
@@ -675,9 +639,6 @@ const LeadDashboard = () => {
                               <td className="px-6 py-4">
                                 <div className="font-bold text-xs text-slate-850 dark:text-white flex items-center gap-1.5">
                                   {lead.leadName}
-                                  <span className={`px-1.5 py-0.2 rounded text-[7px] font-black uppercase ${priorityMeta.color}`}>
-                                    {priorityMeta.label}
-                                  </span>
                                 </div>
                                 {lead.companyName && (
                                   <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
@@ -727,13 +688,7 @@ const LeadDashboard = () => {
                                 }
                               </td>
 
-                              {/* Status Badges */}
-                              <td className="px-6 py-4">
-                                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-[9px] font-black ${statusMeta.color}`}>
-                                  <span className={`h-1.5 w-1.5 rounded-full ${statusMeta.dot}`} />
-                                  {statusMeta.label}
-                                </span>
-                              </td>
+
                             </tr>
                           );
                         })}

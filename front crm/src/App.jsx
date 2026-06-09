@@ -11,29 +11,56 @@ import Attendance from './pages/Attendance';
 import Todo from './pages/Todo';
 import Users from './pages/Users';
 import Leads from './pages/Leads';
+import LeadsTelecaller from './pages/LeadsTelecaller';
 import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
 import StudentAttendance from './pages/StudentAttendance';
 import DepartmentsPage from './modules/departments/DepartmentsPage';
+
+// Route Guards
+const ProtectedRoute = ({ children }) => {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+};
+
+const PublicRoute = ({ children }) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return children;
+};
+
+const LandingRoute = () => {
+  const token = localStorage.getItem('token');
+  return token ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />;
+};
 
 function App() {
   return (
     <Router>
       <Routes>
         {/* Auth Routes - No Sidebar */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+        <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
 
         {/* Protected Routes - Wrapped in MainLayout */}
-        <Route path="/" element={<MainLayout><Dashboard /></MainLayout>} />
-        <Route path="/lead-dashboard" element={<MainLayout><LeadDashboard /></MainLayout>} />
-        <Route path="/attendance" element={<MainLayout><Attendance /></MainLayout>} />
-        <Route path="/todo" element={<MainLayout><Todo /></MainLayout>} />
-        <Route path="/users" element={<MainLayout><Users /></MainLayout>} />
-        <Route path="/leads" element={<MainLayout><Leads /></MainLayout>} />
-        <Route path="/settings" element={<MainLayout><Settings /></MainLayout>} />
-        <Route path="/student-attendance" element={<MainLayout><StudentAttendance /></MainLayout>} />
-        <Route path="/departments" element={<MainLayout><DepartmentsPage /></MainLayout>} />
+        <Route path="/dashboard" element={<ProtectedRoute><MainLayout><Dashboard /></MainLayout></ProtectedRoute>} />
+        <Route path="/lead-dashboard" element={<ProtectedRoute><MainLayout><LeadDashboard /></MainLayout></ProtectedRoute>} />
+        <Route path="/attendance" element={<ProtectedRoute><MainLayout><Attendance /></MainLayout></ProtectedRoute>} />
+        <Route path="/todo" element={<ProtectedRoute><MainLayout><Todo /></MainLayout></ProtectedRoute>} />
+        <Route path="/users" element={<ProtectedRoute><MainLayout><Users /></MainLayout></ProtectedRoute>} />
+        <Route path="/leads" element={<ProtectedRoute><MainLayout><Leads /></MainLayout></ProtectedRoute>} />
+        <Route path="/leads-telecaller" element={<ProtectedRoute><MainLayout><LeadsTelecaller /></MainLayout></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
+        <Route path="/student-attendance" element={<ProtectedRoute><MainLayout><StudentAttendance /></MainLayout></ProtectedRoute>} />
+        <Route path="/departments" element={<ProtectedRoute><MainLayout><DepartmentsPage /></MainLayout></ProtectedRoute>} />
+
+        {/* Default Landing Route */}
+        <Route path="/" element={<LandingRoute />} />
 
         <Route path="/404" element={<NotFound />} />
         <Route path="*" element={<Navigate to="/404" />} />
