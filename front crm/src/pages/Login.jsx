@@ -25,7 +25,7 @@ const Login = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setLoginData(prev => ({ ...prev, [name]: value.trim() }));
+    setLoginData(prev => ({ ...prev, [name]: name === 'email' ? value.trim() : value }));
   };
 
   const handleSubmit = async (e) => {

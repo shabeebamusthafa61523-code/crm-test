@@ -40,7 +40,7 @@ const menuItems = [
     icon: TrendingUp, 
     label: 'Telecaller Leads', 
     path: '/leads-telecaller',
-    allowedRoles: ['3'],
+    // allowedRoles: ['3'],
     allowedDepartments: ['6a26a7d72a56a1f9c49da8a3']
   },
   { icon: UserCheck, label: 'Attendance', path: '/attendance' },

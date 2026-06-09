@@ -28,6 +28,23 @@ const PRIORITY_META = {
   'High': { label: 'High', color: 'bg-rose-100 text-rose-800 dark:bg-rose-950/30 dark:text-rose-400' }
 };
 
+const getRowClass = (interestedService) => {
+  const service = String(interestedService || '').trim().toUpperCase();
+  if (service === 'HOT LEAD') {
+    return 'bg-orange-50/70 dark:bg-orange-950/20 hover:bg-orange-100/80 dark:hover:bg-orange-950/30 text-orange-950 dark:text-orange-200 transition-all duration-200 border-b border-slate-200/60 dark:border-slate-800';
+  }
+  if (service === 'WARM LEAD') {
+    return 'bg-emerald-50/70 dark:bg-emerald-950/20 hover:bg-emerald-100/80 dark:hover:bg-emerald-950/30 text-emerald-950 dark:text-emerald-200 transition-all duration-200 border-b border-slate-200/60 dark:border-slate-800';
+  }
+  if (service === 'WRONG LEAD') {
+    return 'bg-rose-50/70 dark:bg-rose-950/20 hover:bg-rose-100/80 dark:hover:bg-rose-950/30 text-rose-950 dark:text-rose-200 transition-all duration-200 border-b border-slate-200/60 dark:border-slate-800';
+  }
+  if (service === 'COLD LEAD') {
+    return 'bg-slate-100/70 dark:bg-slate-800/40 hover:bg-slate-200/50 dark:hover:bg-slate-850 text-slate-900 dark:text-slate-200 transition-all duration-200 border-b border-slate-200/60 dark:border-slate-800';
+  }
+  return 'hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all duration-200 border-b border-slate-200/60 dark:border-slate-800';
+};
+
 const Leads = () => {
   const [leads, setLeads] = useState([]);
   const [staff, setStaff] = useState([]);
@@ -381,6 +398,8 @@ const [activePriority, setActivePriority] = useState('all');
       'Status': l.status || 'New',
       'Priority': l.priority || 'Medium',
       'City / Place': l.city || 'N/A',
+      'Client Meeting Fixed': l.clientMeetingFixed || 'Pending',
+      'Admission Status': l.admissionYesNo || 'Pending',
       'Next Follow Up': l.nextFollowUpDate ? new Date(l.nextFollowUpDate).toLocaleDateString() : 'N/A',
       'Remarks': l.remarks || '',
       'Created Date': new Date(l.createdAt).toLocaleDateString()
@@ -407,7 +426,7 @@ const [activePriority, setActivePriority] = useState('all');
   doc.setFont('helvetica', 'normal');
   doc.text(`Export Tab: ${activeTab.toUpperCase()} | Generated: ${new Date().toLocaleString()}`, 14, 21);
 
-  const headers = [['Lead Name', 'Phone', 'Email', 'Company', 'Source', 'Service', 'Status', 'Priority', 'City / Place']];
+  const headers = [['Lead Name', 'Phone', 'Email', 'Company', 'Source', 'Service', 'Client Meeting Fixed', 'Admission', 'Status', 'Priority', 'City / Place']];
   const body = filteredLeads.map(l => [
     l.leadName || '',
     l.phone || '',
@@ -415,6 +434,8 @@ const [activePriority, setActivePriority] = useState('all');
     l.companyName || '',
     l.source || '',
     l.interestedService || '',
+    l.clientMeetingFixed || 'Pending',
+    l.admissionYesNo || 'Pending',
     l.status || 'New',
     l.priority || 'Medium',
     l.city || 'N/A'
@@ -877,8 +898,11 @@ const [activePriority, setActivePriority] = useState('all');
                   <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200/60 dark:border-slate-800">
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Lead Info</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Contact Details</th>
-                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Context</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">City / Place</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Course Interest</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Source</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Client Meeting</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Admission</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Created</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400 text-right">Actions</th>
@@ -890,7 +914,7 @@ const [activePriority, setActivePriority] = useState('all');
                     const priorityMeta = PRIORITY_META[lead.priority] || { label: lead.priority, color: 'bg-slate-100 text-slate-600' };
 
                     return (
-                      <tr key={lead.id || lead._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all duration-200">
+                      <tr key={lead.id || lead._id} className={getRowClass(lead.interestedService)}>
                         {/* Name & Company */}
                         <td className="px-6 py-4.5">
                           <div className="font-semibold text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
@@ -921,27 +945,52 @@ const [activePriority, setActivePriority] = useState('all');
                           )}
                         </td>
 
-                        {/* Source & Interested Service */}
-                        <td className="px-6 py-4.5 text-xs">
-                          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 font-medium">
-                            <Tag size={12} className="text-slate-400" />
-                            {lead.interestedService || 'Generic Service'}
-                          </div>
-                          {lead.source && (
-                            <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1.5">
-                              <span className="px-1.5 py-0.2 bg-slate-100 dark:bg-slate-800 rounded font-semibold text-[8px] uppercase">
-                                {lead.source}
-                              </span>
-                            </div>
-                          )}
-                        </td>
-
                         {/* City / Place */}
                         <td className="px-6 py-4.5 text-xs font-semibold text-slate-700 dark:text-slate-200">
                           {lead.city || (
                             <span className="text-[10px] font-medium text-slate-400 italic">
                               Not Specified
                             </span>
+                          )}
+                        </td>
+
+                        {/* Course Interest */}
+                        <td className="px-6 py-4.5 text-xs font-semibold text-slate-700 dark:text-slate-200">
+                          {lead.interestedService || '—'}
+                        </td>
+
+                        {/* Source */}
+                        <td className="px-6 py-4.5 text-xs">
+                          {lead.source ? (
+                            <span className="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-800 text-slate-750 dark:text-slate-200 rounded font-semibold text-[8px] uppercase">
+                              {lead.source}
+                            </span>
+                          ) : '—'}
+                        </td>
+
+                        {/* Client Meeting Fixed */}
+                        <td className="px-6 py-4.5 text-xs">
+                          {lead.clientMeetingFixed === 'Yes' && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/30">Yes</span>
+                          )}
+                          {lead.clientMeetingFixed === 'No' && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-100 text-rose-800 dark:bg-rose-950/30 dark:text-rose-400 border border-rose-200/30">No</span>
+                          )}
+                          {(lead.clientMeetingFixed === 'Pending' || lead.clientMeetingFixed === '') && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200/30">Pending</span>
+                          )}
+                        </td>
+
+                        {/* Admission Status */}
+                        <td className="px-6 py-4.5 text-xs">
+                          {lead.admissionYesNo === 'Yes' && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/30">Yes</span>
+                          )}
+                          {lead.admissionYesNo === 'No' && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-100 text-rose-800 dark:bg-rose-950/30 dark:text-rose-400 border border-rose-200/30">No</span>
+                          )}
+                          {(lead.admissionYesNo === 'Pending' || lead.admissionYesNo === '') && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200/30">Pending</span>
                           )}
                         </td>
 
@@ -1094,11 +1143,13 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
     email: '',
     phone: '',
     city: '',
-    source: 'Manual Entry',
-    interestedService: '',
+    source: 'REFERENCE',
+    interestedService: 'HOT LEAD',
     assignedTo: '',
     status: 'New',
     priority: 'Medium',
+    clientMeetingFixed: 'Pending',
+    admissionYesNo: 'Pending',
     remarks: ''
   });
   const [submitting, setSubmitting] = useState(false);
@@ -1129,11 +1180,13 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
           email: '',
           phone: '',
           city: '',
-          source: 'Manual Entry',
-          interestedService: '',
+          source: 'REFERENCE',
+          interestedService: 'HOT LEAD',
           assignedTo: '',
           status: 'New',
           priority: 'Medium',
+          clientMeetingFixed: 'Pending',
+          admissionYesNo: 'Pending',
           remarks: ''
         });
       } else {
@@ -1223,23 +1276,56 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
             </div>
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Lead Source</label>
-              <input
-                type="text"
+              <select
                 value={formData.source}
                 onChange={e => setFormData({ ...formData, source: e.target.value })}
                 className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
-                placeholder="e.g. Facebook Ads, Website, Cold Call"
-              />
+              >
+                <option value="REFERENCE">REFERENCE</option>
+                <option value="INBOUND CALL">INBOUND CALL</option>
+                <option value="INBOUND MSG">INBOUND MSG</option>
+                <option value="MARKETING">MARKETING</option>
+              </select>
             </div>
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Interested Service</label>
-              <input
-                type="text"
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Course Interest (Service)</label>
+              <select
                 value={formData.interestedService}
                 onChange={e => setFormData({ ...formData, interestedService: e.target.value })}
                 className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
-                placeholder="e.g. Custom Web App Development"
-              />
+              >
+                <option value="HOT LEAD">HOT LEAD</option>
+                <option value="WARM LEAD">WARM LEAD</option>
+                <option value="COLD LEAD">COLD LEAD</option>
+                <option value="RNT">RNT</option>
+                <option value="SWITCHED OFF">SWITCHED OFF</option>
+                <option value="WRONG LEAD">WRONG LEAD</option>
+                <option value="CALL BACK">CALL BACK</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Client Meeting Fixed</label>
+              <select
+                value={formData.clientMeetingFixed}
+                onChange={e => setFormData({ ...formData, clientMeetingFixed: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              >
+                <option value="Pending">Pending</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Admission Status</label>
+              <select
+                value={formData.admissionYesNo}
+                onChange={e => setFormData({ ...formData, admissionYesNo: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              >
+                <option value="Pending">Pending</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+              </select>
             </div>
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Priority</label>
@@ -1354,6 +1440,8 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
     assignedTo: '',
     status: '',
     priority: '',
+    clientMeetingFixed: '',
+    admissionYesNo: '',
     remarks: '',
     lostReason: ''
   });
@@ -1367,11 +1455,13 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
         email: lead.email || '',
         phone: lead.phone || '',
         city: lead.city || '',
-        source: lead.source || '',
-        interestedService: lead.interestedService || '',
+        source: lead.source || 'REFERENCE',
+        interestedService: lead.interestedService || 'HOT LEAD',
         assignedTo: lead.assignedTo?._id || lead.assignedTo || '',
         status: lead.status || 'New',
         priority: lead.priority || 'Medium',
+        clientMeetingFixed: lead.clientMeetingFixed || 'Pending',
+        admissionYesNo: lead.admissionYesNo || 'Pending',
         remarks: lead.remarks || '',
         lostReason: lead.lostReason || ''
       });
@@ -1482,21 +1572,56 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
             </div>
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Lead Source</label>
-              <input
-                type="text"
+              <select
                 value={formData.source}
                 onChange={e => setFormData({ ...formData, source: e.target.value })}
                 className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
-              />
+              >
+                <option value="REFERENCE">REFERENCE</option>
+                <option value="INBOUND CALL">INBOUND CALL</option>
+                <option value="INBOUND MSG">INBOUND MSG</option>
+                <option value="MARKETING">MARKETING</option>
+              </select>
             </div>
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Interested Service</label>
-              <input
-                type="text"
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Course Interest (Service)</label>
+              <select
                 value={formData.interestedService}
                 onChange={e => setFormData({ ...formData, interestedService: e.target.value })}
                 className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
-              />
+              >
+                <option value="HOT LEAD">HOT LEAD</option>
+                <option value="WARM LEAD">WARM LEAD</option>
+                <option value="COLD LEAD">COLD LEAD</option>
+                <option value="RNT">RNT</option>
+                <option value="SWITCHED OFF">SWITCHED OFF</option>
+                <option value="WRONG LEAD">WRONG LEAD</option>
+                <option value="CALL BACK">CALL BACK</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Client Meeting Fixed</label>
+              <select
+                value={formData.clientMeetingFixed}
+                onChange={e => setFormData({ ...formData, clientMeetingFixed: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              >
+                <option value="Pending">Pending</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Admission Status</label>
+              <select
+                value={formData.admissionYesNo}
+                onChange={e => setFormData({ ...formData, admissionYesNo: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              >
+                <option value="Pending">Pending</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+              </select>
             </div>
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Priority</label>
@@ -1655,6 +1780,14 @@ const ViewModal = ({ isOpen, onClose, lead, details, loading }) => {
               <div>
                 <span className="text-[10px] text-slate-400 block font-semibold uppercase">City / Place</span>
                 <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{lead.city || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 block font-semibold uppercase">Client Meeting Fixed</span>
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{lead.clientMeetingFixed || 'Pending'}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 block font-semibold uppercase">Admission Status</span>
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{lead.admissionYesNo || 'Pending'}</span>
               </div>
             </div>
 
@@ -1941,6 +2074,8 @@ const ImportModal = ({ isOpen, onClose, onImported, getAuthHeaders, showToast })
     city: '',
     source: '',
     interestedService: '',
+    clientMeetingFixed: '',
+    admissionYesNo: '',
     remarks: ''
   });
   const [loading, setLoading] = useState(false);
@@ -1958,6 +2093,8 @@ const ImportModal = ({ isOpen, onClose, onImported, getAuthHeaders, showToast })
       city: '',
       source: '',
       interestedService: '',
+      clientMeetingFixed: '',
+      admissionYesNo: '',
       remarks: ''
     });
   };
@@ -1998,8 +2135,11 @@ const ImportModal = ({ isOpen, onClose, onImported, getAuthHeaders, showToast })
           phone: '',
           email: '',
           companyName: '',
+          city: '',
           source: '',
           interestedService: '',
+          clientMeetingFixed: '',
+          admissionYesNo: '',
           remarks: ''
         };
 
@@ -2019,6 +2159,10 @@ const ImportModal = ({ isOpen, onClose, onImported, getAuthHeaders, showToast })
             newMapping.source = header;
           } else if (lower.includes('service') || lower.includes('interested') || lower.includes('campaign') || lower.includes('form') || lower.includes('service_interested')) {
             newMapping.interestedService = header;
+          } else if (lower.includes('meeting') || lower.includes('client_meeting') || lower.includes('client meeting')) {
+            newMapping.clientMeetingFixed = header;
+          } else if (lower.includes('admission') || lower.includes('admitted')) {
+            newMapping.admissionYesNo = header;
           } else if (lower.includes('remark') || lower.includes('note') || lower.includes('comment')) {
             newMapping.remarks = header;
           }
@@ -2046,7 +2190,9 @@ const ImportModal = ({ isOpen, onClose, onImported, getAuthHeaders, showToast })
       city: row[mapping.city] || '—',
       companyName: row[mapping.companyName] || '—',
       source: row[mapping.source] || '—',
-      interestedService: row[mapping.interestedService] || '—'
+      interestedService: row[mapping.interestedService] || '—',
+      clientMeetingFixed: row[mapping.clientMeetingFixed] || '—',
+      admissionYesNo: row[mapping.admissionYesNo] || '—'
     }));
   }, [excelRows, mapping]);
 
@@ -2078,6 +2224,8 @@ const ImportModal = ({ isOpen, onClose, onImported, getAuthHeaders, showToast })
           city: row[mapping.city] || '',
           source: rawSource,
           interestedService: row[mapping.interestedService] || '',
+          clientMeetingFixed: row[mapping.clientMeetingFixed] || '',
+          admissionYesNo: row[mapping.admissionYesNo] || '',
           remarks: row[mapping.remarks] || 'Imported from Excel spreadsheet.'
         };
       }).filter(item => item.leadName && item.phone); // Filter out rows missing core details
@@ -2267,6 +2415,32 @@ const ImportModal = ({ isOpen, onClose, onImported, getAuthHeaders, showToast })
                       {headers.map(h => <option key={h} value={h}>{h}</option>)}
                     </select>
                   </div>
+
+                  {/* Client Meeting Fixed */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Client Meeting Fixed</label>
+                    <select
+                      value={mapping.clientMeetingFixed}
+                      onChange={e => setMapping({ ...mapping, clientMeetingFixed: e.target.value })}
+                      className="w-full p-2 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl outline-none"
+                    >
+                      <option value="">-- Ignore / Unmapped --</option>
+                      {headers.map(h => <option key={h} value={h}>{h}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Admission Yes/No */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Admission Status</label>
+                    <select
+                      value={mapping.admissionYesNo}
+                      onChange={e => setMapping({ ...mapping, admissionYesNo: e.target.value })}
+                      className="w-full p-2 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl outline-none"
+                    >
+                      <option value="">-- Ignore / Unmapped --</option>
+                      {headers.map(h => <option key={h} value={h}>{h}</option>)}
+                    </select>
+                  </div>
                 </div>
               </div>
 
@@ -2280,8 +2454,8 @@ const ImportModal = ({ isOpen, onClose, onImported, getAuthHeaders, showToast })
                         <tr>
                           <th className="p-2 border-b dark:border-slate-800">Lead Name</th>
                           <th className="p-2 border-b dark:border-slate-800">Phone</th>
-                          <th className="p-2 border-b dark:border-slate-800">Email</th>
-                          <th className="p-2 border-b dark:border-slate-800">Service</th>
+                          <th className="p-2 border-b dark:border-slate-800">Meeting</th>
+                          <th className="p-2 border-b dark:border-slate-800">Admission</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -2289,8 +2463,8 @@ const ImportModal = ({ isOpen, onClose, onImported, getAuthHeaders, showToast })
                           <tr key={i} className="dark:text-slate-300">
                             <td className="p-2">{preview.leadName}</td>
                             <td className="p-2">{preview.phone}</td>
-                            <td className="p-2">{preview.email}</td>
-                            <td className="p-2">{preview.interestedService}</td>
+                            <td className="p-2">{preview.clientMeetingFixed}</td>
+                            <td className="p-2">{preview.admissionYesNo}</td>
                           </tr>
                         ))}
                       </tbody>

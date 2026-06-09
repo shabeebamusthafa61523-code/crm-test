@@ -47,6 +47,16 @@ const leadSchema = new mongoose.Schema({
     enum: ['Low', 'Medium', 'High'],
     default: 'Medium'
   },
+  clientMeetingFixed: {
+    type: String,
+    enum: ['Yes', 'No', 'Pending', ''],
+    default: ''
+  },
+  admissionYesNo: {
+    type: String,
+    enum: ['Yes', 'No', 'Pending', ''],
+    default: ''
+  },
   remarks: {
     type: String
   },

@@ -92,7 +92,7 @@ const StudentAttendance = () => {
     setLoading(true);
     try {
       const skip = (currentPage - 1) * PAGE_SIZE;
-      const res = await fetch(`${API_BASE}/user/?limit=${PAGE_SIZE}&skip=${skip}`, { headers: getHeaders() });
+      const res = await fetch(`${API_BASE}/user/?role=student&limit=${PAGE_SIZE}&skip=${skip}`, { headers: getHeaders() });
       
       if (!res.ok) return;
       
@@ -101,11 +101,11 @@ const StudentAttendance = () => {
       
       const studentList = allUsers.filter(u => {
         const roleId = u.role_id ?? u.role ?? u.role?.id ?? u.role?.role_id;
-        return String(roleId) === STUDENT_ROLE_ID;
+        return String(roleId) === STUDENT_ROLE_ID || String(roleId).toLowerCase() === 'student';
       });
 
       setStudents(studentList);
-      setTotalStudents(responseData.total || studentList.length);
+      setTotalStudents(responseData?.pagination?.total || responseData?.total || studentList.length);
       await syncAttendance();
     } catch (e) {
       console.error("Fetch Error", e);

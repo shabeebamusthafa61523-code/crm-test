@@ -214,7 +214,8 @@ export const leadController = {
       await session.withTransaction(async () => {
         const {
           leadName, companyName, email, phone, city, source,
-          interestedService, assignedTo, status, priority, remarks, nextFollowUpDate
+          interestedService, assignedTo, status, priority, remarks, nextFollowUpDate,
+          clientMeetingFixed, admissionYesNo
         } = req.body;
 
         if (!leadName || !phone) {
@@ -226,6 +227,8 @@ export const leadController = {
           assignedTo: mongoose.Types.ObjectId.isValid(assignedTo) ? assignedTo : null,
           status: status || 'New',
           priority: priority || 'Medium',
+          clientMeetingFixed: clientMeetingFixed || '',
+          admissionYesNo: admissionYesNo || '',
           remarks,
           nextFollowUpDate: nextFollowUpDate ? new Date(nextFollowUpDate) : null,
           createdBy: createdById
@@ -296,7 +299,8 @@ export const leadController = {
 
         const {
           leadName, companyName, email, phone, city, source,
-          interestedService, assignedTo, status, priority, remarks, nextFollowUpDate, lostReason
+          interestedService, assignedTo, status, priority, remarks, nextFollowUpDate, lostReason,
+          clientMeetingFixed, admissionYesNo
         } = req.body;
 
         const previousStatus = lead.status;
@@ -310,6 +314,8 @@ export const leadController = {
         if (source !== undefined) lead.source = source;
         if (interestedService !== undefined) lead.interestedService = interestedService;
         if (priority !== undefined) lead.priority = priority;
+        if (clientMeetingFixed !== undefined) lead.clientMeetingFixed = clientMeetingFixed;
+        if (admissionYesNo !== undefined) lead.admissionYesNo = admissionYesNo;
         if (remarks !== undefined) lead.remarks = remarks;
         if (nextFollowUpDate !== undefined) lead.nextFollowUpDate = nextFollowUpDate ? new Date(nextFollowUpDate) : null;
 
@@ -571,6 +577,8 @@ export const leadController = {
           interestedService: item.interestedService || '',
           status: item.status || 'New',
           priority: item.priority || 'Medium',
+          clientMeetingFixed: item.clientMeetingFixed || '',
+          admissionYesNo: item.admissionYesNo || '',
           remarks: item.remarks || 'Imported from Excel spreadsheet.',
           createdBy: createdById
         }));
