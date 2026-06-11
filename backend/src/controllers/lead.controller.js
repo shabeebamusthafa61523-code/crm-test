@@ -119,7 +119,9 @@ export const leadController = {
           { companyName: searchRegex },
           { city: searchRegex },
           { source: searchRegex },
-          { interestedService: searchRegex }
+          { interestedService: searchRegex },
+          { campaignName: searchRegex },
+          { leadPlatform: searchRegex }
         ];
       }
 
@@ -214,7 +216,9 @@ export const leadController = {
       await session.withTransaction(async () => {
         const {
           leadName, companyName, email, phone, city, source,
-          interestedService, assignedTo, status, priority, remarks, nextFollowUpDate
+          interestedService, campaignName, leadPlatform, assignedTo, status, priority, remarks, nextFollowUpDate,
+          clientMeetingFixed, admissionYesNo, leadsReceivedDate,
+          followUpDate1, followUpDate2, followUpDate3, followUpDate4, followUpDate5
         } = req.body;
 
         if (!leadName || !phone) {
@@ -222,12 +226,20 @@ export const leadController = {
         }
 
         const leadPayload = {
-          leadName, companyName, email, phone, city, source, interestedService,
+          leadName, companyName, email, phone, city, source, interestedService, campaignName, leadPlatform,
           assignedTo: mongoose.Types.ObjectId.isValid(assignedTo) ? assignedTo : null,
           status: status || 'New',
           priority: priority || 'Medium',
+          clientMeetingFixed: clientMeetingFixed || '',
+          admissionYesNo: admissionYesNo || '',
           remarks,
           nextFollowUpDate: nextFollowUpDate ? new Date(nextFollowUpDate) : null,
+          leadsReceivedDate: leadsReceivedDate ? new Date(leadsReceivedDate) : null,
+          followUpDate1: followUpDate1 ? new Date(followUpDate1) : null,
+          followUpDate2: followUpDate2 ? new Date(followUpDate2) : null,
+          followUpDate3: followUpDate3 ? new Date(followUpDate3) : null,
+          followUpDate4: followUpDate4 ? new Date(followUpDate4) : null,
+          followUpDate5: followUpDate5 ? new Date(followUpDate5) : null,
           createdBy: createdById
         };
 
@@ -296,7 +308,9 @@ export const leadController = {
 
         const {
           leadName, companyName, email, phone, city, source,
-          interestedService, assignedTo, status, priority, remarks, nextFollowUpDate, lostReason
+          interestedService, campaignName, leadPlatform, assignedTo, status, priority, remarks, nextFollowUpDate, lostReason,
+          clientMeetingFixed, admissionYesNo, leadsReceivedDate,
+          followUpDate1, followUpDate2, followUpDate3, followUpDate4, followUpDate5
         } = req.body;
 
         const previousStatus = lead.status;
@@ -309,9 +323,19 @@ export const leadController = {
         if (city !== undefined) lead.city = city;
         if (source !== undefined) lead.source = source;
         if (interestedService !== undefined) lead.interestedService = interestedService;
+        if (campaignName !== undefined) lead.campaignName = campaignName;
+        if (leadPlatform !== undefined) lead.leadPlatform = leadPlatform;
         if (priority !== undefined) lead.priority = priority;
+        if (clientMeetingFixed !== undefined) lead.clientMeetingFixed = clientMeetingFixed;
+        if (admissionYesNo !== undefined) lead.admissionYesNo = admissionYesNo;
         if (remarks !== undefined) lead.remarks = remarks;
         if (nextFollowUpDate !== undefined) lead.nextFollowUpDate = nextFollowUpDate ? new Date(nextFollowUpDate) : null;
+        if (leadsReceivedDate !== undefined) lead.leadsReceivedDate = leadsReceivedDate ? new Date(leadsReceivedDate) : null;
+        if (followUpDate1 !== undefined) lead.followUpDate1 = followUpDate1 ? new Date(followUpDate1) : null;
+        if (followUpDate2 !== undefined) lead.followUpDate2 = followUpDate2 ? new Date(followUpDate2) : null;
+        if (followUpDate3 !== undefined) lead.followUpDate3 = followUpDate3 ? new Date(followUpDate3) : null;
+        if (followUpDate4 !== undefined) lead.followUpDate4 = followUpDate4 ? new Date(followUpDate4) : null;
+        if (followUpDate5 !== undefined) lead.followUpDate5 = followUpDate5 ? new Date(followUpDate5) : null;
 
         if (assignedTo !== undefined) {
           lead.assignedTo = mongoose.Types.ObjectId.isValid(assignedTo) ? assignedTo : null;
@@ -569,9 +593,19 @@ export const leadController = {
           city: item.city || '',
           source: item.source || 'Imported Excel',
           interestedService: item.interestedService || '',
+          campaignName: item.campaignName || '',
+          leadPlatform: item.leadPlatform || '',
           status: item.status || 'New',
           priority: item.priority || 'Medium',
+          clientMeetingFixed: item.clientMeetingFixed || '',
+          admissionYesNo: item.admissionYesNo || '',
           remarks: item.remarks || 'Imported from Excel spreadsheet.',
+          leadsReceivedDate: item.leadsReceivedDate ? new Date(item.leadsReceivedDate) : null,
+          followUpDate1: item.followUpDate1 ? new Date(item.followUpDate1) : null,
+          followUpDate2: item.followUpDate2 ? new Date(item.followUpDate2) : null,
+          followUpDate3: item.followUpDate3 ? new Date(item.followUpDate3) : null,
+          followUpDate4: item.followUpDate4 ? new Date(item.followUpDate4) : null,
+          followUpDate5: item.followUpDate5 ? new Date(item.followUpDate5) : null,
           createdBy: createdById
         }));
 

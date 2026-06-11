@@ -37,7 +37,7 @@ const SOURCE_COLORS = {
   'MARKETING':     { bar: 'from-orange-500 to-amber-400', dot: 'bg-orange-500' },
 };
 
-const LeadDashboard = () => {
+const MarketingDashboard = () => {
   const [user, setUser] = useState(null);
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -54,7 +54,7 @@ const LeadDashboard = () => {
   const hasAccess = useMemo(() => {
     if (!user) return false;
     const roleId = String(user.role_id || user.roleId || user.role || '').toLowerCase().trim();
-    if (['1', '2', '3', 'hr', 'admin'].includes(roleId)) return true;
+    if (['1', '2', '3', 'hr', 'admin', 'marketing'].includes(roleId)) return true;
     let deptId = '';
     if (user.departmentId) {
       deptId = typeof user.departmentId === 'object' && user.departmentId._id
@@ -108,14 +108,11 @@ const LeadDashboard = () => {
     const total = leads.length;
     const newLeads24h = leads.filter(l => new Date(l.createdAt) >= past24h).length;
     const mtdLeads = leads.filter(l => new Date(l.createdAt) >= startOfMonth).length;
-    const converted = leads.filter(l => l.status === 'Converted').length;
-    const lost = leads.filter(l => l.status === 'Lost').length;
-    const followUpPending = leads.filter(l => l.status === 'Follow Up').length;
-    const conversionRate = total > 0 ? ((converted / total) * 100).toFixed(1) : '0.0';
 
-    // Admission stats
-    const admissionYes = leads.filter(l => l.admissionYesNo === 'Yes').length;
-    const meetingYes = leads.filter(l => l.clientMeetingFixed === 'Yes').length;
+    const genuineLeads = leads.filter(l => {
+      const interest = (l.interestedService || '').trim().toUpperCase();
+      return ['HOT LEAD', 'WARM LEAD', 'COLD LEAD'].includes(interest);
+    }).length;
 
     // Status breakdown
     const statusBreakdown = {};
@@ -129,6 +126,13 @@ const LeadDashboard = () => {
     leads.forEach(l => {
       const s = (l.interestedService || '').trim().toUpperCase();
       if (s) interestBreakdown[s] = (interestBreakdown[s] || 0) + 1;
+    });
+
+    // Course breakdown
+    const courseBreakdown = {};
+    leads.forEach(l => {
+      const s = (l.course || '').trim();
+      if (s) courseBreakdown[s] = (courseBreakdown[s] || 0) + 1;
     });
 
     // Source breakdown
@@ -157,9 +161,8 @@ const LeadDashboard = () => {
       .slice(0, 8);
 
     return {
-      total, newLeads24h, mtdLeads, converted, lost, followUpPending,
-      conversionRate, admissionYes, meetingYes,
-      statusBreakdown, interestBreakdown, sourceBreakdown,
+      total, newLeads24h, mtdLeads, genuineLeads,
+      statusBreakdown, interestBreakdown, sourceBreakdown, courseBreakdown,
       weeklyTrend, recentLeads
     };
   }, [leads]);
@@ -177,7 +180,7 @@ const LeadDashboard = () => {
             Access <span className="text-red-500">Restricted</span>
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
-            This Lead Dashboard is reserved for authorized departments only.
+            This Marketing Dashboard is reserved for authorized departments only.
           </p>
           <button onClick={() => window.location.href = '/dashboard'}
             className="w-full py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs uppercase rounded-xl transition-all cursor-pointer">
@@ -193,7 +196,7 @@ const LeadDashboard = () => {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center">
         <Loader2 className="animate-spin text-indigo-500 mb-4" size={40} />
-        <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">Loading Lead Dashboard...</p>
+        <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">Loading Marketing Dashboard...</p>
       </div>
     );
   }
@@ -211,13 +214,13 @@ const LeadDashboard = () => {
             <div>
               <div className="flex items-center gap-2 mb-0.5">
                 <span className="px-2 py-0.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[8px] font-black uppercase tracking-wider rounded-md">
-                  Telecaller Analytics
+                  Marketing Analytics
                 </span>
                 <span className="w-1.5 h-1.5 bg-lime-500 rounded-full animate-pulse" />
                 <span className="text-[9px] text-lime-500 font-bold uppercase">Live</span>
               </div>
               <h1 className="text-2xl lg:text-3xl font-black tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-                Lead Dashboard
+                Marketing Dashboard
               </h1>
             </div>
           </div>
@@ -228,7 +231,7 @@ const LeadDashboard = () => {
               <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
               Refresh
             </button>
-            <button onClick={() => window.location.href = '/leads-telecaller'}
+            <button onClick={() => window.location.href = '/leads'}
               className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-lg shadow-indigo-500/20 transition-all cursor-pointer">
               Manage Leads
               <ChevronRight size={14} />
@@ -239,13 +242,10 @@ const LeadDashboard = () => {
         {analytics && (
           <>
             {/* ─── KPI Cards ─── */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
               <KpiCard icon={<Target size={20} />} label="Total Leads" value={analytics.total} color="indigo" />
+              <KpiCard icon={<Award size={20} />} label="Genuine Leads" value={analytics.genuineLeads} color="violet" />
               <KpiCard icon={<Zap size={20} />} label="New (24h)" value={analytics.newLeads24h} color="cyan" />
-              <KpiCard icon={<Clock size={20} />} label="Follow-Up" value={analytics.followUpPending} color="amber" />
-              <KpiCard icon={<CheckCircle2 size={20} />} label="Converted" value={analytics.converted} sub={`${analytics.conversionRate}%`} color="emerald" />
-              <KpiCard icon={<Award size={20} />} label="Admissions" value={analytics.admissionYes} color="violet" />
-              <KpiCard icon={<Eye size={20} />} label="Meetings Fixed" value={analytics.meetingYes} color="sky" />
             </div>
 
             {/* ─── Main Content Grid ─── */}
@@ -320,17 +320,17 @@ const LeadDashboard = () => {
               </div>
             </div>
 
-            {/* ─── Course Interest + Source ─── */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* ─── Course Interest + Course + Source ─── */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
               {/* Course Interest Breakdown */}
               <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl p-6 shadow-sm">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 mb-5 flex items-center gap-2">
                   <span className="w-1 h-5 bg-emerald-500 rounded-full" />
-                  Course Interest Breakdown
+                  Category Temperature
                 </h3>
                 {Object.keys(analytics.interestBreakdown).length === 0 ? (
-                  <p className="text-xs text-slate-400 text-center py-10">No course interest data yet.</p>
+                  <p className="text-xs text-slate-400 text-center py-10">No lead categories yet.</p>
                 ) : (
                   <div className="space-y-3">
                     {Object.entries(analytics.interestBreakdown)
@@ -355,6 +355,46 @@ const LeadDashboard = () => {
                                 animate={{ width: `${Math.max(pct, 3)}%` }}
                                 transition={{ duration: 0.7 }}
                                 className={`h-full bg-gradient-to-r ${colors.bar} rounded-lg`}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
+
+              {/* Course Distribution */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl p-6 shadow-sm">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 mb-5 flex items-center gap-2">
+                  <span className="w-1 h-5 bg-indigo-500 rounded-full" />
+                  Course Distribution
+                </h3>
+                {Object.keys(analytics.courseBreakdown).length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-10">No course statistics yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {Object.entries(analytics.courseBreakdown)
+                      .sort((a, b) => b[1] - a[1])
+                      .map(([course, count]) => {
+                        const max = Math.max(...Object.values(analytics.courseBreakdown), 1);
+                        const pct = Math.round((count / max) * 100);
+                        const totalPct = analytics.total > 0 ? Math.round((count / analytics.total) * 100) : 0;
+                        return (
+                          <div key={course}>
+                            <div className="flex items-center justify-between text-xs mb-1 px-1">
+                              <span className="font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                                {course}
+                              </span>
+                              <span className="font-mono font-bold text-slate-800 dark:text-white">{count} <span className="text-slate-400 font-normal">({totalPct}%)</span></span>
+                            </div>
+                            <div className="w-full bg-slate-100 dark:bg-slate-800 h-5 rounded-lg overflow-hidden">
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${Math.max(pct, 3)}%` }}
+                                transition={{ duration: 0.7 }}
+                                className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-lg"
                               />
                             </div>
                           </div>
@@ -413,7 +453,7 @@ const LeadDashboard = () => {
                   <span className="w-1 h-5 bg-amber-500 rounded-full" />
                   Recent Leads
                 </h3>
-                <button onClick={() => window.location.href = '/leads-telecaller'}
+                <button onClick={() => window.location.href = '/leads'}
                   className="text-[10px] text-indigo-500 font-bold uppercase tracking-wider hover:text-indigo-400 cursor-pointer flex items-center gap-1 transition">
                   View All <ChevronRight size={12} />
                 </button>
@@ -426,6 +466,7 @@ const LeadDashboard = () => {
                       <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Lead Name</th>
                       <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Contact</th>
                       <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Course Interest</th>
+                      <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Course</th>
                       <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Source</th>
                       <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</th>
                       <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Created</th>
@@ -457,6 +498,9 @@ const LeadDashboard = () => {
                                 {interest}
                               </span>
                             ) : <span className="text-[10px] text-slate-400 italic">—</span>}
+                          </td>
+                          <td className="px-5 py-3.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                            {lead.course || <span className="text-[10px] text-slate-400 italic">—</span>}
                           </td>
                           <td className="px-5 py-3.5 text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase">{lead.source || '—'}</td>
                           <td className="px-5 py-3.5">
@@ -523,4 +567,4 @@ const KpiCard = ({ icon, label, value, sub, color }) => {
   );
 };
 
-export default LeadDashboard;
+export default MarketingDashboard;

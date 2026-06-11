@@ -5,6 +5,7 @@ import MainLayout from './layouts/MainLayout';
 // Page Imports
 import Dashboard from './pages/Dashboard';
 import LeadDashboard from './pages/LeadDashboard';
+import MarketingDashboard from './pages/Marketing Dashboard';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Attendance from './pages/Attendance';
@@ -12,6 +13,7 @@ import Todo from './pages/Todo';
 import Users from './pages/Users';
 import Leads from './pages/Leads';
 import LeadsTelecaller from './pages/LeadsTelecaller';
+import LeadCounselor from './pages/LeadCounselor';
 import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
 import StudentAttendance from './pages/StudentAttendance';
@@ -50,11 +52,13 @@ function App() {
         {/* Protected Routes - Wrapped in MainLayout */}
         <Route path="/dashboard" element={<ProtectedRoute><MainLayout><Dashboard /></MainLayout></ProtectedRoute>} />
         <Route path="/lead-dashboard" element={<ProtectedRoute><MainLayout><LeadDashboard /></MainLayout></ProtectedRoute>} />
+        <Route path="/marketing-dashboard" element={<ProtectedRoute><MainLayout><MarketingDashboard /></MainLayout></ProtectedRoute>} />
         <Route path="/attendance" element={<ProtectedRoute><MainLayout><Attendance /></MainLayout></ProtectedRoute>} />
         <Route path="/todo" element={<ProtectedRoute><MainLayout><Todo /></MainLayout></ProtectedRoute>} />
         <Route path="/users" element={<ProtectedRoute><MainLayout><Users /></MainLayout></ProtectedRoute>} />
         <Route path="/leads" element={<ProtectedRoute><MainLayout><Leads /></MainLayout></ProtectedRoute>} />
         <Route path="/leads-telecaller" element={<ProtectedRoute><MainLayout><LeadsTelecaller /></MainLayout></ProtectedRoute>} />
+        <Route path="/lead-counselor" element={<ProtectedRoute><MainLayout><LeadCounselor /></MainLayout></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
         <Route path="/student-attendance" element={<ProtectedRoute><MainLayout><StudentAttendance /></MainLayout></ProtectedRoute>} />
         <Route path="/departments" element={<ProtectedRoute><MainLayout><DepartmentsPage /></MainLayout></ProtectedRoute>} />
