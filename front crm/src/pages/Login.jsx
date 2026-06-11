@@ -92,12 +92,14 @@ const Login = () => {
       
       <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-md z-10">
         <div className="text-center mb-10">
-          <div className="inline-flex p-4 rounded-3xl bg-indigo-500/10 border border-indigo-500/20 mb-4">
-            <ShieldCheck size={40} className="text-indigo-400" />
-          </div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100 tracking-tighter">
-            KOD<span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">BRAND</span>
-          </h1>
+         <div className="flex justify-center items-center mb-10">
+          <img 
+            src="/logo2.png" 
+            alt="KODBRAND Logo" 
+            className="h-22 w-auto object-contain" 
+          />
+        </div>
+
         </div>
 
         <div className="glass-card p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/60 backdrop-blur-2xl shadow-xl">
