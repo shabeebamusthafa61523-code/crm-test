@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   User, Mail, Lock, ShieldPlus, Phone, Briefcase, 
   ShieldCheck, CreditCard, DollarSign, 
-  Eye, EyeOff, MapPin, Calendar, Image as ImageIcon, Loader2, AlertTriangle
+  Eye, EyeOff, MapPin, Calendar, Image as ImageIcon, Loader2, AlertTriangle, Sun, Moon
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ToastProvider';
@@ -14,6 +14,21 @@ const Register = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
   const { showToast } = useToast();
+
+  const [isDark, setIsDark] = useState(() => {
+    return localStorage.getItem('theme') === 'dark' || 
+      (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  });
+
+  React.useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDark]);
 
   const [roles] = useState([
     { id: "1", name: "hr" },
@@ -101,7 +116,18 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen py-12 flex items-center justify-center p-6 bg-slate-50 dark:bg-[#0b0c10] transition-colors duration-500">
+    <div className="min-h-screen py-12 flex items-center justify-center p-6 bg-slate-50 dark:bg-[#0b0c10] transition-colors duration-500 relative">
+      {/* Floating Theme Toggle */}
+      <div className="absolute top-6 right-6 z-50">
+        <button
+          type="button"
+          onClick={() => setIsDark(!isDark)}
+          className="p-3 rounded-2xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/50 text-slate-500 dark:text-slate-400 hover:text-indigo-650 dark:hover:text-lime-400 shadow-lg cursor-pointer transition-all hover:scale-105 active:scale-95 flex items-center justify-center"
+          title="Toggle theme"
+        >
+          {isDark ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} />}
+        </button>
+      </div>
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-5xl">
         <div className="bg-white dark:bg-slate-900 p-10 rounded-2xl border border-[#374b69] dark:border-[#2c3e5a] shadow-xl transition-colors">
           <header className="mb-8">

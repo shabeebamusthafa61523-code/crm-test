@@ -910,6 +910,7 @@ const [activePriority, setActivePriority] = useState('all');
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Contact Details</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">City / Place</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Campaign/platform</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Course Interest</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Source</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Leads Received</th>
@@ -922,7 +923,6 @@ const [activePriority, setActivePriority] = useState('all');
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Client Meeting</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Admission</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Created</th>
-                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -987,17 +987,33 @@ const [activePriority, setActivePriority] = useState('all');
                             {lead.campaignName || 'No Campaign'}
                           </div>
                           <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                            {lead.source && (
+                            {/* {lead.source && (
                               <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded font-semibold text-[8px] uppercase">
                                 Source: {lead.source}
                               </span>
-                            )}
+                            )} */}
                             {lead.leadPlatform && (
                               <span className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200/30 rounded font-semibold text-[8px] uppercase">
                                 Platform: {lead.leadPlatform}
                               </span>
                             )}
                           </div>
+                        </td>
+                        {/* Status */}
+                        <td className="px-6 py-4.5 text-xs">
+                          <select
+                            value={lead.status || ''}
+                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'status', e.target.value)}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                          >
+                            <option value="" disabled>Select</option>
+                            <option value="New">New</option>
+                            <option value="Contacted">Contacted</option>
+                            <option value="Follow Up">Follow Up</option>
+                            <option value="Interested">Interested</option>
+                            <option value="Converted">Converted</option>
+                            <option value="Lost">Lost</option>
+                          </select>
                         </td>
                         {/* Course Interest */}
                         <td className="px-6 py-4.5 text-xs font-semibold">
@@ -1007,7 +1023,7 @@ const [activePriority, setActivePriority] = useState('all');
                             className="border rounded-lg px-2 py-1 text-xs font-bold focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
                             style={lead.interestedService ? getCourseInterestStyle(lead.interestedService) : {}}
                           >
-                            <option value="" disabled>Select</option>
+                            <option value="">Select</option>
                             <option value="HOT LEAD" style={{ backgroundColor: '#F0FDF4', color: '#15803D' }}>🔥 HOT LEAD</option>
                             <option value="WARM LEAD" style={{ backgroundColor: '#F0F9FF', color: '#0369A1' }}>🌤 WARM LEAD</option>
                             <option value="COLD LEAD" style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}>❄️ COLD LEAD</option>
@@ -1136,21 +1152,6 @@ const [activePriority, setActivePriority] = useState('all');
                             }
                           </div>
                         </td>
-                        <td className="px-6 py-4.5 text-xs">
-                          <select
-                            value={lead.status || ''}
-                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'status', e.target.value)}
-                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
-                          >
-                            <option value="" disabled>Select</option>
-                            <option value="New">New</option>
-                            <option value="Contacted">Contacted</option>
-                            <option value="Follow Up">Follow Up</option>
-                            <option value="Interested">Interested</option>
-                            <option value="Converted">Converted</option>
-                            <option value="Lost">Lost</option>
-                          </select>
-                        </td>
 
                         {/* Actions */}
                         <td className="px-6 py-4.5 text-right">
@@ -1186,15 +1187,13 @@ const [activePriority, setActivePriority] = useState('all');
                             >
                               <Edit3 size={15} />
                             </button>
-                            {isPrivilegedUser && (
-                              <button
-                                onClick={() => handleDeleteLead(lead.id || lead._id, lead.leadName)}
-                                className="p-2 text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-150 cursor-pointer"
-                                title="Delete Lead"
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            )}
+                            <button
+                              onClick={() => handleDeleteLead(lead.id || lead._id, lead.leadName)}
+                              className="p-2 text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-150 cursor-pointer"
+                              title="Delete Lead"
+                            >
+                              <Trash2 size={15} />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -1303,6 +1302,12 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
   });
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (isOpen) {
+      window.scrollTo({ top: 0 });
+    }
+  }, [isOpen]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.leadName || !formData.phone) {
@@ -1360,7 +1365,7 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 backdrop-blur-sm p-4 pt-16 overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1453,7 +1458,7 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
                 className="w-full px-3.5 py-2.5 border rounded-xl text-xs font-bold focus:ring-1 focus:ring-indigo-500 outline-none transition"
                 style={formData.interestedService ? getCourseInterestStyle(formData.interestedService) : {}}
               >
-                <option value="" disabled>Select</option>
+                <option value="">Select</option>
                 <option value="HOT LEAD" style={{ backgroundColor: '#F0FDF4', color: '#15803D' }}>🔥 HOT LEAD</option>
                 <option value="WARM LEAD" style={{ backgroundColor: '#F0F9FF', color: '#0369A1' }}>🌤 WARM LEAD</option>
                 <option value="COLD LEAD" style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}>❄️ COLD LEAD</option>
@@ -1509,7 +1514,7 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
                 <option value="No">No</option>
               </select>
             </div>
-            {isPrivilegedUser ? (
+            {isPrivilegedUser && (
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Assign to Representative</label>
                 <select
@@ -1523,41 +1528,6 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
                       {member.name} ({member.role === '1' || member.role === 'hr' ? 'HR' : member.role === '2' || member.role === 'admin' ? 'Admin' : 'Staff'})
                     </option>
                   ))}
-                </select>
-              </div>
-            ) : (
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Status</label>
-                <select
-                  value={formData.status}
-                  onChange={e => setFormData({ ...formData, status: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
-                >
-                  <option value="" disabled>Select</option>
-                  <option value="New">New</option>
-                  <option value="Contacted">Contacted</option>
-                  <option value="Follow Up">Follow Up</option>
-                  <option value="Interested">Interested</option>
-                  <option value="Converted">Converted</option>
-                  <option value="Lost">Lost</option>
-                </select>
-              </div>
-            )}
-            {isPrivilegedUser && (
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Initial Status</label>
-                <select
-                  value={formData.status}
-                  onChange={e => setFormData({ ...formData, status: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
-                >
-                  <option value="" disabled>Select</option>
-                  <option value="New">New</option>
-                  <option value="Contacted">Contacted</option>
-                  <option value="Follow Up">Follow Up</option>
-                  <option value="Interested">Interested</option>
-                  <option value="Converted">Converted</option>
-                  <option value="Lost">Lost</option>
                 </select>
               </div>
             )}
@@ -1701,7 +1671,7 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
         phone: lead.phone || '',
         city: lead.city || '',
         source: lead.source || 'REFERENCE',
-        interestedService: lead.interestedService || 'HOT LEAD',
+        interestedService: lead.interestedService || '',
         campaignName: lead.campaignName || '',
         leadPlatform: lead.leadPlatform || '',
         assignedTo: lead.assignedTo?._id || lead.assignedTo || '',
@@ -1845,7 +1815,7 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
                 className="w-full px-3.5 py-2.5 border rounded-xl text-xs font-bold focus:ring-1 focus:ring-indigo-500 outline-none transition"
                 style={formData.interestedService ? getCourseInterestStyle(formData.interestedService) : {}}
               >
-                <option value="" disabled>Select</option>
+                <option value="">Select</option>
                 <option value="HOT LEAD" style={{ backgroundColor: '#F0FDF4', color: '#15803D' }}>🔥 HOT LEAD</option>
                 <option value="WARM LEAD" style={{ backgroundColor: '#F0F9FF', color: '#0369A1' }}>🌤 WARM LEAD</option>
                 <option value="COLD LEAD" style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}>❄️ COLD LEAD</option>
@@ -1901,7 +1871,7 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
                 <option value="No">No</option>
               </select>
             </div>
-            {isPrivilegedUser ? (
+            {isPrivilegedUser && (
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Assign to Representative</label>
                 <select
@@ -1915,41 +1885,6 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
                       {member.name} ({member.role === '1' || member.role === 'hr' ? 'HR' : member.role === '2' || member.role === 'admin' ? 'Admin' : 'Staff'})
                     </option>
                   ))}
-                </select>
-              </div>
-            ) : (
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Status</label>
-                <select
-                  value={formData.status}
-                  onChange={e => setFormData({ ...formData, status: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
-                >
-                  <option value="" disabled>Select</option>
-                  <option value="New">New</option>
-                  <option value="Contacted">Contacted</option>
-                  <option value="Follow Up">Follow Up</option>
-                  <option value="Interested">Interested</option>
-                  <option value="Converted">Converted</option>
-                  <option value="Lost">Lost</option>
-                </select>
-              </div>
-            )}
-            {isPrivilegedUser && (
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Status</label>
-                <select
-                  value={formData.status}
-                  onChange={e => setFormData({ ...formData, status: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
-                >
-                  <option value="" disabled>Select</option>
-                  <option value="New">New</option>
-                  <option value="Contacted">Contacted</option>
-                  <option value="Follow Up">Follow Up</option>
-                  <option value="Interested">Interested</option>
-                  <option value="Converted">Converted</option>
-                  <option value="Lost">Lost</option>
                 </select>
               </div>
             )}
@@ -2619,7 +2554,7 @@ const ImportModal = ({ isOpen, onClose, onImported, getAuthHeaders, showToast })
 
       const payloadLeads = excelRows.map(row => {
         // Retrieve source platform values, e.g. ig -> Instagram, fb -> Facebook
-        let rawSource = row[mapping.source] || 'Excel Import';
+        let rawSource = row[mapping.source] || 'MARKETING';
         if (rawSource.toLowerCase() === 'ig') rawSource = 'Instagram';
         else if (rawSource.toLowerCase() === 'fb') rawSource = 'Facebook';
 

@@ -1,7 +1,7 @@
 import User from '../models/user.model.js';
 import Designation from '../models/designation.model.js';
 import mongoose from 'mongoose';
-import { hashPassword } from '../utils/bcrypt.util.js';
+import { hashPassword, comparePassword } from '../utils/bcrypt.util.js';
 import { authService } from '../services/auth.service.js';
 import { recordAudit } from '../middleware/audit.middleware.js';
 import notificationService from '../services/notification.service.js';
@@ -396,6 +396,7 @@ export const userController = {
 
       const {
         name,
+        email,
         phone,
         role,
         department,
@@ -441,6 +442,14 @@ export const userController = {
         reportingManager,
       };
 
+      if (email && email !== existingUser.email) {
+        const emailTaken = await User.findOne({ email, _id: { $ne: id } });
+        if (emailTaken) {
+          throw new AppError('Conflict: Email address is already registered by another account.', 409);
+        }
+        updateFields.email = email;
+      }
+
       if (fileUrl) {
         updateFields.avatar = fileUrl;
         updateFields.profile_image = fileUrl;
@@ -475,11 +484,13 @@ export const userController = {
         entityId: id,
         oldValue: {
           name: existingUser.name,
+          email: existingUser.email,
           phone: existingUser.phone,
           status: existingUser.status
         },
         newValue: {
           name,
+          email: updateFields.email || existingUser.email,
           phone,
           department,
           designation: selectedDesignation?.name || '',
@@ -648,6 +659,58 @@ export const userController = {
           'Employee record successfully purged from the CRM database.'
       });
 
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  changePassword: async (req, res, next) => {
+    try {
+      const userId = req.user?.id || req.user?._id;
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        throw new AppError('Current password and new password are required.', 400);
+      }
+
+      const user = await User.findById(userId);
+      if (!user) {
+        throw new AppError('User profile not found.', 404);
+      }
+
+      const storedPassword = user.password || user.passwordHash;
+      const isMatch = storedPassword && await comparePassword(currentPassword, storedPassword);
+      if (!isMatch) {
+        throw new AppError('Current password is incorrect.', 400);
+      }
+
+      // Backend password validation matching forgot password complexity
+      const hasSymbol = /[\W_]/.test(newPassword);
+      const hasNumber = /\d/.test(newPassword);
+      const hasUppercase = /[A-Z]/.test(newPassword);
+      const hasLowercase = /[a-z]/.test(newPassword);
+      const isLongEnough = newPassword.length >= 8;
+
+      if (!hasSymbol || !hasNumber || !hasUppercase || !hasLowercase || !isLongEnough) {
+        throw new AppError('Password must be at least 8 characters long and include a symbol, number, uppercase and lowercase letters.', 400);
+      }
+
+      const newPasswordHash = await hashPassword(newPassword);
+      user.password = newPasswordHash;
+      user.passwordHash = newPasswordHash;
+      await user.save();
+
+      await recordAudit(req, {
+        action: 'UPDATE',
+        entity: 'User',
+        entityId: userId,
+        newValue: { details: 'Self password change' }
+      });
+
+      return sendSuccess(res, {
+        status: 200,
+        message: 'Password successfully updated.'
+      });
     } catch (error) {
       next(error);
     }

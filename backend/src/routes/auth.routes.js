@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { signup, login } from '../controllers/auth.controller.js';
+import { signup, login, verifyForgotPassword, resetForgotPassword } from '../controllers/auth.controller.js';
 import verifyJWT from '../middleware/auth.middleware.js';
 import User from '../models/user.model.js';
 import { AppError } from '../middleware/errorHandler.js';
@@ -14,6 +14,8 @@ const router = Router();
 
 router.post('/signup', signup);
 router.post('/login', login);
+router.post('/forgot-password/verify', verifyForgotPassword);
+router.post('/forgot-password/reset', resetForgotPassword);
 
 router.put(
   '/update-status/:user_id',

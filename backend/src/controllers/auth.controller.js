@@ -133,4 +133,73 @@ export const login = async (req, res) => {
   } catch (error) {
     res.status(500).json({ detail: error.message });
   }
+};
+
+export const verifyForgotPassword = async (req, res) => {
+  try {
+    const { email, phone } = req.body;
+    if (!email || !phone) {
+      return res.status(400).json({ success: false, detail: "Email and phone number are required." });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (!user) {
+      return res.status(404).json({ success: false, detail: "User profile not found with this email." });
+    }
+
+    const cleanUserPhone = String(user.phone || '').trim().replace(/[-()\s]/g, '');
+    const cleanInputPhone = String(phone).trim().replace(/[-()\s]/g, '');
+
+    if (cleanUserPhone !== cleanInputPhone) {
+      return res.status(400).json({ success: false, detail: "Phone number does not match our records." });
+    }
+
+    return res.status(200).json({ success: true, message: "Credentials verified." });
+  } catch (error) {
+    res.status(500).json({ success: false, detail: error.message });
+  }
+};
+
+export const resetForgotPassword = async (req, res) => {
+  try {
+    const { email, phone, newPassword } = req.body;
+    if (!email || !phone || !newPassword) {
+      return res.status(400).json({ success: false, detail: "Email, phone number, and new password are required." });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (!user) {
+      return res.status(404).json({ success: false, detail: "User profile not found." });
+    }
+
+    const cleanUserPhone = String(user.phone || '').trim().replace(/[-()\s]/g, '');
+    const cleanInputPhone = String(phone).trim().replace(/[-()\s]/g, '');
+
+    if (cleanUserPhone !== cleanInputPhone) {
+      return res.status(400).json({ success: false, detail: "Phone number verification failed." });
+    }
+
+    // Backend validation for password requirements (symbol, length, uppercase, number)
+    const hasSymbol = /[\W_]/.test(newPassword);
+    const hasNumber = /\d/.test(newPassword);
+    const hasUppercase = /[A-Z]/.test(newPassword);
+    const hasLowercase = /[a-z]/.test(newPassword);
+    const isLongEnough = newPassword.length >= 8;
+
+    if (!hasSymbol || !hasNumber || !hasUppercase || !hasLowercase || !isLongEnough) {
+      return res.status(400).json({
+        success: false,
+        detail: "Password must be at least 8 characters long and include a symbol, number, uppercase and lowercase letters."
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    user.passwordHash = hashedPassword;
+    await user.save();
+
+    return res.status(200).json({ success: true, message: "Password updated successfully." });
+  } catch (error) {
+    res.status(500).json({ success: false, detail: error.message });
+  }
 };

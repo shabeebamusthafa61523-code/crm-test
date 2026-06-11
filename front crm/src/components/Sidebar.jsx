@@ -19,7 +19,7 @@ const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', allowedRoles: ['1', '2', 'hr', 'admin' ,'employee'] 
  },
   {
-    icon: LayoutDashboard,
+    icon: BarChart3,
     label: 'Lead Dashboard',
     path: '/lead-dashboard',
     // allowedRoles: ['1', '2', '3', 'hr', 'admin'],
