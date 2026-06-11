@@ -88,14 +88,17 @@ const Login = () => {
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-lime-500/10 dark:bg-lime-500/5 blur-[120px] rounded-full" />
       
       <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-md z-10">
-        
-        {/* Logo Container */}
-        <div className="flex justify-center items-center mb-10">
+
+        <div className="text-center mb-10">
+         <div className="flex justify-center items-center mb-10">
           <img 
             src="/logo2.png" 
             alt="KODBRAND Logo" 
-            className="h-12 w-auto object-contain" 
+            className="h-22 w-auto object-contain" 
           />
+        </div>
+
+
         </div>
 
         {/* Card Form */}
