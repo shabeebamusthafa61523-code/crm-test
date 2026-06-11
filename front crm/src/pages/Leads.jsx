@@ -13,6 +13,22 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable'; // 👈 Import it as a direct function
 const API_BASE = import.meta.env.VITE_API_URL;
 
+const COURSE_INTEREST_COLORS = {
+  'HOT LEAD':     { bg: '#F0FDF4', text: '#15803D', border: '#86EFAC' },
+  'WARM LEAD':    { bg: '#F0F9FF', text: '#0369A1', border: '#7DD3FC' },
+  'COLD LEAD':    { bg: '#FEF2F2', text: '#DC2626', border: '#FCA5A5' },
+  'WRONG LEAD':   { bg: '#FEFCE8', text: '#A16207', border: '#FDE047' },
+  'RNT':          { bg: '#FAF5FF', text: '#7C3AED', border: '#C4B5FD' },
+  'SWITCHED OFF': { bg: '#FDF2F8', text: '#DB2777', border: '#F9A8D4' },
+  'CALL BACK':    { bg: '', text: '', border: '' },
+};
+
+const getCourseInterestStyle = (value) => {
+  const colors = COURSE_INTEREST_COLORS[String(value || '').trim().toUpperCase()];
+  if (!colors) return {};
+  return { backgroundColor: colors.bg, color: colors.text, borderColor: colors.border };
+};
+
 const Leads = () => {
   const [leads, setLeads] = useState([]);
   const [staff, setStaff] = useState([]);
@@ -798,15 +814,13 @@ const Leads = () => {
                             >
                               <Edit3 size={15} />
                             </button>
-                            {isPrivilegedUser && (
-                              <button
-                                onClick={() => handleDeleteLead(lead.id || lead._id, lead.leadName)}
-                                className="p-2 text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-150 cursor-pointer"
-                                title="Delete Lead"
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            )}
+                            <button
+                              onClick={() => handleDeleteLead(lead.id || lead._id, lead.leadName)}
+                              className="p-2 text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-150 cursor-pointer"
+                              title="Delete Lead"
+                            >
+                              <Trash2 size={15} />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -894,6 +908,12 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
   });
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (isOpen) {
+      window.scrollTo({ top: 0 });
+    }
+  }, [isOpen]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.leadName || !formData.phone) {
@@ -941,7 +961,7 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 backdrop-blur-sm p-4 pt-16 overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1023,14 +1043,22 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
               />
             </div>
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Interested Service</label>
-              <input
-                type="text"
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Course Interest (Service)</label>
+              <select
                 value={formData.interestedService}
                 onChange={e => setFormData({ ...formData, interestedService: e.target.value })}
-                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
-                placeholder="e.g. Custom Web App Development"
-              />
+                className="w-full px-3.5 py-2.5 border rounded-xl text-xs font-bold focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                style={formData.interestedService ? getCourseInterestStyle(formData.interestedService) : {}}
+              >
+                <option value="">Select</option>
+                <option value="HOT LEAD" style={{ backgroundColor: '#F0FDF4', color: '#15803D' }}>🔥 HOT LEAD</option>
+                <option value="WARM LEAD" style={{ backgroundColor: '#F0F9FF', color: '#0369A1' }}>🌤 WARM LEAD</option>
+                <option value="COLD LEAD" style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}>❄️ COLD LEAD</option>
+                <option value="RNT" style={{ backgroundColor: '#FAF5FF', color: '#7C3AED' }}>📵 RNT</option>
+                <option value="SWITCHED OFF" style={{ backgroundColor: '#FDF2F8', color: '#DB2777' }}>📴 SWITCHED OFF</option>
+                <option value="WRONG LEAD" style={{ backgroundColor: '#FEFCE8', color: '#A16207' }}>❌ WRONG LEAD</option>
+                <option value="CALL BACK">📞 CALL BACK</option>
+              </select>
             </div>
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Lead Platform</label>
@@ -1141,6 +1169,12 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
       });
     }
   }, [lead]);
+
+  useEffect(() => {
+    if (isOpen) {
+      window.scrollTo({ top: 0 });
+    }
+  }, [isOpen]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -1254,13 +1288,22 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
               />
             </div>
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Interested Service</label>
-              <input
-                type="text"
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Course Interest (Service)</label>
+              <select
                 value={formData.interestedService}
                 onChange={e => setFormData({ ...formData, interestedService: e.target.value })}
-                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
-              />
+                className="w-full px-3.5 py-2.5 border rounded-xl text-xs font-bold focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                style={formData.interestedService ? getCourseInterestStyle(formData.interestedService) : {}}
+              >
+                <option value="">Select</option>
+                <option value="HOT LEAD" style={{ backgroundColor: '#F0FDF4', color: '#15803D' }}>🔥 HOT LEAD</option>
+                <option value="WARM LEAD" style={{ backgroundColor: '#F0F9FF', color: '#0369A1' }}>🌤 WARM LEAD</option>
+                <option value="COLD LEAD" style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}>❄️ COLD LEAD</option>
+                <option value="RNT" style={{ backgroundColor: '#FAF5FF', color: '#7C3AED' }}>📵 RNT</option>
+                <option value="SWITCHED OFF" style={{ backgroundColor: '#FDF2F8', color: '#DB2777' }}>📴 SWITCHED OFF</option>
+                <option value="WRONG LEAD" style={{ backgroundColor: '#FEFCE8', color: '#A16207' }}>❌ WRONG LEAD</option>
+                <option value="CALL BACK">📞 CALL BACK</option>
+              </select>
             </div>
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Lead Platform</label>
@@ -1408,7 +1451,10 @@ const ViewModal = ({ isOpen, onClose, lead, details, loading }) => {
                 <span className="text-[10px] text-slate-400 block font-semibold uppercase">Assigned Staff</span>
                 <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{lead.assignedTo?.name || 'Unassigned'}</span>
               </div>
-
+<div>
+                <span className="text-[10px] text-slate-400 block font-semibold uppercase">Remarks</span>
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-pre-wrap">{lead.remarks || '—'}</span>
+              </div>
             </div>
           </div>
 
@@ -1637,7 +1683,7 @@ const ImportModal = ({ isOpen, onClose, onImported, getAuthHeaders, showToast })
       // Parse and construct the final payload
       const payloadLeads = excelRows.map(row => {
         // Retrieve source platform values, e.g. ig -> Instagram, fb -> Facebook
-        let rawSource = row[mapping.source] || 'Excel Import';
+        let rawSource = row[mapping.source] || 'MARKETING';
         if (rawSource.toLowerCase() === 'ig') rawSource = 'Instagram';
         else if (rawSource.toLowerCase() === 'fb') rawSource = 'Facebook';
 

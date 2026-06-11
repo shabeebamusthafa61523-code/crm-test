@@ -29,7 +29,7 @@ const COLUMN_META = {
   done: { label: 'Completed', icon: CheckCircle2, color: 'bg-[#9dd384]', glow: 'shadow-[#9dd384]/20' }
 };
 
-const DESIGNATIONS = [
+const DEFAULT_DESIGNATIONS = [
   { id: "1", name: "HR Manager" }, { id: "2", name: "Graphic Designer" },
   { id: "3", name: "Digital Marketer" }, { id: "4", name: "React Developer" },
   { id: "5", name: "Node Developer" }, { id: "6", name: "Flutter Developer" },
@@ -39,6 +39,7 @@ const DESIGNATIONS = [
 const Todo = () => {
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
+  const [designations, setDesignations] = useState(DEFAULT_DESIGNATIONS);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
@@ -71,54 +72,58 @@ const Todo = () => {
 const fetchData = useCallback(async () => {
   try {
 
-    const [tRes, uRes] = await Promise.all([
+    const [tRes, uRes, dRes] = await Promise.all([
       fetch(`${API_BASE}/tasks/all`, {
         headers: getAuthHeaders()
       }),
 
       fetch(`${API_BASE}/user/list`, {
         headers: getAuthHeaders()
+      }),
+
+      fetch(`${API_BASE}/v1/designations`, {
+        headers: getAuthHeaders()
       })
     ]);
 
-const responseText = await tRes.text();
+    const responseText = await tRes.text();
+    const tData = JSON.parse(responseText);
+    const uData = await uRes.json();
+    
+    let dData = [];
+    if (dRes.ok) {
+      const dJson = await dRes.json();
+      dData = dJson.data || [];
+    }
 
-console.log("STATUS:", tRes.status);
-console.log("RESPONSE:", responseText);
+    const rawTasks = Array.isArray(tData)
+      ? tData
+      : (tData.data || []);
 
-const tData = JSON.parse(responseText);
-const uData = await uRes.json();
+    const sortedTasks = [...rawTasks].reverse();
+    const cleanedTasks = sortedTasks.map(task=>({
+      ...task,
+      assigned_to:
+        typeof task.assigned_to === "object"
+          ? task.assigned_to.id
+          : task.assigned_to
+    }));
 
-const rawTasks = Array.isArray(tData)
-  ? tData
-  : (tData.data || []);
-
-const sortedTasks = [...rawTasks].reverse();
-const cleanedTasks = sortedTasks.map(task=>({
-
-  ...task,
-
-  assigned_to:
-    typeof task.assigned_to === "object"
-      ? task.assigned_to.id
-      : task.assigned_to
-
-}));
-setTasks(cleanedTasks);
-setUsers(
-  Array.isArray(uData)
-    ? uData.filter(
-        u => ["1","2","3"].includes(String(u.role_id))
-      )
-    : []
-);  } catch (e) {
-
+    setTasks(cleanedTasks);
+    setUsers(
+      Array.isArray(uData)
+        ? uData.filter(
+            u => ["1","2","3"].includes(String(u.role_id))
+          )
+        : []
+    );
+    if (Array.isArray(dData) && dData.length > 0) {
+      setDesignations(dData);
+    }
+  } catch (e) {
     console.error("Fetch Error:", e);
-
   } finally {
-
     setLoading(false);
-
   }
 }, [getAuthHeaders]);
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -202,26 +207,17 @@ console.log("HEADERS:", getAuthHeaders());
                               <div className="flex items-center gap-2 mb-4">
                                 <div className="h-1.5 w-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]" />
                                 <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">
-                                  {DESIGNATIONS.find(d => String(d.id) === String(task.designation_id))?.name || "General"}
+                                  {designations.find(d => String(d.id) === String(task.designation_id))?.name || "General"}
                                 </span>
                               </div>
                               <h3 className="text-slate-800 dark:text-slate-200 font-bold text-[15px] mb-4 leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{task.title}</h3>
-                              {/* {task.image && (
-                                <div className="w-full h-32 mb-4 rounded-xl overflow-hidden border border-white/5">
-                                  <img src={getTaskImageUrl(task.image)} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" alt="task" />
-                                </div>
-                              )} */}
-                             {/* Inside your tasks.map((task) => ( ... )) */}
-
+                              
                               <div className="flex items-center gap-3 pt-4 border-t border-slate-100 dark:border-slate-900">
                                 <div className="w-8 h-8 rounded-full bg-indigo-500/10 dark:bg-indigo-500/20 flex items-center justify-center border border-indigo-500/20 dark:border-indigo-800/40">
                                   <User size={14} className="text-indigo-400 dark:text-indigo-300" />
                                 </div>
                                 <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider truncate">
-                                  {/* 1. We look through the 'users' array */}
-                                  {/* 2. We match the user's ID to the task's assigned_to (UUID) */}
-                                  {/* 3. We display the .name if found, otherwise the ID as a fallback */}
-{
+                                  {
 typeof task.assigned_to === "object"
 ? task.assigned_to?.name
 : users.find(
@@ -253,6 +249,7 @@ typeof task.assigned_to === "object"
           <CreateModal 
             onClose={() => setIsModalOpen(false)} 
             users={users} refresh={fetchData} getAuthHeaders={getAuthHeaders} 
+            designations={designations}
           />
         )}
         {selectedTask && (
@@ -260,10 +257,10 @@ typeof task.assigned_to === "object"
             task={selectedTask} users={users} 
             currentUserId={currentUserId}
             onClose={() => setSelectedTask(null)} 
-onUpdate={fetchData}           // Pointing to your fetch function
-           getAuthHeaders={getAuthHeaders}
+            onUpdate={fetchData}           // Pointing to your fetch function
+            getAuthHeaders={getAuthHeaders}
             API_BASE={API_BASE} // <--- ADD THIS LINE
-    DESIGNATIONS={DESIGNATIONS} 
+            DESIGNATIONS={designations} 
           />
         )}
       </AnimatePresence>
@@ -272,7 +269,7 @@ onUpdate={fetchData}           // Pointing to your fetch function
 };
 
 // --- CREATE MODAL COMPONENT ---
-const CreateModal = ({ onClose, users, refresh, getAuthHeaders }) => {
+const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) => {
   const [form, setForm] = useState({ title: '', description: '', assigned_to: '', designation_id: '', image: null });
   const [preview, setPreview] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -395,7 +392,7 @@ console.log("ERRORS FULL:", JSON.stringify(data.errors, null, 2));
                   onChange={e => setForm({...form, designation_id: e.target.value})}
                 >
                   <option value="">designation</option>
-                  {DESIGNATIONS.map(d => (
+                  {designations.map(d => (
                     <option key={d.id} value={d.id} className="bg-white text-gray-900">
                       {d.name}
                     </option>
@@ -651,41 +648,74 @@ console.log("USER_ID =", task?.user_id);
   </div>
 
  
-<div className="grid grid-cols-2 gap-8 py-8 border-y border-slate-100 bg-slate-50 rounded-2xl px-6">           <div>
-  <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] block mb-2">Staff</span>
-  <div className="flex items-center gap-3">
-    <div className="h-10 w-10 bg-indigo-500/10 rounded-full flex items-center justify-center border border-indigo-500/20 text-indigo-400">
-      <User size={18} />
-    </div>
-    <span className="text-slate-900 font-bold tracking-tight uppercase text-sm">
-<span className="text-slate-900 font-bold tracking-tight uppercase text-sm">
-
-{
-typeof task.assigned_to === "object"
-  ? task.assigned_to?.name
-  : users?.find(
-      u =>
-        String(u.id || u._id) === String(task.assigned_to) &&
-        ["1","2","3"].includes(String(u.role_id))
-    )?.name
-    || "No Staff"
-}
-
-</span>
-    </span>
+<div className="grid grid-cols-2 gap-8 py-8 border-y border-slate-100 bg-slate-50 rounded-2xl px-6">
+  <div>
+    <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] block mb-2">Staff</span>
+    {isEditing ? (
+      <div className="relative">
+        <select
+          required
+          className="w-full appearance-none bg-white border border-slate-200 p-3 rounded-xl text-slate-900 text-[11px] font-bold outline-none cursor-pointer"
+          value={editForm.assigned_to}
+          onChange={e => setEditForm({ ...editForm, assigned_to: e.target.value })}
+        >
+          <option value="">Assign to</option>
+          {users.map(u => (
+            <option key={u.id || u._id} value={u.id || u._id}>
+              {u.name}
+            </option>
+          ))}
+        </select>
+      </div>
+    ) : (
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 bg-indigo-500/10 rounded-full flex items-center justify-center border border-indigo-500/20 text-indigo-400">
+          <User size={18} />
+        </div>
+        <span className="text-slate-900 font-bold tracking-tight uppercase text-sm">
+          {
+            typeof task.assigned_to === "object"
+              ? task.assigned_to?.name
+              : users?.find(
+                  u => String(u.id || u._id) === String(task.assigned_to)
+                )?.name
+                || task.assigned_to
+                || "No Staff"
+          }
+        </span>
+      </div>
+    )}
+  </div>
+  <div>
+    <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] block mb-2">Designation</span>
+    {isEditing ? (
+      <div className="relative">
+        <select
+          required
+          className="w-full appearance-none bg-white border border-slate-200 p-3 rounded-xl text-slate-900 text-[11px] font-bold outline-none cursor-pointer"
+          value={editForm.designation_id}
+          onChange={e => setEditForm({ ...editForm, designation_id: e.target.value })}
+        >
+          <option value="">Designation</option>
+          {DESIGNATIONS.map(d => (
+            <option key={d.id} value={d.id}>
+              {d.name}
+            </option>
+          ))}
+        </select>
+      </div>
+    ) : (
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 bg-purple-500/10 rounded-full flex items-center justify-center border border-purple-500/20 text-purple-400">
+          <Target size={18} />
+        </div>
+        <span className="text-slate-900 font-bold tracking-tight uppercase text-sm">
+          {DESIGNATIONS?.find(d => String(d.id) === String(task.designation_id))?.name || "General"}
+        </span>
+      </div>
+    )}
   </div>
 </div>
-            <div>
-              <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] block mb-2">Designation</span>
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 bg-purple-500/10 rounded-full flex items-center justify-center border border-purple-500/20 text-purple-400"><Target size={18} /></div>
-                <span className="text-slate-900 font-bold tracking-tight uppercase text-sm">
-                  {DESIGNATIONS?.find(d => String(d.id) === String(task.designation_id))?.name || "General"}
-                </span>
-              </div>
-            </div>
-             
-          </div>
 
           {/* ACTION BUTTONS ROW */}
           <div className="mt-12 flex gap-4">

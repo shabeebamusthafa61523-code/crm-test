@@ -13,6 +13,7 @@ import taskRoutes from './src/routes/task.routes.js';
 import studentRoutes from './src/routes/student.routes.js';
 import crmRoutes from './src/routes/index.js';
 import apiRoutes from './src/routes/api.js';
+import Designation from './src/models/designation.model.js';
 
 dotenv.config();
 const app = express();
@@ -98,8 +99,28 @@ app.use((err, req, res, next) => {
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/student_attendance_db';
 
 mongoose.connect(MONGO_URI)
-  .then(() => {
+  .then(async () => {
     console.log(' ✅ Successfully connected to MongoDB.');
+    try {
+      const count = await Designation.countDocuments();
+      if (count === 0) {
+        const defaultDesignations = [
+          "HR Manager",
+          "Graphic Designer",
+          "Digital Marketer",
+          "React Developer",
+          "Node Developer",
+          "Flutter Developer",
+          "Fullstack",
+          "Admin",
+          "Manager"
+        ];
+        await Designation.insertMany(defaultDesignations.map(name => ({ name, isActive: true })));
+        console.log(' 🌱 Successfully seeded default designations.');
+      }
+    } catch (seedErr) {
+      console.error(' ❌ Failed to seed default designations:', seedErr.message);
+    }
   })
   .catch((error) => {
     console.error(' ❌ CRITICAL DATABASE CONNECTION ERROR:', error.message);

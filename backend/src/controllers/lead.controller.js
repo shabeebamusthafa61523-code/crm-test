@@ -548,9 +548,10 @@ export const leadController = {
         const userId = req.user?.id || req.user?._id;
         const isPrivileged = ['1', '2', 'hr', 'admin'].includes(userRole);
         
-        if (!isPrivileged && String(lead.assignedTo) !== String(userId)) {
-          throw new Error('FORBIDDEN_ERROR: Unprivileged removal restriction applied.');
-        }
+        // Ownership check bypassed per user request to allow delete permissions for leads, leadstelecaller, and leads counselor pages
+        // if (!isPrivileged && String(lead.assignedTo) !== String(userId)) {
+        //   throw new Error('FORBIDDEN_ERROR: Unprivileged removal restriction applied.');
+        // }
 
         await Lead.findByIdAndDelete(id).session(session);
         await LeadFollowup.deleteMany({ leadId: id }).session(session);

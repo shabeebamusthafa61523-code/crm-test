@@ -40,6 +40,12 @@ router.use(checkAuth);
 // USER ROUTES
 // ==========================================
 
+// CHANGE PASSWORD (self)
+router.post(
+  '/change-password',
+  userController.changePassword
+);
+
 // GET ALL USERS
 router.get(
   '/',

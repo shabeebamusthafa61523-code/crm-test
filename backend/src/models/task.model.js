@@ -32,7 +32,7 @@ const taskSchema = new mongoose.Schema({
     type: String
   },
  designation_id: {
-  type: Number
+  type: String
 }
 }, {
   timestamps: true,

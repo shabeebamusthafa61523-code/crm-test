@@ -527,6 +527,10 @@ const DesignationSelect = ({ value, onChange, designations, getAuthHeaders, onDe
 
 // --- CREATE MODAL ---
 const CreateModal = ({ onClose, refresh, getAuthHeaders, designations, onDesignationCreated, departments, showToast }) => {
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, []);
+
   const [form, setForm] = useState({
     employeeId: `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
     name: '',
@@ -610,7 +614,7 @@ const CreateModal = ({ onClose, refresh, getAuthHeaders, designations, onDesigna
   return (
     <motion.div 
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex justify-center items-start overflow-y-auto pt-6 pb-6 p-4"
+      className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex justify-center items-start overflow-y-auto pt-16 pb-16 p-4"
     >
       <motion.div 
         initial={{ y: -50, scale: 0.95 }} animate={{ y: 0, scale: 1 }} exit={{ y: -50, scale: 0.95 }}
@@ -740,6 +744,10 @@ const CreateModal = ({ onClose, refresh, getAuthHeaders, designations, onDesigna
 
 // --- EDIT MODAL ---
 const EditModal = ({ user, onClose, refresh, getAuthHeaders, designations, onDesignationCreated, departments, showToast }) => {
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, []);
+
   const [form, setForm] = useState({
     employeeId: user.employeeId || '',
     name: user.name || '',
@@ -825,7 +833,7 @@ const EditModal = ({ user, onClose, refresh, getAuthHeaders, designations, onDes
   return (
     <motion.div 
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex justify-center items-start overflow-y-auto pt-6 pb-6 p-4"
+      className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex justify-center items-start overflow-y-auto pt-16 pb-16 p-4"
     >
       <motion.div 
         initial={{ y: -50, scale: 0.95 }} animate={{ y: 0, scale: 1 }} exit={{ y: -50, scale: 0.95 }}
@@ -949,6 +957,10 @@ const EditModal = ({ user, onClose, refresh, getAuthHeaders, designations, onDes
 
 // --- VIEW DOSSIER MODAL ---
 const ViewModal = ({ user, getDesignationName, getDepartmentName, onClose }) => {
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, []);
+
   // Determine status configurations dynamically
   const statusKey = user.status || (user.isActive ? 'active' : 'inactive');
   const STATUS_META = {
@@ -966,10 +978,10 @@ const ViewModal = ({ user, getDesignationName, getDepartmentName, onClose }) => 
   return (
     <motion.div 
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex justify-center items-center p-4"
+      className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex justify-center items-start overflow-y-auto pt-16 pb-16 p-4"
     >
       <motion.div 
-        initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }}
+        initial={{ y: -50, scale: 0.95 }} animate={{ y: 0, scale: 1 }} exit={{ y: -50, scale: 0.95 }}
         className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-xl rounded-3xl overflow-hidden shadow-2xl relative"
       >
         <button onClick={onClose} className="absolute top-6 right-6 p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-500 transition-colors z-10"><X size={20}/></button>
