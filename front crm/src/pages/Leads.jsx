@@ -904,6 +904,7 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
     campaignName: '',
     leadPlatform: '',
     assignedTo: '',
+    admissionYesNo: '',
     remarks: ''
   });
   const [submitting, setSubmitting] = useState(false);
@@ -945,6 +946,7 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
           campaignName: '',
           leadPlatform: '',
           assignedTo: '',
+          admissionYesNo: '',
           remarks: ''
         });
       } else {
@@ -1080,6 +1082,19 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
                 placeholder="e.g. Summer Promo 2026"
               />
             </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Admission Status</label>
+              <select
+                value={formData.admissionYesNo}
+                onChange={e => setFormData({ ...formData, admissionYesNo: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              >
+                <option value="">Select</option>
+                <option value="Pending">Pending</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+              </select>
+            </div>
             {isPrivilegedUser && (
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Assign to Representative</label>
@@ -1148,6 +1163,7 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
     campaignName: '',
     leadPlatform: '',
     assignedTo: '',
+    admissionYesNo: '',
     remarks: ''
   });
   const [submitting, setSubmitting] = useState(false);
@@ -1165,6 +1181,7 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
         campaignName: lead.campaignName || '',
         leadPlatform: lead.leadPlatform || '',
         assignedTo: lead.assignedTo?._id || lead.assignedTo || '',
+        admissionYesNo: lead.admissionYesNo || '',
         remarks: lead.remarks || ''
       });
     }
@@ -1324,6 +1341,19 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
                 className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
                 placeholder="e.g. Summer Campaign"
               />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Admission Status</label>
+              <select
+                value={formData.admissionYesNo}
+                onChange={e => setFormData({ ...formData, admissionYesNo: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              >
+                <option value="">Select</option>
+                <option value="Pending">Pending</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+              </select>
             </div>
             {isPrivilegedUser && (
               <div>

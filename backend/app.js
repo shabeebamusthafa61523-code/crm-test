@@ -76,6 +76,14 @@ app.use('/api/v1', crmRoutes);
 app.use('/api', studentRoutes); 
 app.use('/api', apiRoutes);      // Legacy base fallback route handler
 
+// Welcome / Root Health Check Route
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "CRM Backend Server is running successfully."
+  });
+});
+
 // 5. Global 404 Route Catch-All
 // Prevents missing endpoints from crashing headers or responding with standard Express HTML
 app.use((req, res, next) => {

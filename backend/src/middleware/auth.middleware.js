@@ -109,6 +109,13 @@ export const restrictToRoles = (allowedRoles = []) => {
 
 export const restrictToDepartment = (departmentId) => {
   return async (req, res, next) => {
+    // Administrative roles (1, 2, hr, admin) can bypass department checks
+    const role = String(req.user?.role || req.user?.role_id || '').toLowerCase().trim();
+    const isPrivileged = ['1', '2', 'hr', 'admin'].includes(role);
+    if (isPrivileged) {
+      return next();
+    }
+
     let userDeptId = req.user?.departmentId;
 
     // Fallback: If departmentId is missing from token (e.g. active session), query from DB
