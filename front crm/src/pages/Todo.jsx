@@ -418,30 +418,48 @@ console.log("ERRORS FULL:", JSON.stringify(data.errors, null, 2));
     </motion.div>
   );
 };
-// --- DETAIL MODAL COMPONENT ---
+
 // --- DETAIL MODAL COMPONENT (CLEANED & INTEGRATED) ---
-const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, DESIGNATIONS,users, API_BASE   }) => {
+const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, DESIGNATIONS, users, API_BASE }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [newFile, setNewFile] = useState(null);
 
+  const statusConfig = {
+    pending: { 
+      label: 'Pending', 
+      activeClass: 'bg-rose-100 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/80 text-rose-800 dark:text-rose-300 font-bold', 
+      dot: 'bg-rose-600' 
+    },
+    current: { 
+      label: 'Current', 
+      activeClass: 'bg-amber-100 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/80 text-amber-800 dark:text-amber-300 font-bold', 
+      dot: 'bg-amber-600' 
+    },
+    preview: { 
+      label: 'Preview', 
+      activeClass: 'bg-indigo-100 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800/80 text-indigo-800 dark:text-indigo-300 font-bold', 
+      dot: 'bg-indigo-600' 
+    },
+    done: { 
+      label: 'Completed', 
+      activeClass: 'bg-emerald-100 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/80 text-emerald-800 dark:text-emerald-300 font-bold', 
+      dot: 'bg-emerald-600' 
+    }
+  };
+
   const canModify = useMemo(() => {
     const creatorId = task?.created_by?._id || task?.created_by?.id || task?.user_id || '';
     const currentId = currentUserId || (localStorage.getItem('user_id') ?? '');
-    console.log('CREATOR ID =', creatorId);
-    console.log('CURRENT ID =', currentId);
     return String(creatorId).trim() === String(currentId).trim();
   }, [task, currentUserId]);
- useEffect(() => { 
+
+  useEffect(() => { 
     if (task) { 
-      // 1. Scroll to the top of the page immediately or smoothly
       window.scrollTo({ top: 0, behavior: 'smooth' });
-
-      // 2. Existing state resets
       setEditForm({ ...task, status: task.status || "pending" }); 
-
       setIsEditing(false); 
       setNewFile(null);
     } 
@@ -450,98 +468,82 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
   if (!task || !editForm) return null;
 
   const handleUpdate = async () => {
-  if (isSaving) return;
-  setIsSaving(true);
+    if (isSaving) return;
+    setIsSaving(true);
 
-  const fd = new FormData();
-  fd.append('title', editForm.title);
-  fd.append('description', editForm.description || '');
-  fd.append('assigned_to', editForm.assigned_to);
-  fd.append('designation_id', editForm.designation_id);
+    const fd = new FormData();
+    fd.append('title', editForm.title);
+    fd.append('description', editForm.description || '');
+    fd.append('assigned_to', editForm.assigned_to);
+    fd.append('designation_id', editForm.designation_id);
 
-  if (newFile) fd.append('file', newFile);
+    if (newFile) fd.append('file', newFile);
 
-  try {
-    // ✅ First update main data
-    await fetch(`${API_BASE}/tasks/update/${task.id}`, {
-      method: "PUT",
-      headers: getAuthHeaders(),
-      body: fd
-    });
-
-    // ✅ THEN update status separately
-    if (editForm.status !== task.status) {
-      await fetch(`${API_BASE}/tasks/task-status/${task.id}?status=${editForm.status}`, {
+    try {
+      await fetch(`${API_BASE}/tasks/update/${task.id}`, {
         method: "PUT",
+        headers: getAuthHeaders(),
+        body: fd
+      });
+
+      if (editForm.status !== task.status) {
+        await fetch(`${API_BASE}/tasks/task-status/${task.id}?status=${editForm.status}`, {
+          method: "PUT",
+          headers: getAuthHeaders()
+        });
+      }
+
+      await onUpdate();
+      onClose();
+
+    } catch (e) {
+      console.error("Update error:", e);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleStatusChange = async (newStatus) => {
+    setEditForm(prev => ({ ...prev, status: newStatus }));
+
+    try {
+      await fetch(`${API_BASE}/tasks/task-status/${task.id}?status=${newStatus}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+      });
+      await onUpdate();
+    } catch (err) {
+      console.error("Status update failed:", err);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm("ARE YOU SURE? This action will permanently purge this asset.")) return;
+    
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`${API_BASE}/tasks/delete/${task.id}`, { 
+        method: "DELETE", 
         headers: getAuthHeaders()
       });
-    }
 
-    await onUpdate();
-    onClose();
-
-  } catch (e) {
-    console.error("Update error:", e);
-  } finally {
-    setIsSaving(false);
-  }
-};
-const handleStatusChange = async (newStatus) => {
-  // Optimistic UI update
-  setEditForm(prev => ({ ...prev, status: newStatus }));
-
-  try {
-    await fetch(`${API_BASE}/tasks/task-status/${task.id}?status=${newStatus}`, {
-      method: "PUT",
-      headers: getAuthHeaders(),
-    });
-
-    // Refresh board
-    await onUpdate();
-
-  } catch (err) {
-    console.error("Status update failed:", err);
-  }
-};
- const handleDelete = async () => {
-  if (!window.confirm("ARE YOU SURE? This action will permanently purge this asset.")) return;
-  
-  setIsDeleting(true);
-  try {
-    const res = await fetch(`${API_BASE}/tasks/delete/${task.id}`, { 
-      method: "DELETE", 
-      headers: getAuthHeaders()
-    });
-
-    // We check if res.ok IS true OR if we got a 500 but the task is gone
-    if (res.ok) {
+      if (res.ok) {
+        await onUpdate();
+        onClose();
+      } else {
+        console.warn("Backend Session Error detected, forcing UI refresh...");
+        await onUpdate();
+        onClose();
+      }
+    } catch (e) {
+      console.error("Delete error:", e);
       await onUpdate();
       onClose();
-    } else {
-      const errorData = await res.json().catch(() => ({}));
-      
-      // If the error is that specific SQLAlchemy session error, 
-      // the backend usually still finishes the job or requires a refresh.
-      // We force a refresh and close anyway to keep the UI moving.
-      console.warn("Backend Session Error detected, forcing UI refresh...");
-      await onUpdate();
-      onClose();
+    } finally {
+      setIsDeleting(false);
     }
-  } catch (e) {
-    console.error("Delete error:", e);
-    // Even on network error, try to refresh and close
-    await onUpdate();
-    onClose();
-  } finally {
-    setIsDeleting(false);
-  }
-};
-console.log("TASK =", task);
-console.log("CURRENT USER =", currentUserId);
+  };
 
-console.log("FULL TASK =", task);
-console.log("CREATED_BY =", task?.created_by);
-console.log("USER_ID =", task?.user_id);
   return (
     <motion.div 
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -549,13 +551,12 @@ console.log("USER_ID =", task?.user_id);
     >
       <motion.div 
         initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-        className="bg-white border border-slate-200 w-full max-w-6xl rounded-[3.5rem] overflow-hidden flex flex-col lg:flex-row shadow-2xl mb-10"
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-6xl rounded-[3.5rem] overflow-hidden flex flex-col lg:flex-row shadow-2xl mb-10"
       >
-        {/* LEFT: IMAGE SCANNER */}
-        <div className="w-full lg:w-5/12 bg-slate-50 p-10 flex flex-col items-center justify-center relative border-r border-slate-100">
+        <div className="w-full lg:w-5/12 bg-slate-50 dark:bg-slate-950/40 p-10 flex flex-col items-center justify-center relative border-r border-slate-100 dark:border-slate-800">
           <div className="absolute top-8 left-10 flex items-center gap-3">
             <div className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
-            <span className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.4em]">Tactical Asset</span>
+            <span className="text-[9px] font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-[0.4em]">Tactical Asset</span>
           </div>
 
           <div 
@@ -564,7 +565,7 @@ console.log("USER_ID =", task?.user_id);
           >
             <img 
               src={getTaskImageUrl(task.image || task.file) || 'https://placehold.co/600x800/111218/4f46e5?text=DATA+MISSING'} 
-              className="w-full rounded-3xl object-cover shadow-2xl border border-slate-100" 
+              className="w-full rounded-3xl object-cover shadow-2xl border border-slate-100 dark:border-slate-850" 
               alt="Task Asset" 
             />
           </div>
@@ -573,151 +574,149 @@ console.log("USER_ID =", task?.user_id);
             <label className="mt-6 w-full py-4 border-2 border-dashed border-indigo-500/20 rounded-2xl flex items-center justify-center gap-3 cursor-pointer hover:bg-indigo-500/5 transition-all">
               <input type="file" className="hidden" onChange={(e) => setNewFile(e.target.files[0])} />
               <Camera size={18} className="text-indigo-500" />
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate max-w-[200px]">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate max-w-[200px]">
                 {newFile ? newFile.name : 'Update File'}
               </span>
             </label>
           )}
         </div>
 
-        {/* RIGHT: DATA CORE */}
-       {/* RIGHT: DATA CORE */}
-<div className="w-full lg:w-7/12 p-10 lg:p-16 relative flex flex-col justify-between">
-  <button onClick={onClose} className="absolute top-10 right-10 p-3 hover:bg-slate-100 rounded-full text-slate-500 hover:text-slate-900 transition-all">
-    <X />
-  </button>
+        <div className="w-full lg:w-7/12 p-10 lg:p-16 relative flex flex-col justify-between bg-white dark:bg-slate-900">
+          <button onClick={onClose} className="absolute top-10 right-10 p-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-all">
+            <X />
+          </button>
 
-  <div>
-    {isEditing ? (
-  <div className="relative">
-    <select
-      value={editForm.status}
-      onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-      className="w-full appearance-none bg-white border border-slate-200 p-5 pr-12 rounded-2xl text-slate-900 text-[11px] font-black uppercase tracking-[0.2em] outline-none focus:border-indigo-500/50 transition-all cursor-pointer hover:border-indigo-500/30 shadow-sm"
-    >
-      <option value="pending" className="bg-white text-slate-900">PENDING</option>
-      <option value="current" className="bg-white text-slate-900">CURRENT</option>
-      <option value="preview" className="bg-white text-slate-900">PREVIEW</option>
-      <option value="done" className="bg-white text-slate-900">COMPLETED</option>
-    </select>
-    <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-400/60">
-      <Layout size={16} />
-    </div>
-  </div>
-) : (
-  <div className="inline-flex items-center gap-3 px-6 py-3 bg-indigo-500/10 border border-indigo-500/20 rounded-full">
-    <div className={`w-2 h-2 rounded-full animate-pulse ${COLUMN_META[task.status]?.color || 'bg-slate-500'}`} />
-    <span className="text-indigo-600 font-black uppercase text-[11px] tracking-widest">
-      {task.status}
-    </span>
-  </div>
-)}
+          <div>
+            {/* STATUS DISPLAY */}
+            <div className="mb-8">
+              {isEditing ? (
+                <div className="relative">
+                  <select
+                    value={editForm.status}
+                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                    className="w-full appearance-none bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-5 pr-12 rounded-2xl text-slate-900 dark:text-slate-100 text-[11px] font-black uppercase tracking-[0.2em] outline-none focus:border-indigo-500/50 transition-all cursor-pointer hover:border-indigo-500/30 shadow-sm"
+                  >
+                    <option value="pending" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">PENDING</option>
+                    <option value="current" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">CURRENT</option>
+                    <option value="preview" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">PREVIEW</option>
+                    <option value="done" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">COMPLETED</option>
+                  </select>
+                  <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-400/60">
+                    <Layout size={16} />
+                  </div>
+                </div>
+              ) : (
+                <div className={`inline-flex items-center gap-3 px-6 py-3 rounded-full border ${statusConfig[task.status]?.activeClass || 'bg-slate-500/10 border-slate-500/20 text-slate-600'}`}>
+                  <div className={`w-2 h-2 rounded-full animate-pulse ${statusConfig[task.status]?.dot || 'bg-slate-500'}`} />
+                  <span className="font-black uppercase text-[11px] tracking-widest">
+                    {statusConfig[task.status]?.label || task.status}
+                  </span>
+                </div>
+              )}
+            </div>
 
-    {/* CONTENT SECTION */}
-    {isEditing ? (
-      <div className="space-y-6">
-        <div>
-          <label className="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-2 block ml-2">Header</label>
-          <input 
-            className="w-full bg-slate-50 border border-slate-200 p-6 rounded-3xl text-slate-900 text-2xl font-bold outline-none focus:border-indigo-500/50" 
-            value={editForm.title} 
-            onChange={e => setEditForm({...editForm, title: e.target.value})} 
-          />
-        </div>
-        <div>
-          <label className="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-2 block ml-2">Objective Brief</label>
-          <textarea 
-            className="w-full bg-slate-50 border border-slate-200 p-6 rounded-3xl text-slate-900 text-sm h-48 outline-none focus:border-indigo-500/50 resize-none leading-relaxed" 
-            value={editForm.description} 
-            onChange={e => setEditForm({...editForm, description: e.target.value})} 
-          />
-        </div>
-      </div>
-    ) : (
-      <div className="space-y-8">
-        <h2 className="text-5xl md:text-7xl font-black text-slate-900 italic tracking-tighter uppercase leading-[0.85]">
-          {task.title}
-        </h2>
-        <div className="p-8 bg-slate-50 border-y border-r border-slate-100 border-l-2 border-l-indigo-500 rounded-r-[2rem]">
-          <p className="text-slate-400 text-xl leading-relaxed font-medium italic opacity-80">
-            {task.description || 'No briefing recorded for this asset.'}
-          </p>
-        </div>
-      </div>
-    )}
-  </div>
+            {isEditing ? (
+              <div className="space-y-6">
+                <div>
+                  <label className="text-[9px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest mb-2 block ml-2">Header</label>
+                  <input 
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 p-6 rounded-3xl text-slate-900 dark:text-slate-105 text-2xl font-bold outline-none focus:border-indigo-500/50" 
+                    value={editForm.title} 
+                    onChange={e => setEditForm({...editForm, title: e.target.value})} 
+                  />
+                </div>
+                <div>
+                  <label className="text-[9px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest mb-2 block ml-2">Objective Brief</label>
+                  <textarea 
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-855 p-6 rounded-3xl text-slate-900 dark:text-slate-110 text-sm h-48 outline-none focus:border-indigo-500/50 resize-none leading-relaxed" 
+                    value={editForm.description} 
+                    onChange={e => setEditForm({...editForm, description: e.target.value})} 
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-8">
+                <h2 className="text-5xl md:text-7xl font-black text-slate-900 dark:text-slate-100 italic tracking-tighter uppercase leading-[0.85]">
+                  {task.title}
+                </h2>
+                <div className="p-8 bg-slate-50 dark:bg-slate-950/40 border-y border-r border-slate-100 dark:border-slate-800 border-l-2 border-l-indigo-500 rounded-r-[2rem]">
+                  <p className="text-slate-605 dark:text-slate-300 text-xl leading-relaxed font-medium italic opacity-80">
+                    {task.description || 'No briefing recorded for this asset.'}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
 
- 
-<div className="grid grid-cols-2 gap-8 py-8 border-y border-slate-100 bg-slate-50 rounded-2xl px-6">
-  <div>
-    <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] block mb-2">Staff</span>
-    {isEditing ? (
-      <div className="relative">
-        <select
-          required
-          className="w-full appearance-none bg-white border border-slate-200 p-3 rounded-xl text-slate-900 text-[11px] font-bold outline-none cursor-pointer"
-          value={editForm.assigned_to}
-          onChange={e => setEditForm({ ...editForm, assigned_to: e.target.value })}
-        >
-          <option value="">Assign to</option>
-          {users.map(u => (
-            <option key={u.id || u._id} value={u.id || u._id}>
-              {u.name}
-            </option>
-          ))}
-        </select>
-      </div>
-    ) : (
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 bg-indigo-500/10 rounded-full flex items-center justify-center border border-indigo-500/20 text-indigo-400">
-          <User size={18} />
-        </div>
-        <span className="text-slate-900 font-bold tracking-tight uppercase text-sm">
-          {
-            typeof task.assigned_to === "object"
-              ? task.assigned_to?.name
-              : users?.find(
-                  u => String(u.id || u._id) === String(task.assigned_to)
-                )?.name
-                || task.assigned_to
-                || "No Staff"
-          }
-        </span>
-      </div>
-    )}
-  </div>
-  <div>
-    <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] block mb-2">Designation</span>
-    {isEditing ? (
-      <div className="relative">
-        <select
-          required
-          className="w-full appearance-none bg-white border border-slate-200 p-3 rounded-xl text-slate-900 text-[11px] font-bold outline-none cursor-pointer"
-          value={editForm.designation_id}
-          onChange={e => setEditForm({ ...editForm, designation_id: e.target.value })}
-        >
-          <option value="">Designation</option>
-          {DESIGNATIONS.map(d => (
-            <option key={d.id} value={d.id}>
-              {d.name}
-            </option>
-          ))}
-        </select>
-      </div>
-    ) : (
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 bg-purple-500/10 rounded-full flex items-center justify-center border border-purple-500/20 text-purple-400">
-          <Target size={18} />
-        </div>
-        <span className="text-slate-900 font-bold tracking-tight uppercase text-sm">
-          {DESIGNATIONS?.find(d => String(d.id) === String(task.designation_id))?.name || "General"}
-        </span>
-      </div>
-    )}
-  </div>
-</div>
+          <div className="grid grid-cols-2 gap-8 py-8 border-y border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/20 rounded-2xl px-6 mt-8">
+            <div>
+              <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.3em] block mb-2">Staff</span>
+              {isEditing ? (
+                <div className="relative">
+                  <select
+                    required
+                    className="w-full appearance-none bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-xl text-slate-900 dark:text-slate-100 text-[11px] font-bold outline-none cursor-pointer"
+                    value={editForm.assigned_to}
+                    onChange={e => setEditForm({ ...editForm, assigned_to: e.target.value })}
+                  >
+                    <option value="">Assign to</option>
+                    {users.map(u => (
+                      <option key={u.id || u._id} value={u.id || u._id}>
+                        {u.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 bg-indigo-500/10 rounded-full flex items-center justify-center border border-indigo-500/20 text-indigo-400">
+                    <User size={18} />
+                  </div>
+                  <span className="text-slate-900 dark:text-slate-100 font-bold tracking-tight uppercase text-sm">
+                    {
+                      typeof task.assigned_to === "object"
+                        ? task.assigned_to?.name
+                        : users?.find(
+                            u => String(u.id || u._id) === String(task.assigned_to)
+                          )?.name
+                          || task.assigned_to
+                          || "No Staff"
+                    }
+                  </span>
+                </div>
+              )}
+            </div>
+            <div>
+              <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.3em] block mb-2">Designation</span>
+              {isEditing ? (
+                <div className="relative">
+                  <select
+                    required
+                    className="w-full appearance-none bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-xl text-slate-900 dark:text-slate-100 text-[11px] font-bold outline-none cursor-pointer"
+                    value={editForm.designation_id}
+                    onChange={e => setEditForm({ ...editForm, designation_id: e.target.value })}
+                  >
+                    <option value="">Designation</option>
+                    {DESIGNATIONS.map(d => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 bg-purple-500/10 rounded-full flex items-center justify-center border border-purple-500/20 text-purple-400">
+                    <Target size={18} />
+                  </div>
+                  <span className="text-slate-900 dark:text-slate-100 font-bold tracking-tight uppercase text-sm">
+                    {DESIGNATIONS?.find(d => String(d.id) === String(task.designation_id))?.name || "General"}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
 
-          {/* ACTION BUTTONS ROW */}
           <div className="mt-12 flex gap-4">
             {canModify ? (
               <>
@@ -725,11 +724,9 @@ console.log("USER_ID =", task?.user_id);
                   onClick={handleDelete}
                   disabled={isSaving || isDeleting}
                   className="px-6 bg-red-500/10 border border-red-500/20 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all active:scale-95 disabled:opacity-50"
-                  title="Purge Asset"
                 >
                   {isDeleting ? <Loader2 className="animate-spin" size={18} /> : <Trash2 size={18} />}
                 </button>
-
                 <button 
                   onClick={isEditing ? handleUpdate : () => setIsEditing(true)} 
                   disabled={isSaving || isDeleting}
@@ -740,16 +737,16 @@ console.log("USER_ID =", task?.user_id);
                 </button>
               </>
             ) : (
-              <div className="w-full py-6 bg-slate-50 rounded-3xl border border-slate-200 flex flex-col items-center justify-center gap-2 text-slate-500 italic font-medium">
+              <div className="w-full py-6 bg-slate-50 dark:bg-slate-950/20 rounded-3xl border border-slate-205 dark:border-slate-800 flex flex-col items-center justify-center gap-2 text-slate-500 dark:text-slate-400 italic font-medium">
                 <span className="text-[11px] uppercase tracking-widest font-black">Authorized Creator Access Only</span>
                 <span className="text-[8px] opacity-40 uppercase">Visitor: {currentUserId?.slice(0, 8)}... |Owner: {
-  (
-    task?.user_id ||
-    task?.created_by?._id ||
-    task?.created_by?.id ||
-    task?.created_by
-  )?.toString().slice(0,8)
-}...</span>
+                  (
+                    task?.user_id ||
+                    task?.created_by?._id ||
+                    task?.created_by?.id ||
+                    task?.created_by
+                  )?.toString().slice(0,8)
+                }...</span>
               </div>
             )}
           </div>
@@ -757,5 +754,5 @@ console.log("USER_ID =", task?.user_id);
       </motion.div>
     </motion.div>
   );
-}
+};
 export default Todo;
