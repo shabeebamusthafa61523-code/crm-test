@@ -128,6 +128,12 @@ export const analyticsController = {
           nextFollowUpDate: { $exists: true, $ne: null }
         });
 
+        // 6. Admissions Confirmed (admissionYesNo: 'Yes')
+        const admissionsConfirmed = await Lead.countDocuments({
+          ...matchFilter,
+          admissionYesNo: 'Yes'
+        });
+
         return {
           totalLeads: {
             value: totalLeads,
@@ -148,6 +154,9 @@ export const analyticsController = {
           lostLeads: {
             value: lostLeads,
             reasons: lostReasons.map(r => ({ reason: r._id, count: r.count }))
+          },
+          admissionsConfirmed: {
+            value: admissionsConfirmed
           }
         };
       });
