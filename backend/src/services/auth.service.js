@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-// import redis from '../config/redis.js';
+import redis from '../config/redis.js';
 import { signToken } from '../utils/jwt.util.js';
 import { comparePassword, hashPassword } from '../utils/bcrypt.util.js';
 import { AppError } from '../middleware/errorHandler.js';
@@ -184,25 +184,29 @@ export const authService = {
   revokeAllSessions: async (userId) => {
     logger.info(`🧹 Revoking all active sessions for User: ${userId}`);
     
-    // Scan Redis keys for sessions matching this user
-    let cursor = '0';
-    do {
-      const [newCursor, keys] = await redis.scan(cursor, 'MATCH', 'refresh_session:*', 'COUNT', 100);
-      cursor = newCursor;
-      
-      for (const key of keys) {
-        const data = await redis.get(key);
-        if (data) {
-          const session = JSON.parse(data);
-          if (session.userId === userId) {
-            await redis.del(key);
-            // Blacklist the corresponding access JTI
-            if (session.jti) {
-              await redis.set(`revoked_session:${session.jti}`, 'REVOKED', 'EX', 15 * 60);
+    try {
+      // Scan Redis keys for sessions matching this user
+      let cursor = '0';
+      do {
+        const [newCursor, keys] = await redis.scan(cursor, 'MATCH', 'refresh_session:*', 'COUNT', 100);
+        cursor = newCursor;
+        
+        for (const key of keys) {
+          const data = await redis.get(key);
+          if (data) {
+            const session = JSON.parse(data);
+            if (session.userId === userId) {
+              await redis.del(key);
+              // Blacklist the corresponding access JTI
+              if (session.jti) {
+                await redis.set(`revoked_session:${session.jti}`, 'REVOKED', 'EX', 15 * 60);
+              }
             }
           }
         }
-      }
-    } while (cursor !== '0');
+      } while (cursor !== '0');
+    } catch (redisError) {
+      logger.warn(`⚠️ Redis sessions revocation failed or Redis is offline: ${redisError.message}`);
+    }
   }
 };
