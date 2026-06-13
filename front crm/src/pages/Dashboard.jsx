@@ -108,12 +108,12 @@ const Dashboard = () => {
         // Fetch Admin specific stats in parallel
         const [taskRes, userRes, summaryRes, funnelRes, sourceRes, staffRes, followupRes] = await Promise.all([
           fetch(`${API_BASE}/tasks/all`, { headers: getAuthHeaders() }),
-          fetch(`${API_BASE}/users`, { headers: getAuthHeaders() }),
-          fetch(`${API_BASE}/analytics/summary`, { headers: getAuthHeaders() }),
-          fetch(`${API_BASE}/analytics/conversion-rate`, { headers: getAuthHeaders() }),
-          fetch(`${API_BASE}/analytics/source-performance`, { headers: getAuthHeaders() }),
-          fetch(`${API_BASE}/analytics/staff-performance`, { headers: getAuthHeaders() }),
-          fetch(`${API_BASE}/analytics/followup-metrics`, { headers: getAuthHeaders() })
+          fetch(`${API_BASE}/v1/users`, { headers: getAuthHeaders() }),
+          fetch(`${API_BASE}/v1/analytics/summary`, { headers: getAuthHeaders() }),
+          fetch(`${API_BASE}/v1/analytics/conversion-rate`, { headers: getAuthHeaders() }),
+          fetch(`${API_BASE}/v1/analytics/source-performance`, { headers: getAuthHeaders() }),
+          fetch(`${API_BASE}/v1/analytics/staff-performance`, { headers: getAuthHeaders() }),
+          fetch(`${API_BASE}/v1/analytics/followup-metrics`, { headers: getAuthHeaders() })
         ]);
 
         // TASKS
@@ -184,7 +184,7 @@ const Dashboard = () => {
           const rawTasks = Array.isArray(taskData) ? taskData : taskData?.data || [];
           const cleanedTasks = rawTasks.map(task => ({
             ...task,
-            assigned_to: typeof task.assigned_to === "object"
+            assigned_to: (task.assigned_to && typeof task.assigned_to === "object")
               ? (task.assigned_to.id || task.assigned_to._id)
               : task.assigned_to
           }));
@@ -236,7 +236,7 @@ const Dashboard = () => {
     if (!user?.user_id) return [];
 
     return tasks.filter(t => {
-      const assignedId = typeof t.assigned_to === "object"
+      const assignedId = (t.assigned_to && typeof t.assigned_to === "object")
         ? (t.assigned_to.id || t.assigned_to._id)
         : t.assigned_to;
 
