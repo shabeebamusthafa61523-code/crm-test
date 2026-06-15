@@ -104,9 +104,9 @@ const fetchData = useCallback(async () => {
     const cleanedTasks = sortedTasks.map(task=>({
       ...task,
       assigned_to:
-        typeof task.assigned_to === "object"
-          ? task.assigned_to.id
-          : task.assigned_to
+        (task.assigned_to && typeof task.assigned_to === "object")
+          ? (task.assigned_to.id || task.assigned_to._id || "")
+          : (task.assigned_to || "")
     }));
 
     setTasks(cleanedTasks);
