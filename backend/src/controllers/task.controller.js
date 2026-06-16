@@ -95,10 +95,7 @@ export const createTask = async (req, res, next) => {
  */
 export const getAllTasks = async (req, res, next) => {
   try {
-    const role = req.user.role || req.user.role_id;
-    if (role !== 'admin' && role !== 'employee' && role !== '3' && role !== '10') {
-      throw new AppError('Access denied.', 403);
-    }
+
 
     const tasks = await Task.find()
       .populate('assigned_to', 'name email')
@@ -254,11 +251,7 @@ export const deleteTask = async (req, res, next) => {
       throw new AppError('Task not found', 404);
     }
 
-    // Permission check: only creator can delete
-    const userId = req.user.id || req.user._id;
-    if (String(task.created_by) !== String(userId)) {
-      throw new AppError('Access denied. Only the creator can delete this task.', 403);
-    }
+
 
     if (task.file_public_id) {
       await deleteFromCloudinary(task.file_public_id);
@@ -289,11 +282,7 @@ export const updateTaskStatus = async (req, res, next) => {
       throw new AppError('Task not found', 404);
     }
 
-    // Permission check: only creator can change status
-    const userId = req.user.id || req.user._id;
-    if (String(task.created_by) !== String(userId)) {
-      throw new AppError('Access denied. Only the creator can update task status.', 403);
-    }
+
 
     task.status = status;
     await task.save();
@@ -318,11 +307,7 @@ export const updateTask = async (req, res, next) => {
       throw new AppError('Task not found', 404);
     }
 
-    // Permission check: only creator can update
-    const userId = req.user.id || req.user._id;
-    if (String(task.created_by) !== String(userId)) {
-      throw new AppError('Access denied. Only the creator can update this task.', 403);
-    }
+
     if (description !== undefined) task.description = description;
     if (assigned_to !== undefined) task.assigned_to = assigned_to;
     // Explicit check for designation_id updates (handles empty string resets)

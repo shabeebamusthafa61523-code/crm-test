@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, Calendar, Plus, Trash2, Save, Download, 
-  CheckCircle, HelpCircle, Loader2, User, ChevronRight 
+  CheckCircle, HelpCircle, Loader2, User, ChevronRight, Pencil
 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
 import { jsPDF } from 'jspdf';
@@ -39,6 +39,7 @@ const VideographerReportPage = () => {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isEditingBasic, setIsEditingBasic] = useState(false);
   const [currentUser, setCurrentUser] = useState({});
   const [isPrivileged, setIsPrivileged] = useState(false);
   
@@ -47,6 +48,38 @@ const VideographerReportPage = () => {
   const [selectedUserId, setSelectedUserId] = useState('');
   const [videographers, setVideographers] = useState([]);
   const [submittedDates, setSubmittedDates] = useState([]);
+  
+  // Monthly Report States
+  const [isMonthlyModalOpen, setIsMonthlyModalOpen] = useState(false);
+  const [monthlyStartDate, setMonthlyStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  });
+  const [monthlyEndDate, setMonthlyEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isMonthlyLoading, setIsMonthlyLoading] = useState(false);
+  const [monthlyActiveTab, setMonthlyActiveTab] = useState("range");
+  const [monthlyBasicDetails, setMonthlyBasicDetails] = useState({
+    employeeName: '',
+    employeeId: '',
+    designation: 'Videographer & Editor',
+    reportingTo: 'CMO',
+    shiftTiming: '9:00 AM - 5:00 PM',
+    preparedAt: '5.00PM',
+    startDate: '',
+    endDate: ''
+  });
+  const [monthlyTaskLog, setMonthlyTaskLog] = useState([]);
+  const [monthlyKeyNumbers, setMonthlyKeyNumbers] = useState(DEFAULT_KEY_NUMBERS);
+  const [monthlyBlockers, setMonthlyBlockers] = useState([]);
+  const [monthlyTomorrowTasks, setMonthlyTomorrowTasks] = useState([]);
+  const [monthlyApproval, setMonthlyApproval] = useState({
+    videographerName: '',
+    videographerSignature: '',
+    submittedAt: '',
+    teamLeaderName: '',
+    approvedOn: ''
+  });
   
   // Form State
   const [basicDetails, setBasicDetails] = useState({
@@ -194,6 +227,16 @@ const VideographerReportPage = () => {
     }
   }, [selectedUserId, selectedDate, fetchReport]);
 
+  // Cache basicDetails in localStorage when they change
+  useEffect(() => {
+    if (selectedUserId && basicDetails && (basicDetails.employeeName || basicDetails.employeeId)) {
+      const { date, day, preparedAt, ...persistent } = basicDetails;
+      if (Object.keys(persistent).length > 0) {
+        localStorage.setItem(`cachedBasicDetails_Videographer_${selectedUserId}`, JSON.stringify(persistent));
+      }
+    }
+  }, [basicDetails, selectedUserId]);
+
   const initializeBlankReport = (userId, dateStr) => {
     let userDetail = currentUser;
     if (videographers.length > 0) {
@@ -214,15 +257,19 @@ const VideographerReportPage = () => {
     minutes = minutes < 10 ? '0' + minutes : minutes;
     const timeStr = hours + ':' + minutes + ' ' + ampm;
 
+    // Load from cache if exists
+    const cached = localStorage.getItem(`cachedBasicDetails_Videographer_${userId}`);
+    const parsedCached = cached ? JSON.parse(cached) : null;
+
     setBasicDetails({
-      employeeName: userDetail.name || '',
+      employeeName: parsedCached?.employeeName || userDetail.name || '',
       date: formattedDateString,
       day: dayName.toUpperCase().slice(0,3),
-      employeeId: userDetail.employeeId || '',
-      designation: 'Videographer & Editor',
-      reportingTo: 'CMO',
-      shiftTiming: '9:00 AM - 5:00 PM',
-      preparedAt: timeStr
+      employeeId: parsedCached?.employeeId || userDetail.employeeId || '',
+      designation: parsedCached?.designation || 'Videographer & Editor',
+      reportingTo: parsedCached?.reportingTo || 'CMO',
+      shiftTiming: parsedCached?.shiftTiming || '9:00 AM - 5:00 PM',
+      preparedAt: parsedCached?.preparedAt || timeStr
     });
 
     setTaskLog(DEFAULT_TASK_LOG);
@@ -288,6 +335,453 @@ const VideographerReportPage = () => {
       showToast("Server error. Please try again.", 'error');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Helper row handlers for monthly tables
+  const addMonthlyBlockerRow = () => {
+    setMonthlyBlockers([...monthlyBlockers, { issue: '', details: '', priority: 'None' }]);
+  };
+  const removeMonthlyBlockerRow = (index) => {
+    if (monthlyBlockers.length > 1) {
+      setMonthlyBlockers(monthlyBlockers.filter((_, i) => i !== index));
+    }
+  };
+  const addMonthlyTomorrowRow = () => {
+    setMonthlyTomorrowTasks([...monthlyTomorrowTasks, { task: '', details: '', notes: '' }]);
+  };
+  const removeMonthlyTomorrowRow = (index) => {
+    if (monthlyTomorrowTasks.length > 1) {
+      setMonthlyTomorrowTasks(monthlyTomorrowTasks.filter((_, i) => i !== index));
+    }
+  };
+  const addMonthlyTaskRow = () => {
+    setMonthlyTaskLog([...monthlyTaskLog, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'Done', fileLink: '' }]);
+  };
+  const removeMonthlyTaskRow = (index) => {
+    if (monthlyTaskLog.length > 1) {
+      setMonthlyTaskLog(monthlyTaskLog.filter((_, i) => i !== index));
+    }
+  };
+
+  // Fetch & Consolidate Monthly Data
+  const handleFetchMonthlyData = async () => {
+    if (!selectedUserId) {
+      showToast("Please select a videographer first.", "error");
+      return;
+    }
+    if (!monthlyStartDate || !monthlyEndDate) {
+      showToast("Please select start and end dates.", "error");
+      return;
+    }
+    
+    setIsMonthlyLoading(true);
+    try {
+      const dates = [];
+      let curr = new Date(monthlyStartDate);
+      const end = new Date(monthlyEndDate);
+      while (curr <= end) {
+        dates.push(curr.toISOString().split('T')[0]);
+        curr.setDate(curr.getDate() + 1);
+      }
+
+      // Fetch in parallel
+      const fetchPromises = dates.map(async (dStr) => {
+        try {
+          const res = await fetch(`${API_BASE}/v1/videographer-reports/by-date?userId=${selectedUserId}&dateString=${dStr}`, {
+            headers: getAuthHeaders()
+          });
+          const data = await res.json();
+          if (data.success && data.data) {
+            return data.data;
+          }
+        } catch (e) {
+          console.error(`Error fetching data for ${dStr}:`, e);
+        }
+        return null;
+      });
+
+      const results = await Promise.all(fetchPromises);
+      const validReports = results.filter(r => r !== null);
+
+      if (validReports.length === 0) {
+        showToast("No reports found in the selected date range.", "warning");
+        setMonthlyTaskLog([]);
+        setMonthlyKeyNumbers(DEFAULT_KEY_NUMBERS);
+        setMonthlyBlockers([]);
+        setMonthlyTomorrowTasks([]);
+        setIsMonthlyLoading(false);
+        return;
+      }
+
+      showToast(`Successfully fetched ${validReports.length} reports! Consolidating...`, "success");
+
+      // 1. Basic details
+      const firstReport = validReports[0];
+      const newBasic = {
+        employeeName: firstReport.basicDetails?.employeeName || basicDetails.employeeName || '',
+        employeeId: firstReport.basicDetails?.employeeId || basicDetails.employeeId || '',
+        designation: firstReport.basicDetails?.designation || 'Videographer & Editor',
+        reportingTo: firstReport.basicDetails?.reportingTo || 'CMO',
+        shiftTiming: firstReport.basicDetails?.shiftTiming || '9:00 AM - 5:00 PM',
+        preparedAt: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        startDate: monthlyStartDate,
+        endDate: monthlyEndDate
+      };
+      setMonthlyBasicDetails(newBasic);
+
+      // 2. Task log
+      const mergedTasks = [];
+      validReports.forEach(report => {
+        if (Array.isArray(report.taskLog)) {
+          report.taskLog.forEach(task => {
+            if ((task.taskProjectName && task.taskProjectName.trim()) || (task.descriptionDetails && task.descriptionDetails.trim())) {
+              mergedTasks.push({
+                taskProjectName: task.taskProjectName || '',
+                descriptionDetails: task.descriptionDetails || '',
+                startTime: task.startTime || '',
+                endTime: task.endTime || '',
+                status: task.status || 'Done',
+                fileLink: task.fileLink || ''
+              });
+            }
+          });
+        }
+      });
+      if (mergedTasks.length === 0) {
+        mergedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'Done', fileLink: '' });
+      }
+      setMonthlyTaskLog(mergedTasks);
+
+      // 3. Key numbers
+      const sumKeyNumbers = {
+        videosCompleted: { target: 0, todaysCount: 0, notes: [] },
+        revisionsDone: { target: 0, todaysCount: 0, notes: [] },
+        clientDeliveries: { target: 0, todaysCount: 0, notes: [] }
+      };
+
+      const parseNum = (val) => {
+        if (!val) return 0;
+        const cleaned = String(val).replace(/[^\d.]/g, '');
+        const parsed = parseFloat(cleaned);
+        return isNaN(parsed) ? 0 : parsed;
+      };
+
+      validReports.forEach(report => {
+        const keys = report.keyNumbers || {};
+        ['videosCompleted', 'revisionsDone', 'clientDeliveries'].forEach(kpi => {
+          if (keys[kpi]) {
+            sumKeyNumbers[kpi].target += parseNum(keys[kpi].target);
+            sumKeyNumbers[kpi].todaysCount += parseNum(keys[kpi].todaysCount);
+            if (keys[kpi].notes && keys[kpi].notes.trim()) {
+              sumKeyNumbers[kpi].notes.push(keys[kpi].notes.trim());
+            }
+          }
+        });
+      });
+
+      const consolidatedKeyNumbers = {
+        videosCompleted: {
+          target: String(sumKeyNumbers.videosCompleted.target),
+          todaysCount: String(sumKeyNumbers.videosCompleted.todaysCount),
+          notes: Array.from(new Set(sumKeyNumbers.videosCompleted.notes)).join('; ')
+        },
+        revisionsDone: {
+          target: String(sumKeyNumbers.revisionsDone.target),
+          todaysCount: String(sumKeyNumbers.revisionsDone.todaysCount),
+          notes: Array.from(new Set(sumKeyNumbers.revisionsDone.notes)).join('; ')
+        },
+        clientDeliveries: {
+          target: String(sumKeyNumbers.clientDeliveries.target),
+          todaysCount: String(sumKeyNumbers.clientDeliveries.todaysCount),
+          notes: Array.from(new Set(sumKeyNumbers.clientDeliveries.notes)).join('; ')
+        }
+      };
+      setMonthlyKeyNumbers(consolidatedKeyNumbers);
+
+      // 4. Blockers
+      const mergedBlockers = [];
+      validReports.forEach(report => {
+        if (Array.isArray(report.blockers)) {
+          report.blockers.forEach(b => {
+            if (b.issue && b.issue.trim() && b.issue.toLowerCase() !== 'none') {
+              mergedBlockers.push({
+                issue: b.issue,
+                details: b.details || '',
+                priority: b.priority || 'None'
+              });
+            }
+          });
+        }
+      });
+      if (mergedBlockers.length === 0) {
+        mergedBlockers.push({ issue: 'None', details: '', priority: 'None' });
+      }
+      setMonthlyBlockers(mergedBlockers);
+
+      // 5. Tomorrow's plan
+      const mergedTomorrow = [];
+      validReports.forEach(report => {
+        if (Array.isArray(report.tomorrowTasks)) {
+          report.tomorrowTasks.forEach(t => {
+            if (t.task && t.task.trim()) {
+              mergedTomorrow.push({
+                task: t.task,
+                details: t.details || '',
+                notes: t.notes || ''
+              });
+            }
+          });
+        }
+      });
+      if (mergedTomorrow.length === 0) {
+        mergedTomorrow.push({ task: '', details: '', notes: '' });
+      }
+      setMonthlyTomorrowTasks(mergedTomorrow);
+
+      // 6. Approval details
+      const newApproval = {
+        videographerName: newBasic.employeeName,
+        videographerSignature: firstReport.approval?.videographerSignature || '',
+        submittedAt: new Date().toLocaleDateString('en-GB').replace(/\//g, '-'),
+        teamLeaderName: firstReport.approval?.teamLeaderName || '',
+        approvedOn: ''
+      };
+      setMonthlyApproval(newApproval);
+
+      setMonthlyActiveTab("tasks");
+    } catch (error) {
+      console.error(error);
+      showToast("Error consolidating monthly data.", "error");
+    } finally {
+      setIsMonthlyLoading(false);
+    }
+  };
+
+  // Download Monthly PDF
+  const handleDownloadMonthlyPDF = () => {
+    try {
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      let currentY = 15;
+      
+      const drawSectionHeader = (title) => {
+        doc.setFillColor(43, 48, 128);
+        doc.rect(14, currentY, 182, 7, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.setTextColor(255, 255, 255);
+        doc.text(title.toUpperCase(), 17, currentY + 5);
+        currentY += 7;
+      };
+
+      // Header Brand
+      doc.setFillColor(43, 48, 128);
+      doc.rect(14, 12, 182, 12, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(255, 255, 255);
+      doc.text("MONTHLY CONSOLIDATED VIDEOGRAPHER REPORT", 18, 20);
+
+      doc.setFontSize(8);
+      doc.text("Videographer & Editor  ·  CMO Office", 138, 20);
+
+      currentY = 27;
+
+      // 1. BASIC DETAILS
+      drawSectionHeader("1. Basic details");
+      
+      const formatDateStr = (dStr) => {
+        if (!dStr) return '';
+        const d = new Date(dStr);
+        return isNaN(d.getTime()) ? dStr : d.toLocaleDateString('en-GB').replace(/\//g, '-');
+      };
+
+      const basicDetailsRows = [
+        ["Employee Name", monthlyBasicDetails.employeeName || '', "Start Date", formatDateStr(monthlyBasicDetails.startDate), "End Date", formatDateStr(monthlyBasicDetails.endDate)],
+        ["Employee ID", monthlyBasicDetails.employeeId || '', "Designation", monthlyBasicDetails.designation || '', "Reporting to", monthlyBasicDetails.reportingTo || ''],
+        ["Shift timing", monthlyBasicDetails.shiftTiming || '', "Report prepared at", monthlyBasicDetails.preparedAt || '', "", ""]
+      ];
+
+      autoTable(doc, {
+        body: basicDetailsRows,
+        startY: currentY,
+        theme: 'grid',
+        styles: { fontSize: 7.5, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 30 },
+          1: { width: 31 },
+          2: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 30 },
+          3: { width: 31 },
+          4: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 30 },
+          5: { width: 30 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      // 2. TASK LOG
+      drawSectionHeader("2. Task log");
+      
+      const taskHeaders = [["Task / project name", "Description / details", "Start time", "End time", "Status", "File link (Drive)"]];
+      const taskRows = monthlyTaskLog.map(t => [
+        t.taskProjectName || '',
+        t.descriptionDetails || '',
+        t.startTime || '',
+        t.endTime || '',
+        t.status || '',
+        t.fileLink || ''
+      ]);
+
+      let done = 0, pending = 0, na = 0;
+      monthlyTaskLog.forEach(t => {
+        const s = String(t.status || '').toLowerCase().trim();
+        if (s === 'done') done++;
+        else if (s === 'pending' || s === 'ongoing' || s === 'onprogress') pending++;
+        else if (s === 'na' || s === 'n/a') na++;
+      });
+      taskRows.push([
+        "Monthly summary",
+        `Done: ${done}   |   Pending: ${pending}   |   N/A: ${na}   |   Total Tasks: ${monthlyTaskLog.length}`,
+        "", "", "", ""
+      ]);
+
+      autoTable(doc, {
+        head: taskHeaders,
+        body: taskRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [43, 48, 128], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 7.5, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 40 },
+          1: { width: 62 },
+          2: { width: 20 },
+          3: { width: 20 },
+          4: { width: 18, halign: 'center' },
+          5: { width: 22 }
+        },
+        didParseCell: (data) => {
+          if (data.row.index === taskRows.length - 1) {
+            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.fillColor = [245, 245, 247];
+            if (data.column.index === 0) {
+              data.cell.styles.textColor = [43, 48, 128];
+            }
+          }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      // 3. KEY NUMBERS
+      drawSectionHeader("3. Key numbers (Monthly Total)");
+      
+      const keyHeaders = [["KPI", "Consolidated Target", "Consolidated Count", "Merged Notes"]];
+      const keyRows = [
+        ["Videos completed", monthlyKeyNumbers.videosCompleted?.target || '', monthlyKeyNumbers.videosCompleted?.todaysCount || '', monthlyKeyNumbers.videosCompleted?.notes || ''],
+        ["Revisions done", monthlyKeyNumbers.revisionsDone?.target || '', monthlyKeyNumbers.revisionsDone?.todaysCount || '', monthlyKeyNumbers.revisionsDone?.notes || ''],
+        ["Client deliveries", monthlyKeyNumbers.clientDeliveries?.target || '', monthlyKeyNumbers.clientDeliveries?.todaysCount || '', monthlyKeyNumbers.clientDeliveries?.notes || '']
+      ];
+
+      autoTable(doc, {
+        head: keyHeaders,
+        body: keyRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [43, 48, 128], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 7.5, cellPadding: 2.5, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 45, fontStyle: 'bold' },
+          1: { width: 40 },
+          2: { width: 30, halign: 'center' },
+          3: { width: 67 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      // 4. BLOCKERS & TOMORROW'S PLAN
+      drawSectionHeader("4. Blockers & next plans");
+      
+      const combinedHeaders = [["Blocker / issue", "Details", "Priority", "Next Month's Main Task", "Details", "Notes"]];
+      
+      const maxLines = Math.max(monthlyBlockers.length, monthlyTomorrowTasks.length);
+      const combinedRows = [];
+      for (let i = 0; i < maxLines; i++) {
+        const b = monthlyBlockers[i] || {};
+        const t = monthlyTomorrowTasks[i] || {};
+        combinedRows.push([
+          b.issue || '',
+          b.details || '',
+          b.priority || '',
+          t.task || '',
+          t.details || '',
+          t.notes || ''
+        ]);
+      }
+
+      autoTable(doc, {
+        head: combinedHeaders,
+        body: combinedRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [43, 48, 128], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 7.2, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 30 },
+          1: { width: 35 },
+          2: { width: 16, halign: 'center' },
+          3: { width: 30 },
+          4: { width: 36 },
+          5: { width: 35 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      // 5. APPROVAL
+      drawSectionHeader("5. Approval");
+      
+      const approvalHeaders = [["Videographer name & sign", "Submitted at", "Team leader", "Approved on"]];
+      const approvalRows = [
+        [
+          `${monthlyApproval.videographerName || ''} (${monthlyApproval.videographerSignature || 'Signature'})`,
+          monthlyApproval.submittedAt || '',
+          monthlyApproval.teamLeaderName || '',
+          monthlyApproval.approvedOn || ''
+        ]
+      ];
+
+      autoTable(doc, {
+        head: approvalHeaders,
+        body: approvalRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [43, 48, 128], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 3, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 52 },
+          1: { width: 35, halign: 'center' },
+          2: { width: 60 },
+          3: { width: 35, halign: 'center' }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      doc.save(`Monthly_Report_Videographer_${monthlyApproval.videographerName || 'Videographer'}_${monthlyBasicDetails.startDate}_to_${monthlyBasicDetails.endDate}.pdf`);
+      showToast("Monthly PDF report downloaded successfully!", "success");
+    } catch (e) {
+      console.error(e);
+      showToast("Failed to generate monthly PDF.", "error");
     }
   };
 
@@ -653,6 +1147,15 @@ const VideographerReportPage = () => {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
+                  onClick={() => setIsMonthlyModalOpen(true)}
+                  className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-950/70 border border-slate-200/60 dark:border-indigo-800/60 text-indigo-650 dark:text-indigo-400 font-semibold text-sm transition-all"
+                >
+                  <FileText size={16} />
+                  Monthly Report
+                </button>
+
+                <button
+                  type="button"
                   onClick={handleDownloadPDF}
                   className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-sm transition-all"
                 >
@@ -678,10 +1181,27 @@ const VideographerReportPage = () => {
 
             {/* 1. BASIC DETAILS */}
             <div className="space-y-4">
-              <h2 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
-                <span className="flex items-center justify-center w-5 h-5 rounded bg-indigo-100 dark:bg-lime-950/50 text-[10px]">1</span>
-                Basic Details
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
+                  <span className="flex items-center justify-center w-5 h-5 rounded bg-indigo-100 dark:bg-lime-950/50 text-[10px]">1</span>
+                  Basic Details
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingBasic(!isEditingBasic)}
+                  className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
+                >
+                  {isEditingBasic ? (
+                    <>
+                      <CheckCircle size={14} /> Done
+                    </>
+                  ) : (
+                    <>
+                      <Pencil size={14} /> Edit
+                    </>
+                  )}
+                </button>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 bg-slate-50/50 dark:bg-slate-950/20 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Employee Name</label>
@@ -689,7 +1209,8 @@ const VideographerReportPage = () => {
                     type="text"
                     value={basicDetails.employeeName || ''}
                     onChange={(e) => setBasicDetails({ ...basicDetails, employeeName: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
                   />
                 </div>
                 <div>
@@ -697,8 +1218,9 @@ const VideographerReportPage = () => {
                   <input
                     type="text"
                     value={basicDetails.date || ''}
-                    onChange={(e) => setBasicDetails({ ...basicDetails, date: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                    readOnly={true}
+                    disabled={true}
+                    className="w-full bg-slate-100/50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-900 rounded-xl px-3 py-2 text-sm text-slate-450 dark:text-slate-500 cursor-not-allowed focus:outline-none"
                   />
                 </div>
                 <div>
@@ -706,8 +1228,9 @@ const VideographerReportPage = () => {
                   <input
                     type="text"
                     value={basicDetails.day || ''}
-                    onChange={(e) => setBasicDetails({ ...basicDetails, day: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                    readOnly={true}
+                    disabled={true}
+                    className="w-full bg-slate-100/50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-900 rounded-xl px-3 py-2 text-sm text-slate-450 dark:text-slate-500 cursor-not-allowed focus:outline-none"
                   />
                 </div>
                 <div>
@@ -716,7 +1239,8 @@ const VideographerReportPage = () => {
                     type="text"
                     value={basicDetails.employeeId || ''}
                     onChange={(e) => setBasicDetails({ ...basicDetails, employeeId: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
                   />
                 </div>
                 <div>
@@ -725,7 +1249,8 @@ const VideographerReportPage = () => {
                     type="text"
                     value={basicDetails.designation || ''}
                     onChange={(e) => setBasicDetails({ ...basicDetails, designation: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
                   />
                 </div>
                 <div>
@@ -734,7 +1259,8 @@ const VideographerReportPage = () => {
                     type="text"
                     value={basicDetails.reportingTo || ''}
                     onChange={(e) => setBasicDetails({ ...basicDetails, reportingTo: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
                   />
                 </div>
                 <div>
@@ -743,7 +1269,8 @@ const VideographerReportPage = () => {
                     type="text"
                     value={basicDetails.shiftTiming || ''}
                     onChange={(e) => setBasicDetails({ ...basicDetails, shiftTiming: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
                   />
                 </div>
                 <div>
@@ -752,7 +1279,8 @@ const VideographerReportPage = () => {
                     type="text"
                     value={basicDetails.preparedAt || ''}
                     onChange={(e) => setBasicDetails({ ...basicDetails, preparedAt: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
                   />
                 </div>
               </div>
@@ -1278,6 +1806,690 @@ const VideographerReportPage = () => {
           </motion.div>
         )}
       </div>
+
+      {/* MONTHLY CONSOLIDATION MODAL */}
+      <AnimatePresence>
+        {isMonthlyModalOpen && (
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex justify-center items-start pt-10 px-4">
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="bg-white dark:bg-slate-900 w-full max-w-5xl rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden mb-10"
+            >
+              {/* Modal Header & Tabs */}
+              <div className="border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 p-6 pb-0">
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <FileText className="text-indigo-600 dark:text-lime-400" />
+                      Monthly Report Consolidation
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Select a date range to fetch and consolidate videographer reports.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsMonthlyModalOpen(false)}
+                    className="p-2 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-450 hover:text-slate-700 transition-colors"
+                  >
+                    <Trash2 size={18} className="text-slate-400 hover:text-rose-500" />
+                  </button>
+                </div>
+
+                {/* Tab Navigation */}
+                <div className="flex gap-1 overflow-x-auto scrollbar-none pb-px">
+                  {[
+                    { id: "range", label: "Date Range" },
+                    { id: "basic", label: "Basic & Approval" },
+                    { id: "tasks", label: "Task Log" },
+                    { id: "keyNumbers", label: "Key Numbers" },
+                    { id: "blockers", label: "Blockers & Tomorrow" }
+                  ].map(tab => {
+                    const isActive = monthlyActiveTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setMonthlyActiveTab(tab.id)}
+                        className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all shrink-0
+                          ${isActive 
+                            ? 'border-indigo-600 text-indigo-600 dark:border-lime-400 dark:text-lime-400' 
+                            : 'border-transparent text-slate-400 hover:text-slate-650 dark:text-slate-400 dark:hover:text-slate-200'
+                          }`}
+                      >
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Tab Contents */}
+              
+              {/* Date Range Selector Tab */}
+              {monthlyActiveTab === "range" && (
+                <div className="p-6 space-y-6">
+                  <div className="bg-slate-50 dark:bg-slate-950/40 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-250 mb-4">Select Date Range for Consolidation</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Start Date</label>
+                        <input
+                          type="date"
+                          value={monthlyStartDate}
+                          onChange={(e) => setMonthlyStartDate(e.target.value)}
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">End Date</label>
+                        <input
+                          type="date"
+                          value={monthlyEndDate}
+                          onChange={(e) => setMonthlyEndDate(e.target.value)}
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-6 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={handleFetchMonthlyData}
+                        disabled={isMonthlyLoading}
+                        className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-all shadow-md shadow-indigo-600/10 disabled:opacity-50"
+                      >
+                        {isMonthlyLoading ? (
+                          <>
+                            <Loader2 className="animate-spin" size={16} />
+                            Consolidating...
+                          </>
+                        ) : (
+                          <>
+                            <Calendar size={16} />
+                            Fetch & Consolidate
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* No Data State Banner */}
+              {monthlyTaskLog.length === 0 && monthlyActiveTab !== "range" && (
+                <div className="p-8 text-center text-slate-400 dark:text-slate-500">
+                  <Calendar size={32} className="mx-auto mb-2 text-slate-350 dark:text-slate-700 animate-pulse" />
+                  <p className="text-sm">No data consolidated yet.</p>
+                  <p className="text-xs mt-1">Please select dates and click "Fetch & Consolidate" in the Date Range tab.</p>
+                </div>
+              )}
+
+              {/* Basic & Approval Tab */}
+              {monthlyActiveTab === "basic" && monthlyTaskLog.length > 0 && (
+                <div className="p-6 space-y-6 max-h-[50vh] overflow-y-auto">
+                  <h3 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
+                    Consolidated Basic Details & Approval
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 bg-slate-50/50 dark:bg-slate-950/20 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Employee Name</label>
+                      <input
+                        type="text"
+                        value={monthlyBasicDetails.employeeName || ''}
+                        onChange={(e) => setMonthlyBasicDetails({ ...monthlyBasicDetails, employeeName: e.target.value })}
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Employee ID</label>
+                      <input
+                        type="text"
+                        value={monthlyBasicDetails.employeeId || ''}
+                        onChange={(e) => setMonthlyBasicDetails({ ...monthlyBasicDetails, employeeId: e.target.value })}
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Designation</label>
+                      <input
+                        type="text"
+                        value={monthlyBasicDetails.designation || ''}
+                        onChange={(e) => setMonthlyBasicDetails({ ...monthlyBasicDetails, designation: e.target.value })}
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Reporting Manager</label>
+                      <input
+                        type="text"
+                        value={monthlyBasicDetails.reportingTo || ''}
+                        onChange={(e) => setMonthlyBasicDetails({ ...monthlyBasicDetails, reportingTo: e.target.value })}
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Shift Timing</label>
+                      <input
+                        type="text"
+                        value={monthlyBasicDetails.shiftTiming || ''}
+                        onChange={(e) => setMonthlyBasicDetails({ ...monthlyBasicDetails, shiftTiming: e.target.value })}
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Report Prepared At</label>
+                      <input
+                        type="text"
+                        value={monthlyBasicDetails.preparedAt || ''}
+                        onChange={(e) => setMonthlyBasicDetails({ ...monthlyBasicDetails, preparedAt: e.target.value })}
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  <h3 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2 mt-6">
+                    Approval Details
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 bg-slate-50/50 dark:bg-slate-950/20 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Videographer Name</label>
+                      <input
+                        type="text"
+                        value={monthlyApproval.videographerName || ''}
+                        onChange={(e) => setMonthlyApproval({ ...monthlyApproval, videographerName: e.target.value })}
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Videographer Signature</label>
+                      <input
+                        type="text"
+                        value={monthlyApproval.videographerSignature || ''}
+                        onChange={(e) => setMonthlyApproval({ ...monthlyApproval, videographerSignature: e.target.value })}
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Submitted At (Date)</label>
+                      <input
+                        type="text"
+                        value={monthlyApproval.submittedAt || ''}
+                        onChange={(e) => setMonthlyApproval({ ...monthlyApproval, submittedAt: e.target.value })}
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Team Leader Name</label>
+                      <input
+                        type="text"
+                        value={monthlyApproval.teamLeaderName || ''}
+                        onChange={(e) => setMonthlyApproval({ ...monthlyApproval, teamLeaderName: e.target.value })}
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Approved On (Date)</label>
+                      <input
+                        type="text"
+                        value={monthlyApproval.approvedOn || ''}
+                        onChange={(e) => setMonthlyApproval({ ...monthlyApproval, approvedOn: e.target.value })}
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Tasks Tab */}
+              {monthlyActiveTab === "tasks" && monthlyTaskLog.length > 0 && (
+                <div className="p-6 space-y-4 max-h-[50vh] overflow-y-auto">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
+                      Consolidated Task Log
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={addMonthlyTaskRow}
+                      className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
+                    >
+                      <Plus size={14} /> Add Row
+                    </button>
+                  </div>
+                  <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900">
+                    <table className="w-full text-left border-collapse text-sm">
+                      <thead>
+                        <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                          <th className="px-5 py-4 w-[25%]">Task / Project Name</th>
+                          <th className="px-5 py-4 w-[35%]">Description / Details</th>
+                          <th className="px-5 py-4 w-[10%] text-center">Start Time</th>
+                          <th className="px-5 py-4 w-[10%] text-center">End Time</th>
+                          <th className="px-5 py-4 w-[10%] text-center">Status</th>
+                          <th className="px-5 py-4 w-[15%]">Drive File Link</th>
+                          <th className="px-5 py-4 w-[5%] text-center"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {monthlyTaskLog.map((item, index) => (
+                          <tr key={index} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5 transition-colors">
+                            <td className="px-5 py-3">
+                              <input
+                                type="text"
+                                value={item.taskProjectName}
+                                onChange={(e) => {
+                                  const updated = [...monthlyTaskLog];
+                                  updated[index].taskProjectName = e.target.value;
+                                  setMonthlyTaskLog(updated);
+                                }}
+                                className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                              />
+                            </td>
+                            <td className="px-5 py-3">
+                              <textarea
+                                value={item.descriptionDetails}
+                                onChange={(e) => {
+                                  const updated = [...monthlyTaskLog];
+                                  updated[index].descriptionDetails = e.target.value;
+                                  setMonthlyTaskLog(updated);
+                                }}
+                                rows={1}
+                                className="w-full bg-transparent border-none focus:outline-none resize-y text-slate-700 dark:text-slate-200"
+                              />
+                            </td>
+                            <td className="px-5 py-3 text-center">
+                              <input
+                                type="text"
+                                value={item.startTime}
+                                onChange={(e) => {
+                                  const updated = [...monthlyTaskLog];
+                                  updated[index].startTime = e.target.value;
+                                  setMonthlyTaskLog(updated);
+                                }}
+                                className="w-full bg-transparent border-none text-center focus:outline-none text-slate-700 dark:text-slate-200"
+                              />
+                            </td>
+                            <td className="px-5 py-3 text-center">
+                              <input
+                                type="text"
+                                value={item.endTime}
+                                onChange={(e) => {
+                                  const updated = [...monthlyTaskLog];
+                                  updated[index].endTime = e.target.value;
+                                  setMonthlyTaskLog(updated);
+                                }}
+                                className="w-full bg-transparent border-none text-center focus:outline-none text-slate-700 dark:text-slate-200"
+                              />
+                            </td>
+                            <td className="px-5 py-3 text-center">
+                              <select
+                                value={item.status}
+                                onChange={(e) => {
+                                  const updated = [...monthlyTaskLog];
+                                  updated[index].status = e.target.value;
+                                  setMonthlyTaskLog(updated);
+                                }}
+                                className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-xs focus:outline-none text-slate-700 dark:text-slate-200"
+                              >
+                                <option value="Done">Done</option>
+                                <option value="Pending">Pending</option>
+                                <option value="N/A">N/A</option>
+                              </select>
+                            </td>
+                            <td className="px-5 py-3">
+                              <input
+                                type="text"
+                                value={item.fileLink}
+                                onChange={(e) => {
+                                  const updated = [...monthlyTaskLog];
+                                  updated[index].fileLink = e.target.value;
+                                  setMonthlyTaskLog(updated);
+                                }}
+                                className="w-full bg-transparent border-none focus:outline-none text-indigo-650 dark:text-lime-450 text-xs"
+                              />
+                            </td>
+                            <td className="px-5 py-3 text-center">
+                              <button
+                                type="button"
+                                onClick={() => removeMonthlyTaskRow(index)}
+                                disabled={monthlyTaskLog.length === 1}
+                                className="text-rose-500 hover:text-rose-700 disabled:opacity-30 transition-colors"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Key Numbers Tab */}
+              {monthlyActiveTab === "keyNumbers" && monthlyTaskLog.length > 0 && (
+                <div className="p-6 space-y-4 max-h-[50vh] overflow-y-auto">
+                  <h3 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
+                    Consolidated Key Numbers
+                  </h3>
+                  <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900">
+                    <table className="w-full text-left border-collapse text-sm">
+                      <thead>
+                        <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                          <th className="px-5 py-4 w-[25%]">KPI</th>
+                          <th className="px-5 py-4 w-[25%]">Target</th>
+                          <th className="px-5 py-4 w-[15%] text-center">Consolidated Count</th>
+                          <th className="px-5 py-4 w-[35%]">Notes</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        <tr className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5">
+                          <td className="px-5 py-3 font-semibold text-slate-700 dark:text-slate-300">Videos Completed</td>
+                          <td className="px-5 py-3">
+                            <input
+                              type="text"
+                              value={monthlyKeyNumbers.videosCompleted?.target || ''}
+                              onChange={(e) => setMonthlyKeyNumbers({
+                                ...monthlyKeyNumbers,
+                                videosCompleted: { ...monthlyKeyNumbers.videosCompleted, target: e.target.value }
+                              })}
+                              className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                            />
+                          </td>
+                          <td className="px-5 py-3 text-center">
+                            <input
+                              type="text"
+                              value={monthlyKeyNumbers.videosCompleted?.todaysCount || ''}
+                              onChange={(e) => setMonthlyKeyNumbers({
+                                ...monthlyKeyNumbers,
+                                videosCompleted: { ...monthlyKeyNumbers.videosCompleted, todaysCount: e.target.value }
+                              })}
+                              className="w-full bg-transparent border-none text-center focus:outline-none text-slate-700 dark:text-slate-200"
+                            />
+                          </td>
+                          <td className="px-5 py-3">
+                            <input
+                              type="text"
+                              value={monthlyKeyNumbers.videosCompleted?.notes || ''}
+                              onChange={(e) => setMonthlyKeyNumbers({
+                                ...monthlyKeyNumbers,
+                                videosCompleted: { ...monthlyKeyNumbers.videosCompleted, notes: e.target.value }
+                              })}
+                              className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                            />
+                          </td>
+                        </tr>
+
+                        <tr className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5">
+                          <td className="px-5 py-3 font-semibold text-slate-700 dark:text-slate-300">Revisions Done</td>
+                          <td className="px-5 py-3">
+                            <input
+                              type="text"
+                              value={monthlyKeyNumbers.revisionsDone?.target || ''}
+                              onChange={(e) => setMonthlyKeyNumbers({
+                                ...monthlyKeyNumbers,
+                                revisionsDone: { ...monthlyKeyNumbers.revisionsDone, target: e.target.value }
+                              })}
+                              className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                            />
+                          </td>
+                          <td className="px-5 py-3 text-center">
+                            <input
+                              type="text"
+                              value={monthlyKeyNumbers.revisionsDone?.todaysCount || ''}
+                              onChange={(e) => setMonthlyKeyNumbers({
+                                ...monthlyKeyNumbers,
+                                revisionsDone: { ...monthlyKeyNumbers.revisionsDone, todaysCount: e.target.value }
+                              })}
+                              className="w-full bg-transparent border-none text-center focus:outline-none text-slate-700 dark:text-slate-200"
+                            />
+                          </td>
+                          <td className="px-5 py-3">
+                            <input
+                              type="text"
+                              value={monthlyKeyNumbers.revisionsDone?.notes || ''}
+                              onChange={(e) => setMonthlyKeyNumbers({
+                                ...monthlyKeyNumbers,
+                                revisionsDone: { ...monthlyKeyNumbers.revisionsDone, notes: e.target.value }
+                              })}
+                              className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                            />
+                          </td>
+                        </tr>
+
+                        <tr className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5">
+                          <td className="px-5 py-3 font-semibold text-slate-700 dark:text-slate-300">Client Deliveries</td>
+                          <td className="px-5 py-3">
+                            <input
+                              type="text"
+                              value={monthlyKeyNumbers.clientDeliveries?.target || ''}
+                              onChange={(e) => setMonthlyKeyNumbers({
+                                ...monthlyKeyNumbers,
+                                clientDeliveries: { ...monthlyKeyNumbers.clientDeliveries, target: e.target.value }
+                              })}
+                              className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                            />
+                          </td>
+                          <td className="px-5 py-3 text-center">
+                            <input
+                              type="text"
+                              value={monthlyKeyNumbers.clientDeliveries?.todaysCount || ''}
+                              onChange={(e) => setMonthlyKeyNumbers({
+                                ...monthlyKeyNumbers,
+                                clientDeliveries: { ...monthlyKeyNumbers.clientDeliveries, todaysCount: e.target.value }
+                              })}
+                              className="w-full bg-transparent border-none text-center focus:outline-none text-slate-700 dark:text-slate-200"
+                            />
+                          </td>
+                          <td className="px-5 py-3">
+                            <input
+                              type="text"
+                              value={monthlyKeyNumbers.clientDeliveries?.notes || ''}
+                              onChange={(e) => setMonthlyKeyNumbers({
+                                ...monthlyKeyNumbers,
+                                clientDeliveries: { ...monthlyKeyNumbers.clientDeliveries, notes: e.target.value }
+                              })}
+                              className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                            />
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Blockers & Tomorrow Tab */}
+              {monthlyActiveTab === "blockers" && monthlyTaskLog.length > 0 && (
+                <div className="p-6 space-y-6 max-h-[50vh] overflow-y-auto">
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
+                        Consolidated Blockers & Issues
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={addMonthlyBlockerRow}
+                        className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
+                      >
+                        <Plus size={14} /> Add Blocker
+                      </button>
+                    </div>
+                    <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900">
+                      <table className="w-full text-left border-collapse text-sm">
+                        <thead>
+                          <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                            <th className="px-4 py-3 w-[30%]">Blocker / Issue</th>
+                            <th className="px-4 py-3 w-[50%]">Details</th>
+                            <th className="px-4 py-3 w-[15%] text-center">Priority</th>
+                            <th className="px-4 py-3 w-[5%] text-center"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {monthlyBlockers.map((item, index) => (
+                            <tr key={index} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5">
+                              <td className="px-4 py-2">
+                                <input
+                                  type="text"
+                                  value={item.issue}
+                                  onChange={(e) => {
+                                    const updated = [...monthlyBlockers];
+                                    updated[index].issue = e.target.value;
+                                    setMonthlyBlockers(updated);
+                                  }}
+                                  className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                                />
+                              </td>
+                              <td className="px-4 py-2">
+                                <input
+                                  type="text"
+                                  value={item.details}
+                                  onChange={(e) => {
+                                    const updated = [...monthlyBlockers];
+                                    updated[index].details = e.target.value;
+                                    setMonthlyBlockers(updated);
+                                  }}
+                                  className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                                />
+                              </td>
+                              <td className="px-4 py-2 text-center">
+                                <select
+                                  value={item.priority}
+                                  onChange={(e) => {
+                                    const updated = [...monthlyBlockers];
+                                    updated[index].priority = e.target.value;
+                                    setMonthlyBlockers(updated);
+                                  }}
+                                  className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-xs focus:outline-none text-slate-700 dark:text-slate-200"
+                                >
+                                  <option value="None">None</option>
+                                  <option value="High">High</option>
+                                  <option value="Medium">Medium</option>
+                                  <option value="Low">Low</option>
+                                </select>
+                              </td>
+                              <td className="px-4 py-2 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => removeMonthlyBlockerRow(index)}
+                                  disabled={monthlyBlockers.length === 1}
+                                  className="text-rose-500 hover:text-rose-700 disabled:opacity-30 transition-colors"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
+                        Consolidated Next Plans
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={addMonthlyTomorrowRow}
+                        className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
+                      >
+                        <Plus size={14} /> Add Task
+                      </button>
+                    </div>
+                    <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900">
+                      <table className="w-full text-left border-collapse text-sm">
+                        <thead>
+                          <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                            <th className="px-4 py-3 w-[30%]">Main Task</th>
+                            <th className="px-4 py-3 w-[45%]">Details</th>
+                            <th className="px-4 py-3 w-[20%]">Notes</th>
+                            <th className="px-4 py-3 w-[5%] text-center"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {monthlyTomorrowTasks.map((item, index) => (
+                            <tr key={index} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5">
+                              <td className="px-4 py-2">
+                                <input
+                                  type="text"
+                                  value={item.task}
+                                  onChange={(e) => {
+                                    const updated = [...monthlyTomorrowTasks];
+                                    updated[index].task = e.target.value;
+                                    setMonthlyTomorrowTasks(updated);
+                                  }}
+                                  className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                                />
+                              </td>
+                              <td className="px-4 py-2">
+                                <input
+                                  type="text"
+                                  value={item.details}
+                                  onChange={(e) => {
+                                    const updated = [...monthlyTomorrowTasks];
+                                    updated[index].details = e.target.value;
+                                    setMonthlyTomorrowTasks(updated);
+                                  }}
+                                  className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                                />
+                              </td>
+                              <td className="px-4 py-2">
+                                <input
+                                  type="text"
+                                  value={item.notes}
+                                  onChange={(e) => {
+                                    const updated = [...monthlyTomorrowTasks];
+                                    updated[index].notes = e.target.value;
+                                    setMonthlyTomorrowTasks(updated);
+                                  }}
+                                  className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                                />
+                              </td>
+                              <td className="px-4 py-2 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => removeMonthlyTomorrowRow(index)}
+                                  disabled={monthlyTomorrowTasks.length === 1}
+                                  className="text-rose-500 hover:text-rose-700 disabled:opacity-30 transition-colors"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Modal Footer */}
+              <div className="border-t border-slate-100 dark:border-slate-800 p-6 bg-slate-50 dark:bg-slate-950/40 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsMonthlyModalOpen(false)}
+                  className="px-5 py-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-350 font-semibold text-sm transition-all hover:bg-slate-50 dark:hover:bg-slate-950"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDownloadMonthlyPDF}
+                  disabled={monthlyTaskLog.length === 0}
+                  className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-all shadow-md shadow-indigo-600/10 disabled:opacity-50"
+                >
+                  <Download size={16} />
+                  Download Monthly PDF
+                </button>
+              </div>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

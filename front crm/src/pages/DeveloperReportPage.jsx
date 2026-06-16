@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, Calendar, Plus, Trash2, Save, Download, 
-  CheckCircle, HelpCircle, Loader2, User, ChevronRight 
+  CheckCircle, HelpCircle, Loader2, User, ChevronRight, Pencil, X
 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
 import { jsPDF } from 'jspdf';
@@ -24,10 +24,222 @@ const DEFAULT_DEV_REPORT = [
   { project: 'CRM', activity: '-Updated Dashboard\n-Debugging\n-Deployed', status: 'ongoing', remark: '' }
 ];
 
+const getMostFrequentValue = (countsObj, fallback) => {
+  const entries = Object.entries(countsObj);
+  if (entries.length === 0) return fallback;
+  entries.sort((a, b) => b[1] - a[1]);
+  return entries[0][0];
+};
+
+const formatDateString = (dateStr) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}-${parts[1]}-${parts[0]}`; // DD-MM-YYYY
+  }
+  return dateStr;
+};
+
+const consolidateDeveloperReports = (reports) => {
+  const firstReport = reports[0];
+  const userDetail = firstReport?.basicDetails || {};
+  
+  const mBasic = {
+    date: '',
+    day: 'N/A',
+    employeeName: userDetail.employeeName || '',
+    employeeId: userDetail.employeeId || '',
+    department: userDetail.department || 'R&D/ Development',
+    designation: userDetail.designation || 'Developer',
+    shiftTiming: userDetail.shiftTiming || '9:00 AM - 5:00 PM',
+    reportingTo: userDetail.reportingTo || 'HOD - R&D / Developer',
+    preparedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  };
+
+  // 2. Daily Task Summary
+  const summaryGroup = {};
+  reports.forEach(r => {
+    const summary = r.dailyTaskSummary || [];
+    summary.forEach(item => {
+      const act = (item.activity || '').trim();
+      if (!act) return;
+      const key = act.toLowerCase();
+      if (!summaryGroup[key]) {
+        summaryGroup[key] = { activity: act, statuses: {}, remarks: new Set() };
+      }
+      const status = (item.status || 'NA').trim();
+      summaryGroup[key].statuses[status] = (summaryGroup[key].statuses[status] || 0) + 1;
+      if (item.remarks && item.remarks.trim()) {
+        summaryGroup[key].remarks.add(item.remarks.trim());
+      }
+    });
+  });
+
+  let mDailyTaskSummary = Object.values(summaryGroup).map(group => {
+    const statusEntries = Object.entries(group.statuses);
+    statusEntries.sort((a, b) => b[1] - a[1]);
+    const mainStatus = statusEntries.length > 0 ? statusEntries[0][0] : 'Done';
+    const remarksText = Array.from(group.remarks).join('; ');
+    return {
+      activity: group.activity,
+      status: mainStatus,
+      remarks: remarksText
+    };
+  });
+  if (mDailyTaskSummary.length === 0) {
+    mDailyTaskSummary = DEFAULT_TASK_SUMMARY.map(item => ({ ...item }));
+  }
+
+  // 3. Development Task Report
+  const devGroup = {};
+  reports.forEach(r => {
+    const devList = r.developmentTaskReport || [];
+    devList.forEach(item => {
+      const proj = (item.project || '').trim();
+      if (!proj) return;
+      const key = proj.toLowerCase();
+      if (!devGroup[key]) {
+        devGroup[key] = { project: proj, activities: new Set(), statuses: {}, remarks: new Set() };
+      }
+      
+      const actText = item.activity || '';
+      const parts = actText.split('\n');
+      parts.forEach(p => {
+        let cleaned = p.replace(/^[-*•\s]+/, '').trim();
+        if (cleaned) {
+          devGroup[key].activities.add(cleaned);
+        }
+      });
+
+      const status = (item.status || '').trim();
+      if (status) {
+        devGroup[key].statuses[status] = (devGroup[key].statuses[status] || 0) + 1;
+      }
+
+      const remark = (item.remark || '').trim();
+      if (remark) {
+        devGroup[key].remarks.add(remark);
+      }
+    });
+  });
+
+  let mDevelopmentTaskReport = Object.values(devGroup).map(group => {
+    const activityLines = Array.from(group.activities).map(act => `- ${act}`).join('\n');
+    const statusEntries = Object.entries(group.statuses);
+    statusEntries.sort((a, b) => b[1] - a[1]);
+    const mainStatus = statusEntries.length > 0 ? statusEntries[0][0] : 'ongoing';
+    const remarkText = Array.from(group.remarks).join('; ');
+    return {
+      project: group.project,
+      activity: activityLines,
+      status: mainStatus,
+      remark: remarkText
+    };
+  });
+  if (mDevelopmentTaskReport.length === 0) {
+    mDevelopmentTaskReport = DEFAULT_DEV_REPORT.map(item => ({ ...item }));
+  }
+
+  // 4. Research & Learning Activities
+  const researchGroup = {};
+  reports.forEach(r => {
+    const resList = r.researchLearning || [];
+    resList.forEach(item => {
+      const act = (item.activity || '').trim();
+      if (!act) return;
+      const key = act.toLowerCase();
+      if (!researchGroup[key]) {
+        researchGroup[key] = { activity: act, details: new Set() };
+      }
+      if (item.details && item.details.trim()) {
+        researchGroup[key].details.add(item.details.trim());
+      }
+    });
+  });
+  let mResearchLearning = Object.values(researchGroup).map(group => {
+    return {
+      activity: group.activity,
+      details: Array.from(group.details).join('; ')
+    };
+  });
+  if (mResearchLearning.length === 0) {
+    mResearchLearning = [{ activity: '', details: '' }];
+  }
+
+  // 5. Daily Performance Tracker
+  const perfFields = ['taskCompleted', 'learningProgress', 'communication', 'attendance', 'productivity'];
+  const perfCounts = {
+    taskCompleted: {},
+    learningProgress: {},
+    communication: {},
+    attendance: {},
+    productivity: {}
+  };
+  reports.forEach(r => {
+    const pt = r.performanceTracker || {};
+    perfFields.forEach(field => {
+      const val = pt[field] || '';
+      if (val) {
+        perfCounts[field][val] = (perfCounts[field][val] || 0) + 1;
+      }
+    });
+  });
+  const mPerformanceTracker = {
+    taskCompleted: getMostFrequentValue(perfCounts.taskCompleted, 'Good'),
+    learningProgress: getMostFrequentValue(perfCounts.learningProgress, 'Improving'),
+    communication: getMostFrequentValue(perfCounts.communication, 'Good'),
+    attendance: getMostFrequentValue(perfCounts.attendance, 'Present'),
+    productivity: getMostFrequentValue(perfCounts.productivity, 'Present')
+  };
+
+  const mergeTextFields = (fieldName) => {
+    const uniqueLines = new Set();
+    reports.forEach(r => {
+      const text = r[fieldName] || '';
+      text.split('\n').forEach(line => {
+        let cleaned = line.replace(/^[-*•\s]+/, '').trim();
+        if (cleaned) {
+          uniqueLines.add(cleaned);
+        }
+      });
+    });
+    return Array.from(uniqueLines).map(line => `- ${line}`).join('\n');
+  };
+
+  const mToolsUsed = mergeTextFields('toolsUsed');
+  const mChallengesFaced = mergeTextFields('challengesFaced');
+  const mNextDayPlan = mergeTextFields('nextDayPlan');
+  const mInternRemarks = mergeTextFields('internRemarks');
+
+  const firstApproval = firstReport?.approval || {};
+  const mApproval = {
+    internName: firstApproval.internName || '',
+    internSignature: firstApproval.internSignature || '',
+    internDate: new Date().toLocaleDateString('en-GB').replace(/\//g, '-'),
+    hodName: firstApproval.hodName || 'HOD - R&D / Developer',
+    hodSignature: '',
+    hodDate: ''
+  };
+
+  return {
+    basicDetails: mBasic,
+    dailyTaskSummary: mDailyTaskSummary,
+    developmentTaskReport: mDevelopmentTaskReport,
+    researchLearning: mResearchLearning,
+    performanceTracker: mPerformanceTracker,
+    toolsUsed: mToolsUsed,
+    challengesFaced: mChallengesFaced,
+    nextDayPlan: mNextDayPlan,
+    internRemarks: mInternRemarks,
+    approval: mApproval
+  };
+};
+
 const DeveloperReportPage = () => {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isEditingBasic, setIsEditingBasic] = useState(false);
   const [currentUser, setCurrentUser] = useState({});
   const [isPrivileged, setIsPrivileged] = useState(false);
   
@@ -65,6 +277,41 @@ const DeveloperReportPage = () => {
   const [nextDayPlan, setNextDayPlan] = useState('');
   const [internRemarks, setInternRemarks] = useState('');
   const [approval, setApproval] = useState({
+    internName: '',
+    internSignature: '',
+    internDate: '',
+    hodName: 'HOD - R&D / Developer',
+    hodSignature: '',
+    hodDate: ''
+  });
+
+  // Monthly Report Consolidation States
+  const [isMonthlyModalOpen, setIsMonthlyModalOpen] = useState(false);
+  const [monthlyStartDate, setMonthlyStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  });
+  const [monthlyEndDate, setMonthlyEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [isMonthlyLoading, setIsMonthlyLoading] = useState(false);
+  const [monthlyActiveTab, setMonthlyActiveTab] = useState('basic');
+  
+  const [monthlyBasicDetails, setMonthlyBasicDetails] = useState(null);
+  const [monthlyDailyTaskSummary, setMonthlyDailyTaskSummary] = useState([]);
+  const [monthlyDevelopmentTaskReport, setMonthlyDevelopmentTaskReport] = useState([]);
+  const [monthlyResearchLearning, setMonthlyResearchLearning] = useState([]);
+  const [monthlyPerformanceTracker, setMonthlyPerformanceTracker] = useState({
+    taskCompleted: 'Good',
+    learningProgress: 'Improving',
+    communication: 'Good',
+    attendance: 'Present',
+    productivity: 'Present'
+  });
+  const [monthlyToolsUsed, setMonthlyToolsUsed] = useState('');
+  const [monthlyChallengesFaced, setMonthlyChallengesFaced] = useState('');
+  const [monthlyNextDayPlan, setMonthlyNextDayPlan] = useState('');
+  const [monthlyInternRemarks, setMonthlyInternRemarks] = useState('');
+  const [monthlyApproval, setMonthlyApproval] = useState({
     internName: '',
     internSignature: '',
     internDate: '',
@@ -200,6 +447,16 @@ const DeveloperReportPage = () => {
     }
   }, [selectedUserId, selectedDate, fetchReport]);
 
+  // Cache basicDetails in localStorage when they change
+  useEffect(() => {
+    if (selectedUserId && basicDetails && (basicDetails.employeeName || basicDetails.employeeId)) {
+      const { date, day, ...persistent } = basicDetails;
+      if (Object.keys(persistent).length > 0) {
+        localStorage.setItem(`cachedBasicDetails_Developer_${selectedUserId}`, JSON.stringify(persistent));
+      }
+    }
+  }, [basicDetails, selectedUserId]);
+
   const initializeBlankReport = (userId, dateStr) => {
     // Find selected user info
     let userDetail = currentUser;
@@ -221,16 +478,20 @@ const DeveloperReportPage = () => {
     minutes = minutes < 10 ? '0' + minutes : minutes;
     const timeStr = hours + ':' + minutes + ' ' + ampm;
 
+    // Load from cache if exists
+    const cached = localStorage.getItem(`cachedBasicDetails_Developer_${userId}`);
+    const parsedCached = cached ? JSON.parse(cached) : null;
+
     setBasicDetails({
       date: formattedDateString,
       day: dayName,
-      employeeName: userDetail.name || '',
-      employeeId: userDetail.employeeId || '',
-      department: 'R&D/ Development',
-      designation: userDetail.designation || 'Developer',
-      shiftTiming: '9:00 AM - 5:00 PM',
-      reportingTo: userDetail.reportingManager || 'HOD - R&D / Developer',
-      preparedTime: timeStr
+      employeeName: parsedCached?.employeeName || userDetail.name || '',
+      employeeId: parsedCached?.employeeId || userDetail.employeeId || '',
+      department: parsedCached?.department || 'R&D/ Development',
+      designation: parsedCached?.designation || userDetail.designation || 'Developer',
+      shiftTiming: parsedCached?.shiftTiming || '9:00 AM - 5:00 PM',
+      reportingTo: parsedCached?.reportingTo || userDetail.reportingManager || 'HOD - R&D / Developer',
+      preparedTime: parsedCached?.preparedTime || timeStr
     });
 
     setDailyTaskSummary(DEFAULT_TASK_SUMMARY);
@@ -295,6 +556,332 @@ const DeveloperReportPage = () => {
       showToast("Server error. Please try again.", 'error');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Fetch and consolidate monthly reports
+  const handleFetchMonthlyData = async () => {
+    if (!selectedUserId) {
+      showToast("Please select a developer first.", "error");
+      return;
+    }
+    
+    try {
+      setIsMonthlyLoading(true);
+      
+      const start = new Date(monthlyStartDate);
+      const end = new Date(monthlyEndDate);
+      
+      if (start > end) {
+        showToast("Start date must be before or equal to End date.", "error");
+        return;
+      }
+      
+      const dates = [];
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        dates.push(d.toISOString().split('T')[0]);
+      }
+      
+      const promises = dates.map(dateStr => 
+        fetch(`${API_BASE}/v1/developer-reports/by-date?userId=${selectedUserId}&dateString=${dateStr}`, {
+          headers: getAuthHeaders()
+        })
+        .then(res => {
+          if (!res.ok) return null;
+          return res.json();
+        })
+        .catch(() => null)
+      );
+      
+      const results = await Promise.all(promises);
+      const validReports = results
+        .filter(r => r && r.success && r.data)
+        .map(r => r.data);
+        
+      if (validReports.length === 0) {
+        showToast("No daily reports found in the selected date range.", "error");
+        setMonthlyBasicDetails(null);
+        return;
+      }
+      
+      // Perform consolidation
+      const consolidated = consolidateDeveloperReports(validReports);
+      
+      // Override basic details date range to match current range selection formatted nicely
+      consolidated.basicDetails.date = `${formatDateString(monthlyStartDate)} to ${formatDateString(monthlyEndDate)}`;
+      
+      setMonthlyBasicDetails(consolidated.basicDetails);
+      setMonthlyDailyTaskSummary(consolidated.dailyTaskSummary);
+      setMonthlyDevelopmentTaskReport(consolidated.developmentTaskReport);
+      setMonthlyResearchLearning(consolidated.researchLearning);
+      setMonthlyPerformanceTracker(consolidated.performanceTracker);
+      setMonthlyToolsUsed(consolidated.toolsUsed);
+      setMonthlyChallengesFaced(consolidated.challengesFaced);
+      setMonthlyNextDayPlan(consolidated.nextDayPlan);
+      setMonthlyInternRemarks(consolidated.internRemarks);
+      setMonthlyApproval(consolidated.approval);
+      
+      showToast(`Successfully consolidated ${validReports.length} reports!`, "success");
+    } catch (e) {
+      console.error("Consolidation error:", e);
+      showToast("Failed to consolidate monthly data.", "error");
+    } finally {
+      setIsMonthlyLoading(false);
+    }
+  };
+
+  const handleDownloadMonthlyPDF = (mDetails, mTaskSummary, mDevReport, mResearch, mPerf, mTools, mChallenges, mPlan, mRemarks, mApproval) => {
+    try {
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      let currentY = 15;
+      
+      const drawSectionHeader = (title) => {
+        doc.setFillColor(60, 35, 117);
+        doc.rect(14, currentY, 182, 7, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.setTextColor(255, 255, 255);
+        doc.text(title.toUpperCase(), 17, currentY + 5);
+        currentY += 7;
+      };
+
+      // Header Brand Logo
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(22);
+      doc.setTextColor(132, 204, 22); // lime green
+      doc.text("KOD.", 14, 21);
+      
+      doc.setTextColor(60, 35, 117);
+      doc.text("brand", 34, 21);
+
+      // Document Title & Designation
+      doc.setFontSize(13);
+      doc.setTextColor(60, 35, 117);
+      doc.text("MONTHLY CONSOLIDATED DEVELOPER REPORT", 85, 16);
+      
+      doc.setFontSize(7.5);
+      doc.setTextColor(0, 0, 0);
+      doc.setFont('helvetica', 'bold');
+      doc.text("JUNIOR DEVELOPER / SOFTWARE & WEB DEVELOPER", 112, 22);
+
+      currentY = 27;
+
+      // 1. BASIC DETAILS
+      drawSectionHeader("1. BASIC DETAILS");
+      
+      const basicDetailsRows = [
+        ["Date Range", mDetails.date || ''],
+        ["Employee Name:", mDetails.employeeName || ''],
+        ["Employee ID", mDetails.employeeId || ''],
+        ["Department", mDetails.department || ''],
+        ["Designation", mDetails.designation || ''],
+        ["Shift Timing", mDetails.shiftTiming || ''],
+        ["Reporting To", mDetails.reportingTo || ''],
+        ["Prepared Time", mDetails.preparedTime || '']
+      ];
+
+      autoTable(doc, {
+        body: basicDetailsRows,
+        startY: currentY,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 45 },
+          1: { width: 137 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      // 2. DAILY TASK SUMMARY
+      drawSectionHeader("2. DAILY TASK SUMMARY");
+      
+      const summaryHeaders = [["Activity", "Status", "Remarks"]];
+      const summaryRows = mTaskSummary.map(t => [
+        t.activity || '',
+        t.status || '',
+        t.remarks || ''
+      ]);
+
+      autoTable(doc, {
+        head: summaryHeaders,
+        body: summaryRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 70 },
+          1: { width: 35, halign: 'center' },
+          2: { width: 77 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      // 3. DEVELOPMENT TASK REPORT
+      drawSectionHeader("3. DEVELOPMENT TASK REPORT");
+      
+      const devHeaders = [["Project", "Development Activity", "Status", "Remark"]];
+      const devRows = mDevReport.map(t => [
+        t.project || '',
+        t.activity || '',
+        t.status || '',
+        t.remark || ''
+      ]);
+
+      autoTable(doc, {
+        head: devHeaders,
+        body: devRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 35 },
+          1: { width: 75 },
+          2: { width: 35, halign: 'center' },
+          3: { width: 37 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      // 4. RESEARCH & LEARNING ACTIVITIES
+      drawSectionHeader("4. RESEARCH & LEARNING ACTIVITIES");
+      
+      const researchHeaders = [["Activity", "Details"]];
+      const researchRows = mResearch.map(t => [
+        t.activity || '',
+        t.details || ''
+      ]);
+
+      autoTable(doc, {
+        head: researchHeaders,
+        body: researchRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 55 },
+          1: { width: 127 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      // 5. DAILY PERFORMANCE TRACKER
+      drawSectionHeader("5. PERFORMANCE TRACKER CONSOLIDATED");
+      
+      const perfHeaders = [["KPI", "STATUS"]];
+      const perfRows = [
+        ["Task Completed", mPerf.taskCompleted || ''],
+        ["Learning Progress", mPerf.learningProgress || ''],
+        ["Communication", mPerf.communication || ''],
+        ["Attendance", mPerf.attendance || ''],
+        ["Productivity", mPerf.productivity || '']
+      ];
+
+      autoTable(doc, {
+        head: perfHeaders,
+        body: perfRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 91, fontStyle: 'bold' },
+          1: { width: 91, halign: 'center' }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      // Page break to start Page 2 fresh
+      doc.addPage();
+      currentY = 15;
+
+      // 6. TOOLS AND SOFTWARE USED
+      drawSectionHeader("6. TOOLS AND SOFTWARE USED");
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(0, 0, 0);
+      const toolsLines = doc.splitTextToSize(mTools || '', 178);
+      doc.text(toolsLines, 16, currentY + 5);
+      const toolsBoxHeight = Math.max(12, toolsLines.length * 4.2 + 5);
+      doc.setDrawColor(180, 180, 180);
+      doc.rect(14, currentY, 182, toolsBoxHeight);
+      currentY += toolsBoxHeight + 4;
+
+      // 7. CHALLENGES FACED
+      drawSectionHeader("7. CHALLENGES FACED");
+      const challengesLines = doc.splitTextToSize(mChallenges || '', 178);
+      doc.text(challengesLines, 16, currentY + 5);
+      const challengesBoxHeight = Math.max(12, challengesLines.length * 4.2 + 5);
+      doc.rect(14, currentY, 182, challengesBoxHeight);
+      currentY += challengesBoxHeight + 4;
+
+      // 8. PLANNED NEXT STEPS / NEXT PLAN
+      drawSectionHeader("8. PLANNED NEXT STEPS / NEXT PLAN");
+      const planLines = doc.splitTextToSize(mPlan || '', 178);
+      doc.text(planLines, 16, currentY + 5);
+      const planBoxHeight = Math.max(12, planLines.length * 4.2 + 5);
+      doc.rect(14, currentY, 182, planBoxHeight);
+      currentY += planBoxHeight + 4;
+
+      // 9. INTERN / STUDENT REMARKS
+      drawSectionHeader("9. INTERN / STUDENT REMARKS");
+      const remarksLines = doc.splitTextToSize(mRemarks || '', 178);
+      doc.text(remarksLines, 16, currentY + 5);
+      const remarksBoxHeight = Math.max(12, remarksLines.length * 4.2 + 5);
+      doc.rect(14, currentY, 182, remarksBoxHeight);
+      currentY += remarksBoxHeight + 4;
+
+      // 10. APPROVAL
+      drawSectionHeader("10. APPROVAL");
+      const approvalHeaders = [["Name", "Signature", "Date"]];
+      const approvalRows = [
+        [
+          `Intern / Student: ${mApproval.internName || ''}`,
+          mApproval.internSignature || '',
+          mApproval.internDate || ''
+        ],
+        [
+          `HOD - R&D / Developer: ${mApproval.hodName || ''}`,
+          mApproval.hodSignature || '',
+          mApproval.hodDate || ''
+        ]
+      ];
+
+      autoTable(doc, {
+        head: approvalHeaders,
+        body: approvalRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 3, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 75, fontStyle: 'bold' },
+          1: { width: 55 },
+          2: { width: 52 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      doc.save(`Monthly_Consolidated_Developer_Report_${mDetails.employeeName || 'Developer'}_${mDetails.date.replace(/ /g, '_')}.pdf`);
+      showToast("Monthly PDF report downloaded successfully!", "success");
+    } catch (e) {
+      console.error(e);
+      showToast("Failed to generate Monthly PDF.", "error");
     }
   };
 
@@ -701,6 +1288,15 @@ const DeveloperReportPage = () => {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
+                  onClick={() => setIsMonthlyModalOpen(true)}
+                  className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 font-semibold text-sm transition-all border border-indigo-100 dark:border-indigo-900/50"
+                >
+                  <FileText size={16} />
+                  Monthly Report
+                </button>
+
+                <button
+                  type="button"
                   onClick={handleDownloadPDF}
                   className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-sm transition-all"
                 >
@@ -726,18 +1322,36 @@ const DeveloperReportPage = () => {
 
             {/* 1. BASIC DETAILS */}
             <div className="space-y-4">
-              <h2 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
-                <span className="flex items-center justify-center w-5 h-5 rounded bg-indigo-100 dark:bg-lime-950/50 text-[10px]">1</span>
-                Basic Details
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
+                  <span className="flex items-center justify-center w-5 h-5 rounded bg-indigo-100 dark:bg-lime-950/50 text-[10px]">1</span>
+                  Basic Details
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingBasic(!isEditingBasic)}
+                  className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
+                >
+                  {isEditingBasic ? (
+                    <>
+                      <CheckCircle size={14} /> Done
+                    </>
+                  ) : (
+                    <>
+                      <Pencil size={14} /> Edit
+                    </>
+                  )}
+                </button>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 bg-slate-50/50 dark:bg-slate-950/20 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Date</label>
                   <input
                     type="text"
                     value={basicDetails.date || ''}
-                    onChange={(e) => setBasicDetails({ ...basicDetails, date: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    readOnly={true}
+                    disabled={true}
+                    className="w-full bg-slate-100/50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-900 rounded-xl px-3 py-2 text-sm text-slate-450 dark:text-slate-500 cursor-not-allowed focus:outline-none"
                   />
                 </div>
                 <div>
@@ -745,8 +1359,9 @@ const DeveloperReportPage = () => {
                   <input
                     type="text"
                     value={basicDetails.day || ''}
-                    onChange={(e) => setBasicDetails({ ...basicDetails, day: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    readOnly={true}
+                    disabled={true}
+                    className="w-full bg-slate-100/50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-900 rounded-xl px-3 py-2 text-sm text-slate-450 dark:text-slate-500 cursor-not-allowed focus:outline-none"
                   />
                 </div>
                 <div>
@@ -755,7 +1370,8 @@ const DeveloperReportPage = () => {
                     type="text"
                     value={basicDetails.employeeName || ''}
                     onChange={(e) => setBasicDetails({ ...basicDetails, employeeName: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
                   />
                 </div>
                 <div>
@@ -764,7 +1380,8 @@ const DeveloperReportPage = () => {
                     type="text"
                     value={basicDetails.employeeId || ''}
                     onChange={(e) => setBasicDetails({ ...basicDetails, employeeId: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
                   />
                 </div>
                 <div>
@@ -773,7 +1390,8 @@ const DeveloperReportPage = () => {
                     type="text"
                     value={basicDetails.department || ''}
                     onChange={(e) => setBasicDetails({ ...basicDetails, department: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
                   />
                 </div>
                 <div>
@@ -782,7 +1400,8 @@ const DeveloperReportPage = () => {
                     type="text"
                     value={basicDetails.designation || ''}
                     onChange={(e) => setBasicDetails({ ...basicDetails, designation: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
                   />
                 </div>
                 <div>
@@ -791,7 +1410,8 @@ const DeveloperReportPage = () => {
                     type="text"
                     value={basicDetails.shiftTiming || ''}
                     onChange={(e) => setBasicDetails({ ...basicDetails, shiftTiming: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
                   />
                 </div>
                 <div>
@@ -800,7 +1420,8 @@ const DeveloperReportPage = () => {
                     type="text"
                     value={basicDetails.reportingTo || ''}
                     onChange={(e) => setBasicDetails({ ...basicDetails, reportingTo: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
                   />
                 </div>
                 <div>
@@ -809,7 +1430,8 @@ const DeveloperReportPage = () => {
                     type="text"
                     value={basicDetails.preparedTime || ''}
                     onChange={(e) => setBasicDetails({ ...basicDetails, preparedTime: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
                   />
                 </div>
               </div>
@@ -1279,6 +1901,15 @@ const DeveloperReportPage = () => {
             <div className="flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800 pt-5">
               <button
                 type="button"
+                onClick={() => setIsMonthlyModalOpen(true)}
+                className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 font-semibold text-sm transition-all border border-indigo-100 dark:border-indigo-900/50"
+              >
+                <FileText size={16} />
+                Monthly Report
+              </button>
+
+              <button
+                type="button"
                 onClick={handleDownloadPDF}
                 className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-sm transition-all"
               >
@@ -1304,6 +1935,651 @@ const DeveloperReportPage = () => {
           </motion.div>
         )}
       </div>
+
+      {/* Monthly Consolidation Modal */}
+      <AnimatePresence>
+        {isMonthlyModalOpen && (
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex justify-center items-start pt-10 px-4 pb-10">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: -20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -20 }}
+              transition={{ duration: 0.2 }}
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-5xl shadow-2xl overflow-hidden"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl text-indigo-600 dark:text-indigo-400">
+                    <FileText size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900 dark:text-white text-lg">
+                      Monthly Consolidated Report
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Consolidate daily developer shift reports across a date range.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsMonthlyModalOpen(false)}
+                  className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-350 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6 space-y-6">
+                {/* Step 1: Range Selector */}
+                <div className="flex flex-wrap items-end gap-4 bg-slate-50/50 dark:bg-slate-950/20 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Start Date</label>
+                    <input
+                      type="date"
+                      value={monthlyStartDate}
+                      onChange={(e) => setMonthlyStartDate(e.target.value)}
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">End Date</label>
+                    <input
+                      type="date"
+                      value={monthlyEndDate}
+                      onChange={(e) => setMonthlyEndDate(e.target.value)}
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleFetchMonthlyData}
+                    disabled={isMonthlyLoading}
+                    className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-xl transition-all shadow-md shadow-indigo-600/10 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {isMonthlyLoading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                    Fetch & Consolidate
+                  </button>
+                </div>
+
+                {/* Step 2: Tabbed Editor */}
+                {monthlyBasicDetails ? (
+                  <div className="space-y-4">
+                    {/* Tabs Selector */}
+                    <div className="flex flex-wrap gap-1 border-b border-slate-100 dark:border-slate-800 pb-1">
+                      {[
+                        { id: 'basic', label: '1. Basic Info' },
+                        { id: 'summary', label: '2. Task Summary' },
+                        { id: 'dev', label: '3. Dev Report' },
+                        { id: 'research', label: '4. Research' },
+                        { id: 'tracker', label: '5. Performance & KPI' },
+                        { id: 'remarks', label: '6. Text Fields' },
+                        { id: 'approval', label: '7. Approval' }
+                      ].map(tab => (
+                        <button
+                          key={tab.id}
+                          onClick={() => setMonthlyActiveTab(tab.id)}
+                          className={`px-4 py-2 text-xs font-bold rounded-t-xl border-t border-x -mb-[1px] transition-all
+                            ${monthlyActiveTab === tab.id
+                              ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-indigo-600 dark:text-lime-400 font-bold'
+                              : 'bg-transparent border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                            }`}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Tab Contents */}
+                    <div className="min-h-[350px]">
+                      {/* Tab 1: Basic Details */}
+                      {monthlyActiveTab === 'basic' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 bg-slate-50/50 dark:bg-slate-950/20 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Date Range</label>
+                            <input
+                              type="text"
+                              value={monthlyBasicDetails.date || ''}
+                              onChange={(e) => setMonthlyBasicDetails({ ...monthlyBasicDetails, date: e.target.value })}
+                              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Employee Name</label>
+                            <input
+                              type="text"
+                              value={monthlyBasicDetails.employeeName || ''}
+                              onChange={(e) => setMonthlyBasicDetails({ ...monthlyBasicDetails, employeeName: e.target.value })}
+                              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Employee ID</label>
+                            <input
+                              type="text"
+                              value={monthlyBasicDetails.employeeId || ''}
+                              onChange={(e) => setMonthlyBasicDetails({ ...monthlyBasicDetails, employeeId: e.target.value })}
+                              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Department</label>
+                            <input
+                              type="text"
+                              value={monthlyBasicDetails.department || ''}
+                              onChange={(e) => setMonthlyBasicDetails({ ...monthlyBasicDetails, department: e.target.value })}
+                              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Designation</label>
+                            <input
+                              type="text"
+                              value={monthlyBasicDetails.designation || ''}
+                              onChange={(e) => setMonthlyBasicDetails({ ...monthlyBasicDetails, designation: e.target.value })}
+                              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Shift Timing</label>
+                            <input
+                              type="text"
+                              value={monthlyBasicDetails.shiftTiming || ''}
+                              onChange={(e) => setMonthlyBasicDetails({ ...monthlyBasicDetails, shiftTiming: e.target.value })}
+                              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Reporting Manager</label>
+                            <input
+                              type="text"
+                              value={monthlyBasicDetails.reportingTo || ''}
+                              onChange={(e) => setMonthlyBasicDetails({ ...monthlyBasicDetails, reportingTo: e.target.value })}
+                              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Prepared Time</label>
+                            <input
+                              type="text"
+                              value={monthlyBasicDetails.preparedTime || ''}
+                              onChange={(e) => setMonthlyBasicDetails({ ...monthlyBasicDetails, preparedTime: e.target.value })}
+                              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Tab 2: Daily Task Summary Consolidated */}
+                      {monthlyActiveTab === 'summary' && (
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center">
+                            <h4 className="text-sm font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-wide">Daily Task Summary</h4>
+                            <button
+                              type="button"
+                              onClick={() => setMonthlyDailyTaskSummary([...monthlyDailyTaskSummary, { activity: '', status: 'Done', remarks: '' }])}
+                              className="flex items-center gap-1 text-[11px] font-bold text-indigo-600 dark:text-lime-400 hover:opacity-80"
+                            >
+                              <Plus size={14} /> Add Row
+                            </button>
+                          </div>
+                          <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                            <table className="w-full text-left border-collapse text-sm">
+                              <thead>
+                                <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                                  <th className="px-4 py-3">Activity</th>
+                                  <th className="px-4 py-3 w-40">Status</th>
+                                  <th className="px-4 py-3">Remarks</th>
+                                  <th className="px-4 py-3 w-12 text-center">Action</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                                {monthlyDailyTaskSummary.map((row, i) => (
+                                  <tr key={i} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/10">
+                                    <td className="px-4 py-2.5">
+                                      <input
+                                        type="text"
+                                        value={row.activity}
+                                        onChange={(e) => {
+                                          const newArr = [...monthlyDailyTaskSummary];
+                                          newArr[i].activity = e.target.value;
+                                          setMonthlyDailyTaskSummary(newArr);
+                                        }}
+                                        className="w-full bg-transparent border-none focus:outline-none p-0 text-sm"
+                                        placeholder="Activity"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-2.5">
+                                      <select
+                                        value={row.status}
+                                        onChange={(e) => {
+                                          const newArr = [...monthlyDailyTaskSummary];
+                                          newArr[i].status = e.target.value;
+                                          setMonthlyDailyTaskSummary(newArr);
+                                        }}
+                                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-xs focus:outline-none"
+                                      >
+                                        <option value="Done">Done</option>
+                                        <option value="In Progress">In Progress</option>
+                                        <option value="Pending">Pending</option>
+                                        <option value="NA">NA</option>
+                                      </select>
+                                    </td>
+                                    <td className="px-4 py-2.5">
+                                      <input
+                                        type="text"
+                                        value={row.remarks}
+                                        onChange={(e) => {
+                                          const newArr = [...monthlyDailyTaskSummary];
+                                          newArr[i].remarks = e.target.value;
+                                          setMonthlyDailyTaskSummary(newArr);
+                                        }}
+                                        className="w-full bg-transparent border-none focus:outline-none p-0 text-sm"
+                                        placeholder="Remarks"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-2.5 text-center">
+                                      <button
+                                        type="button"
+                                        onClick={() => setMonthlyDailyTaskSummary(monthlyDailyTaskSummary.filter((_, idx) => idx !== i))}
+                                        className="text-rose-500 hover:text-rose-600 animate-colors"
+                                      >
+                                        <Trash2 size={15} />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Tab 3: Development Task Report */}
+                      {monthlyActiveTab === 'dev' && (
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center">
+                            <h4 className="text-sm font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-wide">Development Task Report</h4>
+                            <button
+                              type="button"
+                              onClick={() => setMonthlyDevelopmentTaskReport([...monthlyDevelopmentTaskReport, { project: '', activity: '', status: 'ongoing', remark: '' }])}
+                              className="flex items-center gap-1 text-[11px] font-bold text-indigo-600 dark:text-lime-400 hover:opacity-80"
+                            >
+                              <Plus size={14} /> Add Row
+                            </button>
+                          </div>
+                          <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                            <table className="w-full text-left border-collapse text-sm">
+                              <thead>
+                                <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                                  <th className="px-4 py-3 w-48">Project</th>
+                                  <th className="px-4 py-3">Development Activity</th>
+                                  <th className="px-4 py-3 w-40">Status</th>
+                                  <th className="px-4 py-3 w-48">Remark</th>
+                                  <th className="px-4 py-3 w-12 text-center">Action</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                                {monthlyDevelopmentTaskReport.map((row, i) => (
+                                  <tr key={i} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/10">
+                                    <td className="px-4 py-2.5">
+                                      <input
+                                        type="text"
+                                        value={row.project}
+                                        onChange={(e) => {
+                                          const newArr = [...monthlyDevelopmentTaskReport];
+                                          newArr[i].project = e.target.value;
+                                          setMonthlyDevelopmentTaskReport(newArr);
+                                        }}
+                                        className="w-full bg-transparent border-none focus:outline-none p-0 text-sm font-semibold"
+                                        placeholder="Project"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-2.5">
+                                      <textarea
+                                        value={row.activity}
+                                        onChange={(e) => {
+                                          const newArr = [...monthlyDevelopmentTaskReport];
+                                          newArr[i].activity = e.target.value;
+                                          setMonthlyDevelopmentTaskReport(newArr);
+                                        }}
+                                        className="w-full bg-transparent border-none focus:outline-none p-0 text-sm resize-y min-h-[36px]"
+                                        placeholder="Activity details"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-2.5">
+                                      <input
+                                        type="text"
+                                        value={row.status}
+                                        onChange={(e) => {
+                                          const newArr = [...monthlyDevelopmentTaskReport];
+                                          newArr[i].status = e.target.value;
+                                          setMonthlyDevelopmentTaskReport(newArr);
+                                        }}
+                                        className="w-full bg-transparent border-none focus:outline-none p-0 text-sm"
+                                        placeholder="Status"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-2.5">
+                                      <input
+                                        type="text"
+                                        value={row.remark}
+                                        onChange={(e) => {
+                                          const newArr = [...monthlyDevelopmentTaskReport];
+                                          newArr[i].remark = e.target.value;
+                                          setMonthlyDevelopmentTaskReport(newArr);
+                                        }}
+                                        className="w-full bg-transparent border-none focus:outline-none p-0 text-sm"
+                                        placeholder="Remark"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-2.5 text-center">
+                                      <button
+                                        type="button"
+                                        onClick={() => setMonthlyDevelopmentTaskReport(monthlyDevelopmentTaskReport.filter((_, idx) => idx !== i))}
+                                        className="text-rose-500 hover:text-rose-600"
+                                      >
+                                        <Trash2 size={15} />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Tab 4: Research & Learning */}
+                      {monthlyActiveTab === 'research' && (
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center">
+                            <h4 className="text-sm font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-wide">Research & Learning Activities</h4>
+                            <button
+                              type="button"
+                              onClick={() => setMonthlyResearchLearning([...monthlyResearchLearning, { activity: '', details: '' }])}
+                              className="flex items-center gap-1 text-[11px] font-bold text-indigo-650 dark:text-lime-400 hover:opacity-80"
+                            >
+                              <Plus size={14} /> Add Row
+                            </button>
+                          </div>
+                          <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                            <table className="w-full text-left border-collapse text-sm">
+                              <thead>
+                                <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                                  <th className="px-4 py-3 w-72">Activity</th>
+                                  <th className="px-4 py-3">Details</th>
+                                  <th className="px-4 py-3 w-12 text-center">Action</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                                {monthlyResearchLearning.map((row, i) => (
+                                  <tr key={i} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/10">
+                                    <td className="px-4 py-2.5">
+                                      <input
+                                        type="text"
+                                        value={row.activity}
+                                        onChange={(e) => {
+                                          const newArr = [...monthlyResearchLearning];
+                                          newArr[i].activity = e.target.value;
+                                          setMonthlyResearchLearning(newArr);
+                                        }}
+                                        className="w-full bg-transparent border-none focus:outline-none p-0 text-sm font-semibold"
+                                        placeholder="Activity"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-2.5">
+                                      <input
+                                        type="text"
+                                        value={row.details}
+                                        onChange={(e) => {
+                                          const newArr = [...monthlyResearchLearning];
+                                          newArr[i].details = e.target.value;
+                                          setMonthlyResearchLearning(newArr);
+                                        }}
+                                        className="w-full bg-transparent border-none focus:outline-none p-0 text-sm"
+                                        placeholder="Details"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-2.5 text-center">
+                                      <button
+                                        type="button"
+                                        onClick={() => setMonthlyResearchLearning(monthlyResearchLearning.filter((_, idx) => idx !== i))}
+                                        className="text-rose-500 hover:text-rose-600"
+                                      >
+                                        <Trash2 size={15} />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Tab 5: Performance Tracker */}
+                      {monthlyActiveTab === 'tracker' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 bg-slate-50/50 dark:bg-slate-950/20 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Task Completed</label>
+                            <select
+                              value={monthlyPerformanceTracker.taskCompleted || 'Good'}
+                              onChange={(e) => setMonthlyPerformanceTracker({ ...monthlyPerformanceTracker, taskCompleted: e.target.value })}
+                              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                            >
+                              <option value="Good">Good</option>
+                              <option value="Excellent">Excellent</option>
+                              <option value="Satisfactory">Satisfactory</option>
+                              <option value="Poor">Poor</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Learning Progress</label>
+                            <select
+                              value={monthlyPerformanceTracker.learningProgress || 'Improving'}
+                              onChange={(e) => setMonthlyPerformanceTracker({ ...monthlyPerformanceTracker, learningProgress: e.target.value })}
+                              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                            >
+                              <option value="Improving">Improving</option>
+                              <option value="Good">Good</option>
+                              <option value="Slow">Slow</option>
+                              <option value="NA">NA</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Communication</label>
+                            <select
+                              value={monthlyPerformanceTracker.communication || 'Good'}
+                              onChange={(e) => setMonthlyPerformanceTracker({ ...monthlyPerformanceTracker, communication: e.target.value })}
+                              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                            >
+                              <option value="Good">Good</option>
+                              <option value="Excellent">Excellent</option>
+                              <option value="Average">Average</option>
+                              <option value="Poor">Poor</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Attendance</label>
+                            <select
+                              value={monthlyPerformanceTracker.attendance || 'Present'}
+                              onChange={(e) => setMonthlyPerformanceTracker({ ...monthlyPerformanceTracker, attendance: e.target.value })}
+                              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                            >
+                              <option value="Present">Present</option>
+                              <option value="Absent">Absent</option>
+                              <option value="Half Day">Half Day</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Productivity</label>
+                            <select
+                              value={monthlyPerformanceTracker.productivity || 'Present'}
+                              onChange={(e) => setMonthlyPerformanceTracker({ ...monthlyPerformanceTracker, productivity: e.target.value })}
+                              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                            >
+                              <option value="Present">Present</option>
+                              <option value="Highly Productive">Highly Productive</option>
+                              <option value="Average">Average</option>
+                              <option value="Low">Low</option>
+                            </select>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Tab 6: Text Fields */}
+                      {monthlyActiveTab === 'remarks' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                          <div className="space-y-2">
+                            <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Tools and Software Used</label>
+                            <textarea
+                              value={monthlyToolsUsed}
+                              onChange={(e) => setMonthlyToolsUsed(e.target.value)}
+                              className="w-full bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-805 rounded-2xl p-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 min-h-[100px]"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Challenges Faced</label>
+                            <textarea
+                              value={monthlyChallengesFaced}
+                              onChange={(e) => setMonthlyChallengesFaced(e.target.value)}
+                              className="w-full bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-805 rounded-2xl p-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 min-h-[100px]"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Next Plan (Planned Next Steps)</label>
+                            <textarea
+                              value={monthlyNextDayPlan}
+                              onChange={(e) => setMonthlyNextDayPlan(e.target.value)}
+                              className="w-full bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-805 rounded-2xl p-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 min-h-[100px]"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Intern / Student Remarks</label>
+                            <textarea
+                              value={monthlyInternRemarks}
+                              onChange={(e) => setMonthlyInternRemarks(e.target.value)}
+                              className="w-full bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-805 rounded-2xl p-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 min-h-[100px]"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Tab 7: Approval */}
+                      {monthlyActiveTab === 'approval' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50/50 dark:bg-slate-950/20 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                          <div className="space-y-3">
+                            <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Intern / Student</h4>
+                            <div>
+                              <label className="block text-xs mb-1">Name</label>
+                              <input
+                                type="text"
+                                value={monthlyApproval.internName || ''}
+                                onChange={(e) => setMonthlyApproval({ ...monthlyApproval, internName: e.target.value })}
+                                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs mb-1">Signature</label>
+                              <input
+                                type="text"
+                                value={monthlyApproval.internSignature || ''}
+                                onChange={(e) => setMonthlyApproval({ ...monthlyApproval, internSignature: e.target.value })}
+                                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none"
+                                placeholder="Type signature"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs mb-1">Date</label>
+                              <input
+                                type="text"
+                                value={monthlyApproval.internDate || ''}
+                                onChange={(e) => setMonthlyApproval({ ...monthlyApproval, internDate: e.target.value })}
+                                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">HOD - R&D / Developer</h4>
+                            <div>
+                              <label className="block text-xs mb-1">Name</label>
+                              <input
+                                type="text"
+                                value={monthlyApproval.hodName || ''}
+                                onChange={(e) => setMonthlyApproval({ ...monthlyApproval, hodName: e.target.value })}
+                                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs mb-1">Signature</label>
+                              <input
+                                type="text"
+                                value={monthlyApproval.hodSignature || ''}
+                                onChange={(e) => setMonthlyApproval({ ...monthlyApproval, hodSignature: e.target.value })}
+                                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none"
+                                placeholder="HOD signature"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs mb-1">Date</label>
+                              <input
+                                type="text"
+                                value={monthlyApproval.hodDate || ''}
+                                onChange={(e) => setMonthlyApproval({ ...monthlyApproval, hodDate: e.target.value })}
+                                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+                    <FileText size={48} className="opacity-20 mb-3" />
+                    <p className="text-sm">Select date range and click "Fetch & Consolidate" to generate monthly report data.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20">
+                <button
+                  type="button"
+                  onClick={() => setIsMonthlyModalOpen(false)}
+                  className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-sm transition-all"
+                >
+                  Close
+                </button>
+                {monthlyBasicDetails && (
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadMonthlyPDF(
+                      monthlyBasicDetails,
+                      monthlyDailyTaskSummary,
+                      monthlyDevelopmentTaskReport,
+                      monthlyResearchLearning,
+                      monthlyPerformanceTracker,
+                      monthlyToolsUsed,
+                      monthlyChallengesFaced,
+                      monthlyNextDayPlan,
+                      monthlyInternRemarks,
+                      monthlyApproval
+                    )}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-all shadow-md shadow-indigo-600/10"
+                  >
+                    <Download size={16} />
+                    Download Monthly PDF
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

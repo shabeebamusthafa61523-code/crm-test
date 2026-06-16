@@ -65,68 +65,69 @@ const menuItems = [
     label: 'Developer Report',
     path: '/developer-report',
     allowedDesignations: ['6a1e8e2d01a0dae8b2f3b18c'],
-    allowedRoles: ['1', '2', 'hr', 'admin']
+    // allowedRoles: ['1', '2', 'hr', 'admin']
   },
   {
     icon: FileText,
     label: 'HOD R&D Report',
     path: '/hod-rd-report',
     allowedDesignations: ['6a2f9e086f1c41b0c80a9e21'],
-    allowedRoles: ['1', '2', 'hr', 'admin']
+    // allowedRoles: ['1', '2', 'hr', 'admin']
   },
   {
     icon: FileText,
     label: 'Graphic Designer Report',
     path: '/graphic-designer-report',
     allowedDesignations: ['6a1e8e6e01a0dae8b2f3b18d'],
-    allowedRoles: ['1', '2', 'hr', 'admin']
+    // allowedRoles: ['1', '2', 'hr', 'admin']
   },
   {
     icon: FileText,
     label: 'Academic Counselor Report',
     path: '/academic-counselor-report',
     allowedDesignations: ['6a27939af292348deb7d0495'],
-    allowedRoles: ['1', '2', 'hr', 'admin']
+    // allowedRoles: ['1', '2', 'hr', 'admin']
   },
   {
     icon: FileText,
     label: 'Videographer Report',
     path: '/videographer-report',
     allowedDesignations: ['6a2f912c2df21dc234018caa'],
-    allowedRoles: ['1', '2', 'hr', 'admin']
+    // allowedRoles: ['1', '2', 'hr', 'admin']
   },
   {
     icon: FileText,
     label: 'HR Shift Report',
     path: '/hr-report',
     allowedDesignations: ['6a2f8efea2fe388770a38987'],
-    allowedRoles: ['1', '2', 'hr', 'admin']
+    // allowedRoles: ['1', '2', 'hr', 'admin']
   },
   {
     icon: FileText,
     label: 'Ops Shift Report',
     path: '/ops-report',
     allowedDesignations: ['6a2f91472df21dc234018cab'],
-    allowedRoles: ['1', '2', 'hr', 'admin']
+    // allowedRoles: ['1', '2', 'hr', 'admin']
   },
   {
     icon: FileText,
     label: 'Accountant Shift Report',
     path: '/accountant-report',
     allowedDesignations: ['6a2f915e2df21dc234018cac'],
-    allowedRoles: ['1', '2', 'hr', 'admin']
+    // allowedRoles: ['1', '2', 'hr', 'admin']
   },
   {
     icon: FileText,
     label: 'Marketing Shift Report',
     path: '/marketing-report',
     allowedDesignations: ['6a2f909d2df21dc234018ca8'],
-    allowedRoles: ['1', '2', 'hr', 'admin']
+    // allowedRoles: ['1', '2', 'hr', 'admin']
   },
   { icon: UserCheck, label: 'Attendance', path: '/attendance' },
   { icon: ListCheck, label: 'To-Do', path: '/todo' },
   { icon: Users, label: 'Student Attendance', path: '/student-attendance', allowedRoles: ['1', '2', 'hr', 'admin'] },
   { icon: Building, label: 'Departments', path: '/departments', allowedRoles: ['1', '2', 'hr', 'admin'] },
+  { icon: Users, label: 'Employee Reports', path: '/employee-reports', allowedRoles: ['1', '2', 'hr', 'admin'] },
 ];
 
 

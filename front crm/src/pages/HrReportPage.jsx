@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, Calendar, Plus, Trash2, Save, Download, 
-  CheckCircle, HelpCircle, Loader2, User, ChevronRight 
+  CheckCircle, HelpCircle, Loader2, User, ChevronRight, Pencil
 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
 import { jsPDF } from 'jspdf';
@@ -79,6 +79,7 @@ const HrReportPage = () => {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isEditingBasic, setIsEditingBasic] = useState(false);
   const [currentUser, setCurrentUser] = useState({});
   const [isPrivileged, setIsPrivileged] = useState(false);
 
@@ -122,6 +123,33 @@ const HrReportPage = () => {
     cooDate: ''
   });
 
+  // Monthly states
+  const [isMonthlyModalOpen, setIsMonthlyModalOpen] = useState(false);
+  const [monthlyStartDate, setMonthlyStartDate] = useState(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+  const [monthlyEndDate, setMonthlyEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isMonthlyLoading, setIsMonthlyLoading] = useState(false);
+  const [monthlyActiveTab, setMonthlyActiveTab] = useState("recruitment");
+  const [monthlyBasicDetails, setMonthlyBasicDetails] = useState({
+    dateRange: '',
+    employeeName: '',
+    employeeId: '',
+    department: '',
+    designation: '',
+    reportingTo: '',
+    preparedTime: ''
+  });
+  const [monthlyDailyOperations, setMonthlyDailyOperations] = useState([]);
+  const [monthlyEmployeeManagement, setMonthlyEmployeeManagement] = useState([]);
+  const [monthlyRecruitmentReport, setMonthlyRecruitmentReport] = useState([]);
+  const [monthlyAttendanceLeave, setMonthlyAttendanceLeave] = useState([]);
+  const [monthlyAdminOperations, setMonthlyAdminOperations] = useState([]);
+  const [monthlyDocumentationCompliance, setMonthlyDocumentationCompliance] = useState([]);
+  const [monthlyKpiTracking, setMonthlyKpiTracking] = useState([]);
+  const [monthlyIssuesEscalations, setMonthlyIssuesEscalations] = useState([]);
+  const [monthlyFinalShiftHandover, setMonthlyFinalShiftHandover] = useState([]);
+  const [monthlyNextDayActionPlan, setMonthlyNextDayActionPlan] = useState('');
+  const [monthlyHrAdminComments, setMonthlyHrAdminComments] = useState('');
+
   // Get Auth Headers Helper
   const getAuthHeaders = useCallback(() => {
     const rawToken = localStorage.getItem('token');
@@ -131,6 +159,631 @@ const HrReportPage = () => {
       'Content-Type': 'application/json'
     };
   }, []);
+
+  const handleFetchMonthlyData = async () => {
+    if (!selectedUserId) {
+      showToast("Please select a user first.", "error");
+      return;
+    }
+    setIsMonthlyLoading(true);
+    try {
+      const start = new Date(monthlyStartDate);
+      const end = new Date(monthlyEndDate);
+      const dates = [];
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        dates.push(d.toISOString().split('T')[0]);
+      }
+
+      const promises = dates.map(dateStr => 
+        fetch(`${API_BASE}/v1/hr-reports/by-date?userId=${selectedUserId}&dateString=${dateStr}`, {
+          headers: getAuthHeaders()
+        }).then(res => res.json())
+      );
+
+      const results = await Promise.all(promises);
+      const validReports = results
+        .filter(res => res.success && res.data)
+        .map(res => res.data);
+
+      if (validReports.length === 0) {
+        showToast("No daily reports found in the selected date range.", "warning");
+        setIsMonthlyLoading(false);
+        return;
+      }
+
+      const consolidatedRecruitment = JSON.parse(JSON.stringify(DEFAULT_RECRUITMENT));
+      const consolidatedAttendance = JSON.parse(JSON.stringify(DEFAULT_ATTENDANCE_LEAVE));
+      const consolidatedDailyOps = JSON.parse(JSON.stringify(DEFAULT_DAILY_OPERATIONS));
+      const consolidatedAdminOps = JSON.parse(JSON.stringify(DEFAULT_ADMIN_OPERATIONS));
+      const consolidatedCompliance = JSON.parse(JSON.stringify(DEFAULT_DOCUMENTATION));
+      const consolidatedKPI = JSON.parse(JSON.stringify(DEFAULT_KPI_TRACKING));
+      const consolidatedHandover = JSON.parse(JSON.stringify(DEFAULT_HANDOVER));
+
+      consolidatedDailyOps.forEach(row => { row.remarks = ''; row.status = ''; });
+      consolidatedAdminOps.forEach(row => { row.remarks = ''; row.status = ''; });
+      consolidatedCompliance.forEach(row => { row.status = ''; });
+      consolidatedKPI.forEach(row => { row.status = ''; });
+      consolidatedHandover.forEach(row => { row.status = ''; });
+
+      let combinedEmployeeMgmt = [];
+      let combinedIssues = [];
+      let combinedActionPlans = [];
+      let combinedComments = [];
+
+      const recruitMap = {};
+      consolidatedRecruitment.forEach(item => {
+        recruitMap[item.activity] = {
+          isNumeric: !['Pending Hiring'].includes(item.activity),
+          sum: 0,
+          textList: []
+        };
+      });
+
+      const attendanceMap = {};
+      consolidatedAttendance.forEach(item => {
+        attendanceMap[item.category] = {
+          sum: 0
+        };
+      });
+
+      const dailyOpsMap = {};
+      consolidatedDailyOps.forEach(item => {
+        dailyOpsMap[item.activity] = {
+          statuses: [],
+          remarks: []
+        };
+      });
+
+      const adminOpsMap = {};
+      consolidatedAdminOps.forEach(item => {
+        adminOpsMap[item.activity] = {
+          statuses: [],
+          remarks: []
+        };
+      });
+
+      const complianceMap = {};
+      consolidatedCompliance.forEach(item => {
+        complianceMap[item.activity] = {
+          statuses: []
+        };
+      });
+
+      const kpiMap = {};
+      consolidatedKPI.forEach(item => {
+        kpiMap[item.kpi] = {
+          statuses: []
+        };
+      });
+
+      const handoverMap = {};
+      consolidatedHandover.forEach(item => {
+        handoverMap[item.item] = {
+          statuses: []
+        };
+      });
+
+      validReports.forEach(report => {
+        if (Array.isArray(report.recruitmentReport)) {
+          report.recruitmentReport.forEach(item => {
+            const act = item.activity;
+            if (recruitMap[act]) {
+              if (recruitMap[act].isNumeric) {
+                const val = parseFloat(String(item.countStatus || '0').replace(/[^0-9.-]/g, ''));
+                if (!isNaN(val)) {
+                  recruitMap[act].sum += val;
+                }
+              } else {
+                if (item.countStatus && item.countStatus !== 'None' && item.countStatus !== 'NA') {
+                  recruitMap[act].textList.push(item.countStatus);
+                }
+              }
+            }
+          });
+        }
+
+        if (Array.isArray(report.attendanceLeave)) {
+          report.attendanceLeave.forEach(item => {
+            const cat = item.category;
+            if (attendanceMap[cat]) {
+              const val = parseFloat(String(item.count || '0').replace(/[^0-9.-]/g, ''));
+              if (!isNaN(val)) {
+                attendanceMap[cat].sum += val;
+              }
+            }
+          });
+        }
+
+        if (Array.isArray(report.dailyOperations)) {
+          report.dailyOperations.forEach(item => {
+            const act = item.activity;
+            if (dailyOpsMap[act]) {
+              if (item.status && item.status !== 'Done') {
+                dailyOpsMap[act].statuses.push(item.status);
+              }
+              if (item.remarks && item.remarks !== 'NA' && item.remarks !== '') {
+                dailyOpsMap[act].remarks.push(item.remarks);
+              }
+            }
+          });
+        }
+
+        if (Array.isArray(report.adminOperations)) {
+          report.adminOperations.forEach(item => {
+            const act = item.activity;
+            if (adminOpsMap[act]) {
+              if (item.status) {
+                adminOpsMap[act].statuses.push(item.status);
+              }
+              if (item.remarks && item.remarks !== 'NA' && item.remarks !== '') {
+                adminOpsMap[act].remarks.push(item.remarks);
+              }
+            }
+          });
+        }
+
+        if (Array.isArray(report.documentationCompliance)) {
+          report.documentationCompliance.forEach(item => {
+            const act = item.activity;
+            if (complianceMap[act]) {
+              if (item.status) complianceMap[act].statuses.push(item.status);
+            }
+          });
+        }
+
+        if (Array.isArray(report.kpiTracking)) {
+          report.kpiTracking.forEach(item => {
+            const kpi = item.kpi;
+            if (kpiMap[kpi]) {
+              if (item.status) kpiMap[kpi].statuses.push(item.status);
+            }
+          });
+        }
+
+        if (Array.isArray(report.finalShiftHandover)) {
+          report.finalShiftHandover.forEach(item => {
+            const hit = item.item;
+            if (handoverMap[hit]) {
+              if (item.status) handoverMap[hit].statuses.push(item.status);
+            }
+          });
+        }
+
+        if (Array.isArray(report.employeeManagement)) {
+          report.employeeManagement.forEach(emp => {
+            if (emp.employeeName && emp.employeeName !== 'NA' && emp.employeeName !== '') {
+              combinedEmployeeMgmt.push({ ...emp });
+            }
+          });
+        }
+
+        if (Array.isArray(report.issuesEscalations)) {
+          report.issuesEscalations.forEach(iss => {
+            if (iss.issue && iss.issue !== 'NA' && iss.issue !== '') {
+              combinedIssues.push({ ...iss });
+            }
+          });
+        }
+
+        if (report.nextDayActionPlan && report.nextDayActionPlan !== "1.\n\n2.\n\n3.") {
+          combinedActionPlans.push(report.nextDayActionPlan);
+        }
+
+        if (report.hrAdminComments) {
+          combinedComments.push(report.hrAdminComments);
+        }
+      });
+
+      const finalRecruitment = consolidatedRecruitment.map(item => {
+        const entry = recruitMap[item.activity];
+        let val = '';
+        if (entry.isNumeric) {
+          val = String(entry.sum);
+        } else {
+          val = entry.textList.length > 0 ? Array.from(new Set(entry.textList)).join('; ') : 'None';
+        }
+        return {
+          activity: item.activity,
+          countStatus: val
+        };
+      });
+
+      const finalAttendance = consolidatedAttendance.map(item => {
+        const entry = attendanceMap[item.category];
+        return {
+          category: item.category,
+          count: String(entry.sum)
+        };
+      });
+
+      const finalDailyOps = consolidatedDailyOps.map(item => {
+        const entry = dailyOpsMap[item.activity];
+        const statuses = Array.from(new Set(entry.statuses));
+        const remarks = Array.from(new Set(entry.remarks));
+        return {
+          activity: item.activity,
+          status: statuses.length > 0 ? statuses.join('; ') : 'Done',
+          remarks: remarks.length > 0 ? remarks.join('; ') : 'NA'
+        };
+      });
+
+      const finalAdminOps = consolidatedAdminOps.map(item => {
+        const entry = adminOpsMap[item.activity];
+        const statuses = Array.from(new Set(entry.statuses));
+        const remarks = Array.from(new Set(entry.remarks));
+        return {
+          activity: item.activity,
+          status: statuses.length > 0 ? statuses.join('; ') : 'Completed',
+          remarks: remarks.length > 0 ? remarks.join('; ') : 'NA'
+        };
+      });
+
+      const finalCompliance = consolidatedCompliance.map(item => {
+        const entry = complianceMap[item.activity];
+        const statuses = Array.from(new Set(entry.statuses));
+        return {
+          activity: item.activity,
+          status: statuses.length > 0 ? statuses.join('; ') : 'Yes'
+        };
+      });
+
+      const finalKPI = consolidatedKPI.map(item => {
+        const entry = kpiMap[item.kpi];
+        const statuses = Array.from(new Set(entry.statuses));
+        return {
+          kpi: item.kpi,
+          status: statuses.length > 0 ? statuses.join('; ') : 'Yes'
+        };
+      });
+
+      const finalHandover = consolidatedHandover.map(item => {
+        const entry = handoverMap[item.item];
+        const statuses = Array.from(new Set(entry.statuses));
+        return {
+          item: item.item,
+          status: statuses.length > 0 ? statuses.join('; ') : 'Yes'
+        };
+      });
+
+      if (combinedEmployeeMgmt.length === 0) {
+        combinedEmployeeMgmt = [
+          { employeeName: 'NA', department: '', attendance: 'Present / Absent', taskStatus: 'Completed / Pending', remarks: '' }
+        ];
+      }
+      if (combinedIssues.length === 0) {
+        combinedIssues = [
+          { issue: 'NA', priority: 'High / Medium / Low', actionTaken: '__________' }
+        ];
+      }
+
+      const userDetail = isPrivileged && hrStaff.length > 0 
+        ? (hrStaff.find(u => u._id === selectedUserId) || currentUser) 
+        : currentUser;
+
+      const formattedStart = new Date(monthlyStartDate).toLocaleDateString('en-GB').replace(/\//g, '-');
+      const formattedEnd = new Date(monthlyEndDate).toLocaleDateString('en-GB').replace(/\//g, '-');
+
+      setMonthlyBasicDetails({
+        dateRange: `${formattedStart} to ${formattedEnd}`,
+        employeeName: userDetail.name || '',
+        employeeId: userDetail.employeeId || '',
+        department: 'HR / Admin',
+        designation: userDetail.designation || 'HR / Admin Manager',
+        reportingTo: userDetail.reportingManager || 'COO / Executive Director',
+        preparedTime: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+      });
+
+      setMonthlyRecruitmentReport(finalRecruitment);
+      setMonthlyAttendanceLeave(finalAttendance);
+      setMonthlyDailyOperations(finalDailyOps);
+      setMonthlyAdminOperations(finalAdminOps);
+      setMonthlyEmployeeManagement(combinedEmployeeMgmt);
+      setMonthlyDocumentationCompliance(finalCompliance);
+      setMonthlyKpiTracking(finalKPI);
+      setMonthlyIssuesEscalations(combinedIssues);
+      setMonthlyFinalShiftHandover(finalHandover);
+      setMonthlyNextDayActionPlan(combinedActionPlans.length > 0 ? combinedActionPlans.join('\n\n') : '1.\n\n2.\n\n3.');
+      setMonthlyHrAdminComments(combinedComments.length > 0 ? combinedComments.join('\n\n') : '');
+
+      showToast(`Consolidated ${validReports.length} daily report(s) successfully!`, "success");
+    } catch (error) {
+      console.error("Error consolidating data:", error);
+      showToast("Error consolidating data. Please try again.", "error");
+    } finally {
+      setIsMonthlyLoading(false);
+    }
+  };
+
+  const handleDownloadMonthlyPDF = () => {
+    try {
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      let currentY = 15;
+
+      const drawSectionHeader = (title) => {
+        doc.setFillColor(60, 35, 117);
+        doc.rect(14, currentY, 182, 7, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.setTextColor(255, 255, 255);
+        doc.text(title.toUpperCase(), 17, currentY + 5);
+        currentY += 7;
+      };
+
+      const drawHeader = () => {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(22);
+        doc.setTextColor(132, 204, 22);
+        doc.text("KOD.", 14, 21);
+        
+        doc.setTextColor(60, 35, 117);
+        doc.text("brand", 34, 21);
+
+        doc.setFontSize(14);
+        doc.setTextColor(60, 35, 117);
+        doc.text("MONTHLY CONSOLIDATED HR REPORT", 110, 16);
+        
+        doc.setFontSize(7.5);
+        doc.setTextColor(0, 0, 0);
+        doc.text("HR / ADMIN MANAGER", 155, 22);
+      };
+
+      // ================= PAGE 1 =================
+      drawHeader();
+      currentY = 27;
+
+      drawSectionHeader("1. BASIC DETAILS");
+      const basicDetailsRows = [
+        ["Date Range", monthlyBasicDetails.dateRange || ''],
+        ["Employee Name:", monthlyBasicDetails.employeeName || ''],
+        ["Employee ID", monthlyBasicDetails.employeeId || ''],
+        ["Department", monthlyBasicDetails.department || ''],
+        ["Designation", monthlyBasicDetails.designation || ''],
+        ["Reporting To", monthlyBasicDetails.reportingTo || ''],
+        ["Prepared Time", monthlyBasicDetails.preparedTime || '']
+      ];
+
+      autoTable(doc, {
+        body: basicDetailsRows,
+        startY: currentY,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 45 },
+          1: { width: 137 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("2. DAILY OPERATIONS SUMMARY (CONSOLIDATED)");
+      const opsHeaders = [["Activity", "Status", "Remarks"]];
+      const opsRows = monthlyDailyOperations.map(o => [o.activity || '', o.status || '', o.remarks || '']);
+
+      autoTable(doc, {
+        head: opsHeaders,
+        body: opsRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 70 },
+          1: { width: 35, halign: 'center' },
+          2: { width: 77 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("3. EMPLOYEE MANAGEMENT REPORT (CONSOLIDATED)");
+      const empHeaders = [["Employee Name", "Department", "Attendance", "Task Status", "Remarks"]];
+      const empRows = monthlyEmployeeManagement.map(e => [e.employeeName || '', e.department || '', e.attendance || '', e.taskStatus || '', e.remarks || '']);
+
+      autoTable(doc, {
+        head: empHeaders,
+        body: empRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 40 },
+          1: { width: 35 },
+          2: { width: 35, halign: 'center' },
+          3: { width: 35, halign: 'center' },
+          4: { width: 37 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("4. RECRUITMENT REPORT (CONSOLIDATED)");
+      const recruitHeaders = [["Recruitment Activity", "Count / Status"]];
+      const recruitRows = monthlyRecruitmentReport.map(r => [r.activity || '', r.countStatus || '']);
+
+      autoTable(doc, {
+        head: recruitHeaders,
+        body: recruitRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 110 },
+          1: { width: 72, halign: 'center' }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      // ================= PAGE 2 =================
+      doc.addPage();
+      currentY = 15;
+      drawHeader();
+      currentY = 27;
+
+      drawSectionHeader("5. ATTENDANCE & LEAVE REPORT (CONSOLIDATED)");
+      const leaveHeaders = [["Category", "Count"]];
+      const leaveRows = monthlyAttendanceLeave.map(l => [l.category || '', l.count || '']);
+
+      autoTable(doc, {
+        head: leaveHeaders,
+        body: leaveRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2.2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 110 },
+          1: { width: 72, halign: 'center' }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("6. ADMIN OPERATIONS REPORT (CONSOLIDATED)");
+      const adminOpsHeaders = [["Activity", "Status", "Remarks"]];
+      const adminOpsRows = monthlyAdminOperations.map(a => [a.activity || '', a.status || '', a.remarks || '']);
+
+      autoTable(doc, {
+        head: adminOpsHeaders,
+        body: adminOpsRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 70 },
+          1: { width: 35, halign: 'center' },
+          2: { width: 77 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("7. DOCUMENTATION & COMPLIANCE (CONSOLIDATED)");
+      const complianceHeaders = [["Activity", "Status"]];
+      const complianceRows = monthlyDocumentationCompliance.map(d => [d.activity || '', d.status || '']);
+
+      autoTable(doc, {
+        head: complianceHeaders,
+        body: complianceRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2.2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 110 },
+          1: { width: 72, halign: 'center' }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("8. KPI TRACKING (CONSOLIDATED)");
+      const kpiHeaders = [["KPI", "Status"]];
+      const kpiRows = monthlyKpiTracking.map(k => [k.kpi || '', k.status || '']);
+
+      autoTable(doc, {
+        head: kpiHeaders,
+        body: kpiRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2.2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 110 },
+          1: { width: 72, halign: 'center' }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("9. ISSUES / ESCALATIONS (CONSOLIDATED)");
+      const issueHeaders = [["Issue", "Priority", "Action Taken"]];
+      const issueRows = monthlyIssuesEscalations.map(i => [i.issue || '', i.priority || '', i.actionTaken || '']);
+
+      autoTable(doc, {
+        head: issueHeaders,
+        body: issueRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 60 },
+          1: { width: 45, halign: 'center' },
+          2: { width: 77 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("10. NEXT DAY ACTION PLAN (CONSOLIDATED)");
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(0, 0, 0);
+      const planLines = doc.splitTextToSize(monthlyNextDayActionPlan || '', 178);
+      doc.text(planLines, 16, currentY + 5);
+      const planBoxHeight = Math.max(16, planLines.length * 4.2 + 6);
+      doc.setDrawColor(180, 180, 180);
+      doc.rect(14, currentY, 182, planBoxHeight);
+
+      // ================= PAGE 3 =================
+      doc.addPage();
+      currentY = 15;
+      drawHeader();
+      currentY = 27;
+
+      drawSectionHeader("11. FINAL SHIFT HANDOVER (CONSOLIDATED)");
+      const handoverHeaders = [["Handover Item", "Status"]];
+      const handoverRows = monthlyFinalShiftHandover.map(h => [h.item || '', h.status || '']);
+
+      autoTable(doc, {
+        head: handoverHeaders,
+        body: handoverRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2.5, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 110 },
+          1: { width: 72, halign: 'center' }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("12. HR / ADMIN COMMENTS (CONSOLIDATED)");
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(0, 0, 0);
+      const commentsLines = doc.splitTextToSize(monthlyHrAdminComments || '', 178);
+      doc.text(commentsLines, 16, currentY + 5);
+      const commentsBoxHeight = Math.max(16, commentsLines.length * 4.2 + 6);
+      doc.setDrawColor(180, 180, 180);
+      doc.rect(14, currentY, 182, commentsBoxHeight);
+
+      doc.save(`HR_Monthly_Consolidated_Report_${monthlyBasicDetails.employeeName || 'HR'}_${monthlyStartDate}_to_${monthlyEndDate}.pdf`);
+      showToast("Monthly PDF report downloaded successfully!", "success");
+    } catch (e) {
+      console.error(e);
+      showToast("Failed to generate Monthly PDF.", "error");
+    }
+  };
 
   // Initialize current user
   useEffect(() => {
@@ -240,6 +893,16 @@ const HrReportPage = () => {
     }
   }, [selectedUserId, selectedDate, fetchReport]);
 
+  // Cache basicDetails in localStorage when they change
+  useEffect(() => {
+    if (selectedUserId && basicDetails && (basicDetails.employeeName || basicDetails.employeeId)) {
+      const { date, day, ...persistent } = basicDetails;
+      if (Object.keys(persistent).length > 0) {
+        localStorage.setItem(`cachedBasicDetails_Hr_${selectedUserId}`, JSON.stringify(persistent));
+      }
+    }
+  }, [basicDetails, selectedUserId]);
+
   const initializeBlankReport = (userId, dateStr) => {
     let userDetail = currentUser;
     if (isPrivileged && hrStaff.length > 0) {
@@ -259,16 +922,20 @@ const HrReportPage = () => {
     minutes = minutes < 10 ? '0' + minutes : minutes;
     const timeStr = `${hours}:${minutes} ${ampm}`;
 
+    // Load from cache if exists
+    const cached = localStorage.getItem(`cachedBasicDetails_Hr_${userId}`);
+    const parsedCached = cached ? JSON.parse(cached) : null;
+
     setBasicDetails({
       date: formattedDateString,
       day: dayName,
-      employeeName: userDetail.name || '',
-      employeeId: userDetail.employeeId || '',
-      department: 'HR / Admin',
-      designation: userDetail.designation || 'HR / Admin Manager',
-      shiftTiming: '9:00 AM – 5:00 PM',
-      reportingTo: userDetail.reportingManager || 'COO / Executive Director',
-      preparedTime: timeStr
+      employeeName: parsedCached?.employeeName || userDetail.name || '',
+      employeeId: parsedCached?.employeeId || userDetail.employeeId || '',
+      department: parsedCached?.department || 'HR / Admin',
+      designation: parsedCached?.designation || userDetail.designation || 'HR / Admin Manager',
+      shiftTiming: parsedCached?.shiftTiming || '9:00 AM – 5:00 PM',
+      reportingTo: parsedCached?.reportingTo || userDetail.reportingManager || 'COO / Executive Director',
+      preparedTime: parsedCached?.preparedTime || timeStr
     });
 
     setDailyOperations(DEFAULT_DAILY_OPERATIONS);
@@ -784,6 +1451,15 @@ const HrReportPage = () => {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
+                  onClick={() => setIsMonthlyModalOpen(true)}
+                  className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-semibold text-sm transition-all"
+                >
+                  <Calendar size={16} />
+                  Monthly Report
+                </button>
+
+                <button
+                  type="button"
                   onClick={handleDownloadPDF}
                   className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-sm transition-all"
                 >
@@ -809,18 +1485,36 @@ const HrReportPage = () => {
 
             {/* 1. BASIC DETAILS */}
             <div className="space-y-4">
-              <h2 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
-                <span className="flex items-center justify-center w-5 h-5 rounded bg-indigo-100 dark:bg-lime-950/50 text-[10px]">1</span>
-                Basic Details
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
+                  <span className="flex items-center justify-center w-5 h-5 rounded bg-indigo-100 dark:bg-lime-950/50 text-[10px]">1</span>
+                  Basic Details
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingBasic(!isEditingBasic)}
+                  className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
+                >
+                  {isEditingBasic ? (
+                    <>
+                      <CheckCircle size={14} /> Done
+                    </>
+                  ) : (
+                    <>
+                      <Pencil size={14} /> Edit
+                    </>
+                  )}
+                </button>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 bg-slate-50/50 dark:bg-slate-950/20 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Date</label>
                   <input
                     type="text"
                     value={basicDetails.date || ''}
-                    onChange={(e) => setBasicDetails({ ...basicDetails, date: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    readOnly={true}
+                    disabled={true}
+                    className="w-full bg-slate-100/50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-900 rounded-xl px-3 py-2 text-sm text-slate-450 dark:text-slate-500 cursor-not-allowed focus:outline-none"
                   />
                 </div>
                 <div>
@@ -828,8 +1522,9 @@ const HrReportPage = () => {
                   <input
                     type="text"
                     value={basicDetails.day || ''}
-                    onChange={(e) => setBasicDetails({ ...basicDetails, day: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    readOnly={true}
+                    disabled={true}
+                    className="w-full bg-slate-100/50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-900 rounded-xl px-3 py-2 text-sm text-slate-450 dark:text-slate-500 cursor-not-allowed focus:outline-none"
                   />
                 </div>
                 <div>
@@ -838,7 +1533,8 @@ const HrReportPage = () => {
                     type="text"
                     value={basicDetails.employeeName || ''}
                     onChange={(e) => setBasicDetails({ ...basicDetails, employeeName: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
                   />
                 </div>
                 <div>
@@ -847,7 +1543,8 @@ const HrReportPage = () => {
                     type="text"
                     value={basicDetails.employeeId || ''}
                     onChange={(e) => setBasicDetails({ ...basicDetails, employeeId: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
                   />
                 </div>
                 <div>
@@ -856,7 +1553,8 @@ const HrReportPage = () => {
                     type="text"
                     value={basicDetails.department || ''}
                     onChange={(e) => setBasicDetails({ ...basicDetails, department: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
                   />
                 </div>
                 <div>
@@ -865,7 +1563,8 @@ const HrReportPage = () => {
                     type="text"
                     value={basicDetails.designation || ''}
                     onChange={(e) => setBasicDetails({ ...basicDetails, designation: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
                   />
                 </div>
                 <div>
@@ -874,7 +1573,8 @@ const HrReportPage = () => {
                     type="text"
                     value={basicDetails.shiftTiming || ''}
                     onChange={(e) => setBasicDetails({ ...basicDetails, shiftTiming: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
                   />
                 </div>
                 <div>
@@ -883,7 +1583,8 @@ const HrReportPage = () => {
                     type="text"
                     value={basicDetails.reportingTo || ''}
                     onChange={(e) => setBasicDetails({ ...basicDetails, reportingTo: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
                   />
                 </div>
                 <div>
@@ -892,7 +1593,8 @@ const HrReportPage = () => {
                     type="text"
                     value={basicDetails.preparedTime || ''}
                     onChange={(e) => setBasicDetails({ ...basicDetails, preparedTime: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
                   />
                 </div>
               </div>
@@ -1442,6 +2144,15 @@ const HrReportPage = () => {
             <div className="flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800 pt-5">
               <button
                 type="button"
+                onClick={() => setIsMonthlyModalOpen(true)}
+                className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-semibold text-sm transition-all"
+              >
+                <Calendar size={16} />
+                Monthly Report
+              </button>
+
+              <button
+                type="button"
                 onClick={handleDownloadPDF}
                 className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-sm transition-all"
               >
@@ -1467,6 +2178,643 @@ const HrReportPage = () => {
           </motion.div>
         )}
       </div>
+
+      {/* Monthly Report Modal */}
+      <AnimatePresence>
+        {isMonthlyModalOpen && (
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex justify-center items-start pt-10 px-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: -20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -20 }}
+              className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-5xl shadow-2xl border border-slate-200 dark:border-slate-850 overflow-hidden mb-10 text-slate-700 dark:text-slate-200"
+            >
+              {/* Modal Header */}
+              <div className="px-6 py-5 border-b border-slate-150 dark:border-slate-850 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Calendar className="text-indigo-600 dark:text-indigo-400" size={20} />
+                    Monthly Report Consolidation
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Consolidate, edit, and download HR operations reports for a specific date range.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsMonthlyModalOpen(false)}
+                  className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 dark:text-slate-500 transition-colors"
+                >
+                  <span className="sr-only">Close</span>
+                  &times;
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6 space-y-6">
+                {/* Date Selection Bar */}
+                <div className="flex flex-wrap items-end gap-4 bg-slate-50 dark:bg-slate-950/40 p-4 rounded-2xl border border-slate-100 dark:border-slate-850">
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      value={monthlyStartDate}
+                      onChange={(e) => setMonthlyStartDate(e.target.value)}
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">
+                      End Date
+                    </label>
+                    <input
+                      type="date"
+                      value={monthlyEndDate}
+                      onChange={(e) => setMonthlyEndDate(e.target.value)}
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleFetchMonthlyData}
+                    disabled={isMonthlyLoading}
+                    className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold text-sm rounded-xl transition-all shadow-md flex items-center gap-2"
+                  >
+                    {isMonthlyLoading ? (
+                      <Loader2 className="animate-spin" size={16} />
+                    ) : (
+                      <CheckCircle size={16} />
+                    )}
+                    Fetch & Consolidate
+                  </button>
+                </div>
+
+                {monthlyBasicDetails.dateRange ? (
+                  <div className="space-y-6">
+                    {/* Interactive Section Tabs */}
+                    <div className="flex flex-wrap gap-1 border-b border-slate-100 dark:border-slate-850 pb-px">
+                      {[
+                        { id: 'recruitment', label: 'Recruitment' },
+                        { id: 'attendance', label: 'Attendance & Leave' },
+                        { id: 'operations', label: 'Daily & Admin Ops' },
+                        { id: 'employees', label: 'Employee Mgmt' },
+                        { id: 'compliance', label: 'Compliance & KPIs' },
+                        { id: 'issues', label: 'Issues & Plans' },
+                      ].map((tab) => (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setMonthlyActiveTab(tab.id)}
+                          className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${
+                            monthlyActiveTab === tab.id
+                              ? 'border-indigo-600 text-indigo-600 dark:border-lime-400 dark:text-lime-400'
+                              : 'border-transparent text-slate-450 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                          }`}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Tab Panels */}
+                    <div className="min-h-[350px]">
+                      {/* 1. RECRUITMENT */}
+                      {monthlyActiveTab === 'recruitment' && (
+                        <div className="space-y-4">
+                          <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                            Recruitment Report
+                          </h4>
+                          <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                            <table className="w-full text-left border-collapse text-sm">
+                              <thead>
+                                <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                                  <th className="px-4 py-3">Recruitment Activity</th>
+                                  <th className="px-4 py-3 w-48">Count / Status</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                                {monthlyRecruitmentReport.map((row, i) => (
+                                  <tr key={i}>
+                                    <td className="px-4 py-3 font-semibold text-xs text-slate-500">{row.activity}</td>
+                                    <td className="px-4 py-3">
+                                      <input
+                                        type="text"
+                                        value={row.countStatus}
+                                        onChange={(e) => {
+                                          const newArr = [...monthlyRecruitmentReport];
+                                          newArr[i].countStatus = e.target.value;
+                                          setMonthlyRecruitmentReport(newArr);
+                                        }}
+                                        className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                      />
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 2. ATTENDANCE & LEAVE */}
+                      {monthlyActiveTab === 'attendance' && (
+                        <div className="space-y-4">
+                          <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                            Attendance & Leave Report
+                          </h4>
+                          <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                            <table className="w-full text-left border-collapse text-sm">
+                              <thead>
+                                <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                                  <th className="px-4 py-3">Category</th>
+                                  <th className="px-4 py-3 w-48">Count</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                                {monthlyAttendanceLeave.map((row, i) => (
+                                  <tr key={i}>
+                                    <td className="px-4 py-3 font-semibold text-xs text-slate-500">{row.category}</td>
+                                    <td className="px-4 py-3">
+                                      <input
+                                        type="text"
+                                        value={row.count}
+                                        onChange={(e) => {
+                                          const newArr = [...monthlyAttendanceLeave];
+                                          newArr[i].count = e.target.value;
+                                          setMonthlyAttendanceLeave(newArr);
+                                        }}
+                                        className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                      />
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 3. DAILY & ADMIN OPS */}
+                      {monthlyActiveTab === 'operations' && (
+                        <div className="space-y-6">
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                              Daily Operations Summary
+                            </h4>
+                            <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                              <table className="w-full text-left border-collapse text-sm">
+                                <thead>
+                                  <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                                    <th className="px-4 py-3">Activity</th>
+                                    <th className="px-4 py-3 w-40">Status</th>
+                                    <th className="px-4 py-3">Remarks</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                                  {monthlyDailyOperations.map((row, i) => (
+                                    <tr key={i}>
+                                      <td className="px-4 py-3 font-semibold text-xs text-slate-500">{row.activity}</td>
+                                      <td className="px-4 py-3">
+                                        <input
+                                          type="text"
+                                          value={row.status}
+                                          onChange={(e) => {
+                                            const newArr = [...monthlyDailyOperations];
+                                            newArr[i].status = e.target.value;
+                                            setMonthlyDailyOperations(newArr);
+                                          }}
+                                          className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                        />
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        <input
+                                          type="text"
+                                          value={row.remarks}
+                                          onChange={(e) => {
+                                            const newArr = [...monthlyDailyOperations];
+                                            newArr[i].remarks = e.target.value;
+                                            setMonthlyDailyOperations(newArr);
+                                          }}
+                                          className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                        />
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                              Admin Operations Report
+                            </h4>
+                            <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                              <table className="w-full text-left border-collapse text-sm">
+                                <thead>
+                                  <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                                    <th className="px-4 py-3">Activity</th>
+                                    <th className="px-4 py-3 w-40">Status</th>
+                                    <th className="px-4 py-3">Remarks</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                                  {monthlyAdminOperations.map((row, i) => (
+                                    <tr key={i}>
+                                      <td className="px-4 py-3 font-semibold text-xs text-slate-500">{row.activity}</td>
+                                      <td className="px-4 py-3">
+                                        <input
+                                          type="text"
+                                          value={row.status}
+                                          onChange={(e) => {
+                                            const newArr = [...monthlyAdminOperations];
+                                            newArr[i].status = e.target.value;
+                                            setMonthlyAdminOperations(newArr);
+                                          }}
+                                          className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                        />
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        <input
+                                          type="text"
+                                          value={row.remarks}
+                                          onChange={(e) => {
+                                            const newArr = [...monthlyAdminOperations];
+                                            newArr[i].remarks = e.target.value;
+                                            setMonthlyAdminOperations(newArr);
+                                          }}
+                                          className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                        />
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 4. EMPLOYEE MGMT */}
+                      {monthlyActiveTab === 'employees' && (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                              Employee Management Report
+                            </h4>
+                            <button
+                              type="button"
+                              onClick={() => setMonthlyEmployeeManagement([...monthlyEmployeeManagement, { employeeName: '', department: '', attendance: '', taskStatus: '', remarks: '' }])}
+                              className="flex items-center gap-1 text-xs text-indigo-600 dark:text-lime-400 font-bold hover:underline"
+                            >
+                              <Plus size={14} /> Add Row
+                            </button>
+                          </div>
+                          <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                            <table className="w-full text-left border-collapse text-sm">
+                              <thead>
+                                <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                                  <th className="px-4 py-3">Employee Name</th>
+                                  <th className="px-4 py-3">Department</th>
+                                  <th className="px-4 py-3 w-40">Attendance</th>
+                                  <th className="px-4 py-3 w-44">Task Status</th>
+                                  <th className="px-4 py-3">Remarks</th>
+                                  <th className="px-4 py-3 w-10"></th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                                {monthlyEmployeeManagement.map((row, i) => (
+                                  <tr key={i}>
+                                    <td className="px-4 py-2">
+                                      <input
+                                        type="text"
+                                        value={row.employeeName}
+                                        onChange={(e) => {
+                                          const newArr = [...monthlyEmployeeManagement];
+                                          newArr[i].employeeName = e.target.value;
+                                          setMonthlyEmployeeManagement(newArr);
+                                        }}
+                                        className="w-full bg-transparent border-none focus:outline-none p-0 text-sm font-semibold text-slate-700 dark:text-slate-200"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-2">
+                                      <input
+                                        type="text"
+                                        value={row.department}
+                                        onChange={(e) => {
+                                          const newArr = [...monthlyEmployeeManagement];
+                                          newArr[i].department = e.target.value;
+                                          setMonthlyEmployeeManagement(newArr);
+                                        }}
+                                        className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-2">
+                                      <input
+                                        type="text"
+                                        value={row.attendance}
+                                        onChange={(e) => {
+                                          const newArr = [...monthlyEmployeeManagement];
+                                          newArr[i].attendance = e.target.value;
+                                          setMonthlyEmployeeManagement(newArr);
+                                        }}
+                                        className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-2">
+                                      <input
+                                        type="text"
+                                        value={row.taskStatus}
+                                        onChange={(e) => {
+                                          const newArr = [...monthlyEmployeeManagement];
+                                          newArr[i].taskStatus = e.target.value;
+                                          setMonthlyEmployeeManagement(newArr);
+                                        }}
+                                        className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-2">
+                                      <input
+                                        type="text"
+                                        value={row.remarks}
+                                        onChange={(e) => {
+                                          const newArr = [...monthlyEmployeeManagement];
+                                          newArr[i].remarks = e.target.value;
+                                          setMonthlyEmployeeManagement(newArr);
+                                        }}
+                                        className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => setMonthlyEmployeeManagement(monthlyEmployeeManagement.filter((_, idx) => idx !== i))}
+                                        className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg"
+                                      >
+                                        <Trash2 size={14} />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 5. COMPLIANCE & KPIS */}
+                      {monthlyActiveTab === 'compliance' && (
+                        <div className="space-y-6">
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                              Documentation & Compliance
+                            </h4>
+                            <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                              <table className="w-full text-left border-collapse text-sm">
+                                <thead>
+                                  <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                                    <th className="px-4 py-3">Activity</th>
+                                    <th className="px-4 py-3 w-48">Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                                  {monthlyDocumentationCompliance.map((row, i) => (
+                                    <tr key={i}>
+                                      <td className="px-4 py-3 font-semibold text-xs text-slate-500">{row.activity}</td>
+                                      <td className="px-4 py-3">
+                                        <input
+                                          type="text"
+                                          value={row.status}
+                                          onChange={(e) => {
+                                            const newArr = [...monthlyDocumentationCompliance];
+                                            newArr[i].status = e.target.value;
+                                            setMonthlyDocumentationCompliance(newArr);
+                                          }}
+                                          className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                        />
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                              KPI Tracking
+                            </h4>
+                            <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                              <table className="w-full text-left border-collapse text-sm">
+                                <thead>
+                                  <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                                    <th className="px-4 py-3">KPI</th>
+                                    <th className="px-4 py-3 w-48">Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                                  {monthlyKpiTracking.map((row, i) => (
+                                    <tr key={i}>
+                                      <td className="px-4 py-3 font-semibold text-xs text-slate-500">{row.kpi}</td>
+                                      <td className="px-4 py-3">
+                                        <input
+                                          type="text"
+                                          value={row.status}
+                                          onChange={(e) => {
+                                            const newArr = [...monthlyKpiTracking];
+                                            newArr[i].status = e.target.value;
+                                            setMonthlyKpiTracking(newArr);
+                                          }}
+                                          className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                        />
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                              Final Shift Handover
+                            </h4>
+                            <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                              <table className="w-full text-left border-collapse text-sm">
+                                <thead>
+                                  <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                                    <th className="px-4 py-3">Handover Item</th>
+                                    <th className="px-4 py-3 w-48">Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                                  {monthlyFinalShiftHandover.map((row, i) => (
+                                    <tr key={i}>
+                                      <td className="px-4 py-3 font-semibold text-xs text-slate-500">{row.item}</td>
+                                      <td className="px-4 py-3">
+                                        <input
+                                          type="text"
+                                          value={row.status}
+                                          onChange={(e) => {
+                                            const newArr = [...monthlyFinalShiftHandover];
+                                            newArr[i].status = e.target.value;
+                                            setMonthlyFinalShiftHandover(newArr);
+                                          }}
+                                          className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                        />
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 6. ISSUES & PLANS */}
+                      {monthlyActiveTab === 'issues' && (
+                        <div className="space-y-6">
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                Issues / Escalations
+                              </h4>
+                              <button
+                                type="button"
+                                onClick={() => setMonthlyIssuesEscalations([...monthlyIssuesEscalations, { issue: '', priority: 'High / Medium / Low', actionTaken: '' }])}
+                                className="flex items-center gap-1 text-xs text-indigo-600 dark:text-lime-400 font-bold hover:underline"
+                              >
+                                <Plus size={14} /> Add Issue
+                              </button>
+                            </div>
+                            <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                              <table className="w-full text-left border-collapse text-sm">
+                                <thead>
+                                  <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                                    <th className="px-4 py-3">Issue</th>
+                                    <th className="px-4 py-3 w-44">Priority</th>
+                                    <th className="px-4 py-3">Action Taken</th>
+                                    <th className="px-4 py-3 w-10"></th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                                  {monthlyIssuesEscalations.map((row, i) => (
+                                    <tr key={i}>
+                                      <td className="px-4 py-2">
+                                        <input
+                                          type="text"
+                                          value={row.issue}
+                                          onChange={(e) => {
+                                            const newArr = [...monthlyIssuesEscalations];
+                                            newArr[i].issue = e.target.value;
+                                            setMonthlyIssuesEscalations(newArr);
+                                          }}
+                                          className="w-full bg-transparent border-none focus:outline-none p-0 text-sm font-semibold text-slate-700 dark:text-slate-200"
+                                        />
+                                      </td>
+                                      <td className="px-4 py-2">
+                                        <select
+                                          value={row.priority}
+                                          onChange={(e) => {
+                                            const newArr = [...monthlyIssuesEscalations];
+                                            newArr[i].priority = e.target.value;
+                                            setMonthlyIssuesEscalations(newArr);
+                                          }}
+                                          className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-2 py-1.5 text-xs focus:outline-none text-slate-700 dark:text-slate-200"
+                                        >
+                                          <option value="High / Medium / Low">High / Medium / Low</option>
+                                          <option value="High">High</option>
+                                          <option value="Medium">Medium</option>
+                                          <option value="Low">Low</option>
+                                        </select>
+                                      </td>
+                                      <td className="px-4 py-2">
+                                        <input
+                                          type="text"
+                                          value={row.actionTaken}
+                                          onChange={(e) => {
+                                            const newArr = [...monthlyIssuesEscalations];
+                                            newArr[i].actionTaken = e.target.value;
+                                            setMonthlyIssuesEscalations(newArr);
+                                          }}
+                                          className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                        />
+                                      </td>
+                                      <td className="px-4 py-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => setMonthlyIssuesEscalations(monthlyIssuesEscalations.filter((_, idx) => idx !== i))}
+                                          className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg"
+                                        >
+                                          <Trash2 size={14} />
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                              Next Day Action Plan (Consolidated)
+                            </h4>
+                            <textarea
+                              value={monthlyNextDayActionPlan}
+                              onChange={(e) => setMonthlyNextDayActionPlan(e.target.value)}
+                              className="w-full bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-850 rounded-2xl p-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 min-h-[120px] text-slate-700 dark:text-slate-200"
+                            />
+                          </div>
+
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                              HR / Admin Comments (Consolidated)
+                            </h4>
+                            <textarea
+                              value={monthlyHrAdminComments}
+                              onChange={(e) => setMonthlyHrAdminComments(e.target.value)}
+                              className="w-full bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-850 rounded-2xl p-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 min-h-[120px] text-slate-700 dark:text-slate-200"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-slate-450 dark:text-slate-500 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                    Select a date range and click "Fetch & Consolidate" to begin editing.
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-6 py-4 bg-slate-50 dark:bg-slate-950/40 border-t border-slate-150 dark:border-slate-850 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsMonthlyModalOpen(false)}
+                  className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-350 font-semibold text-sm hover:bg-slate-100 dark:hover:bg-slate-900 transition-all"
+                >
+                  Cancel
+                </button>
+                {monthlyBasicDetails.dateRange && (
+                  <button
+                    type="button"
+                    onClick={handleDownloadMonthlyPDF}
+                    className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-all shadow-md shadow-indigo-600/10"
+                  >
+                    <Download size={16} />
+                    Download Monthly PDF
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

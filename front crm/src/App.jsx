@@ -27,6 +27,7 @@ import OpsReportPage from './pages/OpsReportPage';
 import AccountantReportPage from './pages/AccountantReportPage';
 import MarketingReportPage from './pages/MarketingReportPage';
 import VideographerReportPage from './pages/VideographerReportPage';
+import EmployeeReports from './pages/EmployeeReports';
 
 
 
@@ -82,6 +83,7 @@ function App() {
         <Route path="/accountant-report" element={<ProtectedRoute><MainLayout><AccountantReportPage /></MainLayout></ProtectedRoute>} />
         <Route path="/marketing-report" element={<ProtectedRoute><MainLayout><MarketingReportPage /></MainLayout></ProtectedRoute>} />
         <Route path="/videographer-report" element={<ProtectedRoute><MainLayout><VideographerReportPage /></MainLayout></ProtectedRoute>} />
+        <Route path="/employee-reports" element={<ProtectedRoute><MainLayout><EmployeeReports /></MainLayout></ProtectedRoute>} />
 
 
 

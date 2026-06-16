@@ -111,11 +111,7 @@ const fetchData = useCallback(async () => {
 
     setTasks(cleanedTasks);
     setUsers(
-      Array.isArray(uData)
-        ? uData.filter(
-            u => ["1","2","3"].includes(String(u.role_id))
-          )
-        : []
+      Array.isArray(uData) ? uData : []
     );
     if (Array.isArray(dData) && dData.length > 0) {
       setDesignations(dData);
@@ -295,7 +291,7 @@ const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) 
   fd.append('title', form.title);
   fd.append('description', form.description || '');
   fd.append('assigned_to', form.assigned_to);
-fd.append('designation_id', parseInt(form.designation_id));
+  fd.append('designation_id', form.designation_id);
   fd.append('status', 'pending');
 
   if (form.image) {
@@ -451,9 +447,13 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
   };
 
   const canModify = useMemo(() => {
-    const creatorId = task?.created_by?._id || task?.created_by?.id || task?.user_id || '';
-    const currentId = currentUserId || (localStorage.getItem('user_id') ?? '');
-    return String(creatorId).trim() === String(currentId).trim();
+    const creatorId = (
+      task?.user_id ||
+      task?.created_by?._id ||
+      task?.created_by?.id ||
+      task?.created_by
+    )?.toString().trim();
+    return currentUserId && creatorId && String(currentUserId).trim() === creatorId;
   }, [task, currentUserId]);
 
   useEffect(() => { 

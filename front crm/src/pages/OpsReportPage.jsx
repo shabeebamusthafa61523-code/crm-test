@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, Calendar, Plus, Trash2, Save, Download, 
-  CheckCircle, HelpCircle, Loader2, User, ChevronRight 
+  CheckCircle, HelpCircle, Loader2, User, ChevronRight, Pencil
 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
 import { jsPDF } from 'jspdf';
@@ -63,8 +63,89 @@ const OpsReportPage = () => {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isEditingBasic, setIsEditingBasic] = useState(false);
   const [currentUser, setCurrentUser] = useState({});
   const [isPrivileged, setIsPrivileged] = useState(false);
+
+  // Weekly Report States
+  const [isWeeklyModalOpen, setIsWeeklyModalOpen] = useState(false);
+  const [weeklyStartDate, setWeeklyStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d.toISOString().split('T')[0];
+  });
+  const [weeklyEndDate, setWeeklyEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isWeeklyLoading, setIsWeeklyLoading] = useState(false);
+  const [weeklyActiveTab, setWeeklyActiveTab] = useState("range");
+  
+  const [weeklyBasicDetails, setWeeklyBasicDetails] = useState({
+    dateRange: '',
+    employeeName: '',
+    employeeId: '',
+    department: 'Sales & Growth',
+    designation: 'Manager - OPS',
+    shiftTiming: '9:30 AM - 5:30 PM',
+    reportingTo: 'Executive Director'
+  });
+  const [weeklySalesActivity, setWeeklySalesActivity] = useState(DEFAULT_SALES_ACTIVITY);
+  const [weeklySalesPerformance, setWeeklySalesPerformance] = useState(DEFAULT_SALES_PERFORMANCE);
+  const [weeklyRevenueTracking, setWeeklyRevenueTracking] = useState(DEFAULT_REVENUE_TRACKING);
+  const [weeklyAcademyStatus, setWeeklyAcademyStatus] = useState(DEFAULT_ACADEMY_STATUS);
+  const [weeklyIssuesEscalations, setWeeklyIssuesEscalations] = useState({
+    issue: '',
+    priority: '',
+    actionTaken: ''
+  });
+  const [weeklyHandover, setWeeklyHandover] = useState({
+    pendingLeadsShared: 'Yes',
+    crmUpdated: 'Yes',
+    reportsSubmitted: 'Yes',
+    teamUpdated: 'Yes'
+  });
+  const [weeklyApproval, setWeeklyApproval] = useState({
+    opsName: '',
+    directorName: 'Executive Director Approval'
+  });
+
+  // Monthly Report States
+  const [isMonthlyModalOpen, setIsMonthlyModalOpen] = useState(false);
+  const [monthlyStartDate, setMonthlyStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  });
+  const [monthlyEndDate, setMonthlyEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isMonthlyLoading, setIsMonthlyLoading] = useState(false);
+  const [monthlyActiveTab, setMonthlyActiveTab] = useState("range");
+  
+  const [monthlyBasicDetails, setMonthlyBasicDetails] = useState({
+    dateRange: '',
+    employeeName: '',
+    employeeId: '',
+    department: 'Sales & Growth',
+    designation: 'Manager - OPS',
+    shiftTiming: '9:30 AM - 5:30 PM',
+    reportingTo: 'Executive Director'
+  });
+  const [monthlySalesActivity, setMonthlySalesActivity] = useState(DEFAULT_SALES_ACTIVITY);
+  const [monthlySalesPerformance, setMonthlySalesPerformance] = useState(DEFAULT_SALES_PERFORMANCE);
+  const [monthlyRevenueTracking, setMonthlyRevenueTracking] = useState(DEFAULT_REVENUE_TRACKING);
+  const [monthlyAcademyStatus, setMonthlyAcademyStatus] = useState(DEFAULT_ACADEMY_STATUS);
+  const [monthlyIssuesEscalations, setMonthlyIssuesEscalations] = useState({
+    issue: '',
+    priority: '',
+    actionTaken: ''
+  });
+  const [monthlyHandover, setMonthlyHandover] = useState({
+    pendingLeadsShared: 'Yes',
+    crmUpdated: 'Yes',
+    reportsSubmitted: 'Yes',
+    teamUpdated: 'Yes'
+  });
+  const [monthlyApproval, setMonthlyApproval] = useState({
+    opsName: '',
+    directorName: 'Executive Director Approval'
+  });
 
   // Selection states
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -227,6 +308,870 @@ const OpsReportPage = () => {
     }
   }, [selectedUserId, selectedDate, fetchReport]);
 
+  // Cache basicDetails in localStorage when they change
+  useEffect(() => {
+    if (selectedUserId && basicDetails && (basicDetails.employeeName || basicDetails.employeeId)) {
+      const { date, day, ...persistent } = basicDetails;
+      if (Object.keys(persistent).length > 0) {
+        localStorage.setItem(`cachedBasicDetails_Ops_${selectedUserId}`, JSON.stringify(persistent));
+      }
+    }
+  }, [basicDetails, selectedUserId]);
+
+  const getDatesInRange = (startDate, endDate) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const dates = [];
+    let curr = new Date(start);
+    let count = 0;
+    while (curr <= end && count < 31) {
+      dates.push(curr.toISOString().split('T')[0]);
+      curr.setDate(curr.getDate() + 1);
+      count++;
+    }
+    return dates;
+  };
+
+  const getMonthlyDatesInRange = (startDate, endDate) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const dates = [];
+    let curr = new Date(start);
+    let count = 0;
+    while (curr <= end && count < 366) {
+      dates.push(curr.toISOString().split('T')[0]);
+      curr.setDate(curr.getDate() + 1);
+      count++;
+    }
+    return dates;
+  };
+
+  const handleFetchMonthlyData = async () => {
+    if (!monthlyStartDate || !monthlyEndDate) {
+      showToast("Please select both start and end dates.", "error");
+      return;
+    }
+    if (new Date(monthlyStartDate) > new Date(monthlyEndDate)) {
+      showToast("Start date cannot be after end date.", "error");
+      return;
+    }
+
+    setIsMonthlyLoading(true);
+    try {
+      const dates = getMonthlyDatesInRange(monthlyStartDate, monthlyEndDate);
+      const promises = dates.map(dateStr => 
+        fetch(`${API_BASE}/v1/ops-reports/by-date?userId=${selectedUserId}&dateString=${dateStr}`, {
+          headers: getAuthHeaders()
+        }).then(res => res.json())
+      );
+
+      const results = await Promise.all(promises);
+      const validReports = results.filter(r => r.success && r.data).map(r => r.data);
+
+      let userDetail = currentUser;
+      if (opsStaff.length > 0) {
+        userDetail = opsStaff.find(u => u._id === selectedUserId) || currentUser;
+      }
+
+      const aggregatedSalesActivity = DEFAULT_SALES_ACTIVITY.map(item => ({ ...item, count: 0, digitalMktg: 0, web: 0 }));
+      const aggregatedRevenue = DEFAULT_REVENUE_TRACKING.map(item => ({ ...item, amount: 0 }));
+      
+      const performanceMap = {};
+      DEFAULT_SALES_PERFORMANCE.forEach(p => {
+        performanceMap[p.staffName] = { ...p, leads: 0, closings: 0 };
+      });
+
+      const aggregatedAcademyStatus = DEFAULT_ACADEMY_STATUS.map(item => ({ ...item, status: 'No', remarks: [] }));
+
+      let consolidatedIssues = [];
+      let consolidatedActionTaken = [];
+      
+      validReports.forEach(report => {
+        if (Array.isArray(report.salesActivity)) {
+          report.salesActivity.forEach(activity => {
+            const matchingIndex = aggregatedSalesActivity.findIndex(a => a.activity.trim().toLowerCase() === activity.activity.trim().toLowerCase());
+            if (matchingIndex !== -1) {
+              const getVal = (val) => {
+                if (!val) return 0;
+                const matches = String(val).match(/\d+/);
+                return matches ? parseInt(matches[0], 10) : 0;
+              };
+              aggregatedSalesActivity[matchingIndex].count += getVal(activity.count);
+              aggregatedSalesActivity[matchingIndex].digitalMktg += getVal(activity.digitalMktg);
+              aggregatedSalesActivity[matchingIndex].web += getVal(activity.web);
+              if (activity.remarks) {
+                const prevRemarks = aggregatedSalesActivity[matchingIndex].remarks;
+                aggregatedSalesActivity[matchingIndex].remarks = prevRemarks ? `${prevRemarks}; ${activity.remarks}` : activity.remarks;
+              }
+            }
+          });
+        }
+
+        if (Array.isArray(report.revenueTracking)) {
+          report.revenueTracking.forEach(rev => {
+            const matchingIndex = aggregatedRevenue.findIndex(r => r.category.trim().toLowerCase() === rev.category.trim().toLowerCase());
+            if (matchingIndex !== -1) {
+              const getAmountVal = (val) => {
+                if (!val) return 0;
+                const clean = String(val).replace(/[₹,]/g, '').trim();
+                const num = parseFloat(clean);
+                return isNaN(num) ? 0 : num;
+              };
+              aggregatedRevenue[matchingIndex].amount += getAmountVal(rev.amount);
+            }
+          });
+        }
+
+        if (Array.isArray(report.salesPerformance)) {
+          report.salesPerformance.forEach(p => {
+            if (performanceMap[p.staffName]) {
+              const getVal = (val) => {
+                if (!val) return 0;
+                const matches = String(val).match(/\d+/);
+                return matches ? parseInt(matches[0], 10) : 0;
+              };
+              performanceMap[p.staffName].leads += getVal(p.leads);
+              performanceMap[p.staffName].closings += getVal(p.closings);
+              if (p.taskAssigned && p.taskAssigned !== 'NIL') {
+                if (!performanceMap[p.staffName].taskAssigned || performanceMap[p.staffName].taskAssigned === 'NIL') {
+                  performanceMap[p.staffName].taskAssigned = p.taskAssigned;
+                } else if (!performanceMap[p.staffName].taskAssigned.includes(p.taskAssigned)) {
+                  performanceMap[p.staffName].taskAssigned += `, ${p.taskAssigned}`;
+                }
+              }
+            }
+          });
+        }
+
+        if (Array.isArray(report.academyStatus)) {
+          report.academyStatus.forEach(a => {
+            const matchingIndex = aggregatedAcademyStatus.findIndex(ac => ac.activity.trim().toLowerCase() === a.activity.trim().toLowerCase());
+            if (matchingIndex !== -1) {
+              if (a.status === 'Yes' || a.status === 'Done') {
+                aggregatedAcademyStatus[matchingIndex].status = 'Yes';
+              }
+              if (a.remarks) {
+                aggregatedAcademyStatus[matchingIndex].remarks.push(a.remarks);
+              }
+            }
+          });
+        }
+
+        if (report.issuesEscalations) {
+          if (report.issuesEscalations.issue && report.issuesEscalations.issue !== 'None' && report.issuesEscalations.issue !== 'NIL') {
+            consolidatedIssues.push(report.issuesEscalations.issue);
+          }
+          if (report.issuesEscalations.actionTaken && report.issuesEscalations.actionTaken !== 'None' && report.issuesEscalations.actionTaken !== 'NIL') {
+            consolidatedActionTaken.push(report.issuesEscalations.actionTaken);
+          }
+        }
+      });
+
+      const finalSalesActivity = aggregatedSalesActivity.map(a => ({
+        ...a,
+        count: String(a.count),
+        digitalMktg: a.digitalMktg > 0 ? String(a.digitalMktg) : '',
+        web: a.web > 0 ? String(a.web) : '',
+        remarks: a.remarks || ''
+      }));
+
+      const finalRevenue = aggregatedRevenue.map(r => ({
+        ...r,
+        amount: `₹${r.amount.toLocaleString('en-IN')}`
+      }));
+
+      const finalPerformance = Object.values(performanceMap).map(p => ({
+        ...p,
+        leads: String(p.leads),
+        closings: String(p.closings),
+        status: p.leads > 0 ? 'DONE' : 'NIL'
+      }));
+
+      const finalAcademyStatus = aggregatedAcademyStatus.map(a => ({
+        ...a,
+        remarks: a.remarks.filter(Boolean).join('; ')
+      }));
+
+      setMonthlyBasicDetails({
+        dateRange: `${monthlyStartDate} to ${monthlyEndDate}`,
+        employeeName: userDetail.name || '',
+        employeeId: userDetail.employeeId || '',
+        department: 'Sales & Growth',
+        designation: userDetail.designation || 'Manager - OPS',
+        shiftTiming: '9:30 AM - 5:30 PM',
+        reportingTo: 'Executive Director'
+      });
+
+      setMonthlySalesActivity(finalSalesActivity);
+      setMonthlySalesPerformance(finalPerformance);
+      setMonthlyRevenueTracking(finalRevenue);
+      setMonthlyAcademyStatus(finalAcademyStatus);
+      setMonthlyIssuesEscalations({
+        issue: consolidatedIssues.length > 0 ? consolidatedIssues.join('\n') : 'None reported',
+        priority: consolidatedIssues.length > 0 ? 'Medium' : 'None',
+        actionTaken: consolidatedActionTaken.length > 0 ? consolidatedActionTaken.join('\n') : 'N/A'
+      });
+
+      setMonthlyHandover({
+        pendingLeadsShared: 'Yes',
+        crmUpdated: 'Yes',
+        reportsSubmitted: 'Yes',
+        teamUpdated: 'Yes'
+      });
+
+      setMonthlyApproval({
+        opsName: userDetail.name || '',
+        directorName: 'Executive Director Approval'
+      });
+
+      setMonthlyActiveTab("sales");
+
+      if (validReports.length === 0) {
+        showToast(`No daily reports found in date range. Initialized empty monthly report.`, 'warning');
+      } else {
+        showToast(`Successfully consolidated ${validReports.length} daily reports!`, 'success');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Error aggregating monthly data.", "error");
+    } finally {
+      setIsMonthlyLoading(false);
+    }
+  };
+
+  const handleFetchWeeklyData = async () => {
+    if (!weeklyStartDate || !weeklyEndDate) {
+      showToast("Please select both start and end dates.", "error");
+      return;
+    }
+    if (new Date(weeklyStartDate) > new Date(weeklyEndDate)) {
+      showToast("Start date cannot be after end date.", "error");
+      return;
+    }
+
+    setIsWeeklyLoading(true);
+    try {
+      const dates = getDatesInRange(weeklyStartDate, weeklyEndDate);
+      const promises = dates.map(dateStr => 
+        fetch(`${API_BASE}/v1/ops-reports/by-date?userId=${selectedUserId}&dateString=${dateStr}`, {
+          headers: getAuthHeaders()
+        }).then(res => res.json())
+      );
+
+      const results = await Promise.all(promises);
+      const validReports = results.filter(r => r.success && r.data).map(r => r.data);
+
+      let userDetail = currentUser;
+      if (opsStaff.length > 0) {
+        userDetail = opsStaff.find(u => u._id === selectedUserId) || currentUser;
+      }
+
+      const aggregatedSalesActivity = DEFAULT_SALES_ACTIVITY.map(item => ({ ...item, count: 0, digitalMktg: 0, web: 0 }));
+      const aggregatedRevenue = DEFAULT_REVENUE_TRACKING.map(item => ({ ...item, amount: 0 }));
+      
+      const performanceMap = {};
+      DEFAULT_SALES_PERFORMANCE.forEach(p => {
+        performanceMap[p.staffName] = { ...p, leads: 0, closings: 0 };
+      });
+
+      const aggregatedAcademyStatus = DEFAULT_ACADEMY_STATUS.map(item => ({ ...item, status: 'No', remarks: [] }));
+
+      let consolidatedIssues = [];
+      let consolidatedActionTaken = [];
+      
+      validReports.forEach(report => {
+        if (Array.isArray(report.salesActivity)) {
+          report.salesActivity.forEach(activity => {
+            const matchingIndex = aggregatedSalesActivity.findIndex(a => a.activity.trim().toLowerCase() === activity.activity.trim().toLowerCase());
+            if (matchingIndex !== -1) {
+              const getVal = (val) => {
+                if (!val) return 0;
+                const matches = String(val).match(/\d+/);
+                return matches ? parseInt(matches[0], 10) : 0;
+              };
+              aggregatedSalesActivity[matchingIndex].count += getVal(activity.count);
+              aggregatedSalesActivity[matchingIndex].digitalMktg += getVal(activity.digitalMktg);
+              aggregatedSalesActivity[matchingIndex].web += getVal(activity.web);
+              if (activity.remarks) {
+                const prevRemarks = aggregatedSalesActivity[matchingIndex].remarks;
+                aggregatedSalesActivity[matchingIndex].remarks = prevRemarks ? `${prevRemarks}; ${activity.remarks}` : activity.remarks;
+              }
+            }
+          });
+        }
+
+        if (Array.isArray(report.revenueTracking)) {
+          report.revenueTracking.forEach(rev => {
+            const matchingIndex = aggregatedRevenue.findIndex(r => r.category.trim().toLowerCase() === rev.category.trim().toLowerCase());
+            if (matchingIndex !== -1) {
+              const getAmountVal = (val) => {
+                if (!val) return 0;
+                const clean = String(val).replace(/[₹,]/g, '').trim();
+                const num = parseFloat(clean);
+                return isNaN(num) ? 0 : num;
+              };
+              aggregatedRevenue[matchingIndex].amount += getAmountVal(rev.amount);
+            }
+          });
+        }
+
+        if (Array.isArray(report.salesPerformance)) {
+          report.salesPerformance.forEach(p => {
+            if (performanceMap[p.staffName]) {
+              const getVal = (val) => {
+                if (!val) return 0;
+                const matches = String(val).match(/\d+/);
+                return matches ? parseInt(matches[0], 10) : 0;
+              };
+              performanceMap[p.staffName].leads += getVal(p.leads);
+              performanceMap[p.staffName].closings += getVal(p.closings);
+              if (p.taskAssigned && p.taskAssigned !== 'NIL') {
+                if (!performanceMap[p.staffName].taskAssigned || performanceMap[p.staffName].taskAssigned === 'NIL') {
+                  performanceMap[p.staffName].taskAssigned = p.taskAssigned;
+                } else if (!performanceMap[p.staffName].taskAssigned.includes(p.taskAssigned)) {
+                  performanceMap[p.staffName].taskAssigned += `, ${p.taskAssigned}`;
+                }
+              }
+            }
+          });
+        }
+
+        if (Array.isArray(report.academyStatus)) {
+          report.academyStatus.forEach(a => {
+            const matchingIndex = aggregatedAcademyStatus.findIndex(ac => ac.activity.trim().toLowerCase() === a.activity.trim().toLowerCase());
+            if (matchingIndex !== -1) {
+              if (a.status === 'Yes' || a.status === 'Done') {
+                aggregatedAcademyStatus[matchingIndex].status = 'Yes';
+              }
+              if (a.remarks) {
+                aggregatedAcademyStatus[matchingIndex].remarks.push(a.remarks);
+              }
+            }
+          });
+        }
+
+        if (report.issuesEscalations) {
+          if (report.issuesEscalations.issue && report.issuesEscalations.issue !== 'None' && report.issuesEscalations.issue !== 'NIL') {
+            consolidatedIssues.push(report.issuesEscalations.issue);
+          }
+          if (report.issuesEscalations.actionTaken && report.issuesEscalations.actionTaken !== 'None' && report.issuesEscalations.actionTaken !== 'NIL') {
+            consolidatedActionTaken.push(report.issuesEscalations.actionTaken);
+          }
+        }
+      });
+
+      const finalSalesActivity = aggregatedSalesActivity.map(a => ({
+        ...a,
+        count: String(a.count),
+        digitalMktg: a.digitalMktg > 0 ? String(a.digitalMktg) : '',
+        web: a.web > 0 ? String(a.web) : '',
+        remarks: a.remarks || ''
+      }));
+
+      const finalRevenue = aggregatedRevenue.map(r => ({
+        ...r,
+        amount: `₹${r.amount.toLocaleString('en-IN')}`
+      }));
+
+      const finalPerformance = Object.values(performanceMap).map(p => ({
+        ...p,
+        leads: String(p.leads),
+        closings: String(p.closings),
+        status: p.leads > 0 ? 'DONE' : 'NIL'
+      }));
+
+      const finalAcademyStatus = aggregatedAcademyStatus.map(a => ({
+        ...a,
+        remarks: a.remarks.filter(Boolean).join('; ')
+      }));
+
+      setWeeklyBasicDetails({
+        dateRange: `${weeklyStartDate} to ${weeklyEndDate}`,
+        employeeName: userDetail.name || '',
+        employeeId: userDetail.employeeId || '',
+        department: 'Sales & Growth',
+        designation: userDetail.designation || 'Manager - OPS',
+        shiftTiming: '9:30 AM - 5:30 PM',
+        reportingTo: 'Executive Director'
+      });
+
+      setWeeklySalesActivity(finalSalesActivity);
+      setWeeklySalesPerformance(finalPerformance);
+      setWeeklyRevenueTracking(finalRevenue);
+      setWeeklyAcademyStatus(finalAcademyStatus);
+      setWeeklyIssuesEscalations({
+        issue: consolidatedIssues.length > 0 ? consolidatedIssues.join('\n') : 'None reported',
+        priority: consolidatedIssues.length > 0 ? 'Medium' : 'None',
+        actionTaken: consolidatedActionTaken.length > 0 ? consolidatedActionTaken.join('\n') : 'N/A'
+      });
+
+      setWeeklyHandover({
+        pendingLeadsShared: 'Yes',
+        crmUpdated: 'Yes',
+        reportsSubmitted: 'Yes',
+        teamUpdated: 'Yes'
+      });
+
+      setWeeklyApproval({
+        opsName: userDetail.name || '',
+        directorName: 'Executive Director Approval'
+      });
+
+      setWeeklyActiveTab("sales");
+
+      if (validReports.length === 0) {
+        showToast(`No daily reports found in date range. Initialized empty weekly report.`, 'warning');
+      } else {
+        showToast(`Successfully consolidated ${validReports.length} daily reports!`, 'success');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Error aggregating weekly data.", "error");
+    } finally {
+      setIsWeeklyLoading(false);
+    }
+  };
+
+  const handleDownloadWeeklyPDF = (weeklyData) => {
+    try {
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      let currentY = 15;
+
+      const drawSectionHeader = (title) => {
+        doc.setFillColor(60, 35, 117);
+        doc.rect(14, currentY, 182, 7, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.setTextColor(255, 255, 255);
+        doc.text(title.toUpperCase(), 17, currentY + 5);
+        currentY += 7;
+      };
+
+      const drawHeader = () => {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(22);
+        doc.setTextColor(132, 204, 22); // Lime Green
+        doc.text("KOD.", 14, 21);
+        
+        doc.setTextColor(60, 35, 117);
+        doc.text("brand", 34, 21);
+
+        doc.setFontSize(15);
+        doc.setTextColor(60, 35, 117);
+        doc.text("WEEKLY OPERATIONS REPORT", 95, 16);
+        
+        doc.setFontSize(7.5);
+        doc.setTextColor(0, 0, 0);
+        doc.text("WEEKLY CONSOLIDATION", 145, 22);
+      };
+
+      drawHeader();
+      currentY = 27;
+
+      drawSectionHeader("1. WEEKLY DETAILS");
+      const basicDetailsRows = [
+        ["Date Range", weeklyData.basicDetails.dateRange || ''],
+        ["Employee Name:", weeklyData.basicDetails.employeeName || ''],
+        ["Employee ID", weeklyData.basicDetails.employeeId || ''],
+        ["Department", weeklyData.basicDetails.department || ''],
+        ["Designation", weeklyData.basicDetails.designation || ''],
+        ["Shift Timing", weeklyData.basicDetails.shiftTiming || ''],
+        ["Reporting To", weeklyData.basicDetails.reportingTo || '']
+      ];
+
+      autoTable(doc, {
+        body: basicDetailsRows,
+        startY: currentY,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 45 },
+          1: { width: 137 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("2. WEEKLY SALES ACTIVITY (CONSOLIDATED)");
+      const counselingHeaders = [["Activity", "Count", "Digital Mktg", "Web", "Remarks"]];
+      const counselingRows = weeklyData.salesActivity.map(s => [s.activity || '', s.count || '', s.digitalMktg || '', s.web || '', s.remarks || '']);
+
+      autoTable(doc, {
+        head: counselingHeaders,
+        body: counselingRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 7.5, cellPadding: 1.5, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 68 },
+          1: { width: 28, halign: 'center' },
+          2: { width: 24, halign: 'center' },
+          3: { width: 24, halign: 'center' },
+          4: { width: 38 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      doc.addPage();
+      currentY = 15;
+      drawHeader();
+      currentY = 27;
+
+      drawSectionHeader("3. WEEKLY SALES TEAM PERFORMANCE");
+      const perfHeaders = [["Staff Name", "Task Assigned", "Leads", "Closings", "Status"]];
+      const perfRows = weeklyData.salesPerformance.map(p => [p.staffName || '', p.taskAssigned || '', p.leads || '', p.closings || '', p.status || '']);
+
+      autoTable(doc, {
+        head: perfHeaders,
+        body: perfRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 45 },
+          1: { width: 45 },
+          2: { width: 30, halign: 'center' },
+          3: { width: 30, halign: 'center' },
+          4: { width: 32, halign: 'center' }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("4. WEEKLY REVENUE TRACKING");
+      const revHeaders = [["Revenue Category", "Amount"]];
+      const revRows = weeklyData.revenueTracking.map(r => [r.category || '', r.amount || '']);
+
+      autoTable(doc, {
+        head: revHeaders,
+        body: revRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 110 },
+          1: { width: 72, halign: 'center' }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("5. WEEKLY ACADEMY STATUS");
+      const academyHeaders = [["Activity", "Status", "Remarks"]];
+      const academyRows = weeklyData.academyStatus.map(a => [a.activity || '', a.status || '', a.remarks || '']);
+
+      autoTable(doc, {
+        head: academyHeaders,
+        body: academyRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 70 },
+          1: { width: 35, halign: 'center' },
+          2: { width: 77 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("6. WEEKLY ISSUES / ESCALATIONS");
+      const issuesRows = [
+        ["Issues / Escalations:", weeklyData.issuesEscalations.issue || ''],
+        ["Priority:", weeklyData.issuesEscalations.priority || ''],
+        ["Action Taken:", weeklyData.issuesEscalations.actionTaken || '']
+      ];
+      autoTable(doc, {
+        body: issuesRows,
+        startY: currentY,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 2.2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 45 },
+          1: { width: 137 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("7. WEEKLY HANDOVER");
+      const handoverRows = [
+        ["Pending Leads Shared:", weeklyData.handover.pendingLeadsShared || ''],
+        ["CRM Updated: Yes / No - NA", weeklyData.handover.crmUpdated || ''],
+        ["Reports Submitted: Yes", weeklyData.handover.reportsSubmitted || ''],
+        ["Team Updated: Yes", weeklyData.handover.teamUpdated || '']
+      ];
+      autoTable(doc, {
+        body: handoverRows,
+        startY: currentY,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 2.2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 65 },
+          1: { width: 117 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 8;
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(60, 35, 117);
+      doc.text(weeklyData.approval.opsName || '', 30, currentY);
+      doc.text(weeklyData.approval.directorName || '', 130, currentY);
+
+      doc.setDrawColor(60, 35, 117);
+      doc.line(20, currentY + 1.5, 75, currentY + 1.5);
+      doc.line(120, currentY + 1.5, 175, currentY + 1.5);
+
+      doc.setFontSize(7.5);
+      doc.setTextColor(0, 0, 0);
+      doc.text("Manager - OPS Sales & Growth", 25, currentY + 5.5);
+      doc.text("Executive Director Approval", 127, currentY + 5.5);
+
+      doc.save(`Operations_Weekly_Report_${weeklyData.basicDetails.employeeName || 'Ops'}_${weeklyData.basicDetails.dateRange.replace(/ /g, '_')}.pdf`);
+      showToast("Weekly PDF report downloaded successfully!", "success");
+    } catch (e) {
+      console.error(e);
+      showToast("Failed to generate weekly PDF.", "error");
+    }
+  };
+
+  const handleDownloadMonthlyPDF = (monthlyData) => {
+    try {
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      let currentY = 15;
+
+      const drawSectionHeader = (title) => {
+        doc.setFillColor(60, 35, 117);
+        doc.rect(14, currentY, 182, 7, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.setTextColor(255, 255, 255);
+        doc.text(title.toUpperCase(), 17, currentY + 5);
+        currentY += 7;
+      };
+
+      const drawHeader = () => {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(22);
+        doc.setTextColor(132, 204, 22); // Lime Green
+        doc.text("KOD.", 14, 21);
+        
+        doc.setTextColor(60, 35, 117);
+        doc.text("brand", 34, 21);
+
+        doc.setFontSize(14);
+        doc.setTextColor(60, 35, 117);
+        doc.text("MONTHLY CONSOLIDATED OPERATIONS REPORT", 75, 16);
+        
+        doc.setFontSize(7.5);
+        doc.setTextColor(0, 0, 0);
+        doc.text("MONTHLY CONSOLIDATION", 145, 22);
+      };
+
+      drawHeader();
+      currentY = 27;
+
+      drawSectionHeader("1. MONTHLY DETAILS");
+      const basicDetailsRows = [
+        ["Date Range", monthlyData.basicDetails.dateRange || ''],
+        ["Employee Name:", monthlyData.basicDetails.employeeName || ''],
+        ["Employee ID", monthlyData.basicDetails.employeeId || ''],
+        ["Department", monthlyData.basicDetails.department || ''],
+        ["Designation", monthlyData.basicDetails.designation || ''],
+        ["Shift Timing", monthlyData.basicDetails.shiftTiming || ''],
+        ["Reporting To", monthlyData.basicDetails.reportingTo || '']
+      ];
+
+      autoTable(doc, {
+        body: basicDetailsRows,
+        startY: currentY,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 45 },
+          1: { width: 137 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("2. MONTHLY SALES ACTIVITY (CONSOLIDATED)");
+      const counselingHeaders = [["Activity", "Count", "Digital Mktg", "Web", "Remarks"]];
+      const counselingRows = monthlyData.salesActivity.map(s => [s.activity || '', s.count || '', s.digitalMktg || '', s.web || '', s.remarks || '']);
+
+      autoTable(doc, {
+        head: counselingHeaders,
+        body: counselingRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 7.5, cellPadding: 1.5, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 68 },
+          1: { width: 28, halign: 'center' },
+          2: { width: 24, halign: 'center' },
+          3: { width: 24, halign: 'center' },
+          4: { width: 38 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      doc.addPage();
+      currentY = 15;
+      drawHeader();
+      currentY = 27;
+
+      drawSectionHeader("3. MONTHLY SALES TEAM PERFORMANCE");
+      const perfHeaders = [["Staff Name", "Task Assigned", "Leads", "Closings", "Status"]];
+      const perfRows = monthlyData.salesPerformance.map(p => [p.staffName || '', p.taskAssigned || '', p.leads || '', p.closings || '', p.status || '']);
+
+      autoTable(doc, {
+        head: perfHeaders,
+        body: perfRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 45 },
+          1: { width: 45 },
+          2: { width: 30, halign: 'center' },
+          3: { width: 30, halign: 'center' },
+          4: { width: 32, halign: 'center' }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("4. MONTHLY REVENUE TRACKING");
+      const revHeaders = [["Revenue Category", "Amount"]];
+      const revRows = monthlyData.revenueTracking.map(r => [r.category || '', r.amount || '']);
+
+      autoTable(doc, {
+        head: revHeaders,
+        body: revRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 110 },
+          1: { width: 72, halign: 'center' }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("5. MONTHLY ACADEMY STATUS");
+      const academyHeaders = [["Activity", "Status", "Remarks"]];
+      const academyRows = monthlyData.academyStatus.map(a => [a.activity || '', a.status || '', a.remarks || '']);
+
+      autoTable(doc, {
+        head: academyHeaders,
+        body: academyRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 70 },
+          1: { width: 35, halign: 'center' },
+          2: { width: 77 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("6. MONTHLY ISSUES / ESCALATIONS");
+      const issuesRows = [
+        ["Issues / Escalations:", monthlyData.issuesEscalations.issue || ''],
+        ["Priority:", monthlyData.issuesEscalations.priority || ''],
+        ["Action Taken:", monthlyData.issuesEscalations.actionTaken || '']
+      ];
+      autoTable(doc, {
+        body: issuesRows,
+        startY: currentY,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 2.2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 45 },
+          1: { width: 137 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("7. MONTHLY HANDOVER");
+      const handoverRows = [
+        ["Pending Leads Shared:", monthlyData.handover.pendingLeadsShared || ''],
+        ["CRM Updated: Yes / No - NA", monthlyData.handover.crmUpdated || ''],
+        ["Reports Submitted: Yes", monthlyData.handover.reportsSubmitted || ''],
+        ["Team Updated: Yes", monthlyData.handover.teamUpdated || '']
+      ];
+      autoTable(doc, {
+        body: handoverRows,
+        startY: currentY,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 2.2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 65 },
+          1: { width: 117 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 8;
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(60, 35, 117);
+      doc.text(monthlyData.approval.opsName || '', 30, currentY);
+      doc.text(monthlyData.approval.directorName || '', 130, currentY);
+
+      doc.setDrawColor(60, 35, 117);
+      doc.line(20, currentY + 1.5, 75, currentY + 1.5);
+      doc.line(120, currentY + 1.5, 175, currentY + 1.5);
+
+      doc.setFontSize(7.5);
+      doc.setTextColor(0, 0, 0);
+      doc.text("Manager - OPS Sales & Growth", 25, currentY + 5.5);
+      doc.text("Executive Director Approval", 127, currentY + 5.5);
+
+      doc.save(`Operations_Monthly_Report_${monthlyData.basicDetails.employeeName || 'Ops'}_${monthlyData.basicDetails.dateRange.replace(/ /g, '_')}.pdf`);
+      showToast("Monthly PDF report downloaded successfully!", "success");
+    } catch (e) {
+      console.error(e);
+      showToast("Failed to generate monthly PDF.", "error");
+    }
+  };
+
   const initializeBlankReport = (userId, dateStr) => {
     let userDetail = currentUser;
     if (isPrivileged && opsStaff.length > 0) {
@@ -246,16 +1191,20 @@ const OpsReportPage = () => {
     minutes = minutes < 10 ? '0' + minutes : minutes;
     const timeStr = `${hours}:${minutes} ${ampm}`;
 
+    // Load from cache if exists
+    const cached = localStorage.getItem(`cachedBasicDetails_Ops_${userId}`);
+    const parsedCached = cached ? JSON.parse(cached) : null;
+
     setBasicDetails({
       date: formattedDateString,
       day: dayName,
-      employeeName: userDetail.name || '',
-      employeeId: userDetail.employeeId || '',
-      department: 'Sales & Growth',
-      designation: userDetail.designation || 'Manager - OPS',
-      shiftTiming: '9:30 AM - 5:30 PM',
-      reportingTo: userDetail.reportingManager || 'Executive Director',
-      preparedTime: timeStr
+      employeeName: parsedCached?.employeeName || userDetail.name || '',
+      employeeId: parsedCached?.employeeId || userDetail.employeeId || '',
+      department: parsedCached?.department || 'Sales & Growth',
+      designation: parsedCached?.designation || userDetail.designation || 'Manager - OPS',
+      shiftTiming: parsedCached?.shiftTiming || '9:30 AM - 5:30 PM',
+      reportingTo: parsedCached?.reportingTo || userDetail.reportingManager || 'Executive Director',
+      preparedTime: parsedCached?.preparedTime || timeStr
     });
 
     setDailyOperations(DEFAULT_DAILY_OPERATIONS);
@@ -689,6 +1638,24 @@ const OpsReportPage = () => {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
+                  onClick={() => setIsWeeklyModalOpen(true)}
+                  className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:opacity-90 text-white font-semibold text-sm transition-all shadow-md"
+                >
+                  <Calendar size={16} />
+                  Weekly Report
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsMonthlyModalOpen(true)}
+                  className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:opacity-90 text-white font-semibold text-sm transition-all shadow-md"
+                >
+                  <Calendar size={16} />
+                  Monthly Report
+                </button>
+
+                <button
+                  type="button"
                   onClick={handleDownloadPDF}
                   className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-sm transition-all"
                 >
@@ -714,18 +1681,36 @@ const OpsReportPage = () => {
 
             {/* 1. BASIC DETAILS */}
             <div className="space-y-4">
-              <h2 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
-                <span className="flex items-center justify-center w-5 h-5 rounded bg-indigo-100 dark:bg-lime-950/50 text-[10px]">1</span>
-                Basic Details
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
+                  <span className="flex items-center justify-center w-5 h-5 rounded bg-indigo-100 dark:bg-lime-950/50 text-[10px]">1</span>
+                  Basic Details
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingBasic(!isEditingBasic)}
+                  className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
+                >
+                  {isEditingBasic ? (
+                    <>
+                      <CheckCircle size={14} /> Done
+                    </>
+                  ) : (
+                    <>
+                      <Pencil size={14} /> Edit
+                    </>
+                  )}
+                </button>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 bg-slate-50/50 dark:bg-slate-950/20 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Date</label>
                   <input
                     type="text"
                     value={basicDetails.date || ''}
-                    onChange={(e) => setBasicDetails({ ...basicDetails, date: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    readOnly={true}
+                    disabled={true}
+                    className="w-full bg-slate-100/50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-900 rounded-xl px-3 py-2 text-sm text-slate-450 dark:text-slate-500 cursor-not-allowed focus:outline-none"
                   />
                 </div>
                 <div>
@@ -733,8 +1718,9 @@ const OpsReportPage = () => {
                   <input
                     type="text"
                     value={basicDetails.day || ''}
-                    onChange={(e) => setBasicDetails({ ...basicDetails, day: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    readOnly={true}
+                    disabled={true}
+                    className="w-full bg-slate-100/50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-900 rounded-xl px-3 py-2 text-sm text-slate-450 dark:text-slate-500 cursor-not-allowed focus:outline-none"
                   />
                 </div>
                 <div>
@@ -743,7 +1729,8 @@ const OpsReportPage = () => {
                     type="text"
                     value={basicDetails.employeeName || ''}
                     onChange={(e) => setBasicDetails({ ...basicDetails, employeeName: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
                   />
                 </div>
                 <div>
@@ -752,7 +1739,8 @@ const OpsReportPage = () => {
                     type="text"
                     value={basicDetails.employeeId || ''}
                     onChange={(e) => setBasicDetails({ ...basicDetails, employeeId: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
                   />
                 </div>
                 <div>
@@ -761,7 +1749,8 @@ const OpsReportPage = () => {
                     type="text"
                     value={basicDetails.department || ''}
                     onChange={(e) => setBasicDetails({ ...basicDetails, department: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
                   />
                 </div>
                 <div>
@@ -770,7 +1759,8 @@ const OpsReportPage = () => {
                     type="text"
                     value={basicDetails.designation || ''}
                     onChange={(e) => setBasicDetails({ ...basicDetails, designation: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
                   />
                 </div>
                 <div>
@@ -779,7 +1769,8 @@ const OpsReportPage = () => {
                     type="text"
                     value={basicDetails.shiftTiming || ''}
                     onChange={(e) => setBasicDetails({ ...basicDetails, shiftTiming: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
                   />
                 </div>
                 <div>
@@ -788,7 +1779,8 @@ const OpsReportPage = () => {
                     type="text"
                     value={basicDetails.reportingTo || ''}
                     onChange={(e) => setBasicDetails({ ...basicDetails, reportingTo: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
                   />
                 </div>
                 <div>
@@ -797,7 +1789,8 @@ const OpsReportPage = () => {
                     type="text"
                     value={basicDetails.preparedTime || ''}
                     onChange={(e) => setBasicDetails({ ...basicDetails, preparedTime: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
                   />
                 </div>
               </div>
@@ -1276,6 +2269,923 @@ const OpsReportPage = () => {
 
           </motion.div>
         )}
+
+        <AnimatePresence>
+          {isWeeklyModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-10 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="relative w-full max-w-4xl bg-white dark:bg-slate-900 rounded-3xl shadow-xl overflow-hidden border border-slate-100 dark:border-slate-800 flex flex-col my-8 max-h-[90vh]"
+              >
+                {/* Header */}
+                <div className="px-6 py-4 bg-slate-50 dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-white">Weekly Operations Consolidation</h3>
+                    <p className="text-xs text-slate-400 mt-0.5">Consolidate daily shift reports into weekly numbers</p>
+                  </div>
+                  <button
+                    onClick={() => setIsWeeklyModalOpen(false)}
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors text-sm font-semibold"
+                  >
+                    Close
+                  </button>
+                </div>
+
+                {/* Tabs */}
+                <div className="flex bg-slate-100 dark:bg-slate-950 p-1 gap-1 border-b border-slate-100 dark:border-slate-800 text-xs font-semibold overflow-x-auto">
+                  <button
+                    onClick={() => setWeeklyActiveTab("range")}
+                    className={`px-4 py-2 rounded-xl transition-all ${weeklyActiveTab === "range" ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-lime-400 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
+                  >
+                    1. Choose Date Range
+                  </button>
+                  <button
+                    onClick={() => weeklyBasicDetails.dateRange ? setWeeklyActiveTab("sales") : showToast("Please fetch data first", "warning")}
+                    className={`px-4 py-2 rounded-xl transition-all ${weeklyActiveTab === "sales" ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-lime-400 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
+                  >
+                    2. Sales Activity
+                  </button>
+                  <button
+                    onClick={() => weeklyBasicDetails.dateRange ? setWeeklyActiveTab("performance") : showToast("Please fetch data first", "warning")}
+                    className={`px-4 py-2 rounded-xl transition-all ${weeklyActiveTab === "performance" ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-lime-400 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
+                  >
+                    3. Team & Academy
+                  </button>
+                  <button
+                    onClick={() => weeklyBasicDetails.dateRange ? setWeeklyActiveTab("revenue") : showToast("Please fetch data first", "warning")}
+                    className={`px-4 py-2 rounded-xl transition-all ${weeklyActiveTab === "revenue" ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-lime-400 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
+                  >
+                    4. Revenue
+                  </button>
+                  <button
+                    onClick={() => weeklyBasicDetails.dateRange ? setWeeklyActiveTab("issues") : showToast("Please fetch data first", "warning")}
+                    className={`px-4 py-2 rounded-xl transition-all ${weeklyActiveTab === "issues" ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-lime-400 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
+                  >
+                    5. Issues & Handover
+                  </button>
+                </div>
+
+                {/* Content body */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                  {weeklyActiveTab === "range" && (
+                    <div className="space-y-4 max-w-md mx-auto py-8">
+                      <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">Select weekly report duration</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Start Date</label>
+                          <input
+                            type="date"
+                            value={weeklyStartDate}
+                            onChange={(e) => setWeeklyStartDate(e.target.value)}
+                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">End Date</label>
+                          <input
+                            type="date"
+                            value={weeklyEndDate}
+                            onChange={(e) => setWeeklyEndDate(e.target.value)}
+                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleFetchWeeklyData}
+                        disabled={isWeeklyLoading}
+                        className="w-full mt-4 flex items-center justify-center gap-2 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-all shadow-md disabled:opacity-50"
+                      >
+                        {isWeeklyLoading ? "Consolidating Daily Reports..." : "Fetch & Consolidate Weekly Report"}
+                      </button>
+                    </div>
+                  )}
+
+                  {weeklyActiveTab === "sales" && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-850 pb-2">
+                        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">Consolidated Weekly Sales Activity</h4>
+                        <span className="text-xs text-indigo-500 font-semibold bg-indigo-50 dark:bg-indigo-950/30 px-2.5 py-1 rounded-full">Date Range: {weeklyBasicDetails.dateRange}</span>
+                      </div>
+                      <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                        <table className="w-full text-left border-collapse text-sm">
+                          <thead>
+                            <tr className="bg-slate-50 dark:bg-slate-950/40 text-slate-400 text-[10px] font-bold uppercase border-b border-slate-100 dark:border-slate-800">
+                              <th className="px-4 py-3">Activity</th>
+                              <th className="px-4 py-3 text-center w-24">Count</th>
+                              <th className="px-4 py-3 text-center w-24">Digital Mktg</th>
+                              <th className="px-4 py-3 text-center w-24">Web</th>
+                              <th className="px-4 py-3">Remarks</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                            {weeklySalesActivity.map((activity, idx) => (
+                              <tr key={idx} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5">
+                                <td className="px-4 py-2.5 font-medium text-slate-700 dark:text-slate-350 text-xs">{activity.activity}</td>
+                                <td className="px-4 py-2.5 text-center">
+                                  <input
+                                    type="text"
+                                    value={activity.count}
+                                    onChange={(e) => {
+                                      const updated = [...weeklySalesActivity];
+                                      updated[idx].count = e.target.value;
+                                      setWeeklySalesActivity(updated);
+                                    }}
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg py-1 px-2 text-center text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                                  />
+                                </td>
+                                <td className="px-4 py-2.5 text-center">
+                                  <input
+                                    type="text"
+                                    value={activity.digitalMktg}
+                                    onChange={(e) => {
+                                      const updated = [...weeklySalesActivity];
+                                      updated[idx].digitalMktg = e.target.value;
+                                      setWeeklySalesActivity(updated);
+                                    }}
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg py-1 px-2 text-center text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                                  />
+                                </td>
+                                <td className="px-4 py-2.5 text-center">
+                                  <input
+                                    type="text"
+                                    value={activity.web}
+                                    onChange={(e) => {
+                                      const updated = [...weeklySalesActivity];
+                                      updated[idx].web = e.target.value;
+                                      setWeeklySalesActivity(updated);
+                                    }}
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg py-1 px-2 text-center text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                                  />
+                                </td>
+                                <td className="px-4 py-2.5">
+                                  <input
+                                    type="text"
+                                    value={activity.remarks}
+                                    onChange={(e) => {
+                                      const updated = [...weeklySalesActivity];
+                                      updated[idx].remarks = e.target.value;
+                                      setWeeklySalesActivity(updated);
+                                    }}
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg py-1 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                                  />
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {weeklyActiveTab === "performance" && (
+                    <div className="space-y-6">
+                      {/* Performance */}
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 border-b border-slate-100 dark:border-slate-850 pb-2">Weekly Sales Team Performance</h4>
+                        <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                          <table className="w-full text-left border-collapse text-sm">
+                            <thead>
+                              <tr className="bg-slate-50 dark:bg-slate-950/40 text-slate-400 text-[10px] font-bold uppercase border-b border-slate-100 dark:border-slate-800">
+                                <th className="px-4 py-3">Staff Role</th>
+                                <th className="px-4 py-3">Task Assigned / Employee Name</th>
+                                <th className="px-4 py-3 text-center w-24">Leads</th>
+                                <th className="px-4 py-3 text-center w-24">Closings</th>
+                                <th className="px-4 py-3 text-center w-24">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                              {weeklySalesPerformance.map((item, idx) => (
+                                <tr key={idx} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5">
+                                  <td className="px-4 py-2.5 font-medium text-slate-700 dark:text-slate-350 text-xs">{item.staffName}</td>
+                                  <td className="px-4 py-2.5">
+                                    <input
+                                      type="text"
+                                      value={item.taskAssigned}
+                                      onChange={(e) => {
+                                        const updated = [...weeklySalesPerformance];
+                                        updated[idx].taskAssigned = e.target.value;
+                                        setWeeklySalesPerformance(updated);
+                                      }}
+                                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg py-1 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                                    />
+                                  </td>
+                                  <td className="px-4 py-2.5 text-center">
+                                    <input
+                                      type="text"
+                                      value={item.leads}
+                                      onChange={(e) => {
+                                        const updated = [...weeklySalesPerformance];
+                                        updated[idx].leads = e.target.value;
+                                        setWeeklySalesPerformance(updated);
+                                      }}
+                                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg py-1 px-2 text-center text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                                    />
+                                  </td>
+                                  <td className="px-4 py-2.5 text-center">
+                                    <input
+                                      type="text"
+                                      value={item.closings}
+                                      onChange={(e) => {
+                                        const updated = [...weeklySalesPerformance];
+                                        updated[idx].closings = e.target.value;
+                                        setWeeklySalesPerformance(updated);
+                                      }}
+                                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg py-1 px-2 text-center text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                                    />
+                                  </td>
+                                  <td className="px-4 py-2.5 text-center">
+                                    <input
+                                      type="text"
+                                      value={item.status}
+                                      onChange={(e) => {
+                                        const updated = [...weeklySalesPerformance];
+                                        updated[idx].status = e.target.value;
+                                        setWeeklySalesPerformance(updated);
+                                      }}
+                                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg py-1 px-2 text-center text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                                    />
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      {/* Academy Status */}
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 border-b border-slate-100 dark:border-slate-850 pb-2">Weekly Academy Status</h4>
+                        <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                          <table className="w-full text-left border-collapse text-sm">
+                            <thead>
+                              <tr className="bg-slate-50 dark:bg-slate-950/40 text-slate-400 text-[10px] font-bold uppercase border-b border-slate-100 dark:border-slate-800">
+                                <th className="px-4 py-3">Activity</th>
+                                <th className="px-4 py-3 text-center w-28">Status</th>
+                                <th className="px-4 py-3">Remarks</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                              {weeklyAcademyStatus.map((item, idx) => (
+                                <tr key={idx} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5">
+                                  <td className="px-4 py-2.5 font-medium text-slate-700 dark:text-slate-350 text-xs">{item.activity}</td>
+                                  <td className="px-4 py-2.5 text-center">
+                                    <select
+                                      value={item.status}
+                                      onChange={(e) => {
+                                        const updated = [...weeklyAcademyStatus];
+                                        updated[idx].status = e.target.value;
+                                        setWeeklyAcademyStatus(updated);
+                                      }}
+                                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg py-1 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-205"
+                                    >
+                                      <option value="Yes">Yes</option>
+                                      <option value="No">No</option>
+                                      <option value="Done">Done</option>
+                                      <option value="NA">NA</option>
+                                    </select>
+                                  </td>
+                                  <td className="px-4 py-2.5">
+                                    <input
+                                      type="text"
+                                      value={item.remarks}
+                                      onChange={(e) => {
+                                        const updated = [...weeklyAcademyStatus];
+                                        updated[idx].remarks = e.target.value;
+                                        setWeeklyAcademyStatus(updated);
+                                      }}
+                                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg py-1 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                                    />
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {weeklyActiveTab === "revenue" && (
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 border-b border-slate-100 dark:border-slate-850 pb-2">Weekly Revenue tracking (Sums)</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {weeklyRevenueTracking.map((rev, idx) => (
+                          <div key={idx} className="p-4 bg-slate-50 dark:bg-slate-950/30 rounded-2xl border border-slate-100 dark:border-slate-850 flex items-center justify-between">
+                            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">{rev.category}</label>
+                            <input
+                              type="text"
+                              value={rev.amount}
+                              onChange={(e) => {
+                                const updated = [...weeklyRevenueTracking];
+                                updated[idx].amount = e.target.value;
+                                setWeeklyRevenueTracking(updated);
+                              }}
+                              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm text-right font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 w-36"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {weeklyActiveTab === "issues" && (
+                    <div className="space-y-6">
+                      {/* Issues */}
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 border-b border-slate-100 dark:border-slate-850 pb-2">Consolidated Weekly Issues / Blocking</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Consolidated Blockers / Issues</label>
+                            <textarea
+                              value={weeklyIssuesEscalations.issue}
+                              onChange={(e) => setWeeklyIssuesEscalations({ ...weeklyIssuesEscalations, issue: e.target.value })}
+                              rows={4}
+                              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Weekly Action Taken</label>
+                            <textarea
+                              value={weeklyIssuesEscalations.actionTaken}
+                              onChange={(e) => setWeeklyIssuesEscalations({ ...weeklyIssuesEscalations, actionTaken: e.target.value })}
+                              rows={4}
+                              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Handover & Approval */}
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 border-b border-slate-100 dark:border-slate-850 pb-2">Weekly Handover & Approval</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="p-4 bg-slate-50 dark:bg-slate-950/30 rounded-2xl border border-slate-100 dark:border-slate-850 space-y-3">
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Consolidated Handover Status</label>
+                            <div className="space-y-2 text-xs">
+                              <div className="flex justify-between items-center">
+                                <span>Pending Leads Shared:</span>
+                                <input
+                                  type="text"
+                                  value={weeklyHandover.pendingLeadsShared}
+                                  onChange={(e) => setWeeklyHandover({ ...weeklyHandover, pendingLeadsShared: e.target.value })}
+                                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-center w-28"
+                                />
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span>CRM Updated:</span>
+                                <input
+                                  type="text"
+                                  value={weeklyHandover.crmUpdated}
+                                  onChange={(e) => setWeeklyHandover({ ...weeklyHandover, crmUpdated: e.target.value })}
+                                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-center w-28"
+                                />
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span>Reports Submitted:</span>
+                                <input
+                                  type="text"
+                                  value={weeklyHandover.reportsSubmitted}
+                                  onChange={(e) => setWeeklyHandover({ ...weeklyHandover, reportsSubmitted: e.target.value })}
+                                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-center w-28"
+                                />
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span>Team Updated:</span>
+                                <input
+                                  type="text"
+                                  value={weeklyHandover.teamUpdated}
+                                  onChange={(e) => setWeeklyHandover({ ...weeklyHandover, teamUpdated: e.target.value })}
+                                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-center w-28"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="p-4 bg-slate-50 dark:bg-slate-950/30 rounded-2xl border border-slate-100 dark:border-slate-850 space-y-3">
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Weekly Approvals Signatures</label>
+                            <div className="space-y-3">
+                              <div>
+                                <label className="block text-[10px] text-slate-400 mb-0.5">Manager Signature Name</label>
+                                <input
+                                  type="text"
+                                  value={weeklyApproval.opsName}
+                                  onChange={(e) => setWeeklyApproval({ ...weeklyApproval, opsName: e.target.value })}
+                                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-750 dark:text-slate-250"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] text-slate-400 mb-0.5">Director Signature Name</label>
+                                <input
+                                  type="text"
+                                  value={weeklyApproval.directorName}
+                                  onChange={(e) => setWeeklyApproval({ ...weeklyApproval, directorName: e.target.value })}
+                                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-750 dark:text-slate-250"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="px-6 py-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setIsWeeklyModalOpen(false)}
+                    className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-sm transition-all border border-slate-200 dark:border-slate-700"
+                  >
+                    Cancel
+                  </button>
+
+                  {weeklyBasicDetails.dateRange && (
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadWeeklyPDF({
+                        basicDetails: weeklyBasicDetails,
+                        salesActivity: weeklySalesActivity,
+                        salesPerformance: weeklySalesPerformance,
+                        revenueTracking: weeklyRevenueTracking,
+                        academyStatus: weeklyAcademyStatus,
+                        issuesEscalations: weeklyIssuesEscalations,
+                        handover: weeklyHandover,
+                        approval: weeklyApproval
+                      })}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition-all shadow-md"
+                    >
+                      <Download size={16} />
+                      Download Weekly PDF
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {isMonthlyModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-10 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="relative w-full max-w-4xl bg-white dark:bg-slate-900 rounded-3xl shadow-xl overflow-hidden border border-slate-100 dark:border-slate-800 flex flex-col my-8 max-h-[90vh]"
+              >
+                {/* Header */}
+                <div className="px-6 py-4 bg-slate-50 dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-white">Monthly Operations Consolidation</h3>
+                    <p className="text-xs text-slate-400 mt-0.5">Consolidate daily shift reports into monthly numbers</p>
+                  </div>
+                  <button
+                    onClick={() => setIsMonthlyModalOpen(false)}
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors text-sm font-semibold"
+                  >
+                    Close
+                  </button>
+                </div>
+
+                {/* Tabs */}
+                <div className="flex bg-slate-100 dark:bg-slate-950 p-1 gap-1 border-b border-slate-100 dark:border-slate-800 text-xs font-semibold overflow-x-auto">
+                  <button
+                    onClick={() => setMonthlyActiveTab("range")}
+                    className={`px-4 py-2 rounded-xl transition-all ${monthlyActiveTab === "range" ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-lime-400 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
+                  >
+                    1. Choose Date Range
+                  </button>
+                  <button
+                    onClick={() => monthlyBasicDetails.dateRange ? setMonthlyActiveTab("sales") : showToast("Please fetch data first", "warning")}
+                    className={`px-4 py-2 rounded-xl transition-all ${monthlyActiveTab === "sales" ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-lime-400 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
+                  >
+                    2. Sales Activity
+                  </button>
+                  <button
+                    onClick={() => monthlyBasicDetails.dateRange ? setMonthlyActiveTab("performance") : showToast("Please fetch data first", "warning")}
+                    className={`px-4 py-2 rounded-xl transition-all ${monthlyActiveTab === "performance" ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-lime-400 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
+                  >
+                    3. Team & Academy
+                  </button>
+                  <button
+                    onClick={() => monthlyBasicDetails.dateRange ? setMonthlyActiveTab("revenue") : showToast("Please fetch data first", "warning")}
+                    className={`px-4 py-2 rounded-xl transition-all ${monthlyActiveTab === "revenue" ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-lime-400 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
+                  >
+                    4. Revenue
+                  </button>
+                  <button
+                    onClick={() => monthlyBasicDetails.dateRange ? setMonthlyActiveTab("issues") : showToast("Please fetch data first", "warning")}
+                    className={`px-4 py-2 rounded-xl transition-all ${monthlyActiveTab === "issues" ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-lime-400 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
+                  >
+                    5. Issues & Handover
+                  </button>
+                </div>
+
+                {/* Content body */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                  {monthlyActiveTab === "range" && (
+                    <div className="space-y-4 max-w-md mx-auto py-8">
+                      <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">Select monthly report duration</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Start Date</label>
+                          <input
+                            type="date"
+                            value={monthlyStartDate}
+                            onChange={(e) => setMonthlyStartDate(e.target.value)}
+                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">End Date</label>
+                          <input
+                            type="date"
+                            value={monthlyEndDate}
+                            onChange={(e) => setMonthlyEndDate(e.target.value)}
+                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleFetchMonthlyData}
+                        disabled={isMonthlyLoading}
+                        className="w-full mt-4 flex items-center justify-center gap-2 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-all shadow-md disabled:opacity-50"
+                      >
+                        {isMonthlyLoading ? "Consolidating Daily Reports..." : "Fetch & Consolidate Monthly Report"}
+                      </button>
+                    </div>
+                  )}
+
+                  {monthlyActiveTab === "sales" && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-855 pb-2">
+                        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">Consolidated Monthly Sales Activity</h4>
+                        <span className="text-xs text-indigo-500 font-semibold bg-indigo-50 dark:bg-indigo-950/30 px-2.5 py-1 rounded-full">Date Range: {monthlyBasicDetails.dateRange}</span>
+                      </div>
+                      <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                        <table className="w-full text-left border-collapse text-sm">
+                          <thead>
+                            <tr className="bg-slate-50 dark:bg-slate-950/40 text-slate-400 text-[10px] font-bold uppercase border-b border-slate-100 dark:border-slate-800">
+                              <th className="px-4 py-3">Activity</th>
+                              <th className="px-4 py-3 text-center w-24">Count</th>
+                              <th className="px-4 py-3 text-center w-24">Digital Mktg</th>
+                              <th className="px-4 py-3 text-center w-24">Web</th>
+                              <th className="px-4 py-3">Remarks</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                            {monthlySalesActivity.map((activity, idx) => (
+                              <tr key={idx} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5">
+                                <td className="px-4 py-2.5 font-medium text-slate-700 dark:text-slate-350 text-xs">{activity.activity}</td>
+                                <td className="px-4 py-2.5 text-center">
+                                  <input
+                                    type="text"
+                                    value={activity.count}
+                                    onChange={(e) => {
+                                      const updated = [...monthlySalesActivity];
+                                      updated[idx].count = e.target.value;
+                                      setMonthlySalesActivity(updated);
+                                    }}
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-855 rounded-lg py-1 px-2 text-center text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                                  />
+                                </td>
+                                <td className="px-4 py-2.5 text-center">
+                                  <input
+                                    type="text"
+                                    value={activity.digitalMktg}
+                                    onChange={(e) => {
+                                      const updated = [...monthlySalesActivity];
+                                      updated[idx].digitalMktg = e.target.value;
+                                      setMonthlySalesActivity(updated);
+                                    }}
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-855 rounded-lg py-1 px-2 text-center text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                                  />
+                                </td>
+                                <td className="px-4 py-2.5 text-center">
+                                  <input
+                                    type="text"
+                                    value={activity.web}
+                                    onChange={(e) => {
+                                      const updated = [...monthlySalesActivity];
+                                      updated[idx].web = e.target.value;
+                                      setMonthlySalesActivity(updated);
+                                    }}
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-855 rounded-lg py-1 px-2 text-center text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                                  />
+                                </td>
+                                <td className="px-4 py-2.5">
+                                  <input
+                                    type="text"
+                                    value={activity.remarks}
+                                    onChange={(e) => {
+                                      const updated = [...monthlySalesActivity];
+                                      updated[idx].remarks = e.target.value;
+                                      setMonthlySalesActivity(updated);
+                                    }}
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-855 rounded-lg py-1 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                                  />
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {monthlyActiveTab === "performance" && (
+                    <div className="space-y-6">
+                      {/* Performance */}
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 border-b border-slate-100 dark:border-slate-855 pb-2">Monthly Sales Team Performance</h4>
+                        <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                          <table className="w-full text-left border-collapse text-sm">
+                            <thead>
+                              <tr className="bg-slate-50 dark:bg-slate-950/40 text-slate-400 text-[10px] font-bold uppercase border-b border-slate-100 dark:border-slate-800">
+                                <th className="px-4 py-3">Staff Role</th>
+                                <th className="px-4 py-3">Task Assigned / Employee Name</th>
+                                <th className="px-4 py-3 text-center w-24">Leads</th>
+                                <th className="px-4 py-3 text-center w-24">Closings</th>
+                                <th className="px-4 py-3 text-center w-24">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                              {monthlySalesPerformance.map((item, idx) => (
+                                <tr key={idx} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5">
+                                  <td className="px-4 py-2.5 font-medium text-slate-700 dark:text-slate-350 text-xs">{item.staffName}</td>
+                                  <td className="px-4 py-2.5">
+                                    <input
+                                      type="text"
+                                      value={item.taskAssigned}
+                                      onChange={(e) => {
+                                        const updated = [...monthlySalesPerformance];
+                                        updated[idx].taskAssigned = e.target.value;
+                                        setMonthlySalesPerformance(updated);
+                                      }}
+                                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-855 rounded-lg py-1 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                                    />
+                                  </td>
+                                  <td className="px-4 py-2.5 text-center">
+                                    <input
+                                      type="text"
+                                      value={item.leads}
+                                      onChange={(e) => {
+                                        const updated = [...monthlySalesPerformance];
+                                        updated[idx].leads = e.target.value;
+                                        setMonthlySalesPerformance(updated);
+                                      }}
+                                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-855 rounded-lg py-1 px-2 text-center text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                                    />
+                                  </td>
+                                  <td className="px-4 py-2.5 text-center">
+                                    <input
+                                      type="text"
+                                      value={item.closings}
+                                      onChange={(e) => {
+                                        const updated = [...monthlySalesPerformance];
+                                        updated[idx].closings = e.target.value;
+                                        setMonthlySalesPerformance(updated);
+                                      }}
+                                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-855 rounded-lg py-1 px-2 text-center text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                                    />
+                                  </td>
+                                  <td className="px-4 py-2.5 text-center">
+                                    <input
+                                      type="text"
+                                      value={item.status}
+                                      onChange={(e) => {
+                                        const updated = [...monthlySalesPerformance];
+                                        updated[idx].status = e.target.value;
+                                        setMonthlySalesPerformance(updated);
+                                      }}
+                                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-855 rounded-lg py-1 px-2 text-center text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                                    />
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      {/* Academy Status */}
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 border-b border-slate-100 dark:border-slate-855 pb-2">Monthly Academy Status</h4>
+                        <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                          <table className="w-full text-left border-collapse text-sm">
+                            <thead>
+                              <tr className="bg-slate-50 dark:bg-slate-950/40 text-slate-400 text-[10px] font-bold uppercase border-b border-slate-100 dark:border-slate-800">
+                                <th className="px-4 py-3">Activity</th>
+                                <th className="px-4 py-3 text-center w-28">Status</th>
+                                <th className="px-4 py-3">Remarks</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                              {monthlyAcademyStatus.map((item, idx) => (
+                                <tr key={idx} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5">
+                                  <td className="px-4 py-2.5 font-medium text-slate-700 dark:text-slate-350 text-xs">{item.activity}</td>
+                                  <td className="px-4 py-2.5 text-center">
+                                    <select
+                                      value={item.status}
+                                      onChange={(e) => {
+                                        const updated = [...monthlyAcademyStatus];
+                                        updated[idx].status = e.target.value;
+                                        setMonthlyAcademyStatus(updated);
+                                      }}
+                                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-855 rounded-lg py-1 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                                    >
+                                      <option value="Yes">Yes</option>
+                                      <option value="No">No</option>
+                                      <option value="Done">Done</option>
+                                      <option value="NA">NA</option>
+                                    </select>
+                                  </td>
+                                  <td className="px-4 py-2.5">
+                                    <input
+                                      type="text"
+                                      value={item.remarks}
+                                      onChange={(e) => {
+                                        const updated = [...monthlyAcademyStatus];
+                                        updated[idx].remarks = e.target.value;
+                                        setMonthlyAcademyStatus(updated);
+                                      }}
+                                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-855 rounded-lg py-1 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                                    />
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {monthlyActiveTab === "revenue" && (
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 border-b border-slate-100 dark:border-slate-855 pb-2">Monthly Revenue Tracking (Sums)</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {monthlyRevenueTracking.map((rev, idx) => (
+                          <div key={idx} className="p-4 bg-slate-50 dark:bg-slate-950/30 rounded-2xl border border-slate-100 dark:border-slate-855 flex items-center justify-between">
+                            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">{rev.category}</label>
+                            <input
+                              type="text"
+                              value={rev.amount}
+                              onChange={(e) => {
+                                const updated = [...monthlyRevenueTracking];
+                                updated[idx].amount = e.target.value;
+                                setMonthlyRevenueTracking(updated);
+                              }}
+                              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm text-right font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 w-36"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {monthlyActiveTab === "issues" && (
+                    <div className="space-y-6">
+                      {/* Issues */}
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 border-b border-slate-100 dark:border-slate-855 pb-2">Consolidated Monthly Issues / Blocking</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Consolidated Blockers / Issues</label>
+                            <textarea
+                              value={monthlyIssuesEscalations.issue}
+                              onChange={(e) => setMonthlyIssuesEscalations({ ...monthlyIssuesEscalations, issue: e.target.value })}
+                              rows={4}
+                              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Monthly Action Taken</label>
+                            <textarea
+                              value={monthlyIssuesEscalations.actionTaken}
+                              onChange={(e) => setMonthlyIssuesEscalations({ ...monthlyIssuesEscalations, actionTaken: e.target.value })}
+                              rows={4}
+                              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Handover & Approval */}
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 border-b border-slate-100 dark:border-slate-855 pb-2">Monthly Handover & Approval</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="p-4 bg-slate-50 dark:bg-slate-950/30 rounded-2xl border border-slate-100 dark:border-slate-855 space-y-3">
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Consolidated Handover Status</label>
+                            <div className="space-y-2 text-xs">
+                              <div className="flex justify-between items-center">
+                                <span>Pending Leads Shared:</span>
+                                <input
+                                  type="text"
+                                  value={monthlyHandover.pendingLeadsShared}
+                                  onChange={(e) => setMonthlyHandover({ ...monthlyHandover, pendingLeadsShared: e.target.value })}
+                                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-center w-28"
+                                />
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span>CRM Updated:</span>
+                                <input
+                                  type="text"
+                                  value={monthlyHandover.crmUpdated}
+                                  onChange={(e) => setMonthlyHandover({ ...monthlyHandover, crmUpdated: e.target.value })}
+                                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-center w-28"
+                                />
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span>Reports Submitted:</span>
+                                <input
+                                  type="text"
+                                  value={monthlyHandover.reportsSubmitted}
+                                  onChange={(e) => setMonthlyHandover({ ...monthlyHandover, reportsSubmitted: e.target.value })}
+                                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-center w-28"
+                                />
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span>Team Updated:</span>
+                                <input
+                                  type="text"
+                                  value={monthlyHandover.teamUpdated}
+                                  onChange={(e) => setMonthlyHandover({ ...monthlyHandover, teamUpdated: e.target.value })}
+                                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-center w-28"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="p-4 bg-slate-50 dark:bg-slate-950/30 rounded-2xl border border-slate-100 dark:border-slate-855 space-y-3">
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Monthly Approvals Signatures</label>
+                            <div className="space-y-3">
+                              <div>
+                                <label className="block text-[10px] text-slate-400 mb-0.5">Manager Signature Name</label>
+                                <input
+                                  type="text"
+                                  value={monthlyApproval.opsName}
+                                  onChange={(e) => setMonthlyApproval({ ...monthlyApproval, opsName: e.target.value })}
+                                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-750 dark:text-slate-250"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] text-slate-400 mb-0.5">Director Signature Name</label>
+                                <input
+                                  type="text"
+                                  value={monthlyApproval.directorName}
+                                  onChange={(e) => setMonthlyApproval({ ...monthlyApproval, directorName: e.target.value })}
+                                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-750 dark:text-slate-250"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="px-6 py-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setIsMonthlyModalOpen(false)}
+                    className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-sm transition-all border border-slate-200 dark:border-slate-700"
+                  >
+                    Cancel
+                  </button>
+
+                  {monthlyBasicDetails.dateRange && (
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadMonthlyPDF({
+                        basicDetails: monthlyBasicDetails,
+                        salesActivity: monthlySalesActivity,
+                        salesPerformance: monthlySalesPerformance,
+                        revenueTracking: monthlyRevenueTracking,
+                        academyStatus: monthlyAcademyStatus,
+                        issuesEscalations: monthlyIssuesEscalations,
+                        handover: monthlyHandover,
+                        approval: monthlyApproval
+                      })}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition-all shadow-md"
+                    >
+                      <Download size={16} />
+                      Download Monthly PDF
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
       </div>
     </div>
   );
