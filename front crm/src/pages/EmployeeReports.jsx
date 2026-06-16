@@ -1,46 +1,151 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  Users, User, ChevronRight, Search, FileText, Calendar, Clock, Loader2 
+  Users, Search, Download, Loader2, FileDown, AlertCircle
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
-const DESIGNATION_REPORT_MAP = {
-  '6a1e8e2d01a0dae8b2f3b18c': { name: 'Developer Report', path: '/developer-report', supportWeekly: false },
-  '6a2f9e086f1c41b0c80a9e21': { name: 'HOD R&D Report', path: '/hod-rd-report', supportWeekly: false },
-  '6a1e8e6e01a0dae8b2f3b18d': { name: 'Graphic Designer Report', path: '/graphic-designer-report', supportWeekly: false },
-  '6a27939af292348deb7d0495': { name: 'Academic Counselor Report', path: '/academic-counselor-report', supportWeekly: false },
-  '6a2f912c2df21dc234018caa': { name: 'Videographer Report', path: '/videographer-report', supportWeekly: false },
-  '6a2f8efea2fe388770a38987': { name: 'HR Shift Report', path: '/hr-report', supportWeekly: false },
-  '6a2f91472df21dc234018cab': { name: 'Ops Shift Report', path: '/ops-report', supportWeekly: true },
-  '6a2f915e2df21dc234018cac': { name: 'Accountant Shift Report', path: '/accountant-report', supportWeekly: false },
-  '6a2f909d2df21dc234018ca8': { name: 'Marketing Shift Report', path: '/marketing-report', supportWeekly: false }
+// Map designation IDs to API endpoint prefixes
+const DESIGNATION_API_MAP = {
+  '6a1e8e2d01a0dae8b2f3b18c': { name: 'Developer',            apiPrefix: 'developer-reports',           byDate: 'by-date' },
+  '6a2f9e086f1c41b0c80a9e21': { name: 'HOD R&D',              apiPrefix: 'hod-rd-reports',              byDate: 'by-date' },
+  '6a1e8e6e01a0dae8b2f3b18d': { name: 'Graphic Designer',     apiPrefix: 'graphic-designer-reports',    byDate: 'by-date' },
+  '6a27939af292348deb7d0495': { name: 'Academic Counselor',   apiPrefix: 'academic-counselor-reports',  byDate: 'by-date' },
+  '6a2f912c2df21dc234018caa': { name: 'Videographer',         apiPrefix: 'videographer-reports',        byDate: 'by-date' },
+  '6a2f8efea2fe388770a38987': { name: 'HR',                   apiPrefix: 'hr-reports',                  byDate: 'by-date' },
+  '6a2f91472df21dc234018cab': { name: 'Ops',                  apiPrefix: 'ops-reports',                 byDate: 'by-date' },
+  '6a2f915e2df21dc234018cac': { name: 'Accountant',           apiPrefix: 'accountant-reports',          byDate: 'by-date' },
+  '6a2f909d2df21dc234018ca8': { name: 'Marketing',            apiPrefix: 'marketing-reports',           byDate: 'by-date' },
 };
 
-// Fallback reports array for manual selection
-const ALL_REPORT_TYPES = [
-  { label: 'Developer', path: '/developer-report', supportWeekly: false },
-  { label: 'HOD R&D', path: '/hod-rd-report', supportWeekly: false },
-  { label: 'Graphic Designer', path: '/graphic-designer-report', supportWeekly: false },
-  { label: 'Academic Counselor', path: '/academic-counselor-report', supportWeekly: false },
-  { label: 'Videographer', path: '/videographer-report', supportWeekly: false },
-  { label: 'HR Shift', path: '/hr-report', supportWeekly: false },
-  { label: 'Ops Shift', path: '/ops-report', supportWeekly: true },
-  { label: 'Accountant Shift', path: '/accountant-report', supportWeekly: false },
-  { label: 'Marketing Shift', path: '/marketing-report', supportWeekly: false }
-];
+// Generic PDF generator — creates a clean summary PDF from any report object
+const generateReportPDF = (report, empName, designation) => {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  let y = 15;
+
+  const drawHeader = (title) => {
+    doc.setFillColor(60, 35, 117);
+    doc.rect(14, y, 182, 7, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text(title.toUpperCase(), 17, y + 5);
+    y += 7;
+  };
+
+  // Brand header
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(22);
+  doc.setTextColor(132, 204, 22);
+  doc.text('KOD.', 14, 21);
+  doc.setTextColor(60, 35, 117);
+  doc.text('brand', 34, 21);
+
+  doc.setFontSize(14);
+  doc.setTextColor(60, 35, 117);
+  doc.text('DAILY SHIFT REPORT', 130, 16);
+
+  doc.setFontSize(8);
+  doc.setTextColor(0, 0, 0);
+  doc.setFont('helvetica', 'bold');
+  doc.text((designation || 'Employee').toUpperCase(), 130, 23);
+
+  y = 27;
+
+  // Basic Details
+  if (report.basicDetails) {
+    drawHeader('1. BASIC DETAILS');
+    const bd = report.basicDetails;
+    const rows = [
+      ['Date', bd.date || ''],
+      ['Day', bd.day || ''],
+      ['Employee Name', bd.employeeName || empName || ''],
+      ['Employee ID', bd.employeeId || ''],
+      ['Department', bd.department || ''],
+      ['Designation', bd.designation || designation || ''],
+      ['Shift Timing', bd.shiftTiming || ''],
+      ['Reporting To', bd.reportingTo || ''],
+      ['Prepared Time', bd.preparedTime || ''],
+    ];
+    autoTable(doc, {
+      body: rows, startY: y, theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 2, textColor: [0,0,0], lineColor: [180,180,180], lineWidth: 0.15 },
+      columnStyles: { 0: { fontStyle: 'bold', fillColor: [245,245,247], cellWidth: 45 }, 1: { cellWidth: 137 } },
+      margin: { left: 14, right: 14 }
+    });
+    y = doc.lastAutoTable.finalY + 4;
+  }
+
+  // Daily Task Summary
+  const summaryKey = Object.keys(report).find(k => k.toLowerCase().includes('tasksum') || k.toLowerCase().includes('task_sum') || k === 'dailyTaskSummary');
+  if (summaryKey && Array.isArray(report[summaryKey]) && report[summaryKey].length > 0) {
+    drawHeader('2. DAILY TASK SUMMARY');
+    const rows = report[summaryKey].map(t => [t.activity || t.task || '', t.status || '', t.remarks || t.remark || '']);
+    autoTable(doc, {
+      head: [['Activity', 'Status', 'Remarks']], body: rows, startY: y, theme: 'grid',
+      headStyles: { fillColor: [255,255,255], textColor: [60,35,117], fontStyle: 'bold', lineColor: [180,180,180], lineWidth: 0.15 },
+      styles: { fontSize: 8, cellPadding: 2, textColor: [0,0,0], lineColor: [180,180,180], lineWidth: 0.15 },
+      columnStyles: { 0: { cellWidth: 70 }, 1: { cellWidth: 35, halign: 'center' }, 2: { cellWidth: 77 } },
+      margin: { left: 14, right: 14 }
+    });
+    y = doc.lastAutoTable.finalY + 4;
+  }
+
+  // Render all other array sections generically
+  const skip = new Set(['basicDetails', summaryKey, '_id', '__v', 'userId', 'dateString', 'createdAt', 'updatedAt']);
+  let sectionIndex = 3;
+  for (const [key, val] of Object.entries(report)) {
+    if (skip.has(key)) continue;
+    if (y > 250) { doc.addPage(); y = 15; }
+
+    if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object') {
+      drawHeader(`${sectionIndex}. ${key.replace(/([A-Z])/g, ' $1').toUpperCase()}`);
+      const cols = Object.keys(val[0]);
+      const rows = val.map(item => cols.map(c => String(item[c] ?? '')));
+      autoTable(doc, {
+        head: [cols.map(c => c.replace(/([A-Z])/g, ' $1').toUpperCase())],
+        body: rows, startY: y, theme: 'grid',
+        headStyles: { fillColor: [255,255,255], textColor: [60,35,117], fontStyle: 'bold', lineColor: [180,180,180], lineWidth: 0.15 },
+        styles: { fontSize: 7.5, cellPadding: 2, textColor: [0,0,0], lineColor: [180,180,180], lineWidth: 0.15 },
+        margin: { left: 14, right: 14 }
+      });
+      y = doc.lastAutoTable.finalY + 4;
+      sectionIndex++;
+    } else if (typeof val === 'string' && val.trim()) {
+      if (y > 260) { doc.addPage(); y = 15; }
+      drawHeader(`${sectionIndex}. ${key.replace(/([A-Z])/g, ' $1').toUpperCase()}`);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(0, 0, 0);
+      const lines = doc.splitTextToSize(val, 178);
+      const boxH = Math.max(12, lines.length * 4.2 + 5);
+      doc.setDrawColor(180, 180, 180);
+      doc.rect(14, y, 182, boxH);
+      doc.text(lines, 16, y + 5);
+      y += boxH + 4;
+      sectionIndex++;
+    }
+  }
+
+  const safeEmpName = (empName || 'Employee').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const today = new Date().toISOString().split('T')[0];
+  doc.save(`${designation || 'Report'}_${safeEmpName}_${today}.pdf`);
+};
 
 const EmployeeReports = () => {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  
+  const [downloading, setDownloading] = useState(null); // empId being downloaded
+  const [errorMsg, setErrorMsg] = useState(null);
+
   const getAuthHeaders = useCallback(() => {
     const rawToken = localStorage.getItem('token');
     const cleanToken = rawToken ? rawToken.replace(/"/g, '') : '';
-    return { 
+    return {
       'Authorization': cleanToken.startsWith('Bearer ') ? cleanToken : `Bearer ${cleanToken}`,
       'Content-Type': 'application/json'
     };
@@ -50,15 +155,13 @@ const EmployeeReports = () => {
     const fetchEmployees = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`${API_BASE}/user/list`, {
-          headers: getAuthHeaders()
-        });
+        const res = await fetch(`${API_BASE}/user/list`, { headers: getAuthHeaders() });
         if (res.ok) {
           const data = await res.json();
           setEmployees(Array.isArray(data) ? data : []);
         }
       } catch (err) {
-        console.error("Failed to load employee list:", err);
+        console.error('Failed to load employee list:', err);
       } finally {
         setLoading(false);
       }
@@ -72,9 +175,53 @@ const EmployeeReports = () => {
     return nameMatch || emailMatch;
   });
 
-  const getReportConfig = (emp) => {
+  const getDesignationConfig = (emp) => {
     const desigId = emp.designationId?._id || emp.designationId || emp.designation_id;
-    return DESIGNATION_REPORT_MAP[desigId] || null;
+    return DESIGNATION_API_MAP[desigId] || null;
+  };
+
+  const handleDownload = async (emp) => {
+    const config = getDesignationConfig(emp);
+    if (!config) {
+      setErrorMsg(`No report template configured for ${emp.name || 'this employee'} (${emp.designationId?.name || 'unknown designation'}).`);
+      setTimeout(() => setErrorMsg(null), 4000);
+      return;
+    }
+
+    const empId = emp._id || emp.id;
+    setDownloading(empId);
+    setErrorMsg(null);
+
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const url = `${API_BASE}/v1/${config.apiPrefix}/${config.byDate}?userId=${empId}&dateString=${today}`;
+      const res = await fetch(url, { headers: getAuthHeaders() });
+      const data = await res.json();
+
+      if (data.success && data.data) {
+        generateReportPDF(data.data, emp.name, config.name);
+      } else {
+        // No report for today — try yesterday
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yStr = yesterday.toISOString().split('T')[0];
+        const res2 = await fetch(`${API_BASE}/v1/${config.apiPrefix}/${config.byDate}?userId=${empId}&dateString=${yStr}`, { headers: getAuthHeaders() });
+        const data2 = await res2.json();
+
+        if (data2.success && data2.data) {
+          generateReportPDF(data2.data, emp.name, config.name);
+        } else {
+          setErrorMsg(`No report found for ${emp.name || 'this employee'} for today or yesterday.`);
+          setTimeout(() => setErrorMsg(null), 5000);
+        }
+      }
+    } catch (err) {
+      console.error('Download failed:', err);
+      setErrorMsg('Failed to fetch report. Please try again.');
+      setTimeout(() => setErrorMsg(null), 4000);
+    } finally {
+      setDownloading(null);
+    }
   };
 
   return (
@@ -90,7 +237,7 @@ const EmployeeReports = () => {
             Employee <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-500">Reports</span>
           </h1>
           <p className="text-sm text-slate-500 mt-2">
-            View daily shift reports, weekly records, and monthly consolidations for each employee.
+            Click on an employee name to instantly download their latest daily shift report as a PDF.
           </p>
         </div>
 
@@ -106,6 +253,18 @@ const EmployeeReports = () => {
           <Search size={18} className="absolute left-4 top-4 text-slate-400 pointer-events-none" />
         </div>
       </header>
+
+      {/* Error Banner */}
+      {errorMsg && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40 rounded-2xl px-5 py-4 text-sm text-red-700 dark:text-red-400"
+        >
+          <AlertCircle size={18} className="shrink-0" />
+          {errorMsg}
+        </motion.div>
+      )}
 
       {/* Loading state */}
       {loading ? (
@@ -123,24 +282,30 @@ const EmployeeReports = () => {
         /* Grid Layout */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredEmployees.map((emp) => {
-            const reportConfig = getReportConfig(emp);
+            const config = getDesignationConfig(emp);
             const initial = emp.name ? emp.name.charAt(0).toUpperCase() : '?';
+            const empId = emp._id || emp.id;
+            const isDownloading = downloading === empId;
 
             return (
               <motion.div
-                key={emp._id || emp.id}
+                key={empId}
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
-                className="bg-white/80 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                className="bg-white/80 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl p-6 shadow-sm hover:shadow-lg transition-all flex flex-col justify-between group"
               >
-                {/* Profile Section */}
-                <div className="flex items-start gap-4 mb-6">
-                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 dark:text-indigo-400 flex items-center justify-center text-lg font-bold shrink-0 border border-indigo-100 dark:border-indigo-900/40">
+                {/* Profile Section — clickable name triggers download */}
+                <div
+                  className="flex items-start gap-4 mb-5 cursor-pointer"
+                  onClick={() => handleDownload(emp)}
+                  title={config ? `Download latest report for ${emp.name}` : 'No report template configured'}
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 dark:text-indigo-400 flex items-center justify-center text-lg font-bold shrink-0 border border-indigo-100 dark:border-indigo-900/40 group-hover:scale-105 transition-transform">
                     {initial}
                   </div>
-                  <div className="min-w-0">
-                    <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 truncate">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                       {emp.name}
                     </h3>
                     <p className="text-xs text-slate-400 truncate mt-0.5">{emp.email}</p>
@@ -150,64 +315,33 @@ const EmployeeReports = () => {
                   </div>
                 </div>
 
-                {/* Actions Section */}
-                <div className="space-y-2.5 pt-4 border-t border-slate-100 dark:border-slate-800/60">
-                  {reportConfig ? (
+                {/* Download Button */}
+                <button
+                  onClick={() => handleDownload(emp)}
+                  disabled={isDownloading}
+                  className={`flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl text-xs font-bold transition-all border ${
+                    config
+                      ? 'bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/40 hover:shadow-md'
+                      : 'bg-slate-50 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 border-slate-100 dark:border-slate-800/50 cursor-not-allowed opacity-60'
+                  }`}
+                >
+                  {isDownloading ? (
                     <>
-                      {/* Daily Link */}
-                      <Link
-                        to={`${reportConfig.path}?userId=${emp._id || emp.id}`}
-                        className="flex items-center justify-between w-full px-4 py-3 bg-slate-50 hover:bg-indigo-50 dark:bg-slate-950/50 dark:hover:bg-indigo-950/30 text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl text-xs font-bold transition-all border border-slate-100 dark:border-slate-900/60"
-                      >
-                        <span className="flex items-center gap-2">
-                          <FileText size={14} /> Daily Shift Report
-                        </span>
-                        <ChevronRight size={14} className="opacity-50" />
-                      </Link>
-
-                      {/* Weekly Link */}
-                      {reportConfig.supportWeekly && (
-                        <Link
-                          to={`${reportConfig.path}?userId=${emp._id || emp.id}&generateWeekly=true`}
-                          className="flex items-center justify-between w-full px-4 py-3 bg-slate-50 hover:bg-indigo-50 dark:bg-slate-950/50 dark:hover:bg-indigo-950/30 text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl text-xs font-bold transition-all border border-slate-100 dark:border-slate-900/60"
-                        >
-                          <span className="flex items-center gap-2">
-                            <Clock size={14} /> Weekly Consolidated
-                          </span>
-                          <ChevronRight size={14} className="opacity-50" />
-                        </Link>
-                      )}
-
-                      {/* Monthly Link */}
-                      <Link
-                        to={`${reportConfig.path}?userId=${emp._id || emp.id}&generateMonthly=true`}
-                        className="flex items-center justify-between w-full px-4 py-3 bg-slate-50 hover:bg-indigo-50 dark:bg-slate-950/50 dark:hover:bg-indigo-950/30 text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl text-xs font-bold transition-all border border-slate-100 dark:border-slate-900/60"
-                      >
-                        <span className="flex items-center gap-2">
-                          <Calendar size={14} /> Monthly Consolidated
-                        </span>
-                        <ChevronRight size={14} className="opacity-50" />
-                      </Link>
+                      <Loader2 size={14} className="animate-spin" />
+                      Generating PDF...
+                    </>
+                  ) : config ? (
+                    <>
+                      <FileDown size={14} />
+                      Download Latest Report PDF
                     </>
                   ) : (
-                    /* Dropdown mapping for unknown designation */
-                    <div className="space-y-2">
-                      <p className="text-[10px] text-slate-400 italic">No report template auto-mapped. Choose manually:</p>
-                      <div className="grid grid-cols-2 gap-2">
-                        {ALL_REPORT_TYPES.map((rep) => (
-                          <Link
-                            key={rep.path}
-                            to={`${rep.path}?userId=${emp._id || emp.id}`}
-                            className="px-2.5 py-2 text-center bg-slate-50 hover:bg-indigo-50 dark:bg-slate-950/40 dark:hover:bg-indigo-950/20 text-[10px] font-bold rounded-lg text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-100 dark:border-slate-900/40 transition-all truncate"
-                            title={rep.label}
-                          >
-                            {rep.label}
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
+                    <>
+                      <Download size={14} />
+                      No Report Template
+                    </>
                   )}
-                </div>
+                </button>
               </motion.div>
             );
           })}

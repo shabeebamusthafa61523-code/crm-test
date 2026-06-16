@@ -1,26 +1,26 @@
 // src/modules/departments/DeleteDepartmentModal.jsx
 
 import React, { useState } from 'react';
-import { X, AlertTriangle, Loader } from 'lucide-react';
+import { X, EyeOff, Loader } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { deleteDepartment } from '../../services/departmentService';
+import { updateDepartmentStatus } from '../../services/departmentService';
 
 export const DeleteDepartmentModal = ({ isOpen, onClose, onSuccess, department }) => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const handleDelete = async () => {
+  const handleDeactivate = async () => {
     if (!department) return;
     setSubmitting(true);
     setError('');
 
     try {
-      await deleteDepartment(department._id);
-      onSuccess('Department deleted successfully!');
+      await updateDepartmentStatus(department._id, false);
+      onSuccess('Department moved to inactive successfully!');
       onClose();
     } catch (err) {
       console.error(err);
-      setError(err.message || 'Failed to delete department');
+      setError(err.message || 'Failed to deactivate department');
     } finally {
       setSubmitting(false);
     }
@@ -58,19 +58,19 @@ export const DeleteDepartmentModal = ({ isOpen, onClose, onSuccess, department }
 
           {/* Icon and Title */}
           <div className="flex flex-col items-center text-center mt-4 mb-6">
-            <div className="p-4 rounded-3xl bg-rose-500/10 border border-rose-500/20 text-rose-500 mb-4 shadow-lg shadow-rose-500/5">
-              <AlertTriangle size={32} className="stroke-[2.5px]" />
+            <div className="p-4 rounded-3xl bg-amber-500/10 border border-amber-500/20 text-amber-500 mb-4 shadow-lg shadow-amber-500/5">
+              <EyeOff size={32} className="stroke-[2.5px]" />
             </div>
             <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">
-              Delete Department
+              Deactivate Department
             </h2>
             <p className="text-sm font-semibold text-slate-400 mt-1 max-w-[280px]">
-              You are about to permanently delete the department and its member associations.
+              This department will be moved to <span className="text-amber-500 font-bold">Inactive</span> status. No data will be deleted.
             </p>
           </div>
 
           <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/50 dark:border-slate-800/50 mb-6 text-center">
-            <span className="text-[10px] font-black tracking-widest uppercase bg-rose-500/10 text-rose-600 dark:text-rose-400 px-2 py-0.5 rounded border border-rose-500/10 mr-2">
+            <span className="text-[10px] font-black tracking-widest uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded border border-amber-500/10 mr-2">
               {department.code}
             </span>
             <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
@@ -97,16 +97,19 @@ export const DeleteDepartmentModal = ({ isOpen, onClose, onSuccess, department }
             <button
               type="button"
               disabled={submitting}
-              onClick={handleDelete}
-              className="flex-1 py-3.5 rounded-2xl bg-rose-500 text-white font-bold hover:bg-rose-600 disabled:bg-rose-500/50 flex items-center justify-center gap-2 shadow-lg shadow-rose-500/15 active:scale-98 transition-all duration-150"
+              onClick={handleDeactivate}
+              className="flex-1 py-3.5 rounded-2xl bg-amber-500 text-white font-bold hover:bg-amber-600 disabled:bg-amber-500/50 flex items-center justify-center gap-2 shadow-lg shadow-amber-500/15 active:scale-98 transition-all duration-150"
             >
               {submitting ? (
                 <>
                   <Loader size={18} className="animate-spin" />
-                  <span>Deleting...</span>
+                  <span>Processing...</span>
                 </>
               ) : (
-                <span>Confirm Delete</span>
+                <>
+                  <EyeOff size={16} />
+                  <span>Move to Inactive</span>
+                </>
               )}
             </button>
           </div>

@@ -79,6 +79,13 @@ const Register = () => {
     setIsSubmitting(true);
     setError(null);
 
+    // Phone number validation
+    if (!/^\d{10}$/.test(formData.phone || '')) {
+      setError('Phone number must be exactly 10 digits.');
+      setIsSubmitting(false);
+      return;
+    }
+
     // Pull Render backend target URL from env variables
     const apiBaseUrl = import.meta.env.VITE_API_URL || '';
 
@@ -220,7 +227,32 @@ const Register = () => {
 
             <FormInput label="Monthly Salary" name="salary" type="number" icon={<DollarSign size={16}/>} onChange={handleChange} value={formData.salary} />
 
-            <FormInput label="Phone" name="phone" icon={<Phone size={16}/>} onChange={handleChange} value={formData.phone} />
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase ml-2 tracking-widest">Phone</label>
+              <div className="relative">
+                <Phone className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 transition-all duration-200 ${formData.phone ? 'opacity-0' : 'opacity-100'}`} size={16} />
+                <input
+                  required
+                  name="phone"
+                  type="tel"
+                  maxLength={10}
+                  value={formData.phone}
+                  onChange={e => {
+                    const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    setFormData(prev => ({ ...prev, phone: digits }));
+                  }}
+                  className={`w-full bg-slate-50 dark:bg-slate-950 border rounded-2xl py-3 pl-12 text-slate-900 dark:text-slate-100 outline-none transition-all ${
+                    formData.phone && formData.phone.length !== 10
+                      ? 'border-red-400 focus:border-red-400'
+                      : 'border-slate-200 dark:border-slate-850 focus:border-indigo-500'
+                  }`}
+                  placeholder="10-digit number"
+                />
+              </div>
+              {formData.phone && formData.phone.length !== 10 && (
+                <p className="text-[10px] text-red-500 ml-2">Must be exactly 10 digits.</p>
+              )}
+            </div>
 
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase ml-2 tracking-widest">Identity Type</label>

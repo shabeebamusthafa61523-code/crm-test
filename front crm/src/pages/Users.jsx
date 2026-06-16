@@ -160,15 +160,24 @@ const Users = () => {
       // Search query filter
       if (!searchQuery) return true;
       const query = searchQuery.toLowerCase();
-      return (
-        user.name?.toLowerCase().includes(query) ||
-        user.email?.toLowerCase().includes(query) ||
-        user.employeeId?.toLowerCase().includes(query) ||
-        getDesignationName(user).toLowerCase().includes(query) ||
-        getDepartmentName(user).toLowerCase().includes(query)
-      );
-    });
-  }, [users, activeTab, searchQuery, getDesignationName, getDepartmentName]);
+    return (
+      user.name?.toLowerCase().includes(query) ||
+      user.email?.toLowerCase().includes(query) ||
+      user.employeeId?.toLowerCase().includes(query) ||
+      getDesignationName(user).toLowerCase().includes(query) ||
+      getDepartmentName(user).toLowerCase().includes(query)
+    );
+  });
+}, [users, activeTab, searchQuery, getDesignationName, getDepartmentName]);
+
+const ITEMS_PER_PAGE = 10;
+const [currentPage, setCurrentPage] = useState(1);
+
+// Reset to page 1 whenever filter changes
+React.useEffect(() => { setCurrentPage(1); }, [activeTab, searchQuery]);
+
+const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
+const pagedUsers = filteredUsers.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const handleDeleteUser = async (id, name) => {
     if (!window.confirm(`Are you absolutely sure you want to delete employee "${name}"? This action is permanent.`)) {
@@ -257,7 +266,7 @@ const Users = () => {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input 
               type="text" 
-              placeholder="Search by name, email, designation, employee ID..." 
+              placeholder="" 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 dark:bg-slate-950 dark:border-slate-800/80 py-3.5 pl-12 pr-4 rounded-xl text-sm font-medium focus:border-indigo-500/50 dark:focus:border-indigo-400/50 outline-none transition-all duration-300"
@@ -301,7 +310,7 @@ const Users = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
-                  {filteredUsers.map((user) => {
+                  {pagedUsers.map((user) => {
                     const statusKey = user.status || (user.isActive ? 'active' : 'inactive');
                     const meta = STATUS_META[statusKey] || STATUS_META.active;
                     return (
@@ -426,6 +435,56 @@ const Users = () => {
                   })}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!loading && filteredUsers.length > ITEMS_PER_PAGE && (
+          <div className="flex items-center justify-between px-2 py-3">
+            <p className="text-xs text-slate-400 font-semibold">
+              Showing {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, filteredUsers.length)}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredUsers.length)} of {filteredUsers.length} employees
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 hover:text-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                ← Prev
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                .reduce((acc, p, idx, arr) => {
+                  if (idx > 0 && p - arr[idx - 1] > 1) acc.push('...');
+                  acc.push(p);
+                  return acc;
+                }, [])
+                .map((p, idx) =>
+                  p === '...' ? (
+                    <span key={`ellipsis-${idx}`} className="px-2 text-slate-400 text-xs">…</span>
+                  ) : (
+                    <button
+                      key={p}
+                      onClick={() => setCurrentPage(p)}
+                      className={`w-8 h-8 text-xs font-bold rounded-lg border transition-all ${
+                        currentPage === p
+                          ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-500/20'
+                          : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 hover:text-indigo-600'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  )
+                )
+              }
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 hover:text-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                Next →
+              </button>
             </div>
           </div>
         )}
@@ -757,6 +816,13 @@ const CreateModal = ({ onClose, refresh, getAuthHeaders, designations, onDesigna
   e.preventDefault();
   setIsSubmitting(true);
 
+  // Phone number validation
+  if (!/^\d{10}$/.test(form.phone || '')) {
+    showToast('Phone number must be exactly 10 digits.', 'warning');
+    setIsSubmitting(false);
+    return;
+  }
+
   try {
     const fd = new FormData();
 
@@ -854,7 +920,26 @@ const CreateModal = ({ onClose, refresh, getAuthHeaders, designations, onDesigna
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Phone Number</label>
-              <input required name="phone" className="w-full" placeholder="PHONE" value={form.phone} onChange={handleInputChange} />
+              <input
+                required
+                name="phone"
+                type="tel"
+                maxLength={10}
+                className={`w-full border rounded-xl px-3 py-2 text-sm outline-none transition focus:ring-1 ${
+                  form.phone && form.phone.length !== 10
+                    ? 'border-red-400 focus:ring-red-400'
+                    : 'border-slate-200 dark:border-slate-700 focus:ring-indigo-500'
+                }`}
+                placeholder="10-digit number"
+                value={form.phone}
+                onChange={e => {
+                  const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setForm(prev => ({ ...prev, phone: digits }));
+                }}
+              />
+              {form.phone && form.phone.length !== 10 && (
+                <p className="text-[10px] text-red-500 ml-1">Must be exactly 10 digits.</p>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Corporate Email</label>
@@ -1075,7 +1160,26 @@ const EditModal = ({ user, onClose, refresh, getAuthHeaders, designations, onDes
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Phone Number</label>
-              <input required name="phone" className="w-full" placeholder="PHONE" value={form.phone} onChange={handleInputChange} />
+              <input
+                required
+                name="phone"
+                type="tel"
+                maxLength={10}
+                className={`w-full border rounded-xl px-3 py-2 text-sm outline-none transition focus:ring-1 ${
+                  form.phone && form.phone.length !== 10
+                    ? 'border-red-400 focus:ring-red-400'
+                    : 'border-slate-200 dark:border-slate-700 focus:ring-indigo-500'
+                }`}
+                placeholder="10-digit number"
+                value={form.phone}
+                onChange={e => {
+                  const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setForm(prev => ({ ...prev, phone: digits }));
+                }}
+              />
+              {form.phone && form.phone.length !== 10 && (
+                <p className="text-[10px] text-red-500 ml-1">Must be exactly 10 digits.</p>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Corporate Email</label>

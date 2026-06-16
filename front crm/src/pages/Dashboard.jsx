@@ -869,10 +869,10 @@ const Dashboard = () => {
                     key={filter}
                     onClick={() => setTaskFilter(filter)}
                     className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-                      taskFilter === filter
-                        ? "bg-indigo-805 text-red shadow-md shadow-indigo-500/200"
-                        : "text-grey-850 hover:text-slate-705 dark:text-slate-400 dark:hover:text-slate-200"
-                    }`}
+  taskFilter === filter
+    ? "bg-emerald-600 text-white shadow-sm shadow-emerald-500/20"
+    : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+}`}
                   >
                     {filter}
                   </button>
