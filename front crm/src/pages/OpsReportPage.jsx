@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { uploadCompiledPDFReport } from '../services/departmentService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, Calendar, Plus, Trash2, Save, Download, 
@@ -732,7 +733,7 @@ const OpsReportPage = () => {
     }
   };
 
-  const handleDownloadWeeklyPDF = (weeklyData) => {
+  const handleDownloadWeeklyPDF = async (weeklyData) => {
     try {
       const doc = new jsPDF({
         orientation: 'portrait',
@@ -944,7 +945,15 @@ const OpsReportPage = () => {
       doc.text("Manager - OPS Sales & Growth", 25, currentY + 5.5);
       doc.text("Executive Director Approval", 127, currentY + 5.5);
 
-      doc.save(`Operations_Weekly_Report_${weeklyData.basicDetails.employeeName || 'Ops'}_${weeklyData.basicDetails.dateRange.replace(/ /g, '_')}.pdf`);
+      const pdfBlob = doc.output('blob');
+      const filename = `Operations_Weekly_Report_${weeklyData.basicDetails.employeeName || 'Ops'}_${weeklyData.basicDetails.dateRange.replace(/ /g, '_')}.pdf`;
+      try {
+        await uploadCompiledPDFReport(selectedUserId, weeklyData.basicDetails.dateRange, pdfBlob, filename, 'ops', 'weekly');
+        console.log("Weekly PDF saved successfully");
+      } catch (uploadErr) {
+        console.error("Failed to upload weekly PDF:", uploadErr);
+      }
+      doc.save(filename);
       showToast("Weekly PDF report downloaded successfully!", "success");
     } catch (e) {
       console.error(e);
@@ -952,7 +961,7 @@ const OpsReportPage = () => {
     }
   };
 
-  const handleDownloadMonthlyPDF = (monthlyData) => {
+  const handleDownloadMonthlyPDF = async (monthlyData) => {
     try {
       const doc = new jsPDF({
         orientation: 'portrait',
@@ -1164,7 +1173,15 @@ const OpsReportPage = () => {
       doc.text("Manager - OPS Sales & Growth", 25, currentY + 5.5);
       doc.text("Executive Director Approval", 127, currentY + 5.5);
 
-      doc.save(`Operations_Monthly_Report_${monthlyData.basicDetails.employeeName || 'Ops'}_${monthlyData.basicDetails.dateRange.replace(/ /g, '_')}.pdf`);
+      const pdfBlob = doc.output('blob');
+      const filename = `Operations_Monthly_Report_${monthlyData.basicDetails.employeeName || 'Ops'}_${monthlyData.basicDetails.dateRange.replace(/ /g, '_')}.pdf`;
+      try {
+        await uploadCompiledPDFReport(selectedUserId, monthlyData.basicDetails.dateRange, pdfBlob, filename, 'ops', 'monthly');
+        console.log("Monthly PDF saved successfully");
+      } catch (uploadErr) {
+        console.error("Failed to upload monthly PDF:", uploadErr);
+      }
+      doc.save(filename);
       showToast("Monthly PDF report downloaded successfully!", "success");
     } catch (e) {
       console.error(e);
@@ -1270,262 +1287,46 @@ const OpsReportPage = () => {
     }
   };
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
+    const reportType = 'ops';
+    // Automatically save report as well
+    await handleSaveReport();
+
     try {
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
+      showToast("Generating PDF on server...", "info");
+      const token = localStorage.getItem('token');
+      const cleanToken = token ? token.replace(/"/g, '') : '';
+      
+      const url = `${API_BASE}/v1/employee-reports/generate-pdf?userId=${selectedUserId}&dateString=${selectedDate}&reportType=${reportType}`;
+      
+      const res = await fetch(url, {
+        headers: {
+          'Authorization': cleanToken.startsWith('Bearer ') ? cleanToken : `Bearer ${cleanToken}`
+        }
       });
-
-      let currentY = 15;
-      const purpleColor = [60, 35, 117];
-
-      const drawSectionHeader = (title) => {
-        doc.setFillColor(60, 35, 117);
-        doc.rect(14, currentY, 182, 7, 'F');
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(9.5);
-        doc.setTextColor(255, 255, 255);
-        doc.text(title.toUpperCase(), 17, currentY + 5);
-        currentY += 7;
-      };
-
-      const drawHeader = () => {
-        // Logo
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(22);
-        doc.setTextColor(132, 204, 22); // Lime Green
-        doc.text("KOD.", 14, 21);
-        
-        doc.setTextColor(60, 35, 117);
-        doc.text("brand", 34, 21);
-
-        // Title
-        doc.setFontSize(15);
-        doc.setTextColor(60, 35, 117);
-        doc.text("DAILY SHIFT REPORT", 132, 16);
-        
-        doc.setFontSize(7.5);
-        doc.setTextColor(0, 0, 0);
-        doc.text("MANAGER - OPS SALES & GROWTH", 139, 22);
-      };
-
-      // ================= PAGE 1 =================
-      drawHeader();
-      currentY = 27;
-
-      // 1. BASIC DETAILS
-      drawSectionHeader("1. BASIC DETAILS");
-      const basicDetailsRows = [
-        ["Date", basicDetails.date || ''],
-        ["Day", basicDetails.day || ''],
-        ["Employee Name:", basicDetails.employeeName || ''],
-        ["Employee ID", basicDetails.employeeId || ''],
-        ["Department", basicDetails.department || ''],
-        ["Designation", basicDetails.designation || ''],
-        ["Shift Timing", basicDetails.shiftTiming || ''],
-        ["Reporting To", basicDetails.reportingTo || ''],
-        ["Prepared Time", basicDetails.preparedTime || '']
-      ];
-
-      autoTable(doc, {
-        body: basicDetailsRows,
-        startY: currentY,
-        theme: 'grid',
-        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 45 },
-          1: { width: 137 }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // 2. DAILY OPERATIONS SUMMARY
-      drawSectionHeader("2. DAILY OPERATIONS SUMMARY");
-      const opsHeaders = [["Activity", "Status", "Remarks"]];
-      const opsRows = dailyOperations.map(o => [o.activity || '', o.status || '', o.remarks || '']);
-
-      autoTable(doc, {
-        head: opsHeaders,
-        body: opsRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 70 },
-          1: { width: 35, halign: 'center' },
-          2: { width: 77 }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // 3. DAILY COURSE COUNSELING & SALES ACTIVITY
-      drawSectionHeader("3. DAILY COURSE COUNSELING & SALES ACTIVITY");
-      const counselingHeaders = [["Activity", "Count", "Digital Mktg", "Web", "Remarks"]];
-      const counselingRows = salesActivity.map(s => [s.activity || '', s.count || '', s.digitalMktg || '', s.web || '', s.remarks || '']);
-
-      autoTable(doc, {
-        head: counselingHeaders,
-        body: counselingRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 7.5, cellPadding: 1.5, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 68 },
-          1: { width: 28, halign: 'center' },
-          2: { width: 24, halign: 'center' },
-          3: { width: 24, halign: 'center' },
-          4: { width: 38 }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      // ================= PAGE 2 =================
-      doc.addPage();
-      currentY = 15;
-      drawHeader();
-      currentY = 27;
-
-      // 4. SALES TEAM PERFORMANCE
-      drawSectionHeader("4. SALES TEAM PERFORMANCE");
-      const perfHeaders = [["Staff Name", "Task Assigned", "Leads", "Closings", "Status"]];
-      const perfRows = salesPerformance.map(p => [p.staffName || '', p.taskAssigned || '', p.leads || '', p.closings || '', p.status || '']);
-
-      autoTable(doc, {
-        head: perfHeaders,
-        body: perfRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 45 },
-          1: { width: 45 },
-          2: { width: 30, halign: 'center' },
-          3: { width: 30, halign: 'center' },
-          4: { width: 32, halign: 'center' }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // 5. REVENUE TRACKING
-      drawSectionHeader("5. REVENUE TRACKING");
-      const revHeaders = [["Revenue Category", "Amount"]];
-      const revRows = revenueTracking.map(r => [r.category || '', r.amount || '']);
-
-      autoTable(doc, {
-        head: revHeaders,
-        body: revRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 110 },
-          1: { width: 72, halign: 'center' }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // 6. ACADEMY STATUS
-      drawSectionHeader("6. ACADEMY STATUS");
-      const academyHeaders = [["Activity", "Status", "Remarks"]];
-      const academyRows = academyStatus.map(a => [a.activity || '', a.status || '', a.remarks || '']);
-
-      autoTable(doc, {
-        head: academyHeaders,
-        body: academyRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 70 },
-          1: { width: 35, halign: 'center' },
-          2: { width: 77 }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // 7. ISSUES / Escalations
-      drawSectionHeader("7. ISSUES / ESCALATIONS");
-      const issuesRows = [
-        ["Issues / Escalations:", issuesEscalations.issue || ''],
-        ["Priority:", issuesEscalations.priority || ''],
-        ["Action Taken:", issuesEscalations.actionTaken || '']
-      ];
-      autoTable(doc, {
-        body: issuesRows,
-        startY: currentY,
-        theme: 'grid',
-        styles: { fontSize: 8, cellPadding: 2.2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 45 },
-          1: { width: 137 }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // 8. HANDOVER
-      drawSectionHeader("8. HANDOVER");
-      const handoverRows = [
-        ["Pending Leads Shared:", handover.pendingLeadsShared || ''],
-        ["CRM Updated: Yes / No - NA", handover.crmUpdated || ''],
-        ["Reports Submitted: Yes", handover.reportsSubmitted || ''],
-        ["Team Updated: Yes", handover.teamUpdated || '']
-      ];
-      autoTable(doc, {
-        body: handoverRows,
-        startY: currentY,
-        theme: 'grid',
-        styles: { fontSize: 8, cellPadding: 2.2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 65 },
-          1: { width: 117 }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 8;
-
-      // Signatures approval
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8.5);
-      doc.setTextColor(60, 35, 117);
-      doc.text(approval.opsName || '', 30, currentY);
-      doc.text(approval.directorName || '', 130, currentY);
-
-      doc.setDrawColor(60, 35, 117);
-      doc.line(20, currentY + 1.5, 75, currentY + 1.5);
-      doc.line(120, currentY + 1.5, 175, currentY + 1.5);
-
-      doc.setFontSize(7.5);
-      doc.setTextColor(0, 0, 0);
-      doc.text("Manager - OPS Sales & Growth", 25, currentY + 5.5);
-      doc.text("Executive Director Approval", 127, currentY + 5.5);
-
-      doc.save(`Operations_Daily_Shift_Report_${basicDetails.employeeName || 'Ops'}_${selectedDate}.pdf`);
-      showToast("PDF report downloaded successfully!", "success");
+      
+      if (!res.ok) {
+        throw new Error("Failed to generate PDF report on server.");
+      }
+      
+      const blob = await res.blob();
+      const filename = `${reportType.charAt(0).toUpperCase() + reportType.slice(1)}_Report_${(basicDetails.employeeName || 'Employee').replace(/[^a-zA-Z0-9_-]/g, '_')}_${selectedDate}.pdf`;
+      
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+      
+      showToast("PDF report downloaded and saved successfully!", "success");
     } catch (e) {
       console.error(e);
-      showToast("Failed to generate PDF.", "error");
+      showToast("Failed to download PDF.", "error");
     }
-  };
+  };;
 
   const getRecentDates = () => {
     const dates = [];

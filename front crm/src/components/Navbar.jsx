@@ -70,7 +70,7 @@ const Navbar = () => {
             <div className="relative flex items-center justify-center">
               <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 to-lime-400/20 blur-xl rounded-full group-hover:from-indigo-500/40 group-hover:to-lime-400/40 transition-all duration-500" />
               <img
-                src="/logo2.png"
+                src="/logo3.png"
                 alt="StaffHQ Logo"
                 className="relative w-32 md:w-40 h-auto object-contain transition-transform group-hover:scale-105"
               />

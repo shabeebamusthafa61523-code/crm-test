@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { uploadCompiledPDFReport } from '../services/departmentService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, Calendar, Plus, Trash2, Save, Download, 
@@ -367,259 +368,46 @@ const AcademicCounselorReportPage = () => {
   };
 
   // Download PDF
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
+    const reportType = 'academiccounselor';
     // Automatically save report as well
-    handleSaveReport();
+    await handleSaveReport();
 
     try {
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
+      showToast("Generating PDF on server...", "info");
+      const token = localStorage.getItem('token');
+      const cleanToken = token ? token.replace(/"/g, '') : '';
+      
+      const url = `${API_BASE}/v1/employee-reports/generate-pdf?userId=${selectedUserId}&dateString=${selectedDate}&reportType=${reportType}`;
+      
+      const res = await fetch(url, {
+        headers: {
+          'Authorization': cleanToken.startsWith('Bearer ') ? cleanToken : `Bearer ${cleanToken}`
+        }
       });
-
-      let currentY = 15;
       
-      const drawSectionHeader = (title) => {
-        doc.setFillColor(60, 35, 117); // rgb(60, 35, 117) - deep purple/indigo
-        doc.rect(14, currentY, 182, 7, 'F');
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(9.5);
-        doc.setTextColor(255, 255, 255);
-        doc.text(title.toUpperCase(), 17, currentY + 5);
-        currentY += 7;
-      };
-
-      // Header Brand Logo
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(22);
-      doc.setTextColor(132, 204, 22); // lime green
-      doc.text("KOD.", 14, 21);
+      if (!res.ok) {
+        throw new Error("Failed to generate PDF report on server.");
+      }
       
-      doc.setTextColor(60, 35, 117); // purple/indigo
-      doc.text("brand", 34, 21);
-
-      // Document Title & Designation
-      doc.setFontSize(15);
-      doc.setTextColor(60, 35, 117);
-      doc.text("DAILY SHIFT REPORT", 140, 16);
+      const blob = await res.blob();
+      const filename = `${reportType.charAt(0).toUpperCase() + reportType.slice(1)}_Report_${(basicDetails.employeeName || 'Employee').replace(/[^a-zA-Z0-9_-]/g, '_')}_${selectedDate}.pdf`;
       
-      doc.setFontSize(7);
-      doc.setTextColor(0, 0, 0);
-      doc.setFont('helvetica', 'bold');
-      doc.text("SALES EXECUTIVE / TELE CALLER & ACADEMIC COUNSELOR", 100, 22);
-
-      currentY = 27;
-
-      // 1. BASIC DETAILS
-      drawSectionHeader("1. BASIC DETAILS");
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
       
-      const basicDetailsRows = [
-        ["Date", basicDetails.date || '', "Day", basicDetails.day || ''],
-        ["Employee Name", basicDetails.employeeName || '', "Designation", basicDetails.designation || ''],
-        ["Department", basicDetails.department || '', "Shift Timing", basicDetails.shiftTiming || ''],
-        ["Reporting To", basicDetails.reportingTo || '', "", ""]
-      ];
-
-      autoTable(doc, {
-        body: basicDetailsRows,
-        startY: currentY,
-        theme: 'grid',
-        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 30 },
-          1: { width: 61 },
-          2: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 30 },
-          3: { width: 61 }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // 2. DAILY COURSE COUNSELING & SALES ACTIVITY
-      drawSectionHeader("2. DAILY COURSE COUNSELING & SALES ACTIVITY");
-      
-      const salesHeaders = [["Activity", "Count", "Digital Mktg", "Web", "Remarks"]];
-      const salesRows = salesActivity.map(t => [
-        t.activity || '',
-        t.count || '',
-        t.digitalMktg || '',
-        t.web || '',
-        t.remarks || ''
-      ]);
-
-      autoTable(doc, {
-        head: salesHeaders,
-        body: salesRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 7.5, cellPadding: 1.8, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 60 },
-          1: { width: 18, halign: 'center' },
-          2: { width: 22, halign: 'center' },
-          3: { width: 22, halign: 'center' },
-          4: { width: 60 }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      // Page break to start Page 2 fresh
-      doc.addPage();
-      currentY = 15;
-
-      // 3. DAILY OPERATIONS SUMMARY
-      drawSectionHeader("3. DAILY OPERATIONS SUMMARY");
-      
-      const opsHeaders = [["Activity", "Status", "Remarks"]];
-      const opsRows = dailyOperations.map(t => [
-        t.activity || '',
-        t.status || '',
-        t.remarks || ''
-      ]);
-      
-      // Append extra row for Reports Collected
-      opsRows.push([
-        "Reports Collected from Team",
-        reportsCollectedDone ? "Done" : "Pending",
-        ""
-      ]);
-
-      autoTable(doc, {
-        head: opsHeaders,
-        body: opsRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 8, cellPadding: 2.5, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 70 },
-          1: { width: 35, halign: 'center' },
-          2: { width: 77 }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // 4. PERFORMANCE KPI
-      drawSectionHeader("4. PERFORMANCE KPI");
-      
-      const kpiHeaders = [["KPI", "Target", "Achieved"]];
-      const kpiRows = performanceKpis.map(t => [
-        t.kpi || '',
-        t.target || '',
-        t.achieved || ''
-      ]);
-
-      autoTable(doc, {
-        head: kpiHeaders,
-        body: kpiRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 8, cellPadding: 2.5, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 70 },
-          1: { width: 56, halign: 'center' },
-          2: { width: 56, halign: 'center' }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // 5. ISSUES & FEEDBACK
-      drawSectionHeader("5. ISSUES & FEEDBACK");
-      
-      const issueHeaders = [["Issue", "Priority", "Support Needed"]];
-      const issueRows = issuesFeedback.map(t => [
-        t.issue || '',
-        t.priority || '',
-        t.supportNeeded || ''
-      ]);
-
-      autoTable(doc, {
-        head: issueHeaders,
-        body: issueRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 8, cellPadding: 2.5, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 70 },
-          1: { width: 35, halign: 'center' },
-          2: { width: 77 }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // 6. FINAL HANDOVER & APPROVAL
-      drawSectionHeader("6. FINAL HANDOVER & APPROVAL");
-      
-      const handoverHeaders = [["Handover Item", "Status"]];
-      const handoverRows = [
-        ["CRM Updated", finalHandover.crmUpdated || 'No'],
-        ["Reports Submitted", finalHandover.reportsSubmitted || 'No']
-      ];
-
-      autoTable(doc, {
-        head: handoverHeaders,
-        body: handoverRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 8, cellPadding: 2.5, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 91 },
-          1: { width: 91, halign: 'center' }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // Approvals Signature Table
-      const approvalHeaders = [["Name", "Signature", "Date"]];
-      const approvalRows = [
-        [
-          `Academic Counselor: ${approval.counselorName || ''}`,
-          approval.counselorSignature || '',
-          approval.counselorDate || ''
-        ],
-        [
-          `Manager: ${approval.managerName || ''}`,
-          approval.managerSignature || '',
-          approval.managerDate || ''
-        ]
-      ];
-
-      autoTable(doc, {
-        head: approvalHeaders,
-        body: approvalRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 8, cellPadding: 3, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 75, fontStyle: 'bold' },
-          1: { width: 55 },
-          2: { width: 52 }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      doc.save(`Daily_Shift_Report_Counseling_${basicDetails.employeeName || 'Counselor'}_${selectedDate}.pdf`);
-      showToast("PDF report downloaded successfully!", "success");
+      showToast("PDF report downloaded and saved successfully!", "success");
     } catch (e) {
       console.error(e);
-      showToast("Failed to generate PDF.", "error");
+      showToast("Failed to download PDF.", "error");
     }
-  };
+  };;
 
   const parseNumber = (val) => {
     if (val === undefined || val === null || val === '') return 0;
@@ -794,7 +582,7 @@ const AcademicCounselorReportPage = () => {
     setMonthlyActiveTab('basicDetails');
   };
 
-  const handleDownloadMonthlyPDF = () => {
+  const handleDownloadMonthlyPDF = async () => {
     try {
       const doc = new jsPDF({
         orientation: 'portrait',
@@ -970,7 +758,15 @@ const AcademicCounselorReportPage = () => {
         margin: { left: 14, right: 14 }
       });
 
-      doc.save(`Monthly_Consolidated_Report_Counseling_${monthlyBasicDetails.employeeName || 'Counselor'}_${monthlyStartDate}_to_${monthlyEndDate}.pdf`);
+      const pdfBlob = doc.output('blob');
+      const filename = `Monthly_Consolidated_Report_Counseling_${monthlyBasicDetails.employeeName || 'Counselor'}_${monthlyStartDate}_to_${monthlyEndDate}.pdf`;
+      try {
+        await uploadCompiledPDFReport(selectedUserId, `${monthlyStartDate}_to_${monthlyEndDate}`, pdfBlob, filename, 'academiccounselor', 'monthly');
+        console.log("Monthly PDF saved successfully");
+      } catch (uploadErr) {
+        console.error("Failed to upload monthly PDF:", uploadErr);
+      }
+      doc.save(filename);
       showToast("Monthly PDF report downloaded successfully!", "success");
     } catch (e) {
       console.error(e);

@@ -16,6 +16,7 @@ import hodRdReportRoutes from './hodRdReport.routes.js';
 import graphicDesignerReportRoutes from './graphicDesignerReport.routes.js';
 import academicCounselorReportRoutes from './academicCounselorReport.routes.js';
 import videographerReportRoutes from './videographerReport.routes.js';
+import employeeReportPDFRoutes from './employeeReportPDF.routes.js';
 
 
 
@@ -41,10 +42,6 @@ router.use('/hod-rd-reports', hodRdReportRoutes);
 router.use('/graphic-designer-reports', graphicDesignerReportRoutes);
 router.use('/academic-counselor-reports', academicCounselorReportRoutes);
 router.use('/videographer-reports', videographerReportRoutes);
-
-
-
-
+router.use('/employee-reports', employeeReportPDFRoutes);
 
 export default router;
-

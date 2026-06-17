@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { uploadCompiledPDFReport } from '../services/departmentService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, Calendar, Plus, Trash2, Save, Download, 
@@ -778,7 +779,7 @@ const AccountantReportPage = () => {
     }
   };
 
-  const handleDownloadMonthlyPDF = () => {
+  const handleDownloadMonthlyPDF = async () => {
     try {
       const doc = new jsPDF({
         orientation: 'portrait',
@@ -1110,7 +1111,15 @@ const AccountantReportPage = () => {
       doc.text("Accountant Signature & Date", 28, currentY + 5.5);
       doc.text("Manager Signature & Date", 132, currentY + 5.5);
 
-      doc.save(`Accountant_Monthly_Consolidated_Report_${monthlyBasicDetails.employeeName || 'Accountant'}_${monthlyStartDate}_to_${monthlyEndDate}.pdf`);
+      const pdfBlob = doc.output('blob');
+      const filename = `Accountant_Monthly_Consolidated_Report_${monthlyBasicDetails.employeeName || 'Accountant'}_${monthlyStartDate}_to_${monthlyEndDate}.pdf`;
+      try {
+        await uploadCompiledPDFReport(selectedUserId, `${monthlyStartDate}_to_${monthlyEndDate}`, pdfBlob, filename, 'accountant', 'monthly');
+        console.log("Monthly PDF saved successfully");
+      } catch (uploadErr) {
+        console.error("Failed to upload monthly PDF:", uploadErr);
+      }
+      doc.save(filename);
       showToast("Monthly PDF report downloaded successfully!", "success");
     } catch (e) {
       console.error(e);
@@ -1118,344 +1127,46 @@ const AccountantReportPage = () => {
     }
   };
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
+    const reportType = 'accountant';
     // Automatically save report as well
-    handleSaveReport();
+    await handleSaveReport();
 
     try {
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
+      showToast("Generating PDF on server...", "info");
+      const token = localStorage.getItem('token');
+      const cleanToken = token ? token.replace(/"/g, '') : '';
+      
+      const url = `${API_BASE}/v1/employee-reports/generate-pdf?userId=${selectedUserId}&dateString=${selectedDate}&reportType=${reportType}`;
+      
+      const res = await fetch(url, {
+        headers: {
+          'Authorization': cleanToken.startsWith('Bearer ') ? cleanToken : `Bearer ${cleanToken}`
+        }
       });
-
-      let currentY = 15;
-
-      const drawSectionHeader = (title) => {
-        doc.setFillColor(60, 35, 117);
-        doc.rect(14, currentY, 182, 7, 'F');
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(9.5);
-        doc.setTextColor(255, 255, 255);
-        doc.text(title.toUpperCase(), 17, currentY + 5);
-        currentY += 7;
-      };
-
-      const drawHeader = () => {
-        // Logo
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(22);
-        doc.setTextColor(132, 204, 22); // Lime Green
-        doc.text("KOD.", 14, 21);
-        
-        doc.setTextColor(60, 35, 117);
-        doc.text("brand", 34, 21);
-
-        // Title
-        doc.setFontSize(15);
-        doc.setTextColor(60, 35, 117);
-        doc.text("DAILY SHIFT REPORT", 132, 16);
-        
-        doc.setFontSize(7.5);
-        doc.setTextColor(0, 0, 0);
-        doc.text("ACCOUNTANT / ACCOUNTS EXECUTIVE", 130, 22);
-      };
-
-      // ================= PAGE 1 =================
-      drawHeader();
-      currentY = 27;
-
-      // 1. BASIC DETAILS
-      drawSectionHeader("1. BASIC DETAILS");
-      const basicDetailsRows = [
-        ["Date", basicDetails.date || ''],
-        ["Day", basicDetails.day || ''],
-        ["Employee Name", basicDetails.employeeName || ''],
-        ["Employee ID", basicDetails.employeeId || ''],
-        ["Department", basicDetails.department || ''],
-        ["Designation", basicDetails.designation || ''],
-        ["Shift Timing", basicDetails.shiftTiming || ''],
-        ["Reporting To", basicDetails.reportingTo || ''],
-        ["Prepared Time", basicDetails.preparedTime || '']
-      ];
-
-      autoTable(doc, {
-        body: basicDetailsRows,
-        startY: currentY,
-        theme: 'grid',
-        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 45 },
-          1: { width: 137 }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // 2. DAILY ACCOUNTING SUMMARY
-      drawSectionHeader("2. DAILY ACCOUNTING SUMMARY");
-      const summaryHeaders = [["Activity", "Status", "Remarks"]];
-      const summaryRows = dailyAccountingSummary.map(o => [o.activity || '', o.status || '', o.remarks || '']);
-
-      autoTable(doc, {
-        head: summaryHeaders,
-        body: summaryRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 70 },
-          1: { width: 35, halign: 'center' },
-          2: { width: 77 }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // 3. TRANSACTION REPORT
-      drawSectionHeader("3. TRANSACTION REPORT");
-      const transactionHeaders = [["Transaction Type", "Count", "Amount"]];
-      const transactionRows = transactionReport.map(t => [t.transactionType || '', t.count || '', t.amount || '']);
-
-      autoTable(doc, {
-        head: transactionHeaders,
-        body: transactionRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 80 },
-          1: { width: 42, halign: 'center' },
-          2: { width: 60, halign: 'right' }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      // ================= PAGE 2 =================
-      doc.addPage();
-      currentY = 15;
-      drawHeader();
-      currentY = 27;
-
-      // 4. INVOICE & BILLING REPORT
-      drawSectionHeader("4. INVOICE & BILLING REPORT");
-      const invoiceHeaders = [["Client/Vendor", "Type", "Amount", "Status", "Remarks"]];
-      const invoiceRows = invoiceBillingReport.length > 0 
-        ? invoiceBillingReport.map(i => [i.clientVendor || '', i.type || '', i.amount || '', i.status || '', i.remarks || ''])
-        : [["No invoices logged", "", "", "", ""]];
-
-      autoTable(doc, {
-        head: invoiceHeaders,
-        body: invoiceRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 50 },
-          1: { width: 25 },
-          2: { width: 30, halign: 'right' },
-          3: { width: 30, halign: 'center' },
-          4: { width: 47 }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // 5. PAYROLL & PAYMENT STATUS
-      drawSectionHeader("5. PAYROLL & PAYMENT STATUS");
-      const payrollHeaders = [["Activity", "Status", "Remarks"]];
-      const payrollRows = payrollPaymentStatus.map(p => [p.activity || '', p.status || '', p.remarks || '']);
-
-      autoTable(doc, {
-        head: payrollHeaders,
-        body: payrollRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 70 },
-          1: { width: 35, halign: 'center' },
-          2: { width: 77 }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // 6. EXPENSE TRACKING
-      drawSectionHeader("6. EXPENSE TRACKING");
-      const expenseHeaders = [["Expense Category", "Amount", "Remarks"]];
-      const expenseRows = expenseTracking.map(e => [e.category || '', e.amount || '', e.remarks || '']);
-
-      autoTable(doc, {
-        head: expenseHeaders,
-        body: expenseRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 60 },
-          1: { width: 40, halign: 'right' },
-          2: { width: 82 }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // 7. DOCUMENTATION & COMPLIANCE
-      drawSectionHeader("7. DOCUMENTATION & COMPLIANCE");
-      const complianceHeaders = [["Activity", "Status"]];
-      const complianceRows = documentationCompliance.map(c => [c.activity || '', c.status || '']);
-
-      autoTable(doc, {
-        head: complianceHeaders,
-        body: complianceRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 120 },
-          1: { width: 62, halign: 'center' }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      // ================= PAGE 3 =================
-      doc.addPage();
-      currentY = 15;
-      drawHeader();
-      currentY = 27;
-
-      // 8. KPI TRACKING
-      drawSectionHeader("8. KPI TRACKING");
-      const kpiHeaders = [["KPI", "Target Achieved"]];
-      const kpiRows = kpiTracking.map(k => [k.kpi || '', k.targetAchieved || '']);
-
-      autoTable(doc, {
-        head: kpiHeaders,
-        body: kpiRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 110 },
-          1: { width: 72, halign: 'center' }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // 9. ISSUES / SUPPORT REQUIRED
-      drawSectionHeader("9. ISSUES / SUPPORT REQUIRED");
-      const issuesHeaders = [["Issue", "Priority", "Action"]];
-      const issuesRows = issuesSupportRequired.length > 0
-        ? issuesSupportRequired.map(i => [i.issue || '', i.priority || '', i.action || ''])
-        : [["No active issues logged", "", ""]];
-
-      autoTable(doc, {
-        head: issuesHeaders,
-        body: issuesRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 80 },
-          1: { width: 35, halign: 'center' },
-          2: { width: 67 }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // 10. NEXT DAY TASK PLAN
-      drawSectionHeader("10. NEXT DAY TASK PLAN");
-      const planRows = nextDayTaskPlan.map((p, idx) => [`${idx + 1}.`, p || '']);
-
-      autoTable(doc, {
-        body: planRows,
-        startY: currentY,
-        theme: 'grid',
-        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 15, halign: 'center' },
-          1: { width: 167 }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // 11. FINAL SHIFT HANDOVER
-      drawSectionHeader("11. FINAL SHIFT HANDOVER");
-      const handoverHeaders = [["Handover Item", "Status"]];
-      const handoverRows = finalShiftHandover.map(h => [h.item || '', h.status || '']);
-
-      autoTable(doc, {
-        head: handoverHeaders,
-        body: handoverRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 120 },
-          1: { width: 62, halign: 'center' }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // 12. COMMENTS
-      drawSectionHeader("12. ACCOUNTANT COMMENTS");
-      const commentRows = [[accountantComments || 'No comments.']];
-      autoTable(doc, {
-        body: commentRows,
-        startY: currentY,
-        theme: 'grid',
-        styles: { fontSize: 8.5, cellPadding: 3, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 10;
-
-      // 13. APPROVAL
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8.5);
-      doc.setTextColor(60, 35, 117);
-      doc.text(approval.accountantName || '', 30, currentY);
-      doc.text(approval.managerName || '', 130, currentY);
-
-      doc.setDrawColor(60, 35, 117);
-      doc.line(20, currentY + 1.5, 75, currentY + 1.5);
-      doc.line(120, currentY + 1.5, 175, currentY + 1.5);
-
-      doc.setFontSize(7.5);
-      doc.setTextColor(0, 0, 0);
-      doc.text("Accountant Signature & Date", 28, currentY + 5.5);
-      doc.text("Manager Signature & Date", 132, currentY + 5.5);
-
-      doc.save(`Accountant_Daily_Shift_Report_${basicDetails.employeeName || 'Accountant'}_${selectedDate}.pdf`);
-      showToast("PDF report downloaded successfully!", "success");
+      
+      if (!res.ok) {
+        throw new Error("Failed to generate PDF report on server.");
+      }
+      
+      const blob = await res.blob();
+      const filename = `${reportType.charAt(0).toUpperCase() + reportType.slice(1)}_Report_${(basicDetails.employeeName || 'Employee').replace(/[^a-zA-Z0-9_-]/g, '_')}_${selectedDate}.pdf`;
+      
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+      
+      showToast("PDF report downloaded and saved successfully!", "success");
     } catch (e) {
       console.error(e);
-      showToast("Failed to generate PDF.", "error");
+      showToast("Failed to download PDF.", "error");
     }
-  };
+  };;
 
   const getRecentDates = () => {
     const dates = [];

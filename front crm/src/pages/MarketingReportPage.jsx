@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { uploadCompiledPDFReport } from '../services/departmentService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, Calendar, Plus, Trash2, Save, Download, 
@@ -304,7 +305,7 @@ const MarketingReportPage = () => {
     }
   };
 
-  const handleDownloadMonthlyPDF = () => {
+  const handleDownloadMonthlyPDF = async () => {
     try {
       const doc = new jsPDF({
         orientation: 'portrait',
@@ -447,7 +448,15 @@ const MarketingReportPage = () => {
         margin: { left: 14, right: 14 }
       });
 
-      doc.save(`Marketing_Monthly_Report_${monthlyBasicDetails.employeeName || 'Marketer'}_${monthlyStartDate}_to_${monthlyEndDate}.pdf`);
+      const pdfBlob = doc.output('blob');
+      const filename = `Marketing_Monthly_Report_${monthlyBasicDetails.employeeName || 'Marketer'}_${monthlyStartDate}_to_${monthlyEndDate}.pdf`;
+      try {
+        await uploadCompiledPDFReport(selectedUserId, `${monthlyStartDate}_to_${monthlyEndDate}`, pdfBlob, filename, 'marketing', 'monthly');
+        console.log("Monthly PDF saved successfully");
+      } catch (uploadErr) {
+        console.error("Failed to upload monthly PDF:", uploadErr);
+      }
+      doc.save(filename);
       showToast("Monthly PDF report downloaded successfully!", "success");
     } catch (e) {
       console.error(e);
@@ -653,188 +662,46 @@ const MarketingReportPage = () => {
     }
   };
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
+    const reportType = 'marketing';
+    // Automatically save report as well
+    await handleSaveReport();
+
     try {
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
+      showToast("Generating PDF on server...", "info");
+      const token = localStorage.getItem('token');
+      const cleanToken = token ? token.replace(/"/g, '') : '';
+      
+      const url = `${API_BASE}/v1/employee-reports/generate-pdf?userId=${selectedUserId}&dateString=${selectedDate}&reportType=${reportType}`;
+      
+      const res = await fetch(url, {
+        headers: {
+          'Authorization': cleanToken.startsWith('Bearer ') ? cleanToken : `Bearer ${cleanToken}`
+        }
       });
-
-      let currentY = 15;
-
-      const drawSectionHeader = (title) => {
-        doc.setFillColor(60, 35, 117);
-        doc.rect(14, currentY, 182, 6, 'F');
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(9);
-        doc.setTextColor(255, 255, 255);
-        doc.text(title.toUpperCase(), 17, currentY + 4.2);
-        currentY += 6;
-      };
-
-      const drawHeader = () => {
-        // Logo
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(20);
-        doc.setTextColor(132, 204, 22); // Lime Green
-        doc.text("KOD.", 14, 21);
-        
-        doc.setTextColor(60, 35, 117);
-        doc.text("brand", 32, 21);
-
-        // Title
-        doc.setFontSize(14);
-        doc.setTextColor(60, 35, 117);
-        doc.text("DAILY REPORT", 146, 16);
-        
-        doc.setFontSize(7.5);
-        doc.setTextColor(0, 0, 0);
-        doc.text("DIGITAL MARKETER · CMO / CREATIVE & MARKETING", 112, 22);
-      };
-
-      drawHeader();
-      currentY = 25;
-
-      // 1. BASIC DETAILS
-      drawSectionHeader("1. Basic details");
-      const basicRows = [
-        [
-          "Employee name", basicDetails.employeeName || '',
-          "Date", basicDetails.date || ''
-        ],
-        [
-          "Employee ID", basicDetails.employeeId || '',
-          "Day", basicDetails.day || ''
-        ],
-        [
-          "Designation", basicDetails.designation || '',
-          "Shift timing", basicDetails.shiftTiming || ''
-        ],
-        [
-          "Reporting to", basicDetails.reportingTo || '',
-          "Report prepared at", basicDetails.preparedTime || ''
-        ]
-      ];
-
-      autoTable(doc, {
-        body: basicRows,
-        startY: currentY,
-        theme: 'grid',
-        styles: { fontSize: 7.5, cellPadding: 1.8, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 35 },
-          1: { width: 56 },
-          2: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 35 },
-          3: { width: 56 }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // 2. TASK SUMMARY
-      drawSectionHeader("2. Task summary");
-      const taskHeaders = [["Task", "Details / notes", "Status", "Remarks"]];
-      const taskRows = taskSummary.map(t => [t.task || '', t.detailsNotes || '', t.status || '', t.remarks || '']);
-
-      autoTable(doc, {
-        head: taskHeaders,
-        body: taskRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 7.5, cellPadding: 1.8, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 45 },
-          1: { width: 75 },
-          2: { width: 27, halign: 'center' },
-          3: { width: 35 }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // 3. KEY NUMBERS (KPIs)
-      drawSectionHeader("3. Key numbers (KPIs)");
-      const kpiHeaders = [["KPI", "Target", "Achieved today", "Notes"]];
-      const kpiRows = keyNumbers.map(k => [k.kpi || '', k.target || '', k.achievedToday || '', k.notes || '']);
-
-      autoTable(doc, {
-        head: kpiHeaders,
-        body: kpiRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 7.5, cellPadding: 1.8, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 45 },
-          1: { width: 45, halign: 'center' },
-          2: { width: 45, halign: 'center' },
-          3: { width: 47 }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // 4. BLOCKERS & TOMORROW'S PLAN
-      drawSectionHeader("4. Blockers & tomorrow's plan");
-      const blockersHeaders = [["Any blockers today?", "Priority", "Tomorrow's main task", "Notes"]];
-      const blockersRows = blockersTomorrowPlan.map(b => [b.blockersToday || '', b.priority || '', b.tomorrowMainTask || '', b.notes || '']);
-
-      autoTable(doc, {
-        head: blockersHeaders,
-        body: blockersRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 7.5, cellPadding: 1.8, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 45 },
-          1: { width: 30, halign: 'center' },
-          2: { width: 62 },
-          3: { width: 45 }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // 5. APPROVAL
-      drawSectionHeader("5. Approval");
-      const approvalHeaders = [["Staff signature / name", "Submitted at", "Team leader approval", "Approved on"]];
-      const approvalRows = [[
-        approval.staffSignature || '',
-        approval.submittedAt || '',
-        approval.leaderApproval || '',
-        approval.approvedOn || ''
-      ]];
-
-      autoTable(doc, {
-        head: approvalHeaders,
-        body: approvalRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 7.5, cellPadding: 3, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 45 },
-          1: { width: 45, halign: 'center' },
-          2: { width: 45 },
-          3: { width: 47, halign: 'center' }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      doc.save(`Marketing_Daily_Report_${basicDetails.employeeName || 'Marketer'}_${selectedDate}.pdf`);
-      showToast("PDF report downloaded successfully!", "success");
+      
+      if (!res.ok) {
+        throw new Error("Failed to generate PDF report on server.");
+      }
+      
+      const blob = await res.blob();
+      const filename = `${reportType.charAt(0).toUpperCase() + reportType.slice(1)}_Report_${(basicDetails.employeeName || 'Employee').replace(/[^a-zA-Z0-9_-]/g, '_')}_${selectedDate}.pdf`;
+      
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+      
+      showToast("PDF report downloaded and saved successfully!", "success");
     } catch (e) {
       console.error(e);
-      showToast("Failed to generate PDF.", "error");
+      showToast("Failed to download PDF.", "error");
     }
-  };
+  };;
 
   const getRecentDates = () => {
     const dates = [];

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { uploadCompiledPDFReport } from '../services/departmentService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, Calendar, Plus, Trash2, Save, Download, 
@@ -376,218 +377,46 @@ const GraphicDesignerReportPage = () => {
   };
 
   // Download PDF
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
+    const reportType = 'graphicdesigner';
+    // Automatically save report as well
+    await handleSaveReport();
+
     try {
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
+      showToast("Generating PDF on server...", "info");
+      const token = localStorage.getItem('token');
+      const cleanToken = token ? token.replace(/"/g, '') : '';
+      
+      const url = `${API_BASE}/v1/employee-reports/generate-pdf?userId=${selectedUserId}&dateString=${selectedDate}&reportType=${reportType}`;
+      
+      const res = await fetch(url, {
+        headers: {
+          'Authorization': cleanToken.startsWith('Bearer ') ? cleanToken : `Bearer ${cleanToken}`
+        }
       });
-
-      let currentY = 15;
       
-      const drawSectionHeader = (title) => {
-        doc.setFillColor(43, 48, 128); // KODBRAND Navy
-        doc.rect(14, currentY, 182, 7, 'F');
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(9.5);
-        doc.setTextColor(255, 255, 255);
-        doc.text(title.toUpperCase(), 17, currentY + 5);
-        currentY += 7;
-      };
-
-      // Header Brand
-      doc.setFillColor(43, 48, 128);
-      doc.rect(14, 12, 182, 12, 'F');
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(14);
-      doc.setTextColor(255, 255, 255);
-      doc.text("KODBRAND — Daily Report", 18, 20);
-
-      doc.setFontSize(8);
-      doc.text("Graphic Designer  ·  CMO / Creative & Marketing", 130, 20);
-
-      currentY = 27;
-
-      // 1. BASIC DETAILS
-      drawSectionHeader("1. Basic details");
-      
-      const basicDetailsRows = [
-        ["Employee ID", basicDetails.employeeId || '', "Designation", basicDetails.designation || '', "Reporting to", basicDetails.reportingTo || ''],
-        ["Shift timing", basicDetails.shiftTiming || '', "Report prepared at", basicDetails.preparedAt || '', "Date", selectedDate]
-      ];
-
-      autoTable(doc, {
-        body: basicDetailsRows,
-        startY: currentY,
-        theme: 'grid',
-        styles: { fontSize: 7.5, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 30 },
-          1: { width: 31 },
-          2: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 30 },
-          3: { width: 31 },
-          4: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 30 },
-          5: { width: 30 }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // 2. TASK LOG
-      drawSectionHeader("2. Task log (one row per task)");
-      
-      const taskHeaders = [["Task / project name", "Description / details", "Start time", "End time", "Status", "File link (Drive)"]];
-      const taskRows = taskLog.map(t => [
-        t.taskProjectName || '',
-        t.descriptionDetails || '',
-        t.startTime || '',
-        t.endTime || '',
-        t.status || '',
-        t.fileLink || ''
-      ]);
-
-      // Summary row
-      taskRows.push([
-        "Daily summary",
-        `Done: ${counts.done}   |   Pending: ${counts.pending}   |   N/A: ${counts.na}   |   Total: ${counts.total}`,
-        "", "", "", ""
-      ]);
-
-      autoTable(doc, {
-        head: taskHeaders,
-        body: taskRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [43, 48, 128], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 7.5, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 40 },
-          1: { width: 62 },
-          2: { width: 20 },
-          3: { width: 20 },
-          4: { width: 18, halign: 'center' },
-          5: { width: 22 }
-        },
-        didParseCell: (data) => {
-          if (data.row.index === taskRows.length - 1) {
-            data.cell.styles.fontStyle = 'bold';
-            data.cell.styles.fillColor = [245, 245, 247];
-            if (data.column.index === 0) {
-              data.cell.styles.textColor = [43, 48, 128];
-            }
-          }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // 3. KEY NUMBERS
-      drawSectionHeader("3. Key numbers");
-      
-      const keyHeaders = [["KPI", "Target", "Today's count", "Notes"]];
-      const keyRows = [
-        ["Designs completed", keyNumbers.designsCompleted?.target || '', keyNumbers.designsCompleted?.todaysCount || '', keyNumbers.designsCompleted?.notes || ''],
-        ["Revisions done", keyNumbers.revisionsDone?.target || '', keyNumbers.revisionsDone?.todaysCount || '', keyNumbers.revisionsDone?.notes || ''],
-        ["Client deliveries", keyNumbers.clientDeliveries?.target || '', keyNumbers.clientDeliveries?.todaysCount || '', keyNumbers.clientDeliveries?.notes || '']
-      ];
-
-      autoTable(doc, {
-        head: keyHeaders,
-        body: keyRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [43, 48, 128], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 7.5, cellPadding: 2.5, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 45, fontStyle: 'bold' },
-          1: { width: 40 },
-          2: { width: 30, halign: 'center' },
-          3: { width: 67 }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // 4. BLOCKERS & TOMORROW'S PLAN (Combine side by side in table)
-      drawSectionHeader("4. Blockers & tomorrow's plan");
-      
-      const combinedHeaders = [["Blocker / issue", "Details", "Priority", "Tomorrow's main task", "Details", "Notes"]];
-      
-      const maxLines = Math.max(blockers.length, tomorrowTasks.length);
-      const combinedRows = [];
-      for (let i = 0; i < maxLines; i++) {
-        const b = blockers[i] || {};
-        const t = tomorrowTasks[i] || {};
-        combinedRows.push([
-          b.issue || '',
-          b.details || '',
-          b.priority || '',
-          t.task || '',
-          t.details || '',
-          t.notes || ''
-        ]);
+      if (!res.ok) {
+        throw new Error("Failed to generate PDF report on server.");
       }
-
-      autoTable(doc, {
-        head: combinedHeaders,
-        body: combinedRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [43, 48, 128], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 7.2, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 30 },
-          1: { width: 35 },
-          2: { width: 16, halign: 'center' },
-          3: { width: 30 },
-          4: { width: 36 },
-          5: { width: 35 }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      currentY = doc.lastAutoTable.finalY + 4;
-
-      // 5. APPROVAL
-      drawSectionHeader("5. Approval");
       
-      const approvalHeaders = [["Designer name & sign", "Submitted at", "Team leader", "Approved on"]];
-      const approvalRows = [
-        [
-          `${approval.designerName || ''} (${approval.designerSignature || 'Signature'})`,
-          approval.submittedAt || '',
-          approval.teamLeaderName || '',
-          approval.approvedOn || ''
-        ]
-      ];
-
-      autoTable(doc, {
-        head: approvalHeaders,
-        body: approvalRows,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillColor: [255, 255, 255], textColor: [43, 48, 128], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
-        styles: { fontSize: 8, cellPadding: 3, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
-        columnStyles: {
-          0: { width: 52 },
-          1: { width: 35, halign: 'center' },
-          2: { width: 60 },
-          3: { width: 35, halign: 'center' }
-        },
-        margin: { left: 14, right: 14 }
-      });
-
-      doc.save(`Daily_Report_Designer_${approval.designerName || 'Designer'}_${selectedDate}.pdf`);
-      showToast("PDF report downloaded successfully!", "success");
+      const blob = await res.blob();
+      const filename = `${reportType.charAt(0).toUpperCase() + reportType.slice(1)}_Report_${(basicDetails.employeeName || 'Employee').replace(/[^a-zA-Z0-9_-]/g, '_')}_${selectedDate}.pdf`;
+      
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+      
+      showToast("PDF report downloaded and saved successfully!", "success");
     } catch (e) {
       console.error(e);
-      showToast("Failed to generate PDF.", "error");
+      showToast("Failed to download PDF.", "error");
     }
-  };
+  };;
 
   const handleFetchMonthlyData = async () => {
     if (!selectedUserId) {
@@ -763,7 +592,7 @@ const GraphicDesignerReportPage = () => {
     }
   };
 
-  const handleDownloadMonthlyPDF = () => {
+  const handleDownloadMonthlyPDF = async () => {
     try {
       const doc = new jsPDF({
         orientation: 'portrait',
@@ -967,8 +796,15 @@ const GraphicDesignerReportPage = () => {
         },
         margin: { left: 14, right: 14 }
       });
-
-      doc.save(`Monthly_Report_Designer_${monthlyApproval.designerName || 'Designer'}_${monthlyStartDate}_to_${monthlyEndDate}.pdf`);
+      const pdfBlob = doc.output('blob');
+      const filename = `Monthly_Report_Designer_${monthlyApproval.designerName || 'Designer'}_${monthlyStartDate}_to_${monthlyEndDate}.pdf`;
+      try {
+        await uploadCompiledPDFReport(selectedUserId, `${monthlyStartDate}_to_${monthlyEndDate}`, pdfBlob, filename, 'graphicdesigner', 'monthly');
+        console.log("Monthly PDF saved successfully");
+      } catch (uploadErr) {
+        console.error("Failed to upload monthly PDF:", uploadErr);
+      }
+      doc.save(filename);
       showToast("Monthly PDF report downloaded successfully!", "success");
     } catch (e) {
       console.error(e);

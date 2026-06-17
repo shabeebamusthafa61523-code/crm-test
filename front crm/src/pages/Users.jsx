@@ -87,7 +87,7 @@ const Users = () => {
 
   const fetchDepartments = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/v1/departments`, {
+      const res = await fetch(`${API_BASE}/v1/departments?status=true`, {
         headers: getAuthHeaders()
       });
       const data = await res.json();

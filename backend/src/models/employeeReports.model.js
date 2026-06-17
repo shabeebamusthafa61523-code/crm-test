@@ -1,0 +1,43 @@
+import mongoose from 'mongoose';
+
+const employeeReportsSchema = new mongoose.Schema({
+  employee_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: [true, 'Employee ID is required']
+  },
+  pdf_url: {
+    type: String,
+    required: [true, 'PDF URL is required']
+  },
+  pdf_public_id: {
+    type: String
+  },
+  filename: {
+    type: String,
+    required: [true, 'Filename is required']
+  },
+  report_date: {
+    type: String, // YYYY-MM-DD or date range e.g., 'YYYY-MM-DD_to_YYYY-MM-DD'
+    required: [true, 'Report date is required']
+  },
+  report_type: {
+    type: String, // e.g., 'developer', 'hr', etc.
+    required: [true, 'Report type is required']
+  },
+  report_period: {
+    type: String,
+    enum: ['daily', 'weekly', 'monthly'],
+    default: 'daily',
+    required: true
+  },
+  created_at: {
+    type: Date,
+    default: Date.now,
+    required: true
+  }
+});
+
+const EmployeeReports = mongoose.model('EmployeeReports', employeeReportsSchema);
+
+export default EmployeeReports;
