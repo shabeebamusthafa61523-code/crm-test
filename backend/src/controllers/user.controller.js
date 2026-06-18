@@ -68,9 +68,7 @@ export const userController = {
           passwordHash: 0,
           __v: 0
         }
-      )
-      .populate('designationId')
-      .sort({ name: 1 });
+      ).sort({ name: 1 });
 
       return res.status(200).json(users);
 
@@ -149,7 +147,7 @@ export const userController = {
       let query = User.find(whereClause)
         .populate(
           'departmentId',
-          'name status'
+          'name'
         )
         .sort({ createdAt: -1 });
 
@@ -178,8 +176,6 @@ export const userController = {
         const legacyDesignationId = designationMap.has(String(u.designation)) ? String(u.designation) : '';
         const resolvedDesignationId = designationId || legacyDesignationId;
 
-        const isDeptActive = u.departmentId && u.departmentId.status !== false;
-
         return ({
         id: u._id,
         name: u.name,
@@ -187,8 +183,8 @@ export const userController = {
         phone: u.phone,
         role: u.role,
         employeeId: u.employeeId,
-        department: isDeptActive ? (u.departmentId.name || u.department) : '',
-        departmentId: isDeptActive ? u.departmentId._id : null,
+        department: u.department || (u.departmentId ? u.departmentId.name : ''),
+        departmentId: u.departmentId,
         designation: resolvedDesignationId || u.designation,
         designationId: resolvedDesignationId,
         designationName: designationMap.get(resolvedDesignationId) || u.designation,
@@ -231,7 +227,7 @@ export const userController = {
       const user = await User.findById(id)
         .populate(
           'departmentId',
-          'name headUserId status'
+          'name headUserId'
         )
         .populate('designationId', 'name');
 
@@ -241,8 +237,6 @@ export const userController = {
           404
         );
       }
-
-      const isDeptActive = user.departmentId && user.departmentId.status !== false;
 
       return sendSuccess(res, {
         status: 200,
@@ -255,8 +249,8 @@ export const userController = {
           phone: user.phone,
           role: user.role,
           employeeId: user.employeeId,
-          department: isDeptActive ? (user.departmentId.name || user.department) : '',
-          departmentId: isDeptActive ? user.departmentId : null,
+          department: user.department || (user.departmentId ? user.departmentId.name : ''),
+          departmentId: user.departmentId,
           designation: user.designationId ? String(user.designationId._id) : user.designation,
           designationId: user.designationId ? String(user.designationId._id) : '',
           designationName: user.designationId?.name || user.designation,

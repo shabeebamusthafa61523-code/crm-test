@@ -179,14 +179,6 @@ const StudentAttendance = () => {
   const handleRegister = async (e) => {
     e.preventDefault();
     setIsAddingStudent(true);
-
-    // Phone number validation
-    if (!/^\d{10}$/.test(formData.phone || '')) {
-      showToast('Phone number must be exactly 10 digits.', 'warning');
-      setIsAddingStudent(false);
-      return;
-    }
-
     const finalPayload = { ...formData, salary: 1, role_id: STUDENT_ROLE_ID };
 
     try {
@@ -531,17 +523,7 @@ const StudentAttendance = () => {
                   <FormInput label="Full Name" name="name" icon={<User size={14}/>} value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} />
                   <FormInput label="Email Address" name="email" type="email" icon={<Mail size={14}/>} value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} />
                   <FormInput label="Account Password" name="password" type="password" icon={<Lock size={14}/>} value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} />
-                  <div>
-                    <FormInput label="Contact Phone" name="phone" icon={<Phone size={14}/>} value={formData.phone}
-                      onChange={e => {
-                        const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
-                        setFormData({...formData, phone: digits});
-                      }}
-                    />
-                    {formData.phone && formData.phone.length !== 10 && (
-                      <p className="text-[10px] text-red-500 mt-1 ml-2">Must be exactly 10 digits.</p>
-                    )}
-                  </div>
+                  <FormInput label="Contact Phone" name="phone" icon={<Phone size={14}/>} value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} />
                   
                   <div className="space-y-1">
                     <label className="text-[9px] font-black text-slate-400 uppercase ml-2 tracking-widest">ID Type</label>

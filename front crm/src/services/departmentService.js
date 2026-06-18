@@ -136,33 +136,6 @@ export const removeUserFromDepartment = (departmentId, userId) => {
   return departmentApi.delete(`/${departmentId}/users/${userId}`);
 };
 
-/**
- * Get PDF reports list uploaded for a user with sorting
- */
-export const getPDFReportsByUser = (userId, sort = 'newest') => {
-  return departmentApi.get(`${API_URL}/v1/employee-reports/list?userId=${userId}&sort=${sort}`);
-};
-
-/**
- * Upload compiled PDF report (weekly/monthly) to server
- */
-export const uploadCompiledPDFReport = (userId, reportDate, pdfBlob, filename, reportType, reportPeriod) => {
-  const token = localStorage.getItem('token');
-  const cleanToken = token ? token.replace(/"/g, '') : '';
-  const headers = {
-    'Authorization': cleanToken.startsWith('Bearer ') ? cleanToken : `Bearer ${cleanToken}`
-  };
-  
-  const fd = new FormData();
-  fd.append('pdfFile', pdfBlob, filename);
-  fd.append('userId', userId);
-  fd.append('reportDate', reportDate);
-  fd.append('reportType', reportType);
-  fd.append('reportPeriod', reportPeriod);
-
-  return axios.post(`${API_URL}/v1/employee-reports/upload`, fd, { headers });
-};
-
 export default {
   getAllDepartments,
   getDepartmentById,
@@ -175,7 +148,5 @@ export default {
   getDepartmentAnalytics,
   addUserToDepartment,
   removeUserFromDepartment,
-  getPDFReportsByUser,
-  uploadCompiledPDFReport
 };
 

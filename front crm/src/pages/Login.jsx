@@ -85,7 +85,7 @@ const Login = () => {
         // 3. Save full user object for profile/other uses
         localStorage.setItem('user', JSON.stringify(result.user || { id: userId }));
 
-        navigate('/attendance');
+        navigate('/dashboard');
       } else {
         showToast(result.detail || "Authentication Failed", 'error');
       }
@@ -400,23 +400,12 @@ const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail, showToast, onSucce
                   required
                   name="phone"
                   type="tel"
-                  maxLength={10}
-                  placeholder="10-digit number"
+                  placeholder="Enter registered phone number"
                   value={formData.phone}
-                  onChange={e => {
-                    const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
-                    setFormData(prev => ({ ...prev, phone: digits }));
-                  }}
-                  className={`w-full bg-slate-50 dark:bg-slate-950 border rounded-2xl py-4.5 pl-11 pr-4 text-slate-900 dark:text-slate-100 outline-none transition-all text-sm ${
-                    formData.phone && formData.phone.length !== 10
-                      ? 'border-red-400 focus:border-red-400'
-                      : 'border-slate-200 dark:border-slate-850 focus:border-indigo-500/50'
-                  }`}
+                  onChange={handleChange}
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-2xl py-4.5 pl-11 pr-4 text-slate-900 dark:text-slate-100 focus:border-indigo-500/50 outline-none transition-all text-sm"
                 />
               </div>
-              {formData.phone && formData.phone.length !== 10 && (
-                <p className="text-[10px] text-red-500 ml-2">Must be exactly 10 digits.</p>
-              )}
             </div>
 
             <button
