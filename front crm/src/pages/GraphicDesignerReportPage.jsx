@@ -1,0 +1,2294 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { uploadCompiledPDFReport } from '../services/departmentService';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  FileText, Calendar, Plus, Trash2, Save, Download, 
+  CheckCircle, HelpCircle, Loader2, User, ChevronRight, Pencil, X
+} from 'lucide-react';
+import { useToast } from '../components/ToastProvider';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
+const API_BASE = import.meta.env.VITE_API_URL;
+
+// Default items for Task Log
+const DEFAULT_TASK_LOG = [
+  { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'Done', fileLink: '' },
+  { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'N/A', fileLink: '' },
+  { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'N/A', fileLink: '' },
+  { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'N/A', fileLink: '' }
+];
+
+// Default Key Numbers
+const DEFAULT_KEY_NUMBERS = {
+  designsCompleted: { target: '', todaysCount: '', notes: '' },
+  revisionsDone: { target: '', todaysCount: '', notes: '' },
+  clientDeliveries: { target: '', todaysCount: '', notes: '' }
+};
+
+// Default Blockers
+const DEFAULT_BLOCKERS = [
+  { issue: 'Laptop complaint', details: 'Laptop got from the repairing shop late', priority: 'High' }
+];
+
+// Default Tomorrow's Plan
+const DEFAULT_TOMORROW = [
+  { task: '', details: '', notes: '' }
+];
+
+const GraphicDesignerReportPage = () => {
+  const { showToast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [isEditingBasic, setIsEditingBasic] = useState(false);
+  const [currentUser, setCurrentUser] = useState({});
+  const [isPrivileged, setIsPrivileged] = useState(false);
+  
+  // Selection state
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [designers, setDesigners] = useState([]);
+  const [submittedDates, setSubmittedDates] = useState([]);
+  
+  // Form State
+  const [basicDetails, setBasicDetails] = useState({
+    employeeId: '',
+    designation: 'Graphic Designer',
+    reportingTo: 'CMO',
+    shiftTiming: '9:00 AM - 5:00 PM',
+    preparedAt: ''
+  });
+  
+  const [taskLog, setTaskLog] = useState(DEFAULT_TASK_LOG);
+  const [keyNumbers, setKeyNumbers] = useState(DEFAULT_KEY_NUMBERS);
+  const [blockers, setBlockers] = useState(DEFAULT_BLOCKERS);
+  const [tomorrowTasks, setTomorrowTasks] = useState(DEFAULT_TOMORROW);
+  const [approval, setApproval] = useState({
+    designerName: '',
+    designerSignature: '',
+    submittedAt: '',
+    teamLeaderName: '',
+    approvedOn: ''
+  });
+
+  // Monthly Report States
+  const [isMonthlyModalOpen, setIsMonthlyModalOpen] = useState(false);
+  const [monthlyStartDate, setMonthlyStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  });
+  const [monthlyEndDate, setMonthlyEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [isMonthlyLoading, setIsMonthlyLoading] = useState(false);
+  const [monthlyActiveTab, setMonthlyActiveTab] = useState("range");
+
+  const [monthlyBasicDetails, setMonthlyBasicDetails] = useState({
+    employeeId: '',
+    designation: 'Graphic Designer',
+    reportingTo: 'CMO',
+    shiftTiming: '9:00 AM - 5:00 PM',
+    preparedAt: ''
+  });
+  const [monthlyTaskLog, setMonthlyTaskLog] = useState([]);
+  const [monthlyKeyNumbers, setMonthlyKeyNumbers] = useState(DEFAULT_KEY_NUMBERS);
+  const [monthlyBlockers, setMonthlyBlockers] = useState([]);
+  const [monthlyTomorrowTasks, setMonthlyTomorrowTasks] = useState([]);
+  const [monthlyApproval, setMonthlyApproval] = useState({
+    designerName: '',
+    designerSignature: '',
+    submittedAt: '',
+    teamLeaderName: '',
+    approvedOn: ''
+  });
+
+  const getMonthlyTaskSummaryCounts = () => {
+    let done = 0;
+    let pending = 0;
+    let na = 0;
+    
+    monthlyTaskLog.forEach(t => {
+      const s = String(t.status || '').toLowerCase().trim();
+      if (s === 'done') done++;
+      else if (s === 'pending' || s === 'ongoing' || s === 'onprogress') pending++;
+      else if (s === 'na' || s === 'n/a') na++;
+    });
+
+    return { done, pending, na, total: monthlyTaskLog.length };
+  };
+
+  const addMonthlyTaskRow = () => {
+    setMonthlyTaskLog([...monthlyTaskLog, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'Done', fileLink: '' }]);
+  };
+  
+  const removeMonthlyTaskRow = (index) => {
+    if (monthlyTaskLog.length > 1) {
+      setMonthlyTaskLog(monthlyTaskLog.filter((_, i) => i !== index));
+    }
+  };
+
+  const addMonthlyBlockerRow = () => {
+    setMonthlyBlockers([...monthlyBlockers, { issue: '', details: '', priority: 'None' }]);
+  };
+
+  const removeMonthlyBlockerRow = (index) => {
+    if (monthlyBlockers.length > 1) {
+      setMonthlyBlockers(monthlyBlockers.filter((_, i) => i !== index));
+    }
+  };
+
+  const addMonthlyTomorrowRow = () => {
+    setMonthlyTomorrowTasks([...monthlyTomorrowTasks, { task: '', details: '', notes: '' }]);
+  };
+
+  const removeMonthlyTomorrowRow = (index) => {
+    if (monthlyTomorrowTasks.length > 1) {
+      setMonthlyTomorrowTasks(monthlyTomorrowTasks.filter((_, i) => i !== index));
+    }
+  };
+
+  // Fetch token headers helper
+  const getAuthHeaders = useCallback(() => {
+    const rawToken = localStorage.getItem('token');
+    const cleanToken = rawToken ? rawToken.replace(/"/g, '') : '';
+    return { 
+      'Authorization': cleanToken.startsWith('Bearer ') ? cleanToken : `Bearer ${cleanToken}`,
+      'Content-Type': 'application/json'
+    };
+  }, []);
+
+  // Initialize user information
+  useEffect(() => {
+    try {
+      const savedUser = localStorage.getItem('user');
+      if (savedUser) {
+        const userObj = JSON.parse(savedUser);
+        setCurrentUser(userObj);
+        
+        const role = String(userObj.role_id || userObj.role || '').toLowerCase().trim();
+        const privileged = ['1', '2', 'hr', 'admin'].includes(role);
+        setIsPrivileged(privileged);
+        
+        if (!privileged) {
+          const uId = userObj.id || userObj._id;
+          setSelectedUserId(uId);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to parse user session details:", err);
+    }
+  }, []);
+
+  // Fetch designers list
+  useEffect(() => {
+    const fetchDesigners = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/v1/graphic-designer-reports/designers`, {
+          headers: getAuthHeaders()
+        });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          setDesigners(data.data);
+          
+          // Try to default to the logged in user's ID if found in designers list
+          const savedUser = localStorage.getItem('user');
+          let myId = '';
+          if (savedUser) {
+            const userObj = JSON.parse(savedUser);
+            myId = userObj.id || userObj._id;
+          }
+          
+          if (myId && data.data.some(d => d._id === myId)) {
+            setSelectedUserId(myId);
+          } else if (data.data.length > 0 && !selectedUserId) {
+            setSelectedUserId(data.data[0]._id);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to fetch designers list:", e);
+      }
+    };
+    fetchDesigners();
+  }, [getAuthHeaders, selectedUserId]);
+
+  // Fetch submitted report dates list for highlighting
+  const fetchSubmittedDates = useCallback(async (userId) => {
+    if (!userId) return;
+    try {
+      const res = await fetch(`${API_BASE}/v1/graphic-designer-reports/submitted-dates?userId=${userId}`, {
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setSubmittedDates(data.data);
+      }
+    } catch (e) {
+      console.error("Failed to fetch submitted dates:", e);
+    }
+  }, [getAuthHeaders]);
+
+  // Trigger submitted dates reload on user selection change
+  useEffect(() => {
+    if (selectedUserId) {
+      fetchSubmittedDates(selectedUserId);
+    }
+  }, [selectedUserId, fetchSubmittedDates]);
+
+  // Fetch report data for selected date and user
+  const fetchReport = useCallback(async (userId, dateStr) => {
+    if (!userId || !dateStr) return;
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_BASE}/v1/graphic-designer-reports/by-date?userId=${userId}&dateString=${dateStr}`, {
+        headers: getAuthHeaders()
+      });
+      
+      const data = await res.json();
+      
+      if (data.success && data.data) {
+        const report = data.data;
+        setBasicDetails(report.basicDetails || {});
+        setTaskLog(report.taskLog || []);
+        setKeyNumbers(report.keyNumbers || DEFAULT_KEY_NUMBERS);
+        setBlockers(report.blockers || []);
+        setTomorrowTasks(report.tomorrowTasks || []);
+        setApproval(report.approval || {});
+      } else {
+        initializeBlankReport(userId, dateStr);
+      }
+    } catch (err) {
+      initializeBlankReport(userId, dateStr);
+    } finally {
+      setLoading(false);
+    }
+  }, [getAuthHeaders]);
+
+  // Load report when selection changes
+  useEffect(() => {
+    if (selectedUserId && selectedDate) {
+      fetchReport(selectedUserId, selectedDate);
+    }
+  }, [selectedUserId, selectedDate, fetchReport]);
+
+  // Cache basicDetails in localStorage when they change
+  useEffect(() => {
+    if (selectedUserId && basicDetails && (basicDetails.employeeName || basicDetails.employeeId)) {
+      const { preparedAt, ...persistent } = basicDetails;
+      if (Object.keys(persistent).length > 0) {
+        localStorage.setItem(`cachedBasicDetails_GraphicDesigner_${selectedUserId}`, JSON.stringify(persistent));
+      }
+    }
+  }, [basicDetails, selectedUserId]);
+
+  const initializeBlankReport = (userId, dateStr) => {
+    let userDetail = currentUser;
+    if (isPrivileged && designers.length > 0) {
+      userDetail = designers.find(d => d._id === userId) || currentUser;
+    }
+
+    const dateObj = new Date(dateStr);
+    const formattedDateString = dateObj.toLocaleDateString('en-GB').replace(/\//g, '-'); // DD-MM-YYYY
+
+    // Prefill time to current time
+    const now = new Date();
+    let hours = now.getHours();
+    let minutes = now.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; 
+    minutes = minutes < 10 ? '0' + minutes : minutes;
+    const timeStr = hours + ':' + minutes + ' ' + ampm;
+
+    // Load from cache if exists
+    const cached = localStorage.getItem(`cachedBasicDetails_GraphicDesigner_${userId}`);
+    const parsedCached = cached ? JSON.parse(cached) : null;
+
+    setBasicDetails({
+      employeeId: parsedCached?.employeeId || userDetail.employeeId || '',
+      designation: parsedCached?.designation || 'Graphic Designer',
+      reportingTo: parsedCached?.reportingTo || 'CMO',
+      shiftTiming: parsedCached?.shiftTiming || '9:00 AM - 5:00 PM',
+      preparedAt: parsedCached?.preparedAt || timeStr
+    });
+
+    setTaskLog(DEFAULT_TASK_LOG);
+    setKeyNumbers(DEFAULT_KEY_NUMBERS);
+    setBlockers(DEFAULT_BLOCKERS);
+    setTomorrowTasks(DEFAULT_TOMORROW);
+    setApproval({
+      designerName: userDetail.name || '',
+      designerSignature: '',
+      submittedAt: formattedDateString,
+      teamLeaderName: '',
+      approvedOn: ''
+    });
+  };
+
+  // Auto task summary counters
+  const getTaskSummaryCounts = () => {
+    let done = 0;
+    let pending = 0;
+    let na = 0;
+    
+    taskLog.forEach(t => {
+      const s = String(t.status || '').toLowerCase().trim();
+      if (s === 'done') done++;
+      else if (s === 'pending' || s === 'ongoing' || s === 'onprogress') pending++;
+      else if (s === 'na' || s === 'n/a') na++;
+    });
+
+    return { done, pending, na, total: taskLog.length };
+  };
+  const counts = getTaskSummaryCounts();
+
+  // Submit report to backend
+  const handleSaveReport = async () => {
+    try {
+      setSaving(true);
+      const payload = {
+        userId: selectedUserId,
+        dateString: selectedDate,
+        basicDetails,
+        taskLog,
+        keyNumbers,
+        blockers,
+        tomorrowTasks,
+        approval
+      };
+
+      const res = await fetch(`${API_BASE}/v1/graphic-designer-reports`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast("Graphic Designer daily report saved successfully!", 'success');
+        fetchSubmittedDates(selectedUserId);
+      } else {
+        showToast(data.message || "Failed to save the report.", 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Server error. Please try again.", 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Download PDF
+  const handleDownloadPDF = async () => {
+    const reportType = 'graphicdesigner';
+    // Automatically save report as well
+    await handleSaveReport();
+
+    try {
+      showToast("Generating PDF on server...", "info");
+      const token = localStorage.getItem('token');
+      const cleanToken = token ? token.replace(/"/g, '') : '';
+      
+      const url = `${API_BASE}/v1/employee-reports/generate-pdf?userId=${selectedUserId}&dateString=${selectedDate}&reportType=${reportType}`;
+      
+      const res = await fetch(url, {
+        headers: {
+          'Authorization': cleanToken.startsWith('Bearer ') ? cleanToken : `Bearer ${cleanToken}`
+        }
+      });
+      
+      if (!res.ok) {
+        throw new Error("Failed to generate PDF report on server.");
+      }
+      
+      const blob = await res.blob();
+      const filename = `${reportType.charAt(0).toUpperCase() + reportType.slice(1)}_Report_${(basicDetails.employeeName || 'Employee').replace(/[^a-zA-Z0-9_-]/g, '_')}_${selectedDate}.pdf`;
+      
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        a.remove();
+        window.URL.revokeObjectURL(downloadUrl);
+      }, 15000);
+      
+      showToast("PDF report downloaded and saved successfully!", "success");
+    } catch (e) {
+      console.error(e);
+      showToast("Failed to download PDF.", "error");
+    }
+  };;
+
+  const handleFetchMonthlyData = async () => {
+    if (!selectedUserId) {
+      showToast("Please select a designer first.", "error");
+      return;
+    }
+    try {
+      setIsMonthlyLoading(true);
+      const dates = [];
+      let curr = new Date(monthlyStartDate);
+      const end = new Date(monthlyEndDate);
+      while (curr <= end) {
+        dates.push(curr.toISOString().split('T')[0]);
+        curr.setDate(curr.getDate() + 1);
+      }
+
+      if (dates.length === 0) {
+        showToast("Invalid date range.", "error");
+        return;
+      }
+
+      // Fetch all reports in parallel
+      const fetchPromises = dates.map(async (dateStr) => {
+        try {
+          const res = await fetch(`${API_BASE}/v1/graphic-designer-reports/by-date?userId=${selectedUserId}&dateString=${dateStr}`, {
+            headers: getAuthHeaders()
+          });
+          const data = await res.json();
+          if (data.success && data.data) {
+            return data.data;
+          }
+        } catch (e) {
+          console.error(`Error fetching for date ${dateStr}:`, e);
+        }
+        return null;
+      });
+
+      const results = await Promise.all(fetchPromises);
+      const reports = results.filter(r => r !== null);
+
+      if (reports.length === 0) {
+        showToast("No daily reports found in the selected date range.", "warning");
+        setMonthlyTaskLog([]);
+        setMonthlyBlockers([]);
+        setMonthlyTomorrowTasks([]);
+        setMonthlyKeyNumbers(DEFAULT_KEY_NUMBERS);
+        setIsMonthlyLoading(false);
+        setMonthlyActiveTab("basic");
+        return;
+      }
+
+      // Consolidation
+      const firstReport = reports[0];
+      setMonthlyBasicDetails({
+        employeeId: firstReport.basicDetails?.employeeId || '',
+        designation: firstReport.basicDetails?.designation || 'Graphic Designer',
+        reportingTo: firstReport.basicDetails?.reportingTo || 'CMO',
+        shiftTiming: firstReport.basicDetails?.shiftTiming || '9:00 AM - 5:00 PM',
+        preparedAt: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+      });
+
+      const mergedTasks = [];
+      reports.forEach(r => {
+        if (r.taskLog && Array.isArray(r.taskLog)) {
+          r.taskLog.forEach(t => {
+            if (t.taskProjectName || t.descriptionDetails) {
+              mergedTasks.push({
+                taskProjectName: t.taskProjectName || '',
+                descriptionDetails: t.descriptionDetails || '',
+                startTime: t.startTime || '',
+                endTime: t.endTime || '',
+                status: t.status || 'Done',
+                fileLink: t.fileLink || ''
+              });
+            }
+          });
+        }
+      });
+      setMonthlyTaskLog(mergedTasks.length > 0 ? mergedTasks : DEFAULT_TASK_LOG);
+
+      const parseNum = (val) => {
+        if (val === undefined || val === null) return 0;
+        const clean = String(val).replace(/[^0-9.-]/g, '');
+        return Number(clean) || 0;
+      };
+
+      const keyNums = {
+        designsCompleted: { target: 0, todaysCount: 0, notes: [] },
+        revisionsDone: { target: 0, todaysCount: 0, notes: [] },
+        clientDeliveries: { target: 0, todaysCount: 0, notes: [] }
+      };
+
+      reports.forEach(r => {
+        const k = r.keyNumbers || {};
+        ['designsCompleted', 'revisionsDone', 'clientDeliveries'].forEach(field => {
+          if (k[field]) {
+            keyNums[field].target += parseNum(k[field].target);
+            keyNums[field].todaysCount += parseNum(k[field].todaysCount);
+            if (k[field].notes && k[field].notes.trim()) {
+              keyNums[field].notes.push(k[field].notes.trim());
+            }
+          }
+        });
+      });
+
+      setMonthlyKeyNumbers({
+        designsCompleted: {
+          target: keyNums.designsCompleted.target.toString(),
+          todaysCount: keyNums.designsCompleted.todaysCount.toString(),
+          notes: Array.from(new Set(keyNums.designsCompleted.notes)).join('; ')
+        },
+        revisionsDone: {
+          target: keyNums.revisionsDone.target.toString(),
+          todaysCount: keyNums.revisionsDone.todaysCount.toString(),
+          notes: Array.from(new Set(keyNums.revisionsDone.notes)).join('; ')
+        },
+        clientDeliveries: {
+          target: keyNums.clientDeliveries.target.toString(),
+          todaysCount: keyNums.clientDeliveries.todaysCount.toString(),
+          notes: Array.from(new Set(keyNums.clientDeliveries.notes)).join('; ')
+        }
+      });
+
+      const mergedBlockers = [];
+      reports.forEach(r => {
+        if (r.blockers && Array.isArray(r.blockers)) {
+          r.blockers.forEach(b => {
+            if (b.issue || b.details) {
+              mergedBlockers.push({
+                issue: b.issue || '',
+                details: b.details || '',
+                priority: b.priority || 'None'
+              });
+            }
+          });
+        }
+      });
+      setMonthlyBlockers(mergedBlockers.length > 0 ? mergedBlockers : DEFAULT_BLOCKERS);
+
+      const mergedTomorrow = [];
+      reports.forEach(r => {
+        if (r.tomorrowTasks && Array.isArray(r.tomorrowTasks)) {
+          r.tomorrowTasks.forEach(t => {
+            if (t.task || t.details) {
+              mergedTomorrow.push({
+                task: t.task || '',
+                details: t.details || '',
+                notes: t.notes || ''
+              });
+            }
+          });
+        }
+      });
+      setMonthlyTomorrowTasks(mergedTomorrow.length > 0 ? mergedTomorrow : DEFAULT_TOMORROW);
+
+      const lastReport = reports[reports.length - 1];
+      const designerUser = designers.find(d => d._id === selectedUserId) || currentUser;
+      setMonthlyApproval({
+        designerName: lastReport.approval?.designerName || designerUser.name || '',
+        designerSignature: lastReport.approval?.designerSignature || '',
+        submittedAt: new Date().toLocaleDateString('en-GB').replace(/\//g, '-'),
+        teamLeaderName: lastReport.approval?.teamLeaderName || '',
+        approvedOn: lastReport.approval?.approvedOn || ''
+      });
+
+      showToast(`Consolidated ${reports.length} daily reports!`, "success");
+      setMonthlyActiveTab("basic");
+    } catch (err) {
+      console.error(err);
+      showToast("Error consolidating monthly reports.", "error");
+    } finally {
+      setIsMonthlyLoading(false);
+    }
+  };
+
+  const handleDownloadMonthlyPDF = async () => {
+    try {
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      let currentY = 15;
+      
+      const drawSectionHeader = (title) => {
+        doc.setFillColor(43, 48, 128); // KODBRAND Navy
+        doc.rect(14, currentY, 182, 7, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.setTextColor(255, 255, 255);
+        doc.text(title.toUpperCase(), 17, currentY + 5);
+        currentY += 7;
+      };
+
+      // Header Brand
+      doc.setFillColor(43, 48, 128);
+      doc.rect(14, 12, 182, 12, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(13);
+      doc.setTextColor(255, 255, 255);
+      doc.text("KODBRAND — Monthly Consolidated Report", 18, 20);
+
+      doc.setFontSize(8);
+      doc.text("Graphic Designer  ·  CMO Office", 145, 20);
+
+      currentY = 27;
+
+      // 1. BASIC DETAILS
+      drawSectionHeader("1. Basic details");
+      
+      const basicDetailsRows = [
+        ["Employee ID", monthlyBasicDetails.employeeId || '', "Designation", monthlyBasicDetails.designation || '', "Reporting to", monthlyBasicDetails.reportingTo || ''],
+        ["Shift timing", monthlyBasicDetails.shiftTiming || '', "Report prepared at", monthlyBasicDetails.preparedAt || '', "Date Range", `${monthlyStartDate} to ${monthlyEndDate}`]
+      ];
+
+      autoTable(doc, {
+        body: basicDetailsRows,
+        startY: currentY,
+        theme: 'grid',
+        styles: { fontSize: 7.5, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 30 },
+          1: { width: 31 },
+          2: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 30 },
+          3: { width: 31 },
+          4: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 30 },
+          5: { width: 30 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      // 2. TASK LOG
+      drawSectionHeader("2. Consolidated Task log");
+      
+      const taskHeaders = [["Task / project name", "Description / details", "Start time", "End time", "Status", "File link"]];
+      const taskRows = monthlyTaskLog.map(t => [
+        t.taskProjectName || '',
+        t.descriptionDetails || '',
+        t.startTime || '',
+        t.endTime || '',
+        t.status || '',
+        t.fileLink || ''
+      ]);
+
+      const monthlyCounts = getMonthlyTaskSummaryCounts();
+      taskRows.push([
+        "Monthly summary",
+        `Done: ${monthlyCounts.done}   |   Pending: ${monthlyCounts.pending}   |   N/A: ${monthlyCounts.na}   |   Total: ${monthlyCounts.total}`,
+        "", "", "", ""
+      ]);
+
+      autoTable(doc, {
+        head: taskHeaders,
+        body: taskRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [43, 48, 128], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 7.5, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 40 },
+          1: { width: 62 },
+          2: { width: 20 },
+          3: { width: 20 },
+          4: { width: 18, halign: 'center' },
+          5: { width: 22 }
+        },
+        didParseCell: (data) => {
+          if (data.row.index === taskRows.length - 1) {
+            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.fillColor = [245, 245, 247];
+            if (data.column.index === 0) {
+              data.cell.styles.textColor = [43, 48, 128];
+            }
+          }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      // 3. KEY NUMBERS
+      drawSectionHeader("3. Consolidated Key numbers");
+      
+      const keyHeaders = [["KPI", "Target (Sum)", "Actual (Sum)", "Notes"]];
+      const keyRows = [
+        ["Designs completed", monthlyKeyNumbers.designsCompleted?.target || '0', monthlyKeyNumbers.designsCompleted?.todaysCount || '0', monthlyKeyNumbers.designsCompleted?.notes || ''],
+        ["Revisions done", monthlyKeyNumbers.revisionsDone?.target || '0', monthlyKeyNumbers.revisionsDone?.todaysCount || '0', monthlyKeyNumbers.revisionsDone?.notes || ''],
+        ["Client deliveries", monthlyKeyNumbers.clientDeliveries?.target || '0', monthlyKeyNumbers.clientDeliveries?.todaysCount || '0', monthlyKeyNumbers.clientDeliveries?.notes || '']
+      ];
+
+      autoTable(doc, {
+        head: keyHeaders,
+        body: keyRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [43, 48, 128], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 7.5, cellPadding: 2.5, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 45, fontStyle: 'bold' },
+          1: { width: 40 },
+          2: { width: 30, halign: 'center' },
+          3: { width: 67 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      // 4. BLOCKERS & FUTURE PLAN
+      drawSectionHeader("4. Blockers & next period's plan");
+      
+      const combinedHeaders = [["Blocker / issue", "Details", "Priority", "Next Period main task", "Details", "Notes"]];
+      
+      const maxLines = Math.max(monthlyBlockers.length, monthlyTomorrowTasks.length);
+      const combinedRows = [];
+      for (let i = 0; i < maxLines; i++) {
+        const b = monthlyBlockers[i] || {};
+        const t = monthlyTomorrowTasks[i] || {};
+        combinedRows.push([
+          b.issue || '',
+          b.details || '',
+          b.priority || '',
+          t.task || '',
+          t.details || '',
+          t.notes || ''
+        ]);
+      }
+
+      autoTable(doc, {
+        head: combinedHeaders,
+        body: combinedRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [43, 48, 128], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 7.2, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 30 },
+          1: { width: 35 },
+          2: { width: 16, halign: 'center' },
+          3: { width: 30 },
+          4: { width: 36 },
+          5: { width: 35 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      // 5. APPROVAL
+      drawSectionHeader("5. Approval");
+      
+      const approvalHeaders = [["Designer name & sign", "Submitted at", "Team leader", "Approved on"]];
+      const approvalRows = [
+        [
+          `${monthlyApproval.designerName || ''} (${monthlyApproval.designerSignature || 'Signature'})`,
+          monthlyApproval.submittedAt || '',
+          monthlyApproval.teamLeaderName || '',
+          monthlyApproval.approvedOn || ''
+        ]
+      ];
+
+      autoTable(doc, {
+        head: approvalHeaders,
+        body: approvalRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [43, 48, 128], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 3, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 52 },
+          1: { width: 35, halign: 'center' },
+          2: { width: 60 },
+          3: { width: 35, halign: 'center' }
+        },
+        margin: { left: 14, right: 14 }
+      });
+      const pdfBlob = doc.output('blob');
+      const filename = `Monthly_Report_Designer_${monthlyApproval.designerName || 'Designer'}_${monthlyStartDate}_to_${monthlyEndDate}.pdf`;
+      try {
+        await uploadCompiledPDFReport(selectedUserId, `${monthlyStartDate}_to_${monthlyEndDate}`, pdfBlob, filename, 'graphicdesigner', 'monthly');
+        console.log("Monthly PDF saved successfully");
+      } catch (uploadErr) {
+        console.error("Failed to upload monthly PDF:", uploadErr);
+      }
+      doc.save(filename);
+      showToast("Monthly PDF report downloaded successfully!", "success");
+    } catch (e) {
+      console.error(e);
+      showToast("Failed to generate Monthly PDF.", "error");
+    }
+  };
+
+  // Generate last 14 days list
+  const getRecentDates = () => {
+    const dates = [];
+    for (let i = 0; i < 14; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateString = d.toISOString().split('T')[0];
+      const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
+      const displayDate = d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+      dates.push({ dateString, dayName, displayDate });
+    }
+    return dates;
+  };
+  const recentDates = getRecentDates();
+
+  // Helper row handlers for dynamic tables
+  const addTaskRow = () => {
+    setTaskLog([...taskLog, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'Done', fileLink: '' }]);
+  };
+  
+  const removeTaskRow = (index) => {
+    if (taskLog.length > 1) {
+      setTaskLog(taskLog.filter((_, i) => i !== index));
+    }
+  };
+
+  const addBlockerRow = () => {
+    setBlockers([...blockers, { issue: '', details: '', priority: '' }]);
+  };
+
+  const removeBlockerRow = (index) => {
+    if (blockers.length > 1) {
+      setBlockers(blockers.filter((_, i) => i !== index));
+    }
+  };
+
+  const addTomorrowRow = () => {
+    setTomorrowTasks([...tomorrowTasks, { task: '', details: '', notes: '' }]);
+  };
+
+  const removeTomorrowRow = (index) => {
+    if (tomorrowTasks.length > 1) {
+      setTomorrowTasks(tomorrowTasks.filter((_, i) => i !== index));
+    }
+  };
+
+  return (
+    <div className="flex flex-col lg:flex-row gap-6 items-start">
+      
+      {/* LEFT PANEL: Date Select Sidebar */}
+      <div className="w-full lg:w-72 shrink-0 bg-white/70 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-md rounded-3xl p-5 shadow-sm">
+        
+        {(isPrivileged || designers.length > 1) && (
+          <div className="mb-6">
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
+              Select Designer User
+            </label>
+            <div className="relative">
+              <select
+                value={selectedUserId}
+                onChange={(e) => setSelectedUserId(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+              >
+                <option value="">-- Select Designer --</option>
+                {designers.map(d => (
+                  <option key={d._id} value={d._id}>
+                    {d.name} ({d.employeeId || 'No ID'})
+                  </option>
+                ))}
+              </select>
+              <User size={16} className="absolute right-3 top-3.5 text-slate-400 pointer-events-none" />
+            </div>
+          </div>
+        )}
+
+        <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-4 flex items-center gap-2">
+          <Calendar size={14} className="text-indigo-500 dark:text-lime-400" />
+          Shift Report Log (14 Days)
+        </h3>
+
+        <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 scrollbar-none">
+          {recentDates.map(dateObj => {
+            const isSelected = selectedDate === dateObj.dateString;
+            const isSubmitted = submittedDates.includes(dateObj.dateString);
+            
+            return (
+              <button
+                key={dateObj.dateString}
+                onClick={() => setSelectedDate(dateObj.dateString)}
+                className={`flex items-center justify-between w-52 lg:w-full shrink-0 px-4 py-3 rounded-2xl border text-left transition-all duration-300
+                  ${isSelected 
+                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-600/20' 
+                    : 'bg-slate-50/50 dark:bg-slate-950/30 border-slate-200/60 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-950/60 text-slate-700 dark:text-slate-300'
+                  }`}
+              >
+                <div className="flex flex-col">
+                  <span className={`text-xs font-semibold ${isSelected ? 'text-indigo-200' : 'text-slate-400'}`}>
+                    {dateObj.dayName}
+                  </span>
+                  <span className="text-sm font-bold mt-0.5">
+                    {dateObj.displayDate}
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  {isSubmitted ? (
+                    <CheckCircle size={16} className={isSelected ? 'text-lime-400' : 'text-emerald-500'} />
+                  ) : (
+                    <div className={`w-2 h-2 rounded-full ${isSelected ? 'bg-indigo-300' : 'bg-slate-300 dark:bg-slate-700'}`} />
+                  )}
+                  <ChevronRight size={14} className="opacity-50" />
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* RIGHT PANEL: Main Report Form */}
+      <div className="flex-1 w-full bg-white/70 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-md rounded-3xl p-6 lg:p-8 shadow-sm">
+        
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-24 gap-3">
+            <Loader2 className="animate-spin text-indigo-500" size={32} />
+            <p className="text-sm text-slate-400">Loading daily report...</p>
+          </div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="space-y-8"
+          >
+            {/* Form Header Action Buttons */}
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                  Graphic Designer Daily Report
+                </h1>
+                <p className="text-sm text-slate-500 mt-1">
+                  Fill, review, and download daily reports for Graphic Design / CMO Office.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsMonthlyModalOpen(true)}
+                  className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-sm transition-all"
+                >
+                  <Calendar size={16} />
+                  Monthly Report
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadPDF}
+                  className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-sm transition-all"
+                >
+                  <Download size={16} />
+                  Download PDF
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSaveReport}
+                  disabled={saving}
+                  className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-all shadow-md shadow-indigo-600/10 disabled:opacity-50"
+                >
+                  {saving ? (
+                    <Loader2 className="animate-spin" size={16} />
+                  ) : (
+                    <Save size={16} />
+                  )}
+                  Save Report
+                </button>
+              </div>
+            </div>
+
+            {/* 1. BASIC DETAILS */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
+                  <span className="flex items-center justify-center w-5 h-5 rounded bg-indigo-100 dark:bg-lime-950/50 text-[10px]">1</span>
+                  Basic Details
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingBasic(!isEditingBasic)}
+                  className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
+                >
+                  {isEditingBasic ? (
+                    <>
+                      <CheckCircle size={14} /> Done
+                    </>
+                  ) : (
+                    <>
+                      <Pencil size={14} /> Edit
+                    </>
+                  )}
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 bg-slate-50/50 dark:bg-slate-950/20 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Employee ID</label>
+                  <input
+                    type="text"
+                    value={basicDetails.employeeId || ''}
+                    onChange={(e) => setBasicDetails({ ...basicDetails, employeeId: e.target.value })}
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Designation</label>
+                  <input
+                    type="text"
+                    value={basicDetails.designation || ''}
+                    onChange={(e) => setBasicDetails({ ...basicDetails, designation: e.target.value })}
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Reporting Manager</label>
+                  <input
+                    type="text"
+                    value={basicDetails.reportingTo || ''}
+                    onChange={(e) => setBasicDetails({ ...basicDetails, reportingTo: e.target.value })}
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Shift Timing</label>
+                  <input
+                    type="text"
+                    value={basicDetails.shiftTiming || ''}
+                    onChange={(e) => setBasicDetails({ ...basicDetails, shiftTiming: e.target.value })}
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Report Prepared At</label>
+                  <input
+                    type="text"
+                    value={basicDetails.preparedAt || ''}
+                    onChange={(e) => setBasicDetails({ ...basicDetails, preparedAt: e.target.value })}
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 2. TASK LOG */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
+                  <span className="flex items-center justify-center w-5 h-5 rounded bg-indigo-100 dark:bg-lime-950/50 text-[10px]">2</span>
+                  Task Log
+                </h2>
+                <button
+                  type="button"
+                  onClick={addTaskRow}
+                  className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
+                >
+                  <Plus size={14} /> Add Row
+                </button>
+              </div>
+
+              <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900">
+                <table className="w-full text-left border-collapse text-sm">
+                  <thead>
+                    <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                      <th className="px-5 py-4 w-[25%]">Task / Project Name</th>
+                      <th className="px-5 py-4 w-[35%]">Description / Details</th>
+                      <th className="px-5 py-4 w-[10%] text-center">Start Time</th>
+                      <th className="px-5 py-4 w-[10%] text-center">End Time</th>
+                      <th className="px-5 py-4 w-[10%] text-center">Status</th>
+                      <th className="px-5 py-4 w-[15%]">Drive File Link</th>
+                      <th className="px-5 py-4 w-[5%] text-center"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {taskLog.map((item, index) => (
+                      <tr key={index} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5 transition-colors">
+                        <td className="px-5 py-3">
+                          <input
+                            type="text"
+                            value={item.taskProjectName}
+                            onChange={(e) => {
+                              const updated = [...taskLog];
+                              updated[index].taskProjectName = e.target.value;
+                              setTaskLog(updated);
+                            }}
+                            placeholder="Design Task..."
+                            className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                          />
+                        </td>
+                        <td className="px-5 py-3">
+                          <textarea
+                            value={item.descriptionDetails}
+                            onChange={(e) => {
+                              const updated = [...taskLog];
+                              updated[index].descriptionDetails = e.target.value;
+                              setTaskLog(updated);
+                            }}
+                            placeholder="Provide design work details..."
+                            rows={1}
+                            className="w-full bg-transparent border-none focus:outline-none resize-y text-slate-700 dark:text-slate-200"
+                          />
+                        </td>
+                        <td className="px-5 py-3 text-center">
+                          <input
+                            type="text"
+                            value={item.startTime}
+                            onChange={(e) => {
+                              const updated = [...taskLog];
+                              updated[index].startTime = e.target.value;
+                              setTaskLog(updated);
+                            }}
+                            placeholder="9:30 AM"
+                            className="w-full bg-transparent border-none text-center focus:outline-none text-slate-700 dark:text-slate-200"
+                          />
+                        </td>
+                        <td className="px-5 py-3 text-center">
+                          <input
+                            type="text"
+                            value={item.endTime}
+                            onChange={(e) => {
+                              const updated = [...taskLog];
+                              updated[index].endTime = e.target.value;
+                              setTaskLog(updated);
+                            }}
+                            placeholder="11:00 AM"
+                            className="w-full bg-transparent border-none text-center focus:outline-none text-slate-700 dark:text-slate-200"
+                          />
+                        </td>
+                        <td className="px-5 py-3 text-center">
+                          <select
+                            value={item.status}
+                            onChange={(e) => {
+                              const updated = [...taskLog];
+                              updated[index].status = e.target.value;
+                              setTaskLog(updated);
+                            }}
+                            className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-xs focus:outline-none text-slate-700 dark:text-slate-200"
+                          >
+                            <option value="Done">Done</option>
+                            <option value="Pending">Pending</option>
+                            <option value="N/A">N/A</option>
+                          </select>
+                        </td>
+                        <td className="px-5 py-3">
+                          <input
+                            type="text"
+                            value={item.fileLink}
+                            onChange={(e) => {
+                              const updated = [...taskLog];
+                              updated[index].fileLink = e.target.value;
+                              setTaskLog(updated);
+                            }}
+                            placeholder="Link to drive..."
+                            className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200 text-xs text-indigo-600 dark:text-lime-400"
+                          />
+                        </td>
+                        <td className="px-5 py-3 text-center">
+                          <button
+                            type="button"
+                            onClick={() => removeTaskRow(index)}
+                            disabled={taskLog.length === 1}
+                            className="text-rose-500 hover:text-rose-700 disabled:opacity-30 transition-colors"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {/* Auto-Calculated Daily Summary Row */}
+                    <tr className="bg-slate-50/70 dark:bg-slate-950/40 font-bold border-t border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200">
+                      <td className="px-5 py-4 text-indigo-600 dark:text-lime-400">Daily Summary</td>
+                      <td className="px-5 py-4" colSpan={6}>
+                        <div className="flex gap-6 text-xs uppercase tracking-wider">
+                          <span>Done: <strong className="text-emerald-500">{counts.done}</strong></span>
+                          <span>Pending: <strong className="text-amber-500">{counts.pending}</strong></span>
+                          <span>N/A: <strong className="text-slate-400">{counts.na}</strong></span>
+                          <span>Total: <strong>{counts.total}</strong></span>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* 3. KEY NUMBERS */}
+            <div className="space-y-4">
+              <h2 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
+                <span className="flex items-center justify-center w-5 h-5 rounded bg-indigo-100 dark:bg-lime-950/50 text-[10px]">3</span>
+                Key Numbers
+              </h2>
+              
+              <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900">
+                <table className="w-full text-left border-collapse text-sm">
+                  <thead>
+                    <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                      <th className="px-5 py-4 w-[25%]">KPI</th>
+                      <th className="px-5 py-4 w-[25%]">Target</th>
+                      <th className="px-5 py-4 w-[15%] text-center">Today's Count</th>
+                      <th className="px-5 py-4 w-[35%]">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    <tr className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5">
+                      <td className="px-5 py-3 font-semibold text-slate-700 dark:text-slate-300">Designs Completed</td>
+                      <td className="px-5 py-3">
+                        <input
+                          type="text"
+                          value={keyNumbers.designsCompleted?.target || ''}
+                          onChange={(e) => setKeyNumbers({
+                            ...keyNumbers,
+                            designsCompleted: { ...keyNumbers.designsCompleted, target: e.target.value }
+                          })}
+                          placeholder="Target count..."
+                          className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                        />
+                      </td>
+                      <td className="px-5 py-3 text-center">
+                        <input
+                          type="text"
+                          value={keyNumbers.designsCompleted?.todaysCount || ''}
+                          onChange={(e) => setKeyNumbers({
+                            ...keyNumbers,
+                            designsCompleted: { ...keyNumbers.designsCompleted, todaysCount: e.target.value }
+                          })}
+                          placeholder="Actual..."
+                          className="w-full bg-transparent border-none text-center focus:outline-none text-slate-700 dark:text-slate-200"
+                        />
+                      </td>
+                      <td className="px-5 py-3">
+                        <input
+                          type="text"
+                          value={keyNumbers.designsCompleted?.notes || ''}
+                          onChange={(e) => setKeyNumbers({
+                            ...keyNumbers,
+                            designsCompleted: { ...keyNumbers.designsCompleted, notes: e.target.value }
+                          })}
+                          placeholder="Notes..."
+                          className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                        />
+                      </td>
+                    </tr>
+
+                    <tr className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5">
+                      <td className="px-5 py-3 font-semibold text-slate-700 dark:text-slate-300">Revisions Done</td>
+                      <td className="px-5 py-3">
+                        <input
+                          type="text"
+                          value={keyNumbers.revisionsDone?.target || ''}
+                          onChange={(e) => setKeyNumbers({
+                            ...keyNumbers,
+                            revisionsDone: { ...keyNumbers.revisionsDone, target: e.target.value }
+                          })}
+                          placeholder="Target count..."
+                          className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                        />
+                      </td>
+                      <td className="px-5 py-3 text-center">
+                        <input
+                          type="text"
+                          value={keyNumbers.revisionsDone?.todaysCount || ''}
+                          onChange={(e) => setKeyNumbers({
+                            ...keyNumbers,
+                            revisionsDone: { ...keyNumbers.revisionsDone, todaysCount: e.target.value }
+                          })}
+                          placeholder="Actual..."
+                          className="w-full bg-transparent border-none text-center focus:outline-none text-slate-700 dark:text-slate-200"
+                        />
+                      </td>
+                      <td className="px-5 py-3">
+                        <input
+                          type="text"
+                          value={keyNumbers.revisionsDone?.notes || ''}
+                          onChange={(e) => setKeyNumbers({
+                            ...keyNumbers,
+                            revisionsDone: { ...keyNumbers.revisionsDone, notes: e.target.value }
+                          })}
+                          placeholder="Notes..."
+                          className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                        />
+                      </td>
+                    </tr>
+
+                    <tr className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5">
+                      <td className="px-5 py-3 font-semibold text-slate-700 dark:text-slate-300">Client Deliveries</td>
+                      <td className="px-5 py-3">
+                        <input
+                          type="text"
+                          value={keyNumbers.clientDeliveries?.target || ''}
+                          onChange={(e) => setKeyNumbers({
+                            ...keyNumbers,
+                            clientDeliveries: { ...keyNumbers.clientDeliveries, target: e.target.value }
+                          })}
+                          placeholder="Target count..."
+                          className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                        />
+                      </td>
+                      <td className="px-5 py-3 text-center">
+                        <input
+                          type="text"
+                          value={keyNumbers.clientDeliveries?.todaysCount || ''}
+                          onChange={(e) => setKeyNumbers({
+                            ...keyNumbers,
+                            clientDeliveries: { ...keyNumbers.clientDeliveries, todaysCount: e.target.value }
+                          })}
+                          placeholder="Actual..."
+                          className="w-full bg-transparent border-none text-center focus:outline-none text-slate-700 dark:text-slate-200"
+                        />
+                      </td>
+                      <td className="px-5 py-3">
+                        <input
+                          type="text"
+                          value={keyNumbers.clientDeliveries?.notes || ''}
+                          onChange={(e) => setKeyNumbers({
+                            ...keyNumbers,
+                            clientDeliveries: { ...keyNumbers.clientDeliveries, notes: e.target.value }
+                          })}
+                          placeholder="Notes..."
+                          className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                        />
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* 4. BLOCKERS & TOMORROW'S PLAN */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              
+              {/* BLOCKERS */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
+                    <span className="flex items-center justify-center w-5 h-5 rounded bg-indigo-100 dark:bg-lime-950/50 text-[10px]">4A</span>
+                    Blockers & Issues
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={addBlockerRow}
+                    className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
+                  >
+                    <Plus size={14} /> Add Blocker
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900">
+                  <table className="w-full text-left border-collapse text-sm">
+                    <thead>
+                      <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                        <th className="px-4 py-3 w-[30%]">Blocker / Issue</th>
+                        <th className="px-4 py-3 w-[50%]">Details</th>
+                        <th className="px-4 py-3 w-[15%] text-center">Priority</th>
+                        <th className="px-4 py-3 w-[5%] text-center"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {blockers.map((item, index) => (
+                        <tr key={index} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5">
+                          <td className="px-4 py-2">
+                            <input
+                              type="text"
+                              value={item.issue}
+                              onChange={(e) => {
+                                const updated = [...blockers];
+                                updated[index].issue = e.target.value;
+                                setBlockers(updated);
+                              }}
+                              placeholder="Laptop complaint, etc."
+                              className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                            />
+                          </td>
+                          <td className="px-4 py-2">
+                            <input
+                              type="text"
+                              value={item.details}
+                              onChange={(e) => {
+                                const updated = [...blockers];
+                                updated[index].details = e.target.value;
+                                setBlockers(updated);
+                              }}
+                              placeholder="Describe the issue..."
+                              className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                            />
+                          </td>
+                          <td className="px-4 py-2 text-center">
+                            <select
+                              value={item.priority}
+                              onChange={(e) => {
+                                const updated = [...blockers];
+                                updated[index].priority = e.target.value;
+                                setBlockers(updated);
+                              }}
+                              className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-xs focus:outline-none text-slate-700 dark:text-slate-200"
+                            >
+                              <option value="None">None</option>
+                              <option value="High">High</option>
+                              <option value="Medium">Medium</option>
+                              <option value="Low">Low</option>
+                            </select>
+                          </td>
+                          <td className="px-4 py-2 text-center">
+                            <button
+                              type="button"
+                              onClick={() => removeBlockerRow(index)}
+                              disabled={blockers.length === 1}
+                              className="text-rose-500 hover:text-rose-700 disabled:opacity-30 transition-colors"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* TOMORROW'S PLAN */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
+                    <span className="flex items-center justify-center w-5 h-5 rounded bg-indigo-100 dark:bg-lime-950/50 text-[10px]">4B</span>
+                    Tomorrow's Plan
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={addTomorrowRow}
+                    className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
+                  >
+                    <Plus size={14} /> Add Task
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900">
+                  <table className="w-full text-left border-collapse text-sm">
+                    <thead>
+                      <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                        <th className="px-4 py-3 w-[30%]">Tomorrow's Main Task</th>
+                        <th className="px-4 py-3 w-[45%]">Details</th>
+                        <th className="px-4 py-3 w-[20%]">Notes</th>
+                        <th className="px-4 py-3 w-[5%] text-center"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {tomorrowTasks.map((item, index) => (
+                        <tr key={index} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5">
+                          <td className="px-4 py-2">
+                            <input
+                              type="text"
+                              value={item.task}
+                              onChange={(e) => {
+                                const updated = [...tomorrowTasks];
+                                updated[index].task = e.target.value;
+                                setTomorrowTasks(updated);
+                              }}
+                              placeholder="Next project..."
+                              className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                            />
+                          </td>
+                          <td className="px-4 py-2">
+                            <input
+                              type="text"
+                              value={item.details}
+                              onChange={(e) => {
+                                const updated = [...tomorrowTasks];
+                                updated[index].details = e.target.value;
+                                setTomorrowTasks(updated);
+                              }}
+                              placeholder="Describe tomorrow's task..."
+                              className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                            />
+                          </td>
+                          <td className="px-4 py-2">
+                            <input
+                              type="text"
+                              value={item.notes}
+                              onChange={(e) => {
+                                const updated = [...tomorrowTasks];
+                                updated[index].notes = e.target.value;
+                                setTomorrowTasks(updated);
+                              }}
+                              placeholder="Notes..."
+                              className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                            />
+                          </td>
+                          <td className="px-4 py-2 text-center">
+                            <button
+                              type="button"
+                              onClick={() => removeTomorrowRow(index)}
+                              disabled={tomorrowTasks.length === 1}
+                              className="text-rose-500 hover:text-rose-700 disabled:opacity-30 transition-colors"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+
+            {/* 5. APPROVAL DETAILS */}
+            <div className="space-y-4">
+              <h2 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
+                <span className="flex items-center justify-center w-5 h-5 rounded bg-indigo-100 dark:bg-lime-950/50 text-[10px]">5</span>
+                Approval Details
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 bg-slate-50/50 dark:bg-slate-950/20 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Designer Name</label>
+                  <input
+                    type="text"
+                    value={approval.designerName || ''}
+                    onChange={(e) => setApproval({ ...approval, designerName: e.target.value })}
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none text-slate-700 dark:text-slate-200"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Designer Signature (Initials)</label>
+                  <input
+                    type="text"
+                    value={approval.designerSignature || ''}
+                    onChange={(e) => setApproval({ ...approval, designerSignature: e.target.value })}
+                    placeholder="Signature..."
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none text-slate-700 dark:text-slate-200"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Submitted At (Date)</label>
+                  <input
+                    type="text"
+                    value={approval.submittedAt || ''}
+                    onChange={(e) => setApproval({ ...approval, submittedAt: e.target.value })}
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none text-slate-700 dark:text-slate-200"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Team Leader Name</label>
+                  <input
+                    type="text"
+                    value={approval.teamLeaderName || ''}
+                    onChange={(e) => setApproval({ ...approval, teamLeaderName: e.target.value })}
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none text-slate-700 dark:text-slate-200"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Approved On (Date)</label>
+                  <input
+                    type="text"
+                    value={approval.approvedOn || ''}
+                    onChange={(e) => setApproval({ ...approval, approvedOn: e.target.value })}
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none text-slate-700 dark:text-slate-200"
+                  />
+                </div>
+              </div>
+            </div>
+
+          </motion.div>
+        )}
+      </div>
+
+      {/* MONTHLY CONSOLIDATED MODAL */}
+      <AnimatePresence>
+        {isMonthlyModalOpen && (
+          <div className="fixed inset-0 z-50 flex justify-center items-start pt-10 overflow-y-auto bg-slate-900/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="relative w-full max-w-5xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-xl overflow-hidden mb-10 mx-4"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                    Monthly Consolidated Report
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Consolidate, edit, and download monthly reports for Graphic Design / CMO Office.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsMonthlyModalOpen(false)}
+                  className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-all"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Tabs Bar */}
+              <div className="flex border-b border-slate-100 dark:border-slate-800 overflow-x-auto bg-slate-50/50 dark:bg-slate-950/20 px-6 scrollbar-none">
+                {[
+                  { id: 'range', label: '1. Date Range' },
+                  { id: 'basic', label: '2. Basic Details' },
+                  { id: 'tasks', label: '3. Task Log' },
+                  { id: 'kpis', label: '4. Key Numbers' },
+                  { id: 'blockers', label: '5. Blockers' },
+                  { id: 'tomorrow', label: '6. Tomorrow\'s Plan' },
+                  { id: 'approval', label: '7. Approval' }
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setMonthlyActiveTab(tab.id)}
+                    className={`py-3.5 px-4 font-semibold text-xs border-b-2 whitespace-nowrap transition-all duration-200 ${
+                      monthlyActiveTab === tab.id
+                        ? 'border-indigo-600 text-indigo-600 dark:border-lime-400 dark:text-lime-400'
+                        : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6 max-h-[60vh] overflow-y-auto bg-white dark:bg-slate-900">
+                {monthlyActiveTab === 'range' && (
+                  <div className="space-y-6 max-w-xl mx-auto py-6">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                          Start Date
+                        </label>
+                        <input
+                          type="date"
+                          value={monthlyStartDate}
+                          onChange={(e) => setMonthlyStartDate(e.target.value)}
+                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                          End Date
+                        </label>
+                        <input
+                          type="date"
+                          value={monthlyEndDate}
+                          onChange={(e) => setMonthlyEndDate(e.target.value)}
+                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="pt-4 flex justify-center">
+                      <button
+                        type="button"
+                        onClick={handleFetchMonthlyData}
+                        disabled={isMonthlyLoading}
+                        className="flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-all shadow-md shadow-indigo-600/10 disabled:opacity-50"
+                      >
+                        {isMonthlyLoading ? (
+                          <>
+                            <Loader2 className="animate-spin" size={16} />
+                            Consolidating...
+                          </>
+                        ) : (
+                          <>
+                            <Calendar size={16} />
+                            Fetch & Consolidate Data
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {monthlyActiveTab === 'basic' && (
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest">
+                      Consolidated Basic Details
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 bg-slate-50/50 dark:bg-slate-950/20 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Employee ID</label>
+                        <input
+                          type="text"
+                          value={monthlyBasicDetails.employeeId || ''}
+                          onChange={(e) => setMonthlyBasicDetails({ ...monthlyBasicDetails, employeeId: e.target.value })}
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Designation</label>
+                        <input
+                          type="text"
+                          value={monthlyBasicDetails.designation || ''}
+                          onChange={(e) => setMonthlyBasicDetails({ ...monthlyBasicDetails, designation: e.target.value })}
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Reporting Manager</label>
+                        <input
+                          type="text"
+                          value={monthlyBasicDetails.reportingTo || ''}
+                          onChange={(e) => setMonthlyBasicDetails({ ...monthlyBasicDetails, reportingTo: e.target.value })}
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Shift Timing</label>
+                        <input
+                          type="text"
+                          value={monthlyBasicDetails.shiftTiming || ''}
+                          onChange={(e) => setMonthlyBasicDetails({ ...monthlyBasicDetails, shiftTiming: e.target.value })}
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Report Prepared At</label>
+                        <input
+                          type="text"
+                          value={monthlyBasicDetails.preparedAt || ''}
+                          onChange={(e) => setMonthlyBasicDetails({ ...monthlyBasicDetails, preparedAt: e.target.value })}
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {monthlyActiveTab === 'tasks' && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest">
+                        Consolidated Task Log
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={addMonthlyTaskRow}
+                        className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
+                      >
+                        <Plus size={14} /> Add Row
+                      </button>
+                    </div>
+
+                    <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900">
+                      <table className="w-full text-left border-collapse text-sm">
+                        <thead>
+                          <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                            <th className="px-5 py-4 w-[25%]">Task / Project Name</th>
+                            <th className="px-5 py-4 w-[35%]">Description / Details</th>
+                            <th className="px-5 py-4 w-[10%] text-center">Start Time</th>
+                            <th className="px-5 py-4 w-[10%] text-center">End Time</th>
+                            <th className="px-5 py-4 w-[10%] text-center">Status</th>
+                            <th className="px-5 py-4 w-[15%]">Drive File Link</th>
+                            <th className="px-5 py-4 w-[5%] text-center"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {monthlyTaskLog.map((item, index) => (
+                            <tr key={index} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5 transition-colors">
+                              <td className="px-5 py-3">
+                                <input
+                                  type="text"
+                                  value={item.taskProjectName}
+                                  onChange={(e) => {
+                                    const updated = [...monthlyTaskLog];
+                                    updated[index].taskProjectName = e.target.value;
+                                    setMonthlyTaskLog(updated);
+                                  }}
+                                  placeholder="Design Task..."
+                                  className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                                />
+                              </td>
+                              <td className="px-5 py-3">
+                                <textarea
+                                  value={item.descriptionDetails}
+                                  onChange={(e) => {
+                                    const updated = [...monthlyTaskLog];
+                                    updated[index].descriptionDetails = e.target.value;
+                                    setMonthlyTaskLog(updated);
+                                  }}
+                                  placeholder="Provide design work details..."
+                                  rows={1}
+                                  className="w-full bg-transparent border-none focus:outline-none resize-y text-slate-700 dark:text-slate-200"
+                                />
+                              </td>
+                              <td className="px-5 py-3 text-center">
+                                <input
+                                  type="text"
+                                  value={item.startTime}
+                                  onChange={(e) => {
+                                    const updated = [...monthlyTaskLog];
+                                    updated[index].startTime = e.target.value;
+                                    setMonthlyTaskLog(updated);
+                                  }}
+                                  placeholder="9:30 AM"
+                                  className="w-full bg-transparent border-none text-center focus:outline-none text-slate-700 dark:text-slate-200"
+                                />
+                              </td>
+                              <td className="px-5 py-3 text-center">
+                                <input
+                                  type="text"
+                                  value={item.endTime}
+                                  onChange={(e) => {
+                                    const updated = [...monthlyTaskLog];
+                                    updated[index].endTime = e.target.value;
+                                    setMonthlyTaskLog(updated);
+                                  }}
+                                  placeholder="11:00 AM"
+                                  className="w-full bg-transparent border-none text-center focus:outline-none text-slate-700 dark:text-slate-200"
+                                />
+                              </td>
+                              <td className="px-5 py-3 text-center">
+                                <select
+                                  value={item.status}
+                                  onChange={(e) => {
+                                    const updated = [...monthlyTaskLog];
+                                    updated[index].status = e.target.value;
+                                    setMonthlyTaskLog(updated);
+                                  }}
+                                  className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-xs focus:outline-none text-slate-700 dark:text-slate-200"
+                                >
+                                  <option value="Done">Done</option>
+                                  <option value="Pending">Pending</option>
+                                  <option value="N/A">N/A</option>
+                                </select>
+                              </td>
+                              <td className="px-5 py-3">
+                                <input
+                                  type="text"
+                                  value={item.fileLink}
+                                  onChange={(e) => {
+                                    const updated = [...monthlyTaskLog];
+                                    updated[index].fileLink = e.target.value;
+                                    setMonthlyTaskLog(updated);
+                                  }}
+                                  placeholder="Link to drive..."
+                                  className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200 text-xs text-indigo-600 dark:text-lime-400"
+                                />
+                              </td>
+                              <td className="px-5 py-3 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => removeMonthlyTaskRow(index)}
+                                  disabled={monthlyTaskLog.length === 1}
+                                  className="text-rose-500 hover:text-rose-700 disabled:opacity-30 transition-colors"
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                          {/* Auto-Calculated Summary Row */}
+                          <tr className="bg-slate-50/70 dark:bg-slate-950/40 font-bold border-t border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200">
+                            <td className="px-5 py-4 text-indigo-600 dark:text-lime-400">Consolidated Summary</td>
+                            <td className="px-5 py-4" colSpan={6}>
+                              <div className="flex gap-6 text-xs uppercase tracking-wider">
+                                <span>Done: <strong className="text-emerald-500">{getMonthlyTaskSummaryCounts().done}</strong></span>
+                                <span>Pending: <strong className="text-amber-500">{getMonthlyTaskSummaryCounts().pending}</strong></span>
+                                <span>N/A: <strong className="text-slate-400">{getMonthlyTaskSummaryCounts().na}</strong></span>
+                                <span>Total: <strong>{getMonthlyTaskSummaryCounts().total}</strong></span>
+                              </div>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {monthlyActiveTab === 'kpis' && (
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest">
+                      Consolidated Key Numbers
+                    </h3>
+                    
+                    <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900">
+                      <table className="w-full text-left border-collapse text-sm">
+                        <thead>
+                          <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                            <th className="px-5 py-4 w-[25%]">KPI</th>
+                            <th className="px-5 py-4 w-[25%]">Target (Sum)</th>
+                            <th className="px-5 py-4 w-[15%] text-center">Actual (Sum)</th>
+                            <th className="px-5 py-4 w-[35%]">Notes</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                          <tr className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5">
+                            <td className="px-5 py-3 font-semibold text-slate-700 dark:text-slate-300">Designs Completed</td>
+                            <td className="px-5 py-3">
+                              <input
+                                type="text"
+                                value={monthlyKeyNumbers.designsCompleted?.target || ''}
+                                onChange={(e) => setMonthlyKeyNumbers({
+                                  ...monthlyKeyNumbers,
+                                  designsCompleted: { ...monthlyKeyNumbers.designsCompleted, target: e.target.value }
+                                })}
+                                placeholder="Target count..."
+                                className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                              />
+                            </td>
+                            <td className="px-5 py-3 text-center">
+                              <input
+                                type="text"
+                                value={monthlyKeyNumbers.designsCompleted?.todaysCount || ''}
+                                onChange={(e) => setMonthlyKeyNumbers({
+                                  ...monthlyKeyNumbers,
+                                  designsCompleted: { ...monthlyKeyNumbers.designsCompleted, todaysCount: e.target.value }
+                                })}
+                                placeholder="Actual..."
+                                className="w-full bg-transparent border-none text-center focus:outline-none text-slate-700 dark:text-slate-200"
+                              />
+                            </td>
+                            <td className="px-5 py-3">
+                              <input
+                                type="text"
+                                value={monthlyKeyNumbers.designsCompleted?.notes || ''}
+                                onChange={(e) => setMonthlyKeyNumbers({
+                                  ...monthlyKeyNumbers,
+                                  designsCompleted: { ...monthlyKeyNumbers.designsCompleted, notes: e.target.value }
+                                })}
+                                placeholder="Notes..."
+                                className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                              />
+                            </td>
+                          </tr>
+
+                          <tr className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5">
+                            <td className="px-5 py-3 font-semibold text-slate-700 dark:text-slate-300">Revisions Done</td>
+                            <td className="px-5 py-3">
+                              <input
+                                type="text"
+                                value={monthlyKeyNumbers.revisionsDone?.target || ''}
+                                onChange={(e) => setMonthlyKeyNumbers({
+                                  ...monthlyKeyNumbers,
+                                  revisionsDone: { ...monthlyKeyNumbers.revisionsDone, target: e.target.value }
+                                })}
+                                placeholder="Target count..."
+                                className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                              />
+                            </td>
+                            <td className="px-5 py-3 text-center">
+                              <input
+                                type="text"
+                                value={monthlyKeyNumbers.revisionsDone?.todaysCount || ''}
+                                onChange={(e) => setMonthlyKeyNumbers({
+                                  ...monthlyKeyNumbers,
+                                  revisionsDone: { ...monthlyKeyNumbers.revisionsDone, todaysCount: e.target.value }
+                                })}
+                                placeholder="Actual..."
+                                className="w-full bg-transparent border-none text-center focus:outline-none text-slate-700 dark:text-slate-200"
+                              />
+                            </td>
+                            <td className="px-5 py-3">
+                              <input
+                                type="text"
+                                value={monthlyKeyNumbers.revisionsDone?.notes || ''}
+                                onChange={(e) => setMonthlyKeyNumbers({
+                                  ...monthlyKeyNumbers,
+                                  revisionsDone: { ...monthlyKeyNumbers.revisionsDone, notes: e.target.value }
+                                })}
+                                placeholder="Notes..."
+                                className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                              />
+                            </td>
+                          </tr>
+
+                          <tr className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5">
+                            <td className="px-5 py-3 font-semibold text-slate-700 dark:text-slate-300">Client Deliveries</td>
+                            <td className="px-5 py-3">
+                              <input
+                                type="text"
+                                value={monthlyKeyNumbers.clientDeliveries?.target || ''}
+                                onChange={(e) => setMonthlyKeyNumbers({
+                                  ...monthlyKeyNumbers,
+                                  clientDeliveries: { ...monthlyKeyNumbers.clientDeliveries, target: e.target.value }
+                                })}
+                                placeholder="Target count..."
+                                className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                              />
+                            </td>
+                            <td className="px-5 py-3 text-center">
+                              <input
+                                type="text"
+                                value={monthlyKeyNumbers.clientDeliveries?.todaysCount || ''}
+                                onChange={(e) => setMonthlyKeyNumbers({
+                                  ...monthlyKeyNumbers,
+                                  clientDeliveries: { ...monthlyKeyNumbers.clientDeliveries, todaysCount: e.target.value }
+                                })}
+                                placeholder="Actual..."
+                                className="w-full bg-transparent border-none text-center focus:outline-none text-slate-700 dark:text-slate-200"
+                              />
+                            </td>
+                            <td className="px-5 py-3">
+                              <input
+                                type="text"
+                                value={monthlyKeyNumbers.clientDeliveries?.notes || ''}
+                                onChange={(e) => setMonthlyKeyNumbers({
+                                  ...monthlyKeyNumbers,
+                                  clientDeliveries: { ...monthlyKeyNumbers.clientDeliveries, notes: e.target.value }
+                                })}
+                                placeholder="Notes..."
+                                className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                              />
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {monthlyActiveTab === 'blockers' && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest">
+                        Consolidated Blockers & Issues
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={addMonthlyBlockerRow}
+                        className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
+                      >
+                        <Plus size={14} /> Add Blocker
+                      </button>
+                    </div>
+
+                    <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900">
+                      <table className="w-full text-left border-collapse text-sm">
+                        <thead>
+                          <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                            <th className="px-4 py-3 w-[30%]">Blocker / Issue</th>
+                            <th className="px-4 py-3 w-[50%]">Details</th>
+                            <th className="px-4 py-3 w-[15%] text-center">Priority</th>
+                            <th className="px-4 py-3 w-[5%] text-center"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {monthlyBlockers.map((item, index) => (
+                            <tr key={index} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5">
+                              <td className="px-4 py-2">
+                                <input
+                                  type="text"
+                                  value={item.issue}
+                                  onChange={(e) => {
+                                    const updated = [...monthlyBlockers];
+                                    updated[index].issue = e.target.value;
+                                    setMonthlyBlockers(updated);
+                                  }}
+                                  placeholder="Laptop complaint, etc."
+                                  className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                                />
+                              </td>
+                              <td className="px-4 py-2">
+                                <input
+                                  type="text"
+                                  value={item.details}
+                                  onChange={(e) => {
+                                    const updated = [...monthlyBlockers];
+                                    updated[index].details = e.target.value;
+                                    setMonthlyBlockers(updated);
+                                  }}
+                                  placeholder="Describe the issue..."
+                                  className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                                />
+                              </td>
+                              <td className="px-4 py-2 text-center">
+                                <select
+                                  value={item.priority}
+                                  onChange={(e) => {
+                                    const updated = [...monthlyBlockers];
+                                    updated[index].priority = e.target.value;
+                                    setMonthlyBlockers(updated);
+                                  }}
+                                  className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-xs focus:outline-none text-slate-700 dark:text-slate-200"
+                                >
+                                  <option value="None">None</option>
+                                  <option value="High">High</option>
+                                  <option value="Medium">Medium</option>
+                                  <option value="Low">Low</option>
+                                </select>
+                              </td>
+                              <td className="px-4 py-2 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => removeMonthlyBlockerRow(index)}
+                                  disabled={monthlyBlockers.length === 1}
+                                  className="text-rose-500 hover:text-rose-700 disabled:opacity-30 transition-colors"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {monthlyActiveTab === 'tomorrow' && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest">
+                        Consolidated Next Period's Plan
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={addMonthlyTomorrowRow}
+                        className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
+                      >
+                        <Plus size={14} /> Add Task
+                      </button>
+                    </div>
+
+                    <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900">
+                      <table className="w-full text-left border-collapse text-sm">
+                        <thead>
+                          <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                            <th className="px-4 py-3 w-[30%]">Tomorrow's Main Task</th>
+                            <th className="px-4 py-3 w-[45%]">Details</th>
+                            <th className="px-4 py-3 w-[20%]">Notes</th>
+                            <th className="px-4 py-3 w-[5%] text-center"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {monthlyTomorrowTasks.map((item, index) => (
+                            <tr key={index} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5">
+                              <td className="px-4 py-2">
+                                <input
+                                  type="text"
+                                  value={item.task}
+                                  onChange={(e) => {
+                                    const updated = [...monthlyTomorrowTasks];
+                                    updated[index].task = e.target.value;
+                                    setMonthlyTomorrowTasks(updated);
+                                  }}
+                                  placeholder="Next project..."
+                                  className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                                />
+                              </td>
+                              <td className="px-4 py-2">
+                                <input
+                                  type="text"
+                                  value={item.details}
+                                  onChange={(e) => {
+                                    const updated = [...monthlyTomorrowTasks];
+                                    updated[index].details = e.target.value;
+                                    setMonthlyTomorrowTasks(updated);
+                                  }}
+                                  placeholder="Describe tomorrow's task..."
+                                  className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                                />
+                              </td>
+                              <td className="px-4 py-2">
+                                <input
+                                  type="text"
+                                  value={item.notes}
+                                  onChange={(e) => {
+                                    const updated = [...monthlyTomorrowTasks];
+                                    updated[index].notes = e.target.value;
+                                    setMonthlyTomorrowTasks(updated);
+                                  }}
+                                  placeholder="Notes..."
+                                  className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                                />
+                              </td>
+                              <td className="px-4 py-2 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => removeMonthlyTomorrowRow(index)}
+                                  disabled={monthlyTomorrowTasks.length === 1}
+                                  className="text-rose-500 hover:text-rose-700 disabled:opacity-30 transition-colors"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {monthlyActiveTab === 'approval' && (
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest">
+                      Consolidated Approval Details
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 bg-slate-50/50 dark:bg-slate-950/20 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Designer Name</label>
+                        <input
+                          type="text"
+                          value={monthlyApproval.designerName || ''}
+                          onChange={(e) => setMonthlyApproval({ ...monthlyApproval, designerName: e.target.value })}
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none text-slate-700 dark:text-slate-200"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Designer Signature (Initials)</label>
+                        <input
+                          type="text"
+                          value={monthlyApproval.designerSignature || ''}
+                          onChange={(e) => setMonthlyApproval({ ...monthlyApproval, designerSignature: e.target.value })}
+                          placeholder="Signature..."
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none text-slate-700 dark:text-slate-200"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Submitted At (Date)</label>
+                        <input
+                          type="text"
+                          value={monthlyApproval.submittedAt || ''}
+                          onChange={(e) => setMonthlyApproval({ ...monthlyApproval, submittedAt: e.target.value })}
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none text-slate-700 dark:text-slate-200"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Team Leader Name</label>
+                        <input
+                          type="text"
+                          value={monthlyApproval.teamLeaderName || ''}
+                          onChange={(e) => setMonthlyApproval({ ...monthlyApproval, teamLeaderName: e.target.value })}
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none text-slate-700 dark:text-slate-200"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Approved On (Date)</label>
+                        <input
+                          type="text"
+                          value={monthlyApproval.approvedOn || ''}
+                          onChange={(e) => setMonthlyApproval({ ...monthlyApproval, approvedOn: e.target.value })}
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none text-slate-700 dark:text-slate-200"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+                <button
+                  type="button"
+                  onClick={() => setIsMonthlyModalOpen(false)}
+                  className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                >
+                  Close
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={handleDownloadMonthlyPDF}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-all shadow-md shadow-indigo-600/10"
+                >
+                  <Download size={16} />
+                  Download Monthly PDF
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+export default GraphicDesignerReportPage;

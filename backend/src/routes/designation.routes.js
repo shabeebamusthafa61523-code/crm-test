@@ -8,5 +8,7 @@ router.use(checkAuth);
 
 router.get('/', designationController.getDesignations);
 router.post('/', designationController.createDesignation);
+router.put('/:designation_id', designationController.updateDesignation);
+router.delete('/:designation_id', designationController.deleteDesignation);
 
 export default router;

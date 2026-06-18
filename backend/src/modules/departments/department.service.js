@@ -220,10 +220,10 @@ export const departmentService = {
   async addUserToDepartment(data) {
     const { departmentId, userId, roleInDepartment, isPrimary } = data;
 
-    // Check if department exists
+    // Check if department exists and is active
     const dept = await Department.findById(departmentId);
-    if (!dept) {
-      const error = new Error('Department not found');
+    if (!dept || dept.status === false) {
+      const error = new Error('Department not found or is inactive');
       error.statusCode = 404;
       throw error;
     }

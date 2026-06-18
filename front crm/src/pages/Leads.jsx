@@ -921,6 +921,10 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
       showToast('Lead name and phone number are required.', 'warning');
       return;
     }
+    if (!/^\d{10}$/.test(formData.phone)) {
+      showToast('Phone number must be exactly 10 digits.', 'warning');
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -1008,11 +1012,22 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
               <input
                 type="tel"
                 required
+                maxLength={10}
                 value={formData.phone}
-                onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
-                placeholder="e.g. +91 9999999999"
+                onChange={e => {
+                  const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setFormData({ ...formData, phone: digits });
+                }}
+                className={`w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border rounded-xl text-xs focus:ring-1 outline-none transition ${
+                  formData.phone && formData.phone.length !== 10
+                    ? 'border-red-400 focus:ring-red-400'
+                    : 'border-slate-200 dark:border-slate-800 focus:ring-indigo-500'
+                }`}
+                placeholder="10-digit number"
               />
+              {formData.phone && formData.phone.length !== 10 && (
+                <p className="text-[10px] text-red-500 mt-1 ml-1">Must be exactly 10 digits.</p>
+              )}
             </div>
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Email Address</label>
@@ -1199,6 +1214,10 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
       showToast('Lead name and phone are required.', 'warning');
       return;
     }
+    if (!/^\d{10}$/.test(formData.phone)) {
+      showToast('Phone number must be exactly 10 digits.', 'warning');
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -1272,10 +1291,22 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
               <input
                 type="tel"
                 required
+                maxLength={10}
                 value={formData.phone}
-                onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                onChange={e => {
+                  const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setFormData({ ...formData, phone: digits });
+                }}
+                className={`w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border rounded-xl text-xs focus:ring-1 outline-none transition ${
+                  formData.phone && formData.phone.length !== 10
+                    ? 'border-red-400 focus:ring-red-400'
+                    : 'border-slate-200 dark:border-slate-800 focus:ring-indigo-500'
+                }`}
+                placeholder="10-digit number"
               />
+              {formData.phone && formData.phone.length !== 10 && (
+                <p className="text-[10px] text-red-500 mt-1 ml-1">Must be exactly 10 digits.</p>
+              )}
             </div>
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Email Address</label>

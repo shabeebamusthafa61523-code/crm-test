@@ -18,6 +18,18 @@ import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
 import StudentAttendance from './pages/StudentAttendance';
 import DepartmentsPage from './modules/departments/DepartmentsPage';
+import DeveloperReportPage from './pages/DeveloperReportPage';
+import HodRdReportPage from './pages/HodRdReportPage';
+import GraphicDesignerReportPage from './pages/GraphicDesignerReportPage';
+import AcademicCounselorReportPage from './pages/AcademicCounselorReportPage';
+import HrReportPage from './pages/HrReportPage';
+import OpsReportPage from './pages/OpsReportPage';
+import AccountantReportPage from './pages/AccountantReportPage';
+import MarketingReportPage from './pages/MarketingReportPage';
+import VideographerReportPage from './pages/VideographerReportPage';
+import EmployeeReports from './pages/EmployeeReports';
+
+
 
 // Route Guards
 const ProtectedRoute = ({ children }) => {
@@ -62,6 +74,18 @@ function App() {
         <Route path="/settings" element={<ProtectedRoute><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
         <Route path="/student-attendance" element={<ProtectedRoute><MainLayout><StudentAttendance /></MainLayout></ProtectedRoute>} />
         <Route path="/departments" element={<ProtectedRoute><MainLayout><DepartmentsPage /></MainLayout></ProtectedRoute>} />
+        <Route path="/developer-report" element={<ProtectedRoute><MainLayout><DeveloperReportPage /></MainLayout></ProtectedRoute>} />
+        <Route path="/hod-rd-report" element={<ProtectedRoute><MainLayout><HodRdReportPage /></MainLayout></ProtectedRoute>} />
+        <Route path="/graphic-designer-report" element={<ProtectedRoute><MainLayout><GraphicDesignerReportPage /></MainLayout></ProtectedRoute>} />
+        <Route path="/academic-counselor-report" element={<ProtectedRoute><MainLayout><AcademicCounselorReportPage /></MainLayout></ProtectedRoute>} />
+        <Route path="/hr-report" element={<ProtectedRoute><MainLayout><HrReportPage /></MainLayout></ProtectedRoute>} />
+        <Route path="/ops-report" element={<ProtectedRoute><MainLayout><OpsReportPage /></MainLayout></ProtectedRoute>} />
+        <Route path="/accountant-report" element={<ProtectedRoute><MainLayout><AccountantReportPage /></MainLayout></ProtectedRoute>} />
+        <Route path="/marketing-report" element={<ProtectedRoute><MainLayout><MarketingReportPage /></MainLayout></ProtectedRoute>} />
+        <Route path="/videographer-report" element={<ProtectedRoute><MainLayout><VideographerReportPage /></MainLayout></ProtectedRoute>} />
+        <Route path="/employee-reports" element={<ProtectedRoute><MainLayout><EmployeeReports /></MainLayout></ProtectedRoute>} />
+
+
 
         {/* Default Landing Route */}
         <Route path="/" element={<LandingRoute />} />

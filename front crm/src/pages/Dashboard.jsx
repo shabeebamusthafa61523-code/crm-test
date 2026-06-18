@@ -449,9 +449,9 @@ const Dashboard = () => {
               <RefreshCw size={14} />
               <span>Sync System</span>
             </button>
-            <div className="px-5 py-3 bg-indigo-600/5 dark:bg-indigo-500/10 border border-indigo-500/20 rounded-2xl text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
-              {currentTime.toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short" })}
-            </div>
+           <div className="px-5 py-3 bg-indigo-600/5 dark:bg-indigo-500/10 border border-indigo-500/20 rounded-2xl text-xs font-black text-white uppercase tracking-wider">
+  {currentTime.toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short" })}
+</div>
           </div>
         </div>
 
@@ -856,23 +856,23 @@ const Dashboard = () => {
                 <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search tasks..."
+                  // placeholder="Search tasks..."
                   value={taskSearch}
                   onChange={(e) => setTaskSearch(e.target.value)}
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium text-slate-850 dark:text-slate-250 focus:outline-none focus:border-indigo-500/50 transition-all placeholder:text-slate-400"
                 />
               </div>
 
-              <div className="flex bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1 rounded-xl">
+              <div className="flex bg-slate-500 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1 rounded-xl">
                 {["all", "pending", "done"].map((filter) => (
                   <button
                     key={filter}
                     onClick={() => setTaskFilter(filter)}
                     className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-                      taskFilter === filter
-                        ? "bg-indigo-655 text-white shadow-md shadow-indigo-500/20"
-                        : "text-slate-550 hover:text-slate-705 dark:text-slate-400 dark:hover:text-slate-200"
-                    }`}
+  taskFilter === filter
+    ? "bg-emerald-600 text-white shadow-sm shadow-emerald-500/20"
+    : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+}`}
                   >
                     {filter}
                   </button>

@@ -87,7 +87,7 @@ const Users = () => {
 
   const fetchDepartments = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/v1/departments`, {
+      const res = await fetch(`${API_BASE}/v1/departments?status=true`, {
         headers: getAuthHeaders()
       });
       const data = await res.json();
@@ -109,6 +109,14 @@ const Users = () => {
       const exists = prev.some(item => String(item.id) === String(designation.id));
       return exists ? prev : [...prev, designation].sort((a, b) => a.name.localeCompare(b.name));
     });
+  }, []);
+
+  const handleDesignationUpdated = useCallback((designation) => {
+    setDesignations(prev => prev.map(item => String(item.id) === String(designation.id) ? designation : item).sort((a, b) => a.name.localeCompare(b.name)));
+  }, []);
+
+  const handleDesignationDeleted = useCallback((id) => {
+    setDesignations(prev => prev.filter(item => String(item.id) !== String(id)));
   }, []);
 
   const designationMap = useMemo(() => {
@@ -152,15 +160,24 @@ const Users = () => {
       // Search query filter
       if (!searchQuery) return true;
       const query = searchQuery.toLowerCase();
-      return (
-        user.name?.toLowerCase().includes(query) ||
-        user.email?.toLowerCase().includes(query) ||
-        user.employeeId?.toLowerCase().includes(query) ||
-        getDesignationName(user).toLowerCase().includes(query) ||
-        getDepartmentName(user).toLowerCase().includes(query)
-      );
-    });
-  }, [users, activeTab, searchQuery, getDesignationName, getDepartmentName]);
+    return (
+      user.name?.toLowerCase().includes(query) ||
+      user.email?.toLowerCase().includes(query) ||
+      user.employeeId?.toLowerCase().includes(query) ||
+      getDesignationName(user).toLowerCase().includes(query) ||
+      getDepartmentName(user).toLowerCase().includes(query)
+    );
+  });
+}, [users, activeTab, searchQuery, getDesignationName, getDepartmentName]);
+
+const ITEMS_PER_PAGE = 10;
+const [currentPage, setCurrentPage] = useState(1);
+
+// Reset to page 1 whenever filter changes
+React.useEffect(() => { setCurrentPage(1); }, [activeTab, searchQuery]);
+
+const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
+const pagedUsers = filteredUsers.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const handleDeleteUser = async (id, name) => {
     if (!window.confirm(`Are you absolutely sure you want to delete employee "${name}"? This action is permanent.`)) {
@@ -249,7 +266,7 @@ const Users = () => {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input 
               type="text" 
-              placeholder="Search by name, email, designation, employee ID..." 
+              placeholder="" 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 dark:bg-slate-950 dark:border-slate-800/80 py-3.5 pl-12 pr-4 rounded-xl text-sm font-medium focus:border-indigo-500/50 dark:focus:border-indigo-400/50 outline-none transition-all duration-300"
@@ -293,7 +310,7 @@ const Users = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
-                  {filteredUsers.map((user) => {
+                  {pagedUsers.map((user) => {
                     const statusKey = user.status || (user.isActive ? 'active' : 'inactive');
                     const meta = STATUS_META[statusKey] || STATUS_META.active;
                     return (
@@ -422,6 +439,56 @@ const Users = () => {
           </div>
         )}
 
+        {/* Pagination */}
+        {!loading && filteredUsers.length > ITEMS_PER_PAGE && (
+          <div className="flex items-center justify-between px-2 py-3">
+            <p className="text-xs text-slate-400 font-semibold">
+              Showing {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, filteredUsers.length)}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredUsers.length)} of {filteredUsers.length} employees
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 hover:text-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                ← Prev
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                .reduce((acc, p, idx, arr) => {
+                  if (idx > 0 && p - arr[idx - 1] > 1) acc.push('...');
+                  acc.push(p);
+                  return acc;
+                }, [])
+                .map((p, idx) =>
+                  p === '...' ? (
+                    <span key={`ellipsis-${idx}`} className="px-2 text-slate-400 text-xs">…</span>
+                  ) : (
+                    <button
+                      key={p}
+                      onClick={() => setCurrentPage(p)}
+                      className={`w-8 h-8 text-xs font-bold rounded-lg border transition-all ${
+                        currentPage === p
+                          ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-500/20'
+                          : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 hover:text-indigo-600'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  )
+                )
+              }
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 hover:text-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        )}
+
       </div>
 
       {/* CREATE & EDIT & VIEW MODALS */}
@@ -433,6 +500,8 @@ const Users = () => {
             getAuthHeaders={getAuthHeaders} 
             designations={designations}
             onDesignationCreated={handleDesignationCreated}
+            onDesignationUpdated={handleDesignationUpdated}
+            onDesignationDeleted={handleDesignationDeleted}
             departments={departments}
             showToast={showToast}
           />
@@ -448,6 +517,8 @@ const Users = () => {
             getAuthHeaders={getAuthHeaders} 
             designations={designations}
             onDesignationCreated={handleDesignationCreated}
+            onDesignationUpdated={handleDesignationUpdated}
+            onDesignationDeleted={handleDesignationDeleted}
             departments={departments}
             showToast={showToast}
           />
@@ -468,8 +539,166 @@ const Users = () => {
   );
 };
 
-const DesignationSelect = ({ value, onChange, designations, getAuthHeaders, onDesignationCreated, showToast }) => {
+const ManageDesignationsModal = ({ onClose, designations, getAuthHeaders, onDesignationUpdated, onDesignationDeleted, showToast }) => {
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState('');
+  const [savingId, setSavingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+
+  const handleEditStart = (id, currentName) => {
+    setEditingId(id);
+    setEditName(currentName);
+  };
+
+  const handleEditSave = async (id) => {
+    if (!editName.trim()) return;
+    setSavingId(id);
+    try {
+      const res = await fetch(`${API_BASE}/v1/designations/${id}`, {
+        method: 'PUT',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ name: editName.trim() })
+      });
+      const data = await res.json();
+
+      if (!res.ok && !data.success) {
+        showToast(data.message || data.error || 'Failed to update designation.', 'error');
+        return;
+      }
+
+      onDesignationUpdated(data.data);
+      setEditingId(null);
+      showToast('Designation updated successfully.', 'success');
+    } catch (e) {
+      console.error(e);
+      showToast('Error updating designation.', 'error');
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const handleDelete = async (id, name) => {
+    const confirmDelete = window.confirm(`Are you sure you want to delete the designation "${name}"?`);
+    if (!confirmDelete) return;
+
+    setDeletingId(id);
+    try {
+      const res = await fetch(`${API_BASE}/v1/designations/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+
+      if (!res.ok && !data.success) {
+        showToast(data.message || data.error || 'Failed to delete designation.', 'error');
+        return;
+      }
+
+      onDesignationDeleted(id);
+      showToast('Designation deleted successfully.', 'success');
+    } catch (e) {
+      console.error(e);
+      showToast('Error deleting designation.', 'error');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 w-full max-w-md shadow-xl max-h-[80vh] flex flex-col"
+      >
+        <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">
+          <h3 className="font-bold text-base text-slate-900 dark:text-white">Manage Designations</h3>
+          <button onClick={onClose} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-850 rounded-lg text-slate-500">
+            <X size={18} />
+          </button>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto space-y-2 pr-1 scrollbar-thin">
+          {designations.map(d => (
+            <div key={d.id} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200/40 dark:border-slate-800/40 gap-2">
+              {editingId === d.id ? (
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  autoFocus
+                />
+              ) : (
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{d.name}</span>
+              )}
+
+              <div className="flex gap-1.5 shrink-0">
+                {editingId === d.id ? (
+                  <>
+                    <button
+                      onClick={() => handleEditSave(d.id)}
+                      disabled={savingId === d.id}
+                      className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold"
+                    >
+                      {savingId === d.id ? '...' : 'Save'}
+                    </button>
+                    <button
+                      onClick={() => setEditingId(null)}
+                      className="px-2 py-1 bg-slate-200 dark:bg-slate-850 text-slate-700 dark:text-slate-300 rounded-lg text-[10px] font-bold"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleEditStart(d.id, d.name)}
+                      className="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-lg"
+                      title="Edit Name"
+                    >
+                      <Edit3 size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(d.id, d.name)}
+                      disabled={deletingId === d.id}
+                      className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 rounded-lg"
+                      title="Delete"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+          {designations.length === 0 && (
+            <p className="text-xs text-slate-400 text-center py-6">No designations available.</p>
+          )}
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+const DesignationSelect = ({ 
+  value, 
+  onChange, 
+  designations, 
+  getAuthHeaders, 
+  onDesignationCreated, 
+  onDesignationUpdated,
+  onDesignationDeleted,
+  showToast 
+}) => {
   const [isAdding, setIsAdding] = useState(false);
+  const [isManageOpen, setIsManageOpen] = useState(false);
 
   const handleAddDesignation = async () => {
     const name = window.prompt('Enter designation name');
@@ -505,28 +734,53 @@ const DesignationSelect = ({ value, onChange, designations, getAuthHeaders, onDe
   };
 
   return (
-    <div className="flex gap-2">
-      <select required name="designation" className="w-full" value={value} onChange={(e) => onChange(e.target.value)}>
-        <option value="">Select Designation</option>
-        {designations.map(d => (
-          <option key={d.id} value={d.id}>{d.name}</option>
-        ))}
-      </select>
-      <button
-        type="button"
-        onClick={handleAddDesignation}
-        disabled={isAdding}
-        title="Add designation"
-        className="shrink-0 h-11 w-11 rounded-xl bg-indigo-600 text-white dark:bg-indigo-500 dark:text-slate-950 flex items-center justify-center transition-all duration-300 hover:scale-[1.03] active:scale-95 disabled:opacity-60"
-      >
-        {isAdding ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-      </button>
-    </div>
+    <>
+      <div className="flex gap-2 w-full items-center">
+        <div className="flex-1">
+          <select required name="designation" className="w-full" value={value} onChange={(e) => onChange(e.target.value)}>
+            <option value="">Select Designation</option>
+            {designations.map(d => (
+              <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </select>
+        </div>
+        <button
+          type="button"
+          onClick={handleAddDesignation}
+          disabled={isAdding}
+          title="Add designation"
+          className="shrink-0 h-11 w-11 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center transition-all duration-300 hover:scale-[1.03] active:scale-95 disabled:opacity-60"
+        >
+          {isAdding ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+        </button>
+        <button
+          type="button"
+          onClick={() => setIsManageOpen(true)}
+          title="Edit/Delete designations"
+          className="shrink-0 h-11 w-11 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center transition-all duration-300 hover:scale-[1.03] active:scale-95"
+        >
+          <Edit3 size={16} />
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {isManageOpen && (
+          <ManageDesignationsModal
+            onClose={() => setIsManageOpen(false)}
+            designations={designations}
+            getAuthHeaders={getAuthHeaders}
+            onDesignationUpdated={onDesignationUpdated}
+            onDesignationDeleted={onDesignationDeleted}
+            showToast={showToast}
+          />
+        )}
+      </AnimatePresence>
+    </>
   );
 };
 
 // --- CREATE MODAL ---
-const CreateModal = ({ onClose, refresh, getAuthHeaders, designations, onDesignationCreated, departments, showToast }) => {
+const CreateModal = ({ onClose, refresh, getAuthHeaders, designations, onDesignationCreated, onDesignationUpdated, onDesignationDeleted, departments, showToast }) => {
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, []);
@@ -561,6 +815,13 @@ const CreateModal = ({ onClose, refresh, getAuthHeaders, designations, onDesigna
  const handleSubmit = async (e) => {
   e.preventDefault();
   setIsSubmitting(true);
+
+  // Phone number validation
+  if (!/^\d{10}$/.test(form.phone || '')) {
+    showToast('Phone number must be exactly 10 digits.', 'warning');
+    setIsSubmitting(false);
+    return;
+  }
 
   try {
     const fd = new FormData();
@@ -659,7 +920,26 @@ const CreateModal = ({ onClose, refresh, getAuthHeaders, designations, onDesigna
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Phone Number</label>
-              <input required name="phone" className="w-full" placeholder="PHONE" value={form.phone} onChange={handleInputChange} />
+              <input
+                required
+                name="phone"
+                type="tel"
+                maxLength={10}
+                className={`w-full border rounded-xl px-3 py-2 text-sm outline-none transition focus:ring-1 ${
+                  form.phone && form.phone.length !== 10
+                    ? 'border-red-400 focus:ring-red-400'
+                    : 'border-slate-200 dark:border-slate-700 focus:ring-indigo-500'
+                }`}
+                placeholder="10-digit number"
+                value={form.phone}
+                onChange={e => {
+                  const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setForm(prev => ({ ...prev, phone: digits }));
+                }}
+              />
+              {form.phone && form.phone.length !== 10 && (
+                <p className="text-[10px] text-red-500 ml-1">Must be exactly 10 digits.</p>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Corporate Email</label>
@@ -673,6 +953,8 @@ const CreateModal = ({ onClose, refresh, getAuthHeaders, designations, onDesigna
                 designations={designations}
                 getAuthHeaders={getAuthHeaders}
                 onDesignationCreated={onDesignationCreated}
+                onDesignationUpdated={onDesignationUpdated}
+                onDesignationDeleted={onDesignationDeleted}
                 showToast={showToast}
               />
             </div>
@@ -743,7 +1025,7 @@ const CreateModal = ({ onClose, refresh, getAuthHeaders, designations, onDesigna
 };
 
 // --- EDIT MODAL ---
-const EditModal = ({ user, onClose, refresh, getAuthHeaders, designations, onDesignationCreated, departments, showToast }) => {
+const EditModal = ({ user, onClose, refresh, getAuthHeaders, designations, onDesignationCreated, onDesignationUpdated, onDesignationDeleted, departments, showToast }) => {
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, []);
@@ -878,7 +1160,26 @@ const EditModal = ({ user, onClose, refresh, getAuthHeaders, designations, onDes
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Phone Number</label>
-              <input required name="phone" className="w-full" placeholder="PHONE" value={form.phone} onChange={handleInputChange} />
+              <input
+                required
+                name="phone"
+                type="tel"
+                maxLength={10}
+                className={`w-full border rounded-xl px-3 py-2 text-sm outline-none transition focus:ring-1 ${
+                  form.phone && form.phone.length !== 10
+                    ? 'border-red-400 focus:ring-red-400'
+                    : 'border-slate-200 dark:border-slate-700 focus:ring-indigo-500'
+                }`}
+                placeholder="10-digit number"
+                value={form.phone}
+                onChange={e => {
+                  const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setForm(prev => ({ ...prev, phone: digits }));
+                }}
+              />
+              {form.phone && form.phone.length !== 10 && (
+                <p className="text-[10px] text-red-500 ml-1">Must be exactly 10 digits.</p>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Corporate Email</label>
@@ -892,6 +1193,8 @@ const EditModal = ({ user, onClose, refresh, getAuthHeaders, designations, onDes
                 designations={designations}
                 getAuthHeaders={getAuthHeaders}
                 onDesignationCreated={onDesignationCreated}
+                onDesignationUpdated={onDesignationUpdated}
+                onDesignationDeleted={onDesignationDeleted}
                 showToast={showToast}
               />
             </div>

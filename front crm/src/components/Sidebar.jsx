@@ -12,7 +12,8 @@ import {
   LogOut,
   Building,
   TrendingUp,
-  BarChart3
+  BarChart3,
+  FileText
 } from 'lucide-react';
 
 const menuItems = [
@@ -59,10 +60,74 @@ const menuItems = [
     // allowedRoles: ['1', '2', 'hr', 'admin'],
     allowedDepartments: ['6a27f394558c220a47fff02e']
   },
+  {
+    icon: FileText,
+    label: 'Developer Report',
+    path: '/developer-report',
+    allowedDesignations: ['6a1e8e2d01a0dae8b2f3b18c'],
+    // allowedRoles: ['1', '2', 'hr', 'admin']
+  },
+  {
+    icon: FileText,
+    label: 'HOD R&D Report',
+    path: '/hod-rd-report',
+    allowedDesignations: ['6a2f9e086f1c41b0c80a9e21'],
+    // allowedRoles: ['1', '2', 'hr', 'admin']
+  },
+  {
+    icon: FileText,
+    label: 'Graphic Designer Report',
+    path: '/graphic-designer-report',
+    allowedDesignations: ['6a1e8e6e01a0dae8b2f3b18d'],
+    // allowedRoles: ['1', '2', 'hr', 'admin']
+  },
+  {
+    icon: FileText,
+    label: 'Academic Counselor Report',
+    path: '/academic-counselor-report',
+    allowedDesignations: ['6a27939af292348deb7d0495'],
+    // allowedRoles: ['1', '2', 'hr', 'admin']
+  },
+  {
+    icon: FileText,
+    label: 'Videographer Report',
+    path: '/videographer-report',
+    allowedDesignations: ['6a2f912c2df21dc234018caa'],
+    // allowedRoles: ['1', '2', 'hr', 'admin']
+  },
+  {
+    icon: FileText,
+    label: 'HR Shift Report',
+    path: '/hr-report',
+    allowedDesignations: ['6a2f8efea2fe388770a38987'],
+    // allowedRoles: ['1', '2', 'hr', 'admin']
+  },
+  {
+    icon: FileText,
+    label: 'Ops Shift Report',
+    path: '/ops-report',
+    allowedDesignations: ['6a2f91472df21dc234018cab'],
+    // allowedRoles: ['1', '2', 'hr', 'admin']
+  },
+  {
+    icon: FileText,
+    label: 'Accountant Shift Report',
+    path: '/accountant-report',
+    allowedDesignations: ['6a2f915e2df21dc234018cac'],
+    // allowedRoles: ['1', '2', 'hr', 'admin']
+  },
+  {
+    icon: FileText,
+    label: 'Marketing Shift Report',
+    path: '/marketing-report',
+    allowedDesignations: ['6a2f909d2df21dc234018ca8'],
+    // allowedRoles: ['1', '2', 'hr', 'admin']
+  },
   { icon: UserCheck, label: 'Attendance', path: '/attendance' },
   { icon: ListCheck, label: 'To-Do', path: '/todo' },
-  { icon: Users, label: 'Student Attendance', path: '/student-attendance' },
+  { icon: Users, label: 'Student Attendance', path: '/student-attendance', allowedRoles: ['1', '2', 'hr', 'admin'] },
   { icon: Building, label: 'Departments', path: '/departments', allowedRoles: ['1', '2', 'hr', 'admin'] },
+  { icon: Users, label: 'Employee Reports', path: '/employee-reports', allowedRoles: ['1', '2', 'hr', 'admin'] },
 ];
 
 
@@ -80,7 +145,7 @@ const Sidebar = () => {
     try {
       const savedUser = localStorage.getItem('user');
       if (!savedUser) {
-        return menuItems.filter(item => !item.allowedRoles && !item.allowedDepartments);
+        return menuItems.filter(item => !item.allowedRoles && !item.allowedDepartments && !item.allowedDesignations);
       }
 
       const userObj = JSON.parse(savedUser);
@@ -94,22 +159,34 @@ const Sidebar = () => {
           currentUserDept = String(userObj.departmentId).trim();
         }
       }
+
+      let currentUserDesignation = '';
+      if (userObj.designationId) {
+        if (typeof userObj.designationId === 'object' && userObj.designationId._id) {
+          currentUserDesignation = String(userObj.designationId._id).trim();
+        } else {
+          currentUserDesignation = String(userObj.designationId).trim();
+        }
+      } else if (userObj.designation_id) {
+        currentUserDesignation = String(userObj.designation_id).trim();
+      }
       
       return menuItems.filter(item => {
-        if (!item.allowedRoles && !item.allowedDepartments) return true;
+        if (!item.allowedRoles && !item.allowedDepartments && !item.allowedDesignations) return true;
         const roleMatch = item.allowedRoles && item.allowedRoles.includes(currentUserRole);
         const deptMatch = item.allowedDepartments && item.allowedDepartments.includes(currentUserDept);
+        const designationMatch = item.allowedDesignations && item.allowedDesignations.includes(currentUserDesignation);
         
-        if (item.allowedRoles && item.allowedDepartments) {
-          return roleMatch || deptMatch;
-        }
-        if (item.allowedRoles) return roleMatch;
-        if (item.allowedDepartments) return deptMatch;
-        return true;
+        const matches = [];
+        if (item.allowedRoles) matches.push(roleMatch);
+        if (item.allowedDepartments) matches.push(deptMatch);
+        if (item.allowedDesignations) matches.push(designationMatch);
+        
+        return matches.some(m => m === true);
       });
     } catch (e) {
       console.error("Error reading operator authorization layout paths:", e);
-      return menuItems.filter(item => !item.allowedRoles && !item.allowedDepartments);
+      return menuItems.filter(item => !item.allowedRoles && !item.allowedDepartments && !item.allowedDesignations);
     }
   };
 
