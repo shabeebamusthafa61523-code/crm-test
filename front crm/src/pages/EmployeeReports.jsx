@@ -311,216 +311,210 @@ const EmployeeReports = () => {
           <p className="text-sm text-slate-500 mt-1">Try adjusting your search query or verify the employee list.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredEmployees.map((emp) => {
-            const config = getDesignationConfig(emp);
-            const initial = emp.name ? emp.name.charAt(0).toUpperCase() : '?';
-            const empId = emp._id || emp.id;
-            const isDownloading = downloading === empId;
-            const isExpanded = expandedEmpId === empId;
-            const sortOrder = sortOrders[empId] || 'newest';
-            const periodFilter = periodFilters[empId] || 'all';
-            const counts = getReportCounts(empId);
-            const visibleReports = getFilteredReports(empId);
+        <div className="overflow-x-auto bg-white/80 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl shadow-sm">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200 dark:border-slate-800 text-[11px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-slate-50/50 dark:bg-slate-950/20">
+                <th className="px-6 py-4">Employee</th>
+                <th className="px-6 py-4">Designation</th>
+                <th className="px-6 py-4">Saved Reports</th>
+                <th className="px-6 py-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+              {filteredEmployees.map((emp) => {
+                const config = getDesignationConfig(emp);
+                const initial = emp.name ? emp.name.charAt(0).toUpperCase() : '?';
+                const empId = emp._id || emp.id;
+                const isDownloading = downloading === empId;
+                const isExpanded = expandedEmpId === empId;
+                const sortOrder = sortOrders[empId] || 'newest';
+                const periodFilter = periodFilters[empId] || 'all';
+                const counts = getReportCounts(empId);
+                const visibleReports = getFilteredReports(empId);
 
-            return (
-              <motion.div
-                key={empId}
-                layout
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                className="bg-white/80 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl p-6 shadow-sm hover:shadow-lg transition-all flex flex-col justify-between group cursor-pointer"
-                onClick={() => toggleExpand(empId)}
-              >
-                <div>
-                  {/* Profile Section */}
-                  <div className="flex items-start justify-between gap-4 mb-3">
-                    <div className="flex items-start gap-4 min-w-0 flex-1">
-                      <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 dark:text-indigo-400 flex items-center justify-center text-lg font-bold shrink-0 border border-indigo-100 dark:border-indigo-900/40 group-hover:scale-105 transition-transform">
-                        {initial}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                          {emp.name}
-                        </h3>
-                        <p className="text-xs text-slate-400 truncate mt-0.5">{emp.email}</p>
-                        <p className="text-[10px] font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-wider mt-2 bg-indigo-50/50 dark:bg-lime-950/20 px-2.5 py-0.5 rounded-full inline-block">
+                return (
+                  <React.Fragment key={empId}>
+                    {/* Main Employee Row */}
+                    <tr 
+                      onClick={() => toggleExpand(empId)}
+                      className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors cursor-pointer group"
+                    >
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 dark:text-indigo-400 flex items-center justify-center text-sm font-bold border border-indigo-100 dark:border-indigo-900/40 shrink-0">
+                            {initial}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                              {emp.name}
+                            </div>
+                            <div className="text-xs text-slate-400 truncate mt-0.5">{emp.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5">
+                        <span className="text-[10px] font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-wider bg-indigo-50/50 dark:bg-lime-950/20 px-2.5 py-0.5 rounded-full inline-block">
                           {emp.designationId?.name || emp.designation || emp.role || 'Staff Member'}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="text-slate-400 dark:text-slate-600 group-hover:text-slate-600 dark:group-hover:text-slate-400 transition-colors pt-1">
-                      {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                    </div>
-                  </div>
+                        </span>
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {counts.all === 0 ? (
+                            <span className="text-xs text-slate-400 dark:text-slate-650 italic">No reports yet</span>
+                          ) : (
+                            <>
+                              {counts.daily > 0 && (
+                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/50">
+                                  {counts.daily} Daily
+                                </span>
+                              )}
+                              {counts.weekly > 0 && (
+                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50">
+                                  {counts.weekly} Weekly
+                                </span>
+                              )}
+                              {counts.monthly > 0 && (
+                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-800/50">
+                                  {counts.monthly} Monthly
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-3">
+                          {/* Download Latest Daily */}
+                          <button
+                            onClick={() => handleDownload(emp)}
+                            disabled={isDownloading}
+                            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all border ${
+                              config
+                                ? 'bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/40 hover:shadow-sm'
+                                : 'bg-slate-50 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 border-slate-100 dark:border-slate-800/50 cursor-not-allowed opacity-60'
+                            }`}
+                          >
+                            {isDownloading ? (
+                              <Loader2 size={12} className="animate-spin" />
+                            ) : (
+                              <FileDown size={12} />
+                            )}
+                            <span className="hidden sm:inline">Latest</span>
+                          </button>
 
-                  {/* Summary pill counts when collapsed */}
-                  {!isExpanded && counts.all > 0 && (
-                    <div className="flex items-center gap-1.5 mb-4 flex-wrap">
-                      {counts.daily > 0 && (
-                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/50">
-                          {counts.daily} Daily
-                        </span>
-                      )}
-                      {counts.weekly > 0 && (
-                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50">
-                          {counts.weekly} Weekly
-                        </span>
-                      )}
-                      {counts.monthly > 0 && (
-                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-800/50">
-                          {counts.monthly} Monthly
-                        </span>
-                      )}
-                    </div>
-                  )}
+                          {/* Toggle Expand Arrow */}
+                          <button
+                            onClick={() => toggleExpand(empId)}
+                            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-400 dark:text-slate-500 hover:text-slate-650 dark:hover:text-slate-300 transition-colors"
+                          >
+                            {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
 
-                  {/* PDF Reports list (Visible only when expanded) */}
-                  <AnimatePresence>
+                    {/* Expandable History Row */}
                     {isExpanded && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="mt-4 mb-5 overflow-hidden"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {/* Header row: count + sort */}
-                        <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800/50 pt-4 mb-3">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                            Saved Reports ({counts.all})
-                          </span>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[9px] font-semibold text-slate-450 dark:text-slate-500">Sort:</span>
-                            <select
-                              value={sortOrder}
-                              onChange={(e) => handleSortChange(empId, e.target.value)}
-                              className="text-[10px] font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border-none rounded-lg px-2 py-1 outline-none cursor-pointer transition-colors"
-                            >
-                              <option value="newest">Newest First</option>
-                              <option value="oldest">Oldest First</option>
-                            </select>
-                          </div>
-                        </div>
-
-                        {/* Period filter tabs */}
-                        <div className="flex items-center gap-1 mb-3 flex-wrap">
-                          {[
-                            { value: 'all',     label: `All (${counts.all})`,           cls: 'text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700' },
-                            { value: 'daily',   label: `Daily (${counts.daily})`,        cls: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800' },
-                            { value: 'weekly',  label: `Weekly (${counts.weekly})`,      cls: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800' },
-                            { value: 'monthly', label: `Monthly (${counts.monthly})`,    cls: 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/40 border-violet-200 dark:border-violet-800' },
-                          ].map(tab => (
-                            <button
-                              key={tab.value}
-                              onClick={() => handlePeriodFilterChange(empId, tab.value)}
-                              className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${
-                                periodFilter === tab.value
-                                  ? `${tab.cls} ring-1 ring-current`
-                                  : 'text-slate-400 dark:text-slate-600 bg-transparent border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                              }`}
-                            >
-                              {tab.label}
-                            </button>
-                          ))}
-                        </div>
-
-                        {/* Reports list */}
-                        {loadingReportsMap[empId] ? (
-                          <div className="flex items-center gap-2 py-4 text-xs text-slate-400">
-                            <Loader2 size={12} className="animate-spin text-indigo-500" />
-                            <span>Loading reports...</span>
-                          </div>
-                        ) : visibleReports.length === 0 ? (
-                          <p className="text-xs text-slate-400 dark:text-slate-500 italic py-2">
-                            {counts.all === 0 ? 'No PDF reports saved yet.' : `No ${periodFilter} reports found.`}
-                          </p>
-                        ) : (
-                          <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
-                            {visibleReports.map((report) => {
-                              const period = report.report_period || 'daily';
-                              const pConf = PERIOD_CONFIG[period] || PERIOD_CONFIG.daily;
-                              const PeriodIcon = pConf.icon;
-                              const isThisDownloading = downloadingReportId === report._id;
-
-                              return (
-                                <button
-                                  key={report._id}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (!isThisDownloading) handleDownloadSavedReport(emp, report);
-                                  }}
-                                  disabled={isThisDownloading}
-                                  className="flex items-center justify-between w-full px-3 py-2.5 bg-slate-50/50 hover:bg-slate-100 dark:bg-slate-800/40 dark:hover:bg-slate-800/70 border border-slate-200/30 dark:border-slate-800/30 rounded-xl text-left transition-colors group/row"
-                                  title={`Download ${period} report — ${report.report_date}`}
+                      <tr className="bg-slate-50/30 dark:bg-slate-900/10">
+                        <td colSpan={4} className="px-6 py-4">
+                          <div className="overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                            {/* Header row: count + sort */}
+                            <div className="flex items-center justify-between border-t border-slate-150/40 dark:border-slate-800/30 pt-3 mb-3">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                Saved Reports ({counts.all})
+                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500">Sort:</span>
+                                <select
+                                  value={sortOrder}
+                                  onChange={(e) => handleSortChange(empId, e.target.value)}
+                                  className="text-[10px] font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-350 border-none rounded-lg px-2 py-1 outline-none cursor-pointer transition-colors"
                                 >
-                                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                    {/* Period badge */}
-                                    <span className={`inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shrink-0 ${pConf.color}`}>
-                                      <PeriodIcon size={9} />
-                                      {pConf.label}
-                                    </span>
-                                    {/* Date */}
-                                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 truncate">
-                                      {report.report_date}
-                                    </span>
-                                  </div>
-                                  {isThisDownloading ? (
-                                    <Loader2 size={13} className="animate-spin text-indigo-500 shrink-0" />
-                                  ) : (
-                                    <FileDown size={13} className="opacity-40 group-hover/row:opacity-80 shrink-0 text-slate-500 dark:text-slate-400 transition-opacity" />
-                                  )}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                  
-                  {!isExpanded && (
-                    <div className="text-[10px] text-slate-400 dark:text-slate-500 italic mb-4 mt-2">
-                      Click to reveal all saved reports
-                    </div>
-                  )}
-                </div>
+                                  <option value="newest">Newest First</option>
+                                  <option value="oldest">Oldest First</option>
+                                </select>
+                              </div>
+                            </div>
 
-                {/* Download Latest Daily Report Button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDownload(emp);
-                  }}
-                  disabled={isDownloading}
-                  className={`flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl text-xs font-bold transition-all border ${
-                    config
-                      ? 'bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/40 hover:shadow-md'
-                      : 'bg-slate-50 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 border-slate-100 dark:border-slate-800/50 cursor-not-allowed opacity-60'
-                  }`}
-                >
-                  {isDownloading ? (
-                    <>
-                      <Loader2 size={14} className="animate-spin" />
-                      Generating PDF...
-                    </>
-                  ) : config ? (
-                    <>
-                      <FileDown size={14} />
-                      Download Latest Daily Report
-                    </>
-                  ) : (
-                    <>
-                      <Download size={14} />
-                      No Report Template
-                    </>
-                  )}
-                </button>
-              </motion.div>
-            );
-          })}
+                            {/* Period filter tabs */}
+                            <div className="flex items-center gap-1 mb-3 flex-wrap">
+                              {[
+                                { value: 'all',     label: `All (${counts.all})`,           cls: 'text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700' },
+                                { value: 'daily',   label: `Daily (${counts.daily})`,        cls: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800' },
+                                { value: 'weekly',  label: `Weekly (${counts.weekly})`,      cls: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800' },
+                                { value: 'monthly', label: `Monthly (${counts.monthly})`,    cls: 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/40 border-violet-200 dark:border-violet-800' },
+                              ].map(tab => (
+                                <button
+                                  key={tab.value}
+                                  onClick={() => handlePeriodFilterChange(empId, tab.value)}
+                                  className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${
+                                    periodFilter === tab.value
+                                      ? `${tab.cls} ring-1 ring-current`
+                                      : 'text-slate-450 dark:text-slate-650 bg-transparent border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                                  }`}
+                                >
+                                  {tab.label}
+                                </button>
+                              ))}
+                            </div>
+
+                            {/* Reports list */}
+                            {loadingReportsMap[empId] ? (
+                              <div className="flex items-center gap-2 py-4 text-xs text-slate-400">
+                                <Loader2 size={12} className="animate-spin text-indigo-500" />
+                                <span>Loading reports...</span>
+                              </div>
+                            ) : visibleReports.length === 0 ? (
+                              <p className="text-xs text-slate-400 dark:text-slate-500 italic py-2">
+                                {counts.all === 0 ? 'No PDF reports saved yet.' : `No ${periodFilter} reports found.`}
+                              </p>
+                            ) : (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-60 overflow-y-auto pr-1 py-1">
+                                {visibleReports.map((report) => {
+                                  const period = report.report_period || 'daily';
+                                  const pConf = PERIOD_CONFIG[period] || PERIOD_CONFIG.daily;
+                                  const PeriodIcon = pConf.icon;
+                                  const isThisDownloading = downloadingReportId === report._id;
+
+                                  return (
+                                    <button
+                                      key={report._id}
+                                      onClick={() => {
+                                        if (!isThisDownloading) handleDownloadSavedReport(emp, report);
+                                      }}
+                                      disabled={isThisDownloading}
+                                      className="flex items-center justify-between px-3 py-2.5 bg-white hover:bg-slate-50 dark:bg-slate-800/30 dark:hover:bg-slate-800/60 border border-slate-200/50 dark:border-slate-800/50 rounded-xl text-left transition-all hover:shadow-sm group/row"
+                                      title={`Download ${period} report — ${report.report_date}`}
+                                    >
+                                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                                        <span className={`inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shrink-0 ${pConf.color}`}>
+                                          <PeriodIcon size={9} />
+                                          {pConf.label}
+                                        </span>
+                                        <span className="text-xs font-semibold text-slate-600 dark:text-slate-350 truncate">
+                                          {report.report_date}
+                                        </span>
+                                      </div>
+                                      {isThisDownloading ? (
+                                        <Loader2 size={12} className="animate-spin text-indigo-500 shrink-0" />
+                                      ) : (
+                                        <FileDown size={12} className="opacity-40 group-hover/row:opacity-85 shrink-0 text-slate-500 dark:text-slate-400 transition-opacity" />
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

@@ -723,6 +723,13 @@ const HodRdReportPage = () => {
 
   const handleDownloadMonthlyPDF = async () => {
     try {
+      const logoImg = new Image();
+      logoImg.src = '/logo3.png';
+      await new Promise((resolve) => {
+        logoImg.onload = resolve;
+        logoImg.onerror = resolve;
+      });
+
       const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
@@ -742,13 +749,17 @@ const HodRdReportPage = () => {
       };
 
       // Header Brand Logo
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(22);
-      doc.setTextColor(132, 204, 22); // lime green
-      doc.text("KOD.", 14, 21);
+      if (logoImg.complete && logoImg.naturalWidth > 0) {
+        doc.addImage(logoImg, 'PNG', 14, 10, 32, 12);
+      } else {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(22);
+        doc.setTextColor(132, 204, 22); // lime green
+        doc.text("KOD.", 14, 21);
 
-      doc.setTextColor(60, 35, 117); // purple/indigo
-      doc.text("brand", 34, 21);
+        doc.setTextColor(60, 35, 117); // purple/indigo
+        doc.text("brand", 34, 21);
+      }
 
       // Document Title & Designation
       doc.setFontSize(13);

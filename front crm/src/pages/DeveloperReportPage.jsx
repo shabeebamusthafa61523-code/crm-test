@@ -652,13 +652,23 @@ const DeveloperReportPage = () => {
       };
 
       // Header Brand Logo
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(22);
-      doc.setTextColor(132, 204, 22); // lime green
-      doc.text("KOD.", 14, 21);
-      
-      doc.setTextColor(60, 35, 117);
-      doc.text("brand", 34, 21);
+      const logoImg = new Image();
+      logoImg.src = '/logo3.png';
+      await new Promise((resolve) => {
+        logoImg.onload = () => {
+          doc.addImage(logoImg, 'PNG', 14, 10, 32, 12);
+          resolve();
+        };
+        logoImg.onerror = () => {
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(22);
+          doc.setTextColor(132, 204, 22);
+          doc.text("KOD.", 14, 21);
+          doc.setTextColor(60, 35, 117);
+          doc.text("brand", 34, 21);
+          resolve();
+        };
+      });
 
       // Document Title & Designation
       doc.setFontSize(13);

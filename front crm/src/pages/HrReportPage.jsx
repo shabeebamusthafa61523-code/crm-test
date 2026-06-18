@@ -497,6 +497,13 @@ const HrReportPage = () => {
 
   const handleDownloadMonthlyPDF = async () => {
     try {
+      const logoImg = new Image();
+      logoImg.src = '/logo3.png';
+      await new Promise((resolve) => {
+        logoImg.onload = resolve;
+        logoImg.onerror = resolve;
+      });
+
       const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
@@ -516,13 +523,17 @@ const HrReportPage = () => {
       };
 
       const drawHeader = () => {
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(22);
-        doc.setTextColor(132, 204, 22);
-        doc.text("KOD.", 14, 21);
-        
-        doc.setTextColor(60, 35, 117);
-        doc.text("brand", 34, 21);
+        if (logoImg.complete && logoImg.naturalWidth > 0) {
+          doc.addImage(logoImg, 'PNG', 14, 10, 32, 12);
+        } else {
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(22);
+          doc.setTextColor(132, 204, 22);
+          doc.text("KOD.", 14, 21);
+          
+          doc.setTextColor(60, 35, 117);
+          doc.text("brand", 34, 21);
+        }
 
         doc.setFontSize(14);
         doc.setTextColor(60, 35, 117);

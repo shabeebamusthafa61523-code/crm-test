@@ -1,4 +1,10 @@
 import PDFDocument from 'pdfkit';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const logoPath = path.join(__dirname, '../assets/logo3.png');
 
 /**
  * Generates a beautiful PDF report from report data
@@ -24,9 +30,14 @@ export const generateReportPDFBuffer = (report, empName, designation) => {
 
       // --- PAGE HEADER FUNCTION ---
       const drawHeader = () => {
-        // Draw KOD.brand branding
-        doc.fillColor(secondaryColor).font('Helvetica-Bold').fontSize(22).text('KOD.', 40, 40, { continued: true });
-        doc.fillColor(primaryColor).text('brand');
+        // Draw logo3.png
+        try {
+          doc.image(logoPath, 40, 30, { height: 32 });
+        } catch (err) {
+          // Fallback branding text
+          doc.fillColor(secondaryColor).font('Helvetica-Bold').fontSize(22).text('KOD.', 40, 40, { continued: true });
+          doc.fillColor(primaryColor).text('brand');
+        }
 
         // Document title
         doc.fillColor(primaryColor).font('Helvetica-Bold').fontSize(14).text('DAILY SHIFT REPORT', 300, 40, { align: 'right' });

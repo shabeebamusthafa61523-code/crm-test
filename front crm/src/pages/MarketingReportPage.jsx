@@ -307,6 +307,13 @@ const MarketingReportPage = () => {
 
   const handleDownloadMonthlyPDF = async () => {
     try {
+      const logoImg = new Image();
+      logoImg.src = '/logo3.png';
+      await new Promise((resolve) => {
+        logoImg.onload = resolve;
+        logoImg.onerror = resolve;
+      });
+
       const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
@@ -327,13 +334,17 @@ const MarketingReportPage = () => {
 
       const drawHeader = () => {
         // Logo
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(20);
-        doc.setTextColor(132, 204, 22); // Lime Green
-        doc.text("KOD.", 14, 21);
-        
-        doc.setTextColor(60, 35, 117);
-        doc.text("brand", 32, 21);
+        if (logoImg.complete && logoImg.naturalWidth > 0) {
+          doc.addImage(logoImg, 'PNG', 14, 10, 32, 12);
+        } else {
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(20);
+          doc.setTextColor(132, 204, 22); // Lime Green
+          doc.text("KOD.", 14, 21);
+          
+          doc.setTextColor(60, 35, 117);
+          doc.text("brand", 32, 21);
+        }
 
         // Title
         doc.setFontSize(14);
