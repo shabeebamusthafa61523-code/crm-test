@@ -153,6 +153,7 @@ const EmployeeReports = () => {
 
       if (res.ok) {
         const blob = await res.blob();
+        console.log(`[Diagnostic] Generated blob size: ${blob.size} bytes, type: ${blob.type}`);
         const filename = `${config.name.replace(/\s+/g, '_')}_Report_${(emp.name || 'Employee').replace(/[^a-zA-Z0-9_-]/g, '_')}_Daily.pdf`;
         const downloadUrl = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -160,11 +161,13 @@ const EmployeeReports = () => {
         a.download = filename;
         document.body.appendChild(a);
         a.click();
-        a.remove();
-        window.URL.revokeObjectURL(downloadUrl);
+        setTimeout(() => {
+          a.remove();
+          window.URL.revokeObjectURL(downloadUrl);
+        }, 15000);
         const currentSort = sortOrders[empId] || 'newest';
         fetchUploadedReports(empId, currentSort);
-        showToast("PDF report generated and downloaded successfully!", "success");
+        showToast(`PDF report generated and downloaded successfully! (Size: ${blob.size} bytes)`, "success");
       } else {
         setErrorMsg(`No report found for ${emp.name || 'this employee'} for today or yesterday.`);
         setTimeout(() => setErrorMsg(null), 5000);
@@ -193,31 +196,25 @@ const EmployeeReports = () => {
       let res;
       let filename;
 
-      if (report.report_period === 'daily') {
-        // Re-generate daily report on the fly via pdfkit
-        const config = getDesignationConfig(emp);
-        const reportTypeSlug = config ? config.apiPrefix.replace('-reports', '') : report.report_type;
-        const url = `${API_BASE}/v1/employee-reports/generate-pdf?userId=${emp._id || emp.id}&dateString=${report.report_date}&reportType=${reportTypeSlug}`;
-        res = await fetch(url, { headers });
-        filename = report.filename || `Daily_Report_${report.report_date}.pdf`;
-      } else {
-        // Stream the saved blob (weekly/monthly) via backend proxy
-        const url = `${API_BASE}/v1/employee-reports/stream/${report._id}`;
-        res = await fetch(url, { headers });
-        filename = report.filename || `${report.report_period}_Report_${report.report_date}.pdf`;
-      }
+      // Stream the saved PDF file (daily/weekly/monthly) from storage via backend proxy
+      const url = `${API_BASE}/v1/employee-reports/stream/${report._id}`;
+      res = await fetch(url, { headers });
+      filename = report.filename || `${report.report_period || 'daily'}_Report_${report.report_date}.pdf`;
 
       if (res.ok) {
         const blob = await res.blob();
+        console.log(`[Diagnostic] Saved report blob size: ${blob.size} bytes, type: ${blob.type}`);
         const downloadUrl = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = downloadUrl;
         a.download = filename;
         document.body.appendChild(a);
         a.click();
-        a.remove();
-        window.URL.revokeObjectURL(downloadUrl);
-        showToast("Report downloaded successfully!", "success");
+        setTimeout(() => {
+          a.remove();
+          window.URL.revokeObjectURL(downloadUrl);
+        }, 15000);
+        showToast(`Report downloaded successfully! (Size: ${blob.size} bytes)`, "success");
       } else {
         showToast("Failed to download report. Please try again.", "error");
       }

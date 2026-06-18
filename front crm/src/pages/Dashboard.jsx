@@ -449,9 +449,9 @@ const Dashboard = () => {
               <RefreshCw size={14} />
               <span>Sync System</span>
             </button>
-            <div className="px-5 py-3 bg-indigo-600/5 dark:bg-indigo-500/10 border border-indigo-500/20 rounded-2xl text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
-              {currentTime.toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short" })}
-            </div>
+           <div className="px-5 py-3 bg-indigo-600/5 dark:bg-indigo-500/10 border border-indigo-500/20 rounded-2xl text-xs font-black text-white uppercase tracking-wider">
+  {currentTime.toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short" })}
+</div>
           </div>
         </div>
 

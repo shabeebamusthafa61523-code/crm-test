@@ -926,8 +926,10 @@ const DeveloperReportPage = () => {
       a.download = filename;
       document.body.appendChild(a);
       a.click();
-      a.remove();
-      window.URL.revokeObjectURL(downloadUrl);
+      setTimeout(() => {
+        a.remove();
+        window.URL.revokeObjectURL(downloadUrl);
+      }, 15000);
       
       showToast("PDF report downloaded and saved successfully!", "success");
     } catch (e) {

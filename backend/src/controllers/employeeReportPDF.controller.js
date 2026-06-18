@@ -1,3 +1,5 @@
+import https from 'https';
+import http from 'http';
 import EmployeeReports from '../models/employeeReports.model.js';
 import User from '../models/user.model.js';
 import DeveloperReport from '../models/developerReport.model.js';
@@ -267,7 +269,7 @@ export const employeeReportPDFController = {
         fetchUrl = cloudinary.utils.private_download_url(
           record.pdf_public_id,
           'pdf',
-          { resource_type: 'raw' }   // must match how it was uploaded
+          { resource_type: 'raw', type: 'upload' }   // must match how it was uploaded
         );
       } else {
         fetchUrl = record.pdf_url;
@@ -277,8 +279,6 @@ export const employeeReportPDFController = {
 
       // Helper: fetch URL with redirect-following (Cloudinary signed URLs can redirect)
       const fetchAndPipe = (url, redirectsLeft) => {
-        const https = require('https');
-        const http  = require('http');
         const mod   = url.startsWith('https') ? https : http;
 
         mod.get(url, (cloudRes) => {
