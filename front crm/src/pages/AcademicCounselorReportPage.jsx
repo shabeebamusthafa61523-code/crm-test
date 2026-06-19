@@ -581,6 +581,74 @@ const AcademicCounselorReportPage = () => {
   const handleFetchAndConsolidate = async () => {
     await handleFetchMonthlyData();
     setIsMonthlyConsolidated(true);
+    setMonthlyActiveTab('basicDetails');
+  };
+
+  const handleDownloadMonthlyPDF = async () => {
+    try {
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      let currentY = 15;
+      
+      const drawSectionHeader = (title) => {
+        doc.setFillColor(60, 35, 117);
+        doc.rect(14, currentY, 182, 7, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.setTextColor(255, 255, 255);
+        doc.text(title.toUpperCase(), 17, currentY + 5);
+        currentY += 7;
+      };
+
+      // Header Brand Logo
+      const logoImg = new Image();
+      logoImg.src = '/logo3.png';
+      await new Promise((resolve) => {
+        logoImg.onload = () => {
+          doc.addImage(logoImg, 'PNG', 14, 10, 32, 12);
+          resolve();
+        };
+        logoImg.onerror = () => {
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(22);
+          doc.setTextColor(132, 204, 22);
+          doc.text("KOD.", 14, 21);
+          doc.setTextColor(60, 35, 117);
+          doc.text("brand", 34, 21);
+          resolve();
+        };
+      });
+
+      doc.setFontSize(14);
+      doc.setTextColor(60, 35, 117);
+      doc.text("MONTHLY CONSOLIDATED REPORT", 100, 16);
+      
+      doc.setFontSize(7);
+      doc.setTextColor(0, 0, 0);
+      doc.setFont('helvetica', 'bold');
+      doc.text("SALES EXECUTIVE / TELE CALLER & ACADEMIC COUNSELOR", 100, 22);
+
+      currentY = 27;
+
+      drawSectionHeader("1. BASIC DETAILS");
+      
+      const basicDetailsRows = [
+        ["Date Range", monthlyBasicDetails.dateRange || '', "Employee Name", monthlyBasicDetails.employeeName || ''],
+        ["Designation", monthlyBasicDetails.designation || '', "Department", monthlyBasicDetails.department || ''],
+        ["Shift Timing", monthlyBasicDetails.shiftTiming || '', "Reporting To", monthlyBasicDetails.reportingTo || '']
+      ];
+
+      autoTable(doc, {
+        body: basicDetailsRows,
+        startY: currentY,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 30 },
           1: { width: 61 },
           2: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 30 },
           3: { width: 61 }
@@ -708,8 +776,10 @@ const AcademicCounselorReportPage = () => {
       try {
         await uploadCompiledPDFReport(selectedUserId, `${monthlyStartDate}_to_${monthlyEndDate}`, pdfBlob, filename, 'academiccounselor', 'monthly');
         console.log("Monthly PDF saved successfully");
+        showToast("Monthly PDF saved to database successfully!", "success");
       } catch (uploadErr) {
         console.error("Failed to upload monthly PDF:", uploadErr);
+        showToast(`Failed to save report to database: ${uploadErr.message || uploadErr}`, "error");
       }
       doc.save(filename);
       showToast("Monthly PDF report downloaded successfully!", "success");
