@@ -14,6 +14,7 @@ import AccountantReport from '../models/accountantReport.model.js';
 import { generateReportPDFBuffer } from '../utils/pdfGenerator.js';
 import { v2 as cloudinary } from 'cloudinary';
 import { sendSuccess, sendError } from '../utils/response.helper.js';
+import logger from '../utils/logger.util.js';
 
 // Configure Cloudinary using environment variables
 cloudinary.config({
@@ -208,7 +209,7 @@ export const employeeReportPDFController = {
 
       return sendSuccess(res, 'PDF Report uploaded successfully', reportRecord, 201);
     } catch (error) {
-      console.error('Error in uploadPDFReport:', error.message);
+      logger.error('Error in uploadPDFReport:', { errorStack: error.stack, message: error.message });
       next(error);
     }
   },

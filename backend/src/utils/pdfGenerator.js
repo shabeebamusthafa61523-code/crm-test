@@ -34,6 +34,7 @@ export const generateReportPDFBuffer = (report, empName, designation) => {
         try {
           doc.image(logoPath, 40, 30, { height: 32 });
         } catch (err) {
+          console.error("❌ PDF Logo Render Error:", err.message);
           // Fallback branding text
           doc.fillColor(secondaryColor).font('Helvetica-Bold').fontSize(22).text('KOD.', 40, 40, { continued: true });
           doc.fillColor(primaryColor).text('brand');

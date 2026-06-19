@@ -14,6 +14,7 @@ import studentRoutes from './src/routes/student.routes.js';
 import crmRoutes from './src/routes/index.js';
 import apiRoutes from './src/routes/api.js';
 import Designation from './src/models/designation.model.js';
+import logger from './src/utils/logger.util.js';
 
 dotenv.config();
 const app = express();
@@ -96,7 +97,7 @@ app.use((req, res, next) => {
 // 6. Global 500 Error Catch-All
 // Intercepts unhandled synchronous crashes, preserving correct headers and standard JSON feedback
 app.use((err, req, res, next) => {
-  console.error('🚨 Global Server Exception Error:', err.stack);
+  logger.error('🚨 Global Server Exception Error:', { errorStack: err.stack, message: err.message });
   res.status(err.status || 500).json({
     success: false,
     message: err.message || 'Internal Server Error Fallback'
