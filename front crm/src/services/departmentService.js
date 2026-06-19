@@ -1,6 +1,7 @@
 // src/services/departmentService.js
 
 import axios from 'axios';
+import { PDFDocument } from 'pdf-lib';
 
 // Get base URL from environment or default to local development port
 const API_URL = import.meta.env?.VITE_API_URL || import.meta.env?.REACT_APP_API_URL || 'http://localhost:5000/api/v1';
@@ -144,17 +145,42 @@ export const getPDFReportsByUser = (userId, sort = 'newest') => {
 };
 
 /**
- * Upload compiled PDF report (weekly/monthly) to server
+ * Compress a PDF Blob using pdf-lib (re-serializes with compression).
+ * Returns a compressed Blob, or original if compression fails.
  */
-export const uploadCompiledPDFReport = (userId, reportDate, pdfBlob, filename, reportType, reportPeriod) => {
+const compressPdfBlob = async (pdfBlob) => {
+  try {
+    const arrayBuffer = await pdfBlob.arrayBuffer();
+    const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
+    const compressedBytes = await pdfDoc.save({ useObjectStreams: true, addDefaultPage: false });
+    const compressedBlob = new Blob([compressedBytes], { type: 'application/pdf' });
+    const originalMB = (pdfBlob.size / 1024 / 1024).toFixed(2);
+    const compressedMB = (compressedBlob.size / 1024 / 1024).toFixed(2);
+    console.log(`[PDF Compress] ${originalMB}MB → ${compressedMB}MB`);
+    // Use compressed only if it's actually smaller
+    return compressedBlob.size < pdfBlob.size ? compressedBlob : pdfBlob;
+  } catch (err) {
+    console.warn('[PDF Compress] Compression failed, using original:', err.message);
+    return pdfBlob;
+  }
+};
+
+/**
+ * Upload compiled PDF report (weekly/monthly) to server.
+ * Automatically compresses the PDF before uploading.
+ */
+export const uploadCompiledPDFReport = async (userId, reportDate, pdfBlob, filename, reportType, reportPeriod) => {
   const token = localStorage.getItem('token');
   const cleanToken = token ? token.replace(/"/g, '') : '';
   const headers = {
     'Authorization': cleanToken.startsWith('Bearer ') ? cleanToken : `Bearer ${cleanToken}`
   };
-  
+
+  // Compress the PDF before uploading to stay under Cloudinary's size limit
+  const compressedBlob = await compressPdfBlob(pdfBlob);
+
   const fd = new FormData();
-  fd.append('pdfFile', pdfBlob, filename);
+  fd.append('pdfFile', compressedBlob, filename);
   fd.append('userId', userId);
   fd.append('reportDate', reportDate);
   fd.append('reportType', reportType);
