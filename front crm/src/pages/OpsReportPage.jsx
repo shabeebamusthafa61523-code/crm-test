@@ -110,6 +110,30 @@ const OpsReportPage = () => {
 
   // Monthly Report States
   const [isMonthlyModalOpen, setIsMonthlyModalOpen] = useState(false);
+
+  // Auto-open monthly modal from URL parameters
+  useEffect(() => {
+    if (selectedUserId) {
+      const queryParams = new URLSearchParams(window.location.search);
+      const savedUser = localStorage.getItem('user');
+      let isUserPrivileged = false;
+      if (savedUser) {
+        try {
+          const userObj = JSON.parse(savedUser);
+          const role = String(userObj.role_id || userObj.role || '').toLowerCase().trim();
+          isUserPrivileged = ['1', '2', 'hr', 'admin'].includes(role);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      
+      if (isUserPrivileged) {
+        if (queryParams.get('generateMonthly') === 'true') {
+          setIsMonthlyModalOpen(true);
+        }
+      }
+    }
+  }, [selectedUserId]);
   const [monthlyStartDate, setMonthlyStartDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
@@ -150,7 +174,24 @@ const OpsReportPage = () => {
 
   // Selection states
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedUserId, setSelectedUserId] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState(() => {
+    const queryParams = new URLSearchParams(window.location.search);
+    const queryUserId = queryParams.get('userId');
+    if (queryUserId) {
+      const savedUser = localStorage.getItem('user');
+      if (savedUser) {
+        try {
+          const userObj = JSON.parse(savedUser);
+          const role = String(userObj.role_id || userObj.role || '').toLowerCase().trim();
+          const privileged = ['1', '2', 'hr', 'admin'].includes(role);
+          if (privileged) return queryUserId;
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+    return '';
+  });
   const [opsStaff, setOpsStaff] = useState([]);
   const [submittedDates, setSubmittedDates] = useState([]);
 
@@ -735,13 +776,6 @@ const OpsReportPage = () => {
 
   const handleDownloadWeeklyPDF = async (weeklyData) => {
     try {
-      const logoImg = new Image();
-      logoImg.src = '/logo3.png';
-      await new Promise((resolve) => {
-        logoImg.onload = resolve;
-        logoImg.onerror = resolve;
-      });
-
       const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
@@ -752,6 +786,255 @@ const OpsReportPage = () => {
 
       const drawSectionHeader = (title) => {
         doc.setFillColor(60, 35, 117);
+        doc.rect(14, currentY, 182, 7, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.setTextColor(255, 255, 255);
+        doc.text(title.toUpperCase(), 17, currentY + 5);
+        currentY += 7;
+      };
+
+      const drawHeader = () => {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(22);
+        doc.setTextColor(132, 204, 22); // Lime Green
+        doc.text("KOD.", 14, 21);
+        
+        doc.setTextColor(60, 35, 117);
+        doc.text("brand", 34, 21);
+
+        doc.setFontSize(15);
+        doc.setTextColor(60, 35, 117);
+        doc.text("WEEKLY OPERATIONS REPORT", 95, 16);
+        
+        doc.setFontSize(7.5);
+        doc.setTextColor(0, 0, 0);
+        doc.text("WEEKLY CONSOLIDATION", 145, 22);
+      };
+
+      drawHeader();
+      currentY = 27;
+
+      drawSectionHeader("1. WEEKLY DETAILS");
+      const basicDetailsRows = [
+        ["Date Range", weeklyData.basicDetails.dateRange || ''],
+        ["Employee Name:", weeklyData.basicDetails.employeeName || ''],
+        ["Employee ID", weeklyData.basicDetails.employeeId || ''],
+        ["Department", weeklyData.basicDetails.department || ''],
+        ["Designation", weeklyData.basicDetails.designation || ''],
+        ["Shift Timing", weeklyData.basicDetails.shiftTiming || ''],
+        ["Reporting To", weeklyData.basicDetails.reportingTo || '']
+      ];
+
+      autoTable(doc, {
+        body: basicDetailsRows,
+        startY: currentY,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 45 },
+          1: { width: 137 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("2. WEEKLY SALES ACTIVITY (CONSOLIDATED)");
+      const counselingHeaders = [["Activity", "Count", "Digital Mktg", "Web", "Remarks"]];
+      const counselingRows = weeklyData.salesActivity.map(s => [s.activity || '', s.count || '', s.digitalMktg || '', s.web || '', s.remarks || '']);
+
+      autoTable(doc, {
+        head: counselingHeaders,
+        body: counselingRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 7.5, cellPadding: 1.5, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 68 },
+          1: { width: 28, halign: 'center' },
+          2: { width: 24, halign: 'center' },
+          3: { width: 24, halign: 'center' },
+          4: { width: 38 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      doc.addPage();
+      currentY = 15;
+      drawHeader();
+      currentY = 27;
+
+      drawSectionHeader("3. WEEKLY SALES TEAM PERFORMANCE");
+      const perfHeaders = [["Staff Name", "Task Assigned", "Leads", "Closings", "Status"]];
+      const perfRows = weeklyData.salesPerformance.map(p => [p.staffName || '', p.taskAssigned || '', p.leads || '', p.closings || '', p.status || '']);
+
+      autoTable(doc, {
+        head: perfHeaders,
+        body: perfRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 45 },
+          1: { width: 45 },
+          2: { width: 30, halign: 'center' },
+          3: { width: 30, halign: 'center' },
+          4: { width: 32, halign: 'center' }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("4. WEEKLY REVENUE TRACKING");
+      const revHeaders = [["Revenue Category", "Amount"]];
+      const revRows = weeklyData.revenueTracking.map(r => [r.category || '', r.amount || '']);
+
+      autoTable(doc, {
+        head: revHeaders,
+        body: revRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 110 },
+          1: { width: 72, halign: 'center' }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("5. WEEKLY ACADEMY STATUS");
+      const academyHeaders = [["Activity", "Status", "Remarks"]];
+      const academyRows = weeklyData.academyStatus.map(a => [a.activity || '', a.status || '', a.remarks || '']);
+
+      autoTable(doc, {
+        head: academyHeaders,
+        body: academyRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 70 },
+          1: { width: 35, halign: 'center' },
+          2: { width: 77 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("6. WEEKLY ISSUES / ESCALATIONS");
+      const issuesRows = [
+        ["Issues / Escalations:", weeklyData.issuesEscalations.issue || ''],
+        ["Priority:", weeklyData.issuesEscalations.priority || ''],
+        ["Action Taken:", weeklyData.issuesEscalations.actionTaken || '']
+      ];
+      autoTable(doc, {
+        body: issuesRows,
+        startY: currentY,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 2.2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 45 },
+          1: { width: 137 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("7. WEEKLY HANDOVER");
+      const handoverRows = [
+        ["Pending Leads Shared:", weeklyData.handover.pendingLeadsShared || ''],
+        ["CRM Updated: Yes / No - NA", weeklyData.handover.crmUpdated || ''],
+        ["Reports Submitted: Yes", weeklyData.handover.reportsSubmitted || ''],
+        ["Team Updated: Yes", weeklyData.handover.teamUpdated || '']
+      ];
+      autoTable(doc, {
+        body: handoverRows,
+        startY: currentY,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 2.2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 65 },
+          1: { width: 117 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 8;
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(60, 35, 117);
+      doc.text(weeklyData.approval.opsName || '', 30, currentY);
+      doc.text(weeklyData.approval.directorName || '', 130, currentY);
+
+      doc.setDrawColor(60, 35, 117);
+      doc.line(20, currentY + 1.5, 75, currentY + 1.5);
+      doc.line(120, currentY + 1.5, 175, currentY + 1.5);
+
+      doc.setFontSize(7.5);
+      doc.setTextColor(0, 0, 0);
+      doc.text("Manager - OPS Sales & Growth", 25, currentY + 5.5);
+      doc.text("Executive Director Approval", 127, currentY + 5.5);
+
+      const pdfBlob = doc.output('blob');
+      const filename = `Operations_Weekly_Report_${weeklyData.basicDetails.employeeName || 'Ops'}_${weeklyData.basicDetails.dateRange.replace(/ /g, '_')}.pdf`;
+      try {
+        await uploadCompiledPDFReport(selectedUserId, weeklyData.basicDetails.dateRange, pdfBlob, filename, 'ops', 'weekly');
+        console.log("Weekly PDF saved successfully");
+      } catch (uploadErr) {
+        console.error("Failed to upload weekly PDF:", uploadErr);
+      }
+      doc.save(filename);
+      showToast("Weekly PDF report downloaded successfully!", "success");
+    } catch (e) {
+      console.error(e);
+      showToast("Failed to generate weekly PDF.", "error");
+    }
+  };
+
+  const handleDownloadMonthlyPDF = async (monthlyData) => {
+    try {
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      let currentY = 15;
+
+      const drawSectionHeader = (title) => {
+        doc.setFillColor(60, 35, 117);
+        doc.rect(14, currentY, 182, 7, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.setTextColor(255, 255, 255);
+        doc.text(title.toUpperCase(), 17, currentY + 5);
+        currentY += 7;
+      };
+
+      const drawHeader = () => {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(22);
+        doc.setTextColor(132, 204, 22); // Lime Green
+        doc.text("KOD.", 14, 21);
+        
+        doc.setTextColor(60, 35, 117);
+        doc.text("brand", 34, 21);
+
+        doc.setFontSize(14);
+        doc.setTextColor(60, 35, 117);
+        doc.text("MONTHLY CONSOLIDATED OPERATIONS REPORT", 75, 16);
+        
         doc.setFontSize(7.5);
         doc.setTextColor(0, 0, 0);
         doc.text("MONTHLY CONSOLIDATION", 145, 22);

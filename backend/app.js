@@ -93,10 +93,24 @@ app.use((req, res, next) => {
   });
 });
 
+import logger from './src/utils/logger.util.js';
+
 // 6. Global 500 Error Catch-All
 // Intercepts unhandled synchronous crashes, preserving correct headers and standard JSON feedback
 app.use((err, req, res, next) => {
-  console.error('🚨 Global Server Exception Error:', err.stack);
+  console.error('🚨 Global Server Exception Error:', err.message);
+  if (logger && typeof logger.error === 'function') {
+    logger.error('Global Server Exception Error', { errorStack: err.stack, message: err.message });
+  }
+
+  // Handle Multer file size errors specifically
+  if (err.code === 'LIMIT_FILE_SIZE' || (err.name === 'MulterError' && err.message === 'File too large')) {
+    return res.status(413).json({
+      success: false,
+      message: `File too large. Maximum allowed size is 50MB. Please reduce the file size and try again.`
+    });
+  }
+
   res.status(err.status || 500).json({
     success: false,
     message: err.message || 'Internal Server Error Fallback'

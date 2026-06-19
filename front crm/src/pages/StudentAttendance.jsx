@@ -136,8 +136,8 @@ const StudentAttendance = () => {
 
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
     const workbook = XLSX.utils.book_new();
-    XXLSX.utils.book_append_sheet(workbook, worksheet, "AttendanceReport");
-    XXLSX.writeFile(workbook, `Attendance_Report_${selectedDate}.xlsx`);
+    XLSX.utils.book_append_sheet(workbook, worksheet, "AttendanceReport");
+    XLSX.writeFile(workbook, `Attendance_Report_${selectedDate}.xlsx`);
   };
 
   const exportToPDF = () => {

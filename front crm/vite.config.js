@@ -8,7 +8,7 @@ export default defineConfig({
     proxy: {
       '/api': {
 
-        target: 'https://crm-test-yy77.onrender.com/api', // Points directly to your Express backend server
+        // target: 'https://crm-test-yy77.onrender.com/api', // Points directly to your Express backend server
         target: 'http://localhost:5000/api', // Points directly to your Express backend server
 
         changeOrigin: true,

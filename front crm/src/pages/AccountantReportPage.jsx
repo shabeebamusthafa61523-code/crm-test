@@ -241,9 +241,6 @@ const AccountantReportPage = () => {
         if (queryParams.get('generateMonthly') === 'true') {
           setIsMonthlyModalOpen(true);
         }
-        if (queryParams.get('generateWeekly') === 'true' && typeof setIsWeeklyModalOpen === 'function') {
-          setIsWeeklyModalOpen(true);
-        }
       }
     }
   }, [selectedUserId]);

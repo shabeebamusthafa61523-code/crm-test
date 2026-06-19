@@ -23,22 +23,41 @@ cloudinary.config({
 });
 
 // Helper: Upload PDF buffer to Cloudinary
+// Uses chunked upload for large files (> 9MB) to bypass the 10MB single-request limit
+const CHUNK_SIZE = 6 * 1024 * 1024; // 6MB chunks
+const LARGE_FILE_THRESHOLD = 9 * 1024 * 1024; // 9MB threshold
+
 const uploadToCloudinary = (fileBuffer, userId, filenameKey) => {
+  const uploadOptions = {
+    folder: `admin-reports/employee_${userId}`,
+    public_id: `report_${filenameKey}`,
+    resource_type: 'raw', // Critical for PDF uploads
+    format: 'pdf',
+    overwrite: true
+  };
+
   return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      { 
-        folder: `admin-reports/employee_${userId}`,
-        public_id: `report_${filenameKey}`,
-        resource_type: 'raw', // Critical for PDF uploads
-        format: 'pdf',
-        overwrite: true
-      },
-      (error, result) => {
-        if (error) return reject(error);
-        resolve(result);
-      }
-    );
-    stream.end(fileBuffer);
+    // Use chunked upload for large files to avoid the 10MB Cloudinary limit
+    if (fileBuffer.length > LARGE_FILE_THRESHOLD) {
+      console.log(`[Cloudinary] Large file detected (${(fileBuffer.length / 1024 / 1024).toFixed(2)}MB) - using chunked upload`);
+      const stream = cloudinary.uploader.upload_chunked_stream(
+        { ...uploadOptions, chunk_size: CHUNK_SIZE },
+        (error, result) => {
+          if (error) return reject(error);
+          resolve(result);
+        }
+      );
+      stream.end(fileBuffer);
+    } else {
+      const stream = cloudinary.uploader.upload_stream(
+        uploadOptions,
+        (error, result) => {
+          if (error) return reject(error);
+          resolve(result);
+        }
+      );
+      stream.end(fileBuffer);
+    }
   });
 };
 

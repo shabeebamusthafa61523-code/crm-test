@@ -113,7 +113,7 @@ const EmployeeReports = () => {
     if (desigName.includes('hr')) return DESIGNATION_API_MAP['6a2f8efea2fe388770a38987'];
     if (desigName.includes('ops') || desigName.includes('operations')) return DESIGNATION_API_MAP['6a2f91472df21dc234018cab'];
     if (desigName.includes('accountant')) return DESIGNATION_API_MAP['6a2f915e2df21dc234018cac'];
-    if (desigName.includes('marketing')) return DESIGNATION_API_MAP['6a2f909d2df21dc234018ca8'];
+    if (desigName.includes('marketing') || desigName.includes('marketer')) return DESIGNATION_API_MAP['6a2f909d2df21dc234018ca8'];
     return null;
   };
 

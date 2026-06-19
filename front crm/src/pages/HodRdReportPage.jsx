@@ -49,7 +49,24 @@ const HodRdReportPage = () => {
   
   // Selection state
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedUserId, setSelectedUserId] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState(() => {
+    const queryParams = new URLSearchParams(window.location.search);
+    const queryUserId = queryParams.get('userId');
+    if (queryUserId) {
+      const savedUser = localStorage.getItem('user');
+      if (savedUser) {
+        try {
+          const userObj = JSON.parse(savedUser);
+          const role = String(userObj.role_id || userObj.role || '').toLowerCase().trim();
+          const privileged = ['1', '2', 'hr', 'admin'].includes(role);
+          if (privileged) return queryUserId;
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+    return '';
+  });
   const [hods, setHods] = useState([]);
   const [submittedDates, setSubmittedDates] = useState([]);
   
@@ -84,6 +101,30 @@ const HodRdReportPage = () => {
 
   // Monthly States
   const [isMonthlyModalOpen, setIsMonthlyModalOpen] = useState(false);
+
+  // Auto-open monthly modal from URL parameters
+  useEffect(() => {
+    if (selectedUserId) {
+      const queryParams = new URLSearchParams(window.location.search);
+      const savedUser = localStorage.getItem('user');
+      let isUserPrivileged = false;
+      if (savedUser) {
+        try {
+          const userObj = JSON.parse(savedUser);
+          const role = String(userObj.role_id || userObj.role || '').toLowerCase().trim();
+          isUserPrivileged = ['1', '2', 'hr', 'admin'].includes(role);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      
+      if (isUserPrivileged) {
+        if (queryParams.get('generateMonthly') === 'true') {
+          setIsMonthlyModalOpen(true);
+        }
+      }
+    }
+  }, [selectedUserId]);
   const [monthlyStartDate, setMonthlyStartDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
