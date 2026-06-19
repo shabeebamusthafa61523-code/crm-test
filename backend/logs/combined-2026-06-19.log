@@ -68,3 +68,12 @@
 {"level":"error","message":"Global Server Exception Error File size too large. Got 12619572. Maximum is 10485760.","service":"kod-brand-crm","timestamp":"2026-06-19T07:03:35.015Z"}
 {"level":"error","message":"Global Server Exception Error File size too large. Got 12619572. Maximum is 10485760.","service":"kod-brand-crm","timestamp":"2026-06-19T07:04:14.038Z"}
 {"level":"error","message":"Global Server Exception Error File size too large. Got 12619572. Maximum is 10485760.","service":"kod-brand-crm","timestamp":"2026-06-19T07:05:18.916Z"}
+{"level":"info","message":"🔑 JWT RS256 Key Pair loaded successfully from local files.","service":"kod-brand-crm","timestamp":"2026-06-19T07:19:45.813Z"}
+{"level":"error","message":"Global Server Exception Error File size too large. Got 12619572. Maximum is 10485760.","service":"kod-brand-crm","timestamp":"2026-06-19T08:08:58.897Z"}
+{"level":"error","message":"Global Server Exception Error File size too large. Got 12619572. Maximum is 10485760.","service":"kod-brand-crm","timestamp":"2026-06-19T08:09:14.366Z"}
+{"errorStack":"ReferenceError: prisma is not defined\n    at recordAudit (file:///C:/Users/Lenovo%20L460/Desktop/crm-1/crm-test/backend/src/middleware/audit.middleware.js:27:25)\n    at updateUser (file:///C:/Users/Lenovo%20L460/Desktop/crm-1/crm-test/backend/src/controllers/user.controller.js:487:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)","level":"error","message":"❌ Failed to record Audit transaction: prisma is not defined","service":"kod-brand-crm","timestamp":"2026-06-19T08:10:44.851Z"}
+{"level":"error","message":"Global Server Exception Error File size too large. Got 12630207. Maximum is 10485760.","service":"kod-brand-crm","timestamp":"2026-06-19T08:12:21.165Z"}
+{"level":"error","message":"Global Server Exception Error File size too large. Got 12630207. Maximum is 10485760.","service":"kod-brand-crm","timestamp":"2026-06-19T08:12:26.709Z"}
+{"level":"error","message":"Global Server Exception Error File size too large. Got 12630207. Maximum is 10485760.","service":"kod-brand-crm","timestamp":"2026-06-19T08:12:28.822Z"}
+{"level":"error","message":"Global Server Exception Error File size too large. Got 12630207. Maximum is 10485760.","service":"kod-brand-crm","timestamp":"2026-06-19T08:12:33.342Z"}
+{"level":"info","message":"🔑 JWT RS256 Key Pair loaded successfully from local files.","service":"kod-brand-crm","timestamp":"2026-06-19T08:20:18.309Z"}

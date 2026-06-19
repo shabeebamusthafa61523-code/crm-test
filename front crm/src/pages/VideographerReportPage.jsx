@@ -606,7 +606,8 @@ const VideographerReportPage = () => {
       const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
-        format: 'a4'
+        format: 'a4',
+        compress: true
       });
 
       let currentY = 15;
