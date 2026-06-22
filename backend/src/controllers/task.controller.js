@@ -35,6 +35,44 @@ const deleteFromCloudinary = (publicId) => {
   });
 };
 
+const getUserId = (createdBy) => {
+  if (!createdBy) return undefined;
+  if (typeof createdBy === 'object') {
+    const val = createdBy._id || createdBy.id || createdBy;
+    return val ? val.toString() : undefined;
+  }
+  return createdBy.toString();
+};
+
+const formatLeanTask = (task) => {
+  if (!task) return null;
+  const id = task._id.toString();
+  const user_id = getUserId(task.created_by);
+  const file = task.file_url;
+  const image = task.file_url;
+
+  const formatted = {
+    ...task,
+    id,
+    user_id,
+    file,
+    image
+  };
+
+  if (formatted.assigned_to && formatted.assigned_to._id) {
+    formatted.assigned_to.id = formatted.assigned_to._id.toString();
+    delete formatted.assigned_to._id;
+  }
+  if (formatted.created_by && formatted.created_by._id) {
+    formatted.created_by.id = formatted.created_by._id.toString();
+    delete formatted.created_by._id;
+  }
+
+  delete formatted._id;
+  delete formatted.__v;
+  return formatted;
+};
+
 /**
  * 1. CREATE TASK
  * POST /api/v1/tasks/create
@@ -78,9 +116,16 @@ export const createTask = async (req, res, next) => {
 
     await task.save();
 
+    const populatedTask = await Task.findById(task._id)
+      .populate('assigned_to', 'name email')
+      .populate('created_by', 'name email')
+      .lean();
+
+    const formattedTask = formatLeanTask(populatedTask);
+
     return res.status(201).json({
       success: true,
-      task
+      task: formattedTask
     });
 
   } catch (error) {
@@ -103,33 +148,7 @@ export const getAllTasks = async (req, res, next) => {
       .select('-file_public_id')
       .lean();
 
-    const formattedTasks = tasks.map(task => {
-      const id = task._id.toString();
-      const user_id = task.created_by ? (task.created_by._id || task.created_by).toString() : undefined;
-      const file = task.file_url;
-      const image = task.file_url;
-
-      const formatted = {
-        ...task,
-        id,
-        user_id,
-        file,
-        image
-      };
-
-      if (formatted.assigned_to && formatted.assigned_to._id) {
-        formatted.assigned_to.id = formatted.assigned_to._id.toString();
-        delete formatted.assigned_to._id;
-      }
-      if (formatted.created_by && formatted.created_by._id) {
-        formatted.created_by.id = formatted.created_by._id.toString();
-        delete formatted.created_by._id;
-      }
-
-      delete formatted._id;
-      delete formatted.__v;
-      return formatted;
-    });
+    const formattedTasks = tasks.map(formatLeanTask);
 
     return res.status(200).json(formattedTasks);
   } catch (error) {
@@ -156,33 +175,7 @@ export const getUserTasks = async (req, res, next) => {
       .select('-file_public_id')
       .lean();
 
-    const formattedTasks = tasks.map(task => {
-      const id = task._id.toString();
-      const user_id_val = task.created_by ? (task.created_by._id || task.created_by).toString() : undefined;
-      const file = task.file_url;
-      const image = task.file_url;
-
-      const formatted = {
-        ...task,
-        id,
-        user_id: user_id_val,
-        file,
-        image
-      };
-
-      if (formatted.assigned_to && formatted.assigned_to._id) {
-        formatted.assigned_to.id = formatted.assigned_to._id.toString();
-        delete formatted.assigned_to._id;
-      }
-      if (formatted.created_by && formatted.created_by._id) {
-        formatted.created_by.id = formatted.created_by._id.toString();
-        delete formatted.created_by._id;
-      }
-
-      delete formatted._id;
-      delete formatted.__v;
-      return formatted;
-    });
+    const formattedTasks = tasks.map(formatLeanTask);
 
     return res.status(200).json(formattedTasks);
   } catch (error) {
@@ -204,33 +197,7 @@ export const getCurrentUserTasks = async (req, res, next) => {
       .select('-file_public_id')
       .lean();
 
-    const formattedTasks = tasks.map(task => {
-      const id = task._id.toString();
-      const user_id = task.created_by ? (task.created_by._id || task.created_by).toString() : undefined;
-      const file = task.file_url;
-      const image = task.file_url;
-
-      const formatted = {
-        ...task,
-        id,
-        user_id,
-        file,
-        image
-      };
-
-      if (formatted.assigned_to && formatted.assigned_to._id) {
-        formatted.assigned_to.id = formatted.assigned_to._id.toString();
-        delete formatted.assigned_to._id;
-      }
-      if (formatted.created_by && formatted.created_by._id) {
-        formatted.created_by.id = formatted.created_by._id.toString();
-        delete formatted.created_by._id;
-      }
-
-      delete formatted._id;
-      delete formatted.__v;
-      return formatted;
-    });
+    const formattedTasks = tasks.map(formatLeanTask);
 
     return res.status(200).json(formattedTasks);
   } catch (error) {
@@ -251,7 +218,11 @@ export const deleteTask = async (req, res, next) => {
       throw new AppError('Task not found', 404);
     }
 
-
+    // Verify creator authorization
+    const userId = req.user.id || req.user._id;
+    if (task.created_by.toString() !== userId.toString()) {
+      throw new AppError('Forbidden: Only the creator of this task can delete it', 403);
+    }
 
     if (task.file_public_id) {
       await deleteFromCloudinary(task.file_public_id);
@@ -287,7 +258,14 @@ export const updateTaskStatus = async (req, res, next) => {
     task.status = status;
     await task.save();
 
-    return res.status(200).json(task.toJSON());
+    const populatedTask = await Task.findById(task._id)
+      .populate('assigned_to', 'name email')
+      .populate('created_by', 'name email')
+      .lean();
+
+    const formattedTask = formatLeanTask(populatedTask);
+
+    return res.status(200).json(formattedTask);
   } catch (error) {
     next(error);
   }
@@ -307,7 +285,14 @@ export const updateTask = async (req, res, next) => {
       throw new AppError('Task not found', 404);
     }
 
+    // Verify creator authorization
+    const userId = req.user.id || req.user._id;
+    if (task.created_by.toString() !== userId.toString()) {
+      throw new AppError('Forbidden: Only the creator of this task can edit it', 403);
+    }
 
+
+    if (title !== undefined) task.title = title.trim();
     if (description !== undefined) task.description = description;
     if (assigned_to !== undefined) task.assigned_to = assigned_to;
     // Explicit check for designation_id updates (handles empty string resets)
@@ -328,7 +313,14 @@ export const updateTask = async (req, res, next) => {
 
     await task.save();
 
-    return res.status(200).json(task.toJSON());
+    const populatedTask = await Task.findById(task._id)
+      .populate('assigned_to', 'name email')
+      .populate('created_by', 'name email')
+      .lean();
+
+    const formattedTask = formatLeanTask(populatedTask);
+
+    return res.status(200).json(formattedTask);
   } catch (error) {
     next(error);
   }
