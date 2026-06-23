@@ -8,6 +8,7 @@ import {
   UserCheck, Shield, HelpCircle, SlidersHorizontal, ChevronDown
 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
+import ConfirmModal from '../components/ConfirmModal';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable'; // 👈 Import it as a direct function
@@ -29,6 +30,12 @@ const getCourseInterestStyle = (value) => {
   return { backgroundColor: colors.bg, color: colors.text, borderColor: colors.border };
 };
 
+const getISTDate = () => {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata'
+  }).format(new Date());
+};
+
 const Leads = () => {
   const [leads, setLeads] = useState([]);
   const [staff, setStaff] = useState([]);
@@ -40,12 +47,17 @@ const Leads = () => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [cityFilter, setCityFilter] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [dateTo, setDateTo] = useState(getISTDate());
   const [sortOrder, setSortOrder] = useState('desc'); // desc = newest first
+  const [citySearchQuery, setCitySearchQuery] = useState('');
+  const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const { showToast } = useToast();
 
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, id: null, name: '' });
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
@@ -103,9 +115,11 @@ const Leads = () => {
       if (activeTab !== 'all') {
         queryParams.append('status', activeTab);
       }
-      // Send date range to backend for server-side filtering
-      if (dateFrom) queryParams.append('dateFrom', dateFrom);
-      if (dateTo) queryParams.append('dateTo', dateTo);
+      // Send date range to backend for server-side filtering only when both are present
+      if (dateFrom && dateTo) {
+        queryParams.append('dateFrom', dateFrom);
+        queryParams.append('dateTo', dateTo);
+      }
 
       const res = await fetch(`${API_BASE}/v1/leads?${queryParams.toString()}`, {
         headers: getAuthHeaders()
@@ -189,6 +203,12 @@ const Leads = () => {
     return [...new Set(cities)].sort();
   }, [leads]);
 
+  const filteredCities = useMemo(() => {
+    const query = citySearchQuery.toLowerCase().trim();
+    if (!query) return uniqueCities;
+    return uniqueCities.filter(c => c.toLowerCase().includes(query));
+  }, [uniqueCities, citySearchQuery]);
+
   // Filtered, searched & sorted leads
   const filteredLeads = useMemo(() => {
     let result = leads.filter(lead => {
@@ -198,13 +218,11 @@ const Leads = () => {
       }
 
       // Date range filter (client-side backup – backend already filters, but keep for safety)
-      if (dateFrom) {
+      if (dateFrom && dateTo) {
         const leadDate = new Date(lead.createdAt);
         const fromDate = new Date(dateFrom);
         if (leadDate < fromDate) return false;
-      }
-      if (dateTo) {
-        const leadDate = new Date(lead.createdAt);
+
         const toDate = new Date(dateTo);
         toDate.setHours(23, 59, 59, 999);
         if (leadDate > toDate) return false;
@@ -240,10 +258,27 @@ const Leads = () => {
 
   return result;
 }, [leads, activeTab, searchQuery, cityFilter, dateFrom, dateTo, sortOrder]);
-  const handleDeleteLead = async (id, name) => {
-    if (!window.confirm(`Are you sure you want to delete lead "${name}"? This will clear all follow-up history.`)) {
-      return;
-    }
+
+  const paginatedLeads = useMemo(() => {
+    const offset = (currentPage - 1) * itemsPerPage;
+    return filteredLeads.slice(offset, offset + itemsPerPage);
+  }, [filteredLeads, currentPage, itemsPerPage]);
+
+  const totalPages = useMemo(() => {
+    return Math.ceil(filteredLeads.length / itemsPerPage);
+  }, [filteredLeads, itemsPerPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchQuery, cityFilter, dateFrom, dateTo, sortOrder, staffFilter]);
+
+  const handleDeleteLead = (id, name) => {
+    setDeleteConfirm({ isOpen: true, id, name });
+  };
+
+  const handleConfirmDelete = async () => {
+    const { id, name } = deleteConfirm;
+    setDeleteConfirm({ isOpen: false, id: null, name: '' });
     try {
       const res = await fetch(`${API_BASE}/v1/leads/delete/${id}`, {
         method: 'POST', // Supports POST/DELETE
@@ -529,8 +564,10 @@ const Leads = () => {
                           setActiveTab('all');
                           setStaffFilter('all');
                           setCityFilter('all');
+                          setCitySearchQuery('');
+                          setIsCityDropdownOpen(false);
                           setDateFrom('');
-                          setDateTo('');
+                          setDateTo(getISTDate());
                           setSortOrder('desc');
                         }}
                         className="text-[10px] text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
@@ -567,18 +604,68 @@ const Leads = () => {
                     </div>
 
                     {/* City Filter */}
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5 relative">
                       <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">City / Place</label>
-                      <select
-                        value={cityFilter}
-                        onChange={(e) => setCityFilter(e.target.value)}
-                        className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                      <button
+                        type="button"
+                        onClick={() => setIsCityDropdownOpen(!isCityDropdownOpen)}
+                        className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-left flex items-center justify-between focus:ring-2 focus:ring-indigo-500 outline-none transition cursor-pointer"
                       >
-                        <option value="all">📍 All Cities</option>
-                        {uniqueCities.map(c => (
-                          <option key={c} value={c}>{c}</option>
-                        ))}
-                      </select>
+                        <span className="truncate">{cityFilter === 'all' ? '📍 All Cities' : `📍 ${cityFilter}`}</span>
+                        <ChevronDown size={14} className={`text-slate-400 transition-transform ${isCityDropdownOpen ? 'rotate-180' : ''}`} />
+                      </button>
+                      
+                      {isCityDropdownOpen && (
+                        <div className="absolute left-0 right-0 mt-1 z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-2 space-y-2 max-h-60 flex flex-col">
+                          <input
+                            type="text"
+                            placeholder="🔍 Search city..."
+                            value={citySearchQuery}
+                            onChange={(e) => setCitySearchQuery(e.target.value)}
+                            className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-250 dark:border-slate-755 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                            autoFocus
+                          />
+                          <div className="overflow-y-auto flex-1 max-h-40 space-y-0.5 pr-1 scrollbar-thin">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCityFilter('all');
+                                setIsCityDropdownOpen(false);
+                                setCitySearchQuery('');
+                              }}
+                              className={`w-full text-left px-2.5 py-2 rounded-lg text-xs transition cursor-pointer ${
+                                cityFilter === 'all'
+                                  ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-400 font-bold'
+                                  : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-350'
+                              }`}
+                            >
+                              📍 All Cities
+                            </button>
+                            {filteredCities.length === 0 ? (
+                              <p className="text-[10px] text-slate-450 text-center py-2 uppercase font-semibold">No cities found</p>
+                            ) : (
+                              filteredCities.map(c => (
+                                <button
+                                  key={c}
+                                  type="button"
+                                  onClick={() => {
+                                    setCityFilter(c);
+                                    setIsCityDropdownOpen(false);
+                                    setCitySearchQuery('');
+                                  }}
+                                  className={`w-full text-left px-2.5 py-2 rounded-lg text-xs transition truncate cursor-pointer ${
+                                    cityFilter.toLowerCase() === c.toLowerCase()
+                                      ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-400 font-bold'
+                                      : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-355'
+                                  }`}
+                                >
+                                  {c}
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
 
@@ -611,6 +698,7 @@ const Leads = () => {
                             type="date"
                             value={dateFrom}
                             onChange={(e) => setDateFrom(e.target.value)}
+                            max={dateTo || getISTDate()}
                             className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] focus:ring-2 focus:ring-indigo-500 outline-none transition"
                           />
                         </div>
@@ -621,6 +709,7 @@ const Leads = () => {
                             value={dateTo}
                             onChange={(e) => setDateTo(e.target.value)}
                             min={dateFrom || undefined}
+                            max={getISTDate()}
                             className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] focus:ring-2 focus:ring-indigo-500 outline-none transition"
                           />
                         </div>
@@ -641,13 +730,13 @@ const Leads = () => {
           </div>
 
           {/* Active filter chips */}
-          {(staffFilter !== 'all' || cityFilter !== 'all' || dateFrom || dateTo || sortOrder !== 'desc') && (
+          {(staffFilter !== 'all' || cityFilter !== 'all' || (dateFrom && dateTo) || sortOrder !== 'desc') && (
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Active:</span>
               {cityFilter !== 'all' && (
                 <span className="flex items-center gap-1 px-2.5 py-1 bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-500/20 rounded-full text-[10px] font-semibold">
                   📍 {cityFilter}
-                  <button onClick={() => setCityFilter('all')} className="ml-0.5 hover:text-teal-800 cursor-pointer leading-none">×</button>
+                  <button onClick={() => { setCityFilter('all'); setCitySearchQuery(''); setIsCityDropdownOpen(false); }} className="ml-0.5 hover:text-teal-800 cursor-pointer leading-none">×</button>
                 </span>
               )}
               {staffFilter !== 'all' && (
@@ -662,20 +751,20 @@ const Leads = () => {
                   <button onClick={() => setSortOrder('desc')} className="ml-0.5 hover:text-slate-800 cursor-pointer leading-none">×</button>
                 </span>
               )}
-              {dateFrom && (
-                <span className="flex items-center gap-1 px-2.5 py-1 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20 rounded-full text-[10px] font-semibold">
-                  From {new Date(dateFrom + 'T00:00:00').toLocaleDateString()}
-                  <button onClick={() => setDateFrom('')} className="ml-0.5 hover:text-amber-800 cursor-pointer leading-none">×</button>
-                </span>
-              )}
-              {dateTo && (
-                <span className="flex items-center gap-1 px-2.5 py-1 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20 rounded-full text-[10px] font-semibold">
-                  To {new Date(dateTo + 'T00:00:00').toLocaleDateString()}
-                  <button onClick={() => setDateTo('')} className="ml-0.5 hover:text-amber-800 cursor-pointer leading-none">×</button>
-                </span>
+              {dateFrom && dateTo && (
+                <>
+                  <span className="flex items-center gap-1 px-2.5 py-1 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20 rounded-full text-[10px] font-semibold">
+                    From {new Date(dateFrom + 'T00:00:00').toLocaleDateString()}
+                    <button onClick={() => { setDateFrom(''); setDateTo(getISTDate()); }} className="ml-0.5 hover:text-amber-800 cursor-pointer leading-none">×</button>
+                  </span>
+                  <span className="flex items-center gap-1 px-2.5 py-1 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20 rounded-full text-[10px] font-semibold">
+                    To {new Date(dateTo + 'T00:00:00').toLocaleDateString()}
+                    <button onClick={() => { setDateFrom(''); setDateTo(getISTDate()); }} className="ml-0.5 hover:text-amber-800 cursor-pointer leading-none">×</button>
+                  </span>
+                </>
               )}
               <button
-                onClick={() => { setActiveTab('all'); setStaffFilter('all'); setCityFilter('all'); setDateFrom(''); setDateTo(''); setSortOrder('desc'); }}
+                onClick={() => { setActiveTab('all'); setStaffFilter('all'); setCityFilter('all'); setCitySearchQuery(''); setIsCityDropdownOpen(false); setDateFrom(''); setDateTo(getISTDate()); setSortOrder('desc'); }}
                 className="text-[10px] text-slate-400 hover:text-rose-500 underline cursor-pointer transition-colors"
               >
                 Clear all
@@ -713,7 +802,7 @@ const Leads = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {filteredLeads.map((lead) => {
+                  {paginatedLeads.map((lead) => {
                     return (
                       <tr key={lead.id || lead._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all duration-200">
                         {/* Name & Company */}
@@ -828,6 +917,74 @@ const Leads = () => {
                 </tbody>
               </table>
             </div>
+            
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-6 py-4.5 bg-slate-50 dark:bg-slate-800/20 border-t border-slate-100 dark:border-slate-800">
+                <div className="text-xs text-slate-500">
+                  Showing <span className="font-semibold text-slate-700 dark:text-slate-350">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-semibold text-slate-700 dark:text-slate-350">{Math.min(currentPage * itemsPerPage, filteredLeads.length)}</span> of <span className="font-semibold text-slate-700 dark:text-slate-350">{filteredLeads.length}</span> leads
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:border-indigo-500/50 dark:hover:border-indigo-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer"
+                  >
+                    Previous
+                  </button>
+                  <div className="flex items-center gap-0.5">
+                    {/* First Page */}
+                    {currentPage > 2 && (
+                      <button
+                        onClick={() => setCurrentPage(1)}
+                        className="w-8 h-8 rounded-xl text-xs font-bold transition bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-indigo-500/50 cursor-pointer"
+                      >
+                        1
+                      </button>
+                    )}
+                    {currentPage > 3 && <span className="px-1.5 text-slate-400 text-xs">...</span>}
+                    
+                    {/* Dynamic Page Range */}
+                    {Array.from({ length: totalPages }).map((_, idx) => {
+                      const pageNum = idx + 1;
+                      if (pageNum >= currentPage - 1 && pageNum <= currentPage + 1) {
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`w-8 h-8 rounded-xl text-xs font-bold transition cursor-pointer ${
+                              currentPage === pageNum
+                                ? 'bg-indigo-600 text-white'
+                                : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-indigo-500/50'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      }
+                      return null;
+                    })}
+                    
+                    {currentPage < totalPages - 2 && <span className="px-1.5 text-slate-400 text-xs">...</span>}
+                    {currentPage < totalPages - 1 && (
+                      <button
+                        onClick={() => setCurrentPage(totalPages)}
+                        className="w-8 h-8 rounded-xl text-xs font-bold transition bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-indigo-500/50 cursor-pointer"
+                      >
+                        {totalPages}
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:border-indigo-500/50 dark:hover:border-indigo-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -882,6 +1039,17 @@ const Leads = () => {
         onImported={fetchLeads}
         getAuthHeaders={getAuthHeaders}
         showToast={showToast}
+      />
+
+      <ConfirmModal
+        isOpen={deleteConfirm.isOpen}
+        onClose={() => setDeleteConfirm({ isOpen: false, id: null, name: '' })}
+        onConfirm={handleConfirmDelete}
+        title="Delete Lead"
+        message={`Are you sure you want to delete lead "${deleteConfirm.name}"? This will clear all follow-up history.`}
+        confirmText="Yes, Delete"
+        cancelText="Cancel"
+        type="danger"
       />
 
     </div>

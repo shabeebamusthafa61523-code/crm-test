@@ -42,6 +42,9 @@ const EmployeeReports = () => {
   const [uploadedReportsMap, setUploadedReportsMap] = useState({});
   const [loadingReportsMap, setLoadingReportsMap] = useState({});
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
   const { showToast } = useToast();
 
   const getAuthHeaders = useCallback(() => {
@@ -100,6 +103,12 @@ const EmployeeReports = () => {
     const emailMatch = (emp.email || '').toLowerCase().includes(searchQuery.toLowerCase());
     return nameMatch || emailMatch;
   });
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  const paginatedEmployees = filteredEmployees.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const getDesignationConfig = (emp) => {
     const desigId = emp.designationId?._id || emp.designationId || emp.designation_id;
@@ -321,7 +330,7 @@ const EmployeeReports = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
-              {filteredEmployees.map((emp) => {
+              {paginatedEmployees.map((emp) => {
                 const config = getDesignationConfig(emp);
                 const initial = emp.name ? emp.name.charAt(0).toUpperCase() : '?';
                 const empId = emp._id || emp.id;
@@ -514,6 +523,31 @@ const EmployeeReports = () => {
               })}
             </tbody>
           </table>
+
+          {/* Pagination Controls */}
+          {filteredEmployees.length > itemsPerPage && (
+            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20">
+              <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredEmployees.length)} of {filteredEmployees.length}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredEmployees.length / itemsPerPage), p + 1))}
+                  disabled={currentPage === Math.ceil(filteredEmployees.length / itemsPerPage)}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

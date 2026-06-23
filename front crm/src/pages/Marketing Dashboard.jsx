@@ -155,6 +155,11 @@ const MarketingDashboard = () => {
       weeklyTrend.push({ date: dayStr, label: day.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }), count });
     }
 
+    // Weekly stats calculations
+    const weeklyTotal = weeklyTrend.reduce((sum, d) => sum + d.count, 0);
+    const weeklyAvg = (weeklyTotal / 7).toFixed(1);
+    const weeklyPeak = weeklyTrend.reduce((maxDay, d) => d.count > maxDay.count ? d : maxDay, { label: 'None', count: 0 });
+
     // Recent leads (last 5)
     const recentLeads = [...leads]
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
@@ -163,7 +168,8 @@ const MarketingDashboard = () => {
     return {
       total, newLeads24h, mtdLeads, genuineLeads,
       statusBreakdown, interestBreakdown, sourceBreakdown, courseBreakdown,
-      weeklyTrend, recentLeads
+      weeklyTrend, recentLeads,
+      weeklyTotal, weeklyAvg, weeklyPeak
     };
   }, [leads]);
 
@@ -289,30 +295,78 @@ const MarketingDashboard = () => {
 
               {/* ─── Weekly Trend (1 col) ─── */}
               <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl p-6 shadow-sm">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 mb-5 flex items-center gap-2">
-                  <span className="w-1 h-5 bg-cyan-500 rounded-full" />
-                  Leads This Week
-                </h3>
-                <div className="flex items-end justify-between h-44 pt-4 gap-1">
-                  {analytics.weeklyTrend.map((day, idx) => {
-                    const max = Math.max(...analytics.weeklyTrend.map(d => d.count), 1);
-                    const hPct = Math.round((day.count / max) * 100);
-                    return (
-                      <div key={idx} className="flex flex-col items-center flex-1 group relative">
-                        <div className="absolute bottom-[105%] opacity-0 group-hover:opacity-100 bg-slate-800 dark:bg-white text-white dark:text-slate-900 text-[9px] font-bold px-2 py-1 rounded-lg shadow-lg transition duration-200 pointer-events-none whitespace-nowrap z-10">
-                          {day.count} leads
-                        </div>
-                        <motion.div
-                          initial={{ height: 0 }}
-                          animate={{ height: `${Math.max(hPct, 4)}%` }}
-                          transition={{ duration: 0.6, delay: idx * 0.08 }}
-                          className="w-full max-w-[28px] bg-gradient-to-t from-indigo-500 to-purple-400 group-hover:from-indigo-400 group-hover:to-purple-300 rounded-t-lg transition-colors min-h-[4px] cursor-pointer"
-                        />
-                        <span className="text-[8px] text-slate-400 font-bold mt-2 tracking-tight">{day.label}</span>
-                      </div>
-                    );
-                  })}
+                <div className="flex justify-between items-center mb-5">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                    <span className="w-1 h-5 bg-lime-500 rounded-full" />
+                    Leads This Week
+                  </h3>
+                  <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-850 px-2.5 py-1 rounded-full border border-slate-100 dark:border-slate-800">
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-300">Active Week</span>
+                  </div>
                 </div>
+
+                <div className="relative h-44 mt-4">
+                  {/* Grid Lines */}
+                  <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+                    {[0, 1, 2, 3, 4].map((gridIndex) => (
+                      <div 
+                        key={gridIndex} 
+                        className="w-full border-t border-dashed border-slate-100 dark:border-slate-800/80 h-0" 
+                      />
+                    ))}
+                  </div>
+
+                  {/* Bars Container */}
+                  <div className="absolute inset-0 flex items-end justify-between gap-1.5 pt-2">
+                    {analytics.weeklyTrend.map((day, idx) => {
+                      const max = Math.max(...analytics.weeklyTrend.map(d => d.count), 1);
+                      const hPct = Math.round((day.count / max) * 100);
+                      return (
+                        <div key={idx} className="flex flex-col items-center flex-1 h-full justify-end group relative z-10">
+                          {/* Rich Tooltip */}
+                          <div className="absolute bottom-[105%] opacity-0 group-hover:opacity-100 bg-slate-900/90 dark:bg-white/95 backdrop-blur-sm text-white dark:text-slate-950 text-[10px] font-bold px-3 py-1.5 rounded-xl shadow-xl transition-all duration-300 pointer-events-none transform translate-y-1 group-hover:translate-y-0 whitespace-nowrap z-20 flex flex-col items-center gap-0.5 border border-slate-700/30 dark:border-slate-200/50">
+                            <span className="text-[8px] text-slate-400 dark:text-slate-500 font-semibold">{day.label}</span>
+                            <span className="text-xs font-extrabold">{day.count} leads</span>
+                          </div>
+
+                          {/* Interactive Bar */}
+                          <motion.div
+                            initial={{ height: 0 }}
+                            animate={{ height: `${Math.max(hPct, 5)}%` }}
+                            transition={{ duration: 0.6, delay: idx * 0.05, type: "spring", stiffness: 80 }}
+                            className="w-full max-w-[28px] bg-gradient-to-t from-lime-650 via-lime-500 to-lime-400 group-hover:from-lime-500 group-hover:via-lime-400 group-hover:to-lime-300 rounded-t-xl transition-all duration-300 min-h-[6px] cursor-pointer shadow-md shadow-lime-500/10 group-hover:shadow-lg group-hover:shadow-lime-500/20 relative"
+                          >
+                            {/* Glowing dot on top of bar */}
+                            {day.count > 0 && (
+                              <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-lime-300 dark:bg-lime-100 shadow-[0_0_8px_#84cc16] animate-pulse" />
+                            )}
+                          </motion.div>
+                          <span className="text-[8px] text-slate-400 dark:text-slate-550 font-bold mt-2 tracking-tight">{day.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Stats Summary Rows */}
+                <div className="grid grid-cols-3 gap-2 mt-5 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800/60">
+                  <div className="text-center">
+                    <span className="block text-[8px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-black">Weekly Total</span>
+                    <span className="text-xs font-black text-slate-800 dark:text-white mt-0.5 block">{analytics.weeklyTotal}</span>
+                  </div>
+                  <div className="text-center border-x border-slate-200/50 dark:border-slate-800/50">
+                    <span className="block text-[8px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-black">Daily Avg</span>
+                    <span className="text-xs font-black text-slate-800 dark:text-white mt-0.5 block">{analytics.weeklyAvg}</span>
+                  </div>
+                  <div className="text-center">
+                    <span className="block text-[8px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-black">Peak Day</span>
+                    <span className="text-[10px] font-black text-lime-600 dark:text-lime-400 mt-0.5 block truncate" title={`${analytics.weeklyPeak.label}: ${analytics.weeklyPeak.count}`}>
+                      {analytics.weeklyPeak.count} ({analytics.weeklyPeak.label})
+                    </span>
+                  </div>
+                </div>
+
                 <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                   <span className="text-[10px] text-slate-400 font-semibold">MTD Total</span>
                   <span className="text-sm font-black text-indigo-500 font-mono">{analytics.mtdLeads}</span>

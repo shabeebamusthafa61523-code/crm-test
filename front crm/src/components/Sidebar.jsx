@@ -61,6 +61,13 @@ const menuItems = [
     allowedDepartments: ['6a27f394558c220a47fff02e']
   },
   {
+    icon: BarChart3,
+    label: 'Dev Dashboard',
+    path: '/developer-dashboard',
+    allowedDesignations: ['6a1e8e2d01a0dae8b2f3b18c'],
+    // allowedRoles: ['1', '2', 'hr', 'admin']
+  },
+  {
     icon: FileText,
     label: 'Developer Report',
     path: '/developer-report',
@@ -123,7 +130,7 @@ const menuItems = [
     allowedDesignations: ['6a2f909d2df21dc234018ca8'],
     // allowedRoles: ['1', '2', 'hr', 'admin']
   },
-  { icon: UserCheck, label: 'Attendance', path: '/attendance' },
+  { icon: UserCheck, label: 'Attendance', path: '/attendance', excludeRoles: ['1', '2', 'hr', 'admin'] },
   { icon: ListCheck, label: 'To-Do', path: '/todo' },
   { icon: Users, label: 'Student Attendance', path: '/student-attendance', allowedRoles: ['1', '2', 'hr', 'admin'] },
   { icon: Building, label: 'Departments', path: '/departments', allowedRoles: ['1', '2', 'hr', 'admin'] },
@@ -172,6 +179,9 @@ const Sidebar = () => {
       }
       
       return menuItems.filter(item => {
+        if (item.excludeRoles && item.excludeRoles.includes(currentUserRole)) {
+          return false;
+        }
         if (!item.allowedRoles && !item.allowedDepartments && !item.allowedDesignations) return true;
         const roleMatch = item.allowedRoles && item.allowedRoles.includes(currentUserRole);
         const deptMatch = item.allowedDepartments && item.allowedDepartments.includes(currentUserDept);
