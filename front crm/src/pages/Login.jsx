@@ -85,6 +85,7 @@ const Login = () => {
         // 3. Save full user object for profile/other uses
         const userObj = result.user || { id: userId };
         localStorage.setItem('user', JSON.stringify(userObj));
+        showToast('Login successful!', 'success');
 
         // Check if user is an admin
         const currentUserRole = String(userObj.role_id || userObj.roleId || userObj.role || '').toLowerCase().trim();

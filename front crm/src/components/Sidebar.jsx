@@ -24,7 +24,8 @@ const menuItems = [
     label: 'Lead Dashboard',
     path: '/lead-dashboard',
     // allowedRoles: ['1', '2', '3', 'hr', 'admin'],
-    allowedDepartments: ['6a26a7d72a56a1f9c49da8a3']
+    allowedDepartments: ['6a26a7d72a56a1f9c49da8a3', '6a27f394558c220a47fff02e', '6a2f91472df21dc234018cab'],
+    allowedDesignations: ['6a27939af292348deb7d0495']
   },
   {
     icon: BarChart3,
@@ -51,7 +52,8 @@ const menuItems = [
     label: 'Telecaller Leads', 
     path: '/leads-telecaller',
     // allowedRoles: ['3'],
-    allowedDepartments: ['6a26a7d72a56a1f9c49da8a3']
+    // allowedDepartments: ['6a26a7d72a56a1f9c49da8a3', '6a27f394558c220a47fff02e'],
+    allowedDesignations: ['6a27939af292348deb7d0495']
   },
   { 
     icon: TrendingUp, 
@@ -92,6 +94,13 @@ const menuItems = [
     icon: FileText,
     label: 'Academic Counselor Report',
     path: '/academic-counselor-report',
+    allowedDesignations: ['6a27939af292348deb7d0495'],
+    // allowedRoles: ['1', '2', 'hr', 'admin']
+  },
+  {
+    icon: BarChart3,
+    label: 'Counselor Dashboard',
+    path: '/counselor-dashboard',
     allowedDesignations: ['6a27939af292348deb7d0495'],
     // allowedRoles: ['1', '2', 'hr', 'admin']
   },

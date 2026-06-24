@@ -37,7 +37,7 @@ const SOURCE_COLORS = {
   'MARKETING':     { bar: 'from-orange-500 to-amber-400', dot: 'bg-orange-500' },
 };
 
-const LeadDashboard = () => {
+const CounselorDashboard = () => {
   const [user, setUser] = useState(null);
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -54,13 +54,7 @@ const LeadDashboard = () => {
   const hasAccess = useMemo(() => {
     if (!user) return false;
     const roleId = String(user.role_id || user.roleId || user.role || '').toLowerCase().trim();
-    if (['1', '2', '3', 'hr', 'admin'].includes(roleId)) return true;
-    let deptId = '';
-    if (user.departmentId) {
-      deptId = typeof user.departmentId === 'object' && user.departmentId._id
-        ? String(user.departmentId._id).trim()
-        : String(user.departmentId).trim();
-    }
+    if (['1', '2', 'hr', 'admin'].includes(roleId)) return true; // Admins can view
     let desigId = '';
     if (user.designationId) {
       desigId = typeof user.designationId === 'object' && user.designationId._id
@@ -69,11 +63,8 @@ const LeadDashboard = () => {
     } else if (user.designation_id) {
       desigId = String(user.designation_id).trim();
     }
-
-    const allowedDepts = ['6a26a7d72a56a1f9c49da8a3', '6a211b6621f80bb8da167efb', '6a27f394558c220a47fff02e', '6a2f91472df21dc234018cab'];
-    const allowedDesigs = ['6a27939af292348deb7d0495'];
-
-    return allowedDepts.includes(deptId) || allowedDesigs.includes(desigId);
+    // Allow Academic Counselor designation
+    return ['6a27939af292348deb7d0495'].includes(desigId);
   }, [user]);
 
   const getAuthHeaders = useCallback(() => {
@@ -156,7 +147,7 @@ const LeadDashboard = () => {
       const day = new Date(now);
       day.setDate(day.getDate() - i);
       const dayStr = new Intl.DateTimeFormat('en-CA').format(day);
-      const count = leads.filter(l => {
+      const count = myLeads.filter(l => {
         if (!l.createdAt) return false;
         try {
           const cd = new Intl.DateTimeFormat('en-CA').format(new Date(l.createdAt));
@@ -538,4 +529,4 @@ const KpiCard = ({ icon, label, value, sub, color }) => {
   );
 };
 
-export default LeadDashboard;
+export default CounselorDashboard;
