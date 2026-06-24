@@ -111,29 +111,6 @@ const OpsReportPage = () => {
   // Monthly Report States
   const [isMonthlyModalOpen, setIsMonthlyModalOpen] = useState(false);
 
-  // Auto-open monthly modal from URL parameters
-  useEffect(() => {
-    if (selectedUserId) {
-      const queryParams = new URLSearchParams(window.location.search);
-      const savedUser = localStorage.getItem('user');
-      let isUserPrivileged = false;
-      if (savedUser) {
-        try {
-          const userObj = JSON.parse(savedUser);
-          const role = String(userObj.role_id || userObj.role || '').toLowerCase().trim();
-          isUserPrivileged = ['1', '2', 'hr', 'admin'].includes(role);
-        } catch (e) {
-          console.error(e);
-        }
-      }
-      
-      if (isUserPrivileged) {
-        if (queryParams.get('generateMonthly') === 'true') {
-          setIsMonthlyModalOpen(true);
-        }
-      }
-    }
-  }, [selectedUserId]);
   const [monthlyStartDate, setMonthlyStartDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
@@ -193,6 +170,30 @@ const OpsReportPage = () => {
     return '';
   });
   const [opsStaff, setOpsStaff] = useState([]);
+
+  // Auto-open monthly modal from URL parameters
+  useEffect(() => {
+    if (selectedUserId) {
+      const queryParams = new URLSearchParams(window.location.search);
+      const savedUser = localStorage.getItem('user');
+      let isUserPrivileged = false;
+      if (savedUser) {
+        try {
+          const userObj = JSON.parse(savedUser);
+          const role = String(userObj.role_id || userObj.role || '').toLowerCase().trim();
+          isUserPrivileged = ['1', '2', 'hr', 'admin'].includes(role);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      
+      if (isUserPrivileged) {
+        if (queryParams.get('generateMonthly') === 'true') {
+          setIsMonthlyModalOpen(true);
+        }
+      }
+    }
+  }, [selectedUserId]);
   const [submittedDates, setSubmittedDates] = useState([]);
 
   // Form States
@@ -314,7 +315,7 @@ const OpsReportPage = () => {
   }, [selectedUserId, fetchSubmittedDates]);
 
   // Fetch Ops report data
-  const fetchReport = useCallback(async (userId, dateStr) => {
+  const fetchReport = async (userId, dateStr) => {
     if (!userId || !dateStr) return;
     try {
       setLoading(true);
@@ -325,12 +326,47 @@ const OpsReportPage = () => {
 
       if (data.success && data.data) {
         const report = data.data;
-        setBasicDetails(report.basicDetails || {});
-        setDailyOperations(report.dailyOperations || []);
-        setSalesActivity(report.salesActivity || []);
-        setSalesPerformance(report.salesPerformance || []);
-        setRevenueTracking(report.revenueTracking || []);
-        setAcademyStatus(report.academyStatus || []);
+        
+        let freshestUser = currentUser;
+        try {
+          const su = localStorage.getItem('user');
+          if (su) freshestUser = JSON.parse(su);
+        } catch(e){}
+
+        let staffList = [];
+        if (typeof developers !== 'undefined') staffList = developers;
+        else if (typeof marketingStaff !== 'undefined') staffList = marketingStaff;
+        else if (typeof hrStaff !== 'undefined') staffList = hrStaff;
+        else if (typeof designers !== 'undefined') staffList = designers;
+        else if (typeof hods !== 'undefined') staffList = hods;
+        else if (typeof videographers !== 'undefined') staffList = videographers;
+        else if (typeof counselors !== 'undefined') staffList = counselors;
+        else if (typeof accountants !== 'undefined') staffList = accountants;
+        else if (typeof opsStaff !== 'undefined') staffList = opsStaff;
+
+        let isPriv = true;
+        if (typeof isPrivileged !== 'undefined') isPriv = isPrivileged;
+
+        let userDetail = freshestUser;
+        if (isPriv && staffList.length > 0) {
+          userDetail = staffList.find(u => (u._id || u.id) === userId) || freshestUser;
+        }
+
+        const apiBasicDetails = report.basicDetails || {};
+        setBasicDetails({
+          ...apiBasicDetails,
+          employeeName: userDetail.name || apiBasicDetails.employeeName || '',
+          employeeId: userDetail.employeeId || apiBasicDetails.employeeId || '',
+          designation: userDetail.designation || apiBasicDetails.designation || '',
+          reportingTo: userDetail.reportingManager || apiBasicDetails.reportingTo || '',
+          department: userDetail.department || apiBasicDetails.department || ''
+        });
+
+        setDailyOperations(Array.isArray(report.dailyOperations) ? report.dailyOperations : []);
+        setSalesActivity(Array.isArray(report.salesActivity) ? report.salesActivity : []);
+        setSalesPerformance(Array.isArray(report.salesPerformance) ? report.salesPerformance : []);
+        setRevenueTracking(Array.isArray(report.revenueTracking) ? report.revenueTracking : []);
+        setAcademyStatus(Array.isArray(report.academyStatus) ? report.academyStatus : []);
         setIssuesEscalations(report.issuesEscalations || { issue: '', priority: '', actionTaken: '' });
         setHandover(report.handover || { pendingLeadsShared: 'Yes', crmUpdated: 'Yes / No- NA', reportsSubmitted: 'Yes', teamUpdated: 'Yes' });
         setApproval(report.approval || {});
@@ -342,13 +378,14 @@ const OpsReportPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [getAuthHeaders]);
+  };
 
   useEffect(() => {
     if (selectedUserId && selectedDate) {
       fetchReport(selectedUserId, selectedDate);
     }
-  }, [selectedUserId, selectedDate, fetchReport]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedUserId, selectedDate]);
 
   // Cache basicDetails in localStorage when they change
   useEffect(() => {
@@ -412,7 +449,7 @@ const OpsReportPage = () => {
 
       let userDetail = currentUser;
       if (opsStaff.length > 0) {
-        userDetail = opsStaff.find(u => u._id === selectedUserId) || currentUser;
+        userDetail = opsStaff.find(u => (u._id || u.id) === selectedUserId) || currentUser;
       }
 
       const aggregatedSalesActivity = DEFAULT_SALES_ACTIVITY.map(item => ({ ...item, count: 0, digitalMktg: 0, web: 0 }));
@@ -605,7 +642,7 @@ const OpsReportPage = () => {
 
       let userDetail = currentUser;
       if (opsStaff.length > 0) {
-        userDetail = opsStaff.find(u => u._id === selectedUserId) || currentUser;
+        userDetail = opsStaff.find(u => (u._id || u.id) === selectedUserId) || currentUser;
       }
 
       const aggregatedSalesActivity = DEFAULT_SALES_ACTIVITY.map(item => ({ ...item, count: 0, digitalMktg: 0, web: 0 }));
@@ -1232,10 +1269,16 @@ const OpsReportPage = () => {
     }
   };
 
-  const initializeBlankReport = (userId, dateStr) => {
-    let userDetail = currentUser;
+    const initializeBlankReport = (userId, dateStr) => {
+    let freshestUser = currentUser;
+    try {
+      const su = localStorage.getItem('user');
+      if (su) freshestUser = JSON.parse(su);
+    } catch(e){}
+
+    let userDetail = freshestUser;
     if (isPrivileged && opsStaff.length > 0) {
-      userDetail = opsStaff.find(u => u._id === userId) || currentUser;
+      userDetail = opsStaff.find(u => (u._id || u.id) === userId) || freshestUser;
     }
 
     const dateObj = new Date(dateStr);
@@ -1258,12 +1301,12 @@ const OpsReportPage = () => {
     setBasicDetails({
       date: formattedDateString,
       day: dayName,
-      employeeName: parsedCached?.employeeName || userDetail.name || '',
-      employeeId: parsedCached?.employeeId || userDetail.employeeId || '',
+      employeeName: userDetail.name || parsedCached?.employeeName || '',
+      employeeId: userDetail.employeeId || parsedCached?.employeeId || '',
       department: parsedCached?.department || 'Sales & Growth',
-      designation: parsedCached?.designation || userDetail.designation || 'Manager - OPS',
+      designation: userDetail.designation || parsedCached?.designation || 'Manager - OPS',
       shiftTiming: parsedCached?.shiftTiming || '9:30 AM - 5:30 PM',
-      reportingTo: parsedCached?.reportingTo || userDetail.reportingManager || 'Executive Director',
+      reportingTo: userDetail.reportingManager || parsedCached?.reportingTo || 'Executive Director',
       preparedTime: parsedCached?.preparedTime || timeStr
     });
 

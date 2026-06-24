@@ -3,6 +3,7 @@
 // ===============================
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock,
@@ -134,6 +135,24 @@ const LiveClock = () => {
 // ===============================
 
 const Attendance = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      try {
+        const userObj = JSON.parse(savedUser);
+        const currentUserRole = String(userObj.role_id || userObj.roleId || userObj.role || '').toLowerCase().trim();
+        const isAdmin = ['1', '2', 'hr', 'admin'].includes(currentUserRole);
+        if (isAdmin) {
+          navigate('/dashboard', { replace: true });
+        }
+      } catch (err) {
+        console.error("Failed to parse user for admin check:", err);
+      }
+    }
+  }, [navigate]);
+
   const [todayLog, setTodayLog] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);

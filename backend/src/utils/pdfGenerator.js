@@ -68,6 +68,114 @@ export const generateReportPDFBuffer = (report, empName, designation) => {
         doc.y = startY + 24;
       };
 
+      // --- TABLE DRAWING HELPERS ---
+      const drawKeyValueTable = (data, startX = 40) => {
+        const keyWidth = 140;
+        const valWidth = 375; // total = 515
+        const rowHeight = 20;
+
+        data.forEach(([key, val]) => {
+          checkPageOverflow(rowHeight + 4);
+          const currentY = doc.y;
+
+          // Key cell background
+          doc.rect(startX, currentY, keyWidth, rowHeight).fill('#f8fafc');
+          
+          // Val cell background
+          doc.rect(startX + keyWidth, currentY, valWidth, rowHeight).fill('#ffffff');
+
+          // Borders
+          doc.strokeColor('#e2e8f0').lineWidth(0.5)
+             .rect(startX, currentY, keyWidth, rowHeight).stroke()
+             .rect(startX + keyWidth, currentY, valWidth, rowHeight).stroke();
+
+          // Key text
+          doc.fillColor(labelColor).font('Helvetica-Bold').fontSize(8)
+             .text(String(key), startX + 8, currentY + 6, { width: keyWidth - 16, align: 'left', lineBreak: false });
+
+          // Val text
+          doc.fillColor(textColor).font('Helvetica').fontSize(8)
+             .text(String(val || ''), startX + keyWidth + 8, currentY + 6, { width: valWidth - 16, align: 'left', lineBreak: false });
+
+          doc.y = currentY + rowHeight;
+        });
+
+        doc.y += 10;
+      };
+
+      const drawTable = (headers, rows, columnWidths, startX = 40) => {
+        const rowHeight = 22;
+        const totalWidth = columnWidths.reduce((sum, w) => sum + w, 0);
+
+        // Check page overflow for table header
+        checkPageOverflow(rowHeight * 2);
+
+        let currentY = doc.y;
+
+        // Draw header background
+        doc.rect(startX, currentY, totalWidth, rowHeight).fill('#ffffff');
+
+        // Draw header text and borders
+        doc.fillColor(primaryColor).font('Helvetica-Bold').fontSize(8);
+        let currentX = startX;
+        headers.forEach((header, index) => {
+          // Draw border for header cell
+          doc.strokeColor('#e2e8f0').lineWidth(0.5)
+             .rect(currentX, currentY, columnWidths[index], rowHeight).stroke();
+
+          doc.text(String(header || '').toUpperCase(), currentX + 6, currentY + 7, {
+            width: columnWidths[index] - 12,
+            align: 'left',
+            lineBreak: false
+          });
+          currentX += columnWidths[index];
+        });
+
+        currentY += rowHeight;
+        doc.y = currentY;
+
+        // Draw rows
+        rows.forEach((row) => {
+          // Estimate required height for row based on text content
+          let maxCellLines = 1;
+          row.forEach((cellText, colIndex) => {
+            const textWidth = columnWidths[colIndex] - 12;
+            const textHeight = doc.heightOfString(String(cellText || ''), { width: textWidth });
+            const cellLines = Math.ceil(textHeight / 11);
+            if (cellLines > maxCellLines) maxCellLines = cellLines;
+          });
+          const currentRowHeight = Math.max(rowHeight, maxCellLines * 11 + 10);
+
+          checkPageOverflow(currentRowHeight);
+          currentY = doc.y;
+
+          // Draw cells background, borders and text
+          let colX = startX;
+          row.forEach((cellText, colIndex) => {
+            // Draw background cell rectangle
+            doc.rect(colX, currentY, columnWidths[colIndex], currentRowHeight).fill('#ffffff');
+
+            // Draw border
+            doc.strokeColor('#e2e8f0').lineWidth(0.5)
+               .rect(colX, currentY, columnWidths[colIndex], currentRowHeight)
+               .stroke();
+
+            // Draw cell text
+            doc.fillColor(textColor).font('Helvetica').fontSize(7.5);
+            doc.text(String(cellText || ''), colX + 6, currentY + 6, {
+              width: columnWidths[colIndex] - 12,
+              align: 'left'
+            });
+            colX += columnWidths[colIndex];
+          });
+
+          currentY += currentRowHeight;
+          doc.y = currentY;
+        });
+
+        doc.y += 10;
+      };
+
       // 1. BASIC DETAILS
       if (report.basicDetails) {
         drawSectionHeader('1. Basic Details');
@@ -82,32 +190,10 @@ export const generateReportPDFBuffer = (report, empName, designation) => {
           ['Designation', bd.designation || designation],
           ['Shift Timing', bd.shiftTiming],
           ['Reporting To', bd.reportingTo],
-          ['Prepared Time', bd.preparedTime]
+          ['Prepared Time', bd.preparedTime || bd.preparedAt]
         ].filter(([_, v]) => v);
 
-        // Render in two columns
-        let col = 0;
-        let originalY = doc.y;
-        
-        details.forEach(([key, val]) => {
-          checkPageOverflow(15);
-          if (col === 0) {
-            doc.fillColor(labelColor).font('Helvetica-Bold').fontSize(8.5).text(`${key}: `, 45, doc.y, { continued: true });
-            doc.fillColor(textColor).font('Helvetica').text(String(val));
-            col = 1;
-          } else {
-            doc.fillColor(labelColor).font('Helvetica-Bold').fontSize(8.5).text(`${key}: `, 300, originalY, { continued: true });
-            doc.fillColor(textColor).font('Helvetica').text(String(val));
-            col = 0;
-            originalY = doc.y; // Update for next row
-          }
-        });
-        
-        if (col === 1) {
-          doc.y = originalY + 12; // Advance cursor if odd number of details
-        }
-        
-        doc.y += 10;
+        drawKeyValueTable(details);
       }
 
       // 2. DAILY TASK SUMMARY / OPERATIONS
@@ -119,31 +205,17 @@ export const generateReportPDFBuffer = (report, empName, designation) => {
       );
 
       if (summaryKey && Array.isArray(report[summaryKey]) && report[summaryKey].length > 0) {
-        checkPageOverflow(50);
         drawSectionHeader('2. Daily Task Summary');
         
-        report[summaryKey].forEach((t, index) => {
-          const act = t.activity || t.task || '';
-          const status = t.status || '';
-          const remarks = t.remarks || t.remark || '';
+        const headers = ['Activity', 'Status', 'Remarks'];
+        const columnWidths = [245, 100, 170]; // total 515
+        const rows = report[summaryKey].map(t => [
+          t.activity || t.task || '',
+          t.status || '',
+          t.remarks || t.remark || ''
+        ]);
 
-          checkPageOverflow(30);
-          
-          doc.fillColor(primaryColor).font('Helvetica-Bold').fontSize(8.5).text(`${index + 1}. Activity: `, 45, doc.y, { continued: true });
-          doc.fillColor(textColor).font('Helvetica').text(act);
-          
-          doc.fillColor(primaryColor).font('Helvetica-Bold').text('   Status: ', { continued: true });
-          doc.fillColor(textColor).font('Helvetica').text(status, { continued: true });
-          
-          if (remarks) {
-            doc.fillColor(primaryColor).font('Helvetica-Bold').text('   Remarks: ', { continued: true });
-            doc.fillColor(textColor).font('Helvetica').text(remarks);
-          } else {
-            doc.text(''); // newline
-          }
-          doc.y += 4;
-        });
-        doc.y += 8;
+        drawTable(headers, rows, columnWidths);
       }
 
       // 3. OTHER DYNAMIC SECTIONS
@@ -163,90 +235,85 @@ export const generateReportPDFBuffer = (report, empName, designation) => {
           const title = key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ');
           drawSectionHeader(`${sectionIndex}. ${title}`);
           
-          val.forEach((item, index) => {
-            checkPageOverflow(40);
-            doc.x = 45;
-            doc.fillColor(primaryColor).font('Helvetica-Bold').fontSize(8.5).text(`[Item ${index + 1}]`);
-            
-            const fields = Object.entries(item).filter(([k]) => k !== '_id' && k !== 'id');
-            fields.forEach(([k, v]) => {
-              checkPageOverflow(15);
-              const label = k.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ');
-              doc.x = 55;
-              doc.fillColor(labelColor).font('Helvetica-Bold').text(`${label}: `, { continued: true });
-              doc.fillColor(textColor).font('Helvetica').text(String(v || ' '));
+          // Extract unique field names from all items in array (excluding mongoose _id/id)
+          const allKeys = [];
+          val.forEach(item => {
+            Object.keys(item).forEach(k => {
+              if (k !== '_id' && k !== 'id' && !allKeys.includes(k)) {
+                allKeys.push(k);
+              }
             });
-            doc.y += 4;
           });
+
+          // Build headers
+          const headers = allKeys.map(k => k.replace(/([A-Z])/g, ' $1').replace(/_/g, ' '));
           
-          doc.x = 40;
-          doc.y += 8;
+          // Row data
+          const rows = val.map(item => allKeys.map(k => item[k] || ''));
+
+          // Distribute columns evenly
+          const columnWidths = allKeys.map(() => Math.floor(515 / allKeys.length));
+          // Adjust last column to ensure total is exactly 515
+          const totalWidth = columnWidths.reduce((sum, w) => sum + w, 0);
+          if (totalWidth < 515) {
+            columnWidths[columnWidths.length - 1] += (515 - totalWidth);
+          }
+
+          drawTable(headers, rows, columnWidths);
           sectionIndex++;
         } else if (typeof val === 'string' && val.trim()) {
           // Standard text area field
           const title = key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ');
           drawSectionHeader(`${sectionIndex}. ${title}`);
           
-          checkPageOverflow(30);
-          doc.x = 45;
-          doc.fillColor(textColor).font('Helvetica').fontSize(8.5).text(val, { width: 500, align: 'justify' });
-          doc.x = 40;
-          doc.y += 10;
+          // Draw as a single-column table card
+          const rowHeight = doc.heightOfString(val, { width: 499 }) + 14;
+          checkPageOverflow(rowHeight + 4);
+          const currentY = doc.y;
+
+          doc.rect(40, currentY, 515, rowHeight).fill('#ffffff');
+          doc.strokeColor('#e2e8f0').lineWidth(0.5).rect(40, currentY, 515, rowHeight).stroke();
+          
+          doc.fillColor(textColor).font('Helvetica').fontSize(8)
+             .text(val, 48, currentY + 7, { width: 499, align: 'justify' });
+             
+          doc.y = currentY + rowHeight + 10;
           sectionIndex++;
         } else if (val && typeof val === 'object' && !Array.isArray(val)) {
           // Single nested tracking object (e.g. performanceTracker)
           const title = key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ');
           drawSectionHeader(`${sectionIndex}. ${title}`);
           
-          const fields = Object.entries(val).filter(([k]) => k !== '_id' && k !== 'id');
-          fields.forEach(([k, v]) => {
-            checkPageOverflow(15);
-            const label = k.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ');
-            doc.x = 50;
-            doc.fillColor(labelColor).font('Helvetica-Bold').fontSize(8.5).text(`${label}: `, { continued: true });
-            
-            if (v && typeof v === 'object') {
-              const subStr = Object.entries(v)
-                .filter(([sk, sv]) => sk !== '_id' && sk !== 'id' && sv !== undefined && sv !== null && String(sv).trim() !== '')
-                .map(([sk, sv]) => `${sk.replace(/([A-Z])/g, ' $1').trim()}: ${sv}`)
-                .join(' | ');
-              doc.fillColor(textColor).font('Helvetica').text(subStr || ' ');
-            } else {
-              doc.fillColor(textColor).font('Helvetica').text(String(v || ' '));
+          const fields = [];
+          Object.entries(val).forEach(([k, v]) => {
+            if (k !== '_id' && k !== 'id') {
+              const label = k.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ');
+              let displayVal = v;
+              if (v && typeof v === 'object') {
+                displayVal = Object.entries(v)
+                  .filter(([sk, sv]) => sk !== '_id' && sk !== 'id' && sv !== undefined && sv !== null && String(sv).trim() !== '')
+                  .map(([sk, sv]) => `${sk.replace(/([A-Z])/g, ' $1').trim()}: ${sv}`)
+                  .join(' | ');
+              }
+              fields.push([label, displayVal]);
             }
           });
-          
-          doc.x = 40;
-          doc.y += 10;
+
+          drawKeyValueTable(fields);
           sectionIndex++;
         }
       }
 
       // 4. APPROVAL SIGNATURES
       if (report.approval) {
-        checkPageOverflow(60);
         drawSectionHeader('Approvals & Handover');
         
         const app = report.approval;
-        const approvalDetails = Object.entries(app).filter(([k]) => k !== '_id' && k !== 'id' && app[k]);
+        const approvalDetails = Object.entries(app)
+          .filter(([k]) => k !== '_id' && k !== 'id' && app[k])
+          .map(([k, v]) => [k.replace(/([A-Z])/g, ' $1').replace(/_/g, ' '), v]);
         
-        let col = 0;
-        let originalY = doc.y;
-
-        approvalDetails.forEach(([key, val]) => {
-          checkPageOverflow(15);
-          const label = key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ');
-          if (col === 0) {
-            doc.fillColor(labelColor).font('Helvetica-Bold').fontSize(8.5).text(`${label}: `, 45, doc.y, { continued: true });
-            doc.fillColor(textColor).font('Helvetica').text(String(val));
-            col = 1;
-          } else {
-            doc.fillColor(labelColor).font('Helvetica-Bold').fontSize(8.5).text(`${label}: `, 300, originalY, { continued: true });
-            doc.fillColor(textColor).font('Helvetica').text(String(val));
-            col = 0;
-            originalY = doc.y;
-          }
-        });
+        drawKeyValueTable(approvalDetails);
       }
 
       // --- PAGE FOOTER FUNCTION ---

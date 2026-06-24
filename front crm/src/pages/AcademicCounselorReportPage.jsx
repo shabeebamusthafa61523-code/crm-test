@@ -80,6 +80,7 @@ const AcademicCounselorReportPage = () => {
     date: '',
     day: '',
     employeeName: '',
+    employeeId: '',
     designation: 'Sales Executive / Tele Caller & Academic Counselor',
     department: 'Sales & Growth / Academy',
     shiftTiming: '9:00 AM - 5.00 PM',
@@ -239,7 +240,7 @@ const AcademicCounselorReportPage = () => {
   }, [selectedUserId, fetchSubmittedDates]);
 
   // Fetch report data for selected date and user
-  const fetchReport = useCallback(async (userId, dateStr) => {
+  const fetchReport = async (userId, dateStr) => {
     if (!userId || !dateStr) return;
     try {
       setLoading(true);
@@ -251,7 +252,42 @@ const AcademicCounselorReportPage = () => {
       
       if (data.success && data.data) {
         const report = data.data;
-        setBasicDetails(report.basicDetails || {});
+        
+        let freshestUser = currentUser;
+        try {
+          const su = localStorage.getItem('user');
+          if (su) freshestUser = JSON.parse(su);
+        } catch(e){}
+
+        let staffList = [];
+        if (typeof developers !== 'undefined') staffList = developers;
+        else if (typeof marketingStaff !== 'undefined') staffList = marketingStaff;
+        else if (typeof hrStaff !== 'undefined') staffList = hrStaff;
+        else if (typeof designers !== 'undefined') staffList = designers;
+        else if (typeof hods !== 'undefined') staffList = hods;
+        else if (typeof videographers !== 'undefined') staffList = videographers;
+        else if (typeof counselors !== 'undefined') staffList = counselors;
+        else if (typeof accountants !== 'undefined') staffList = accountants;
+        else if (typeof opsStaff !== 'undefined') staffList = opsStaff;
+
+        let isPriv = true;
+        if (typeof isPrivileged !== 'undefined') isPriv = isPrivileged;
+
+        let userDetail = freshestUser;
+        if (isPriv && staffList.length > 0) {
+          userDetail = staffList.find(u => (u._id || u.id) === userId) || freshestUser;
+        }
+
+        const apiBasicDetails = report.basicDetails || {};
+        setBasicDetails({
+          ...apiBasicDetails,
+          employeeName: userDetail.name || apiBasicDetails.employeeName || '',
+          employeeId: userDetail.employeeId || apiBasicDetails.employeeId || '',
+          designation: userDetail.designation || apiBasicDetails.designation || '',
+          reportingTo: userDetail.reportingManager || apiBasicDetails.reportingTo || '',
+          department: userDetail.department || apiBasicDetails.department || ''
+        });
+
         setSalesActivity(report.salesActivity || []);
         setDailyOperations(report.dailyOperations || []);
         setReportsCollectedDone(report.reportsCollectedDone || false);
@@ -267,14 +303,15 @@ const AcademicCounselorReportPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [getAuthHeaders]);
+  };
 
   // Load report when selection changes
   useEffect(() => {
     if (selectedUserId && selectedDate) {
       fetchReport(selectedUserId, selectedDate);
     }
-  }, [selectedUserId, selectedDate, fetchReport]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedUserId, selectedDate]);
 
   // Cache basicDetails in localStorage when they change
   useEffect(() => {
@@ -286,10 +323,16 @@ const AcademicCounselorReportPage = () => {
     }
   }, [basicDetails, selectedUserId]);
 
-  const initializeBlankReport = (userId, dateStr) => {
-    let userDetail = currentUser;
+    const initializeBlankReport = (userId, dateStr) => {
+    let freshestUser = currentUser;
+    try {
+      const su = localStorage.getItem('user');
+      if (su) freshestUser = JSON.parse(su);
+    } catch(e){}
+
+    let userDetail = freshestUser;
     if (counselors.length > 0) {
-      userDetail = counselors.find(d => d._id === userId) || currentUser;
+      userDetail = counselors.find(d => (d._id || d.id) === userId) || freshestUser;
     }
 
     const dateObj = new Date(dateStr);
@@ -303,11 +346,12 @@ const AcademicCounselorReportPage = () => {
     setBasicDetails({
       date: formattedDateString,
       day: dayName,
-      employeeName: parsedCached?.employeeName || userDetail.name || '',
-      designation: parsedCached?.designation || userDetail.designation || 'Sales Executive / Tele Caller & Academic Counselor',
-      department: parsedCached?.department || 'Sales & Growth / Academy',
+      employeeName: userDetail.name || parsedCached?.employeeName || '',
+      employeeId: userDetail.employeeId || parsedCached?.employeeId || '',
+      designation: userDetail.designation || parsedCached?.designation || 'Sales Executive / Tele Caller & Academic Counselor',
+      department: userDetail.department || parsedCached?.department || 'Sales & Growth / Academy',
       shiftTiming: parsedCached?.shiftTiming || '9:00 AM - 5.00 PM',
-      reportingTo: parsedCached?.reportingTo || userDetail.reportingManager || 'Manager - OPS Sales & Growth'
+      reportingTo: userDetail.reportingManager || parsedCached?.reportingTo || 'Manager - OPS Sales & Growth'
     });
 
     setSalesActivity(DEFAULT_SALES_ACTIVITY);
@@ -998,6 +1042,16 @@ const AcademicCounselorReportPage = () => {
                   />
                 </div>
                 <div>
+                  <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Employee ID</label>
+                  <input
+                    type="text"
+                    value={basicDetails.employeeId || ''}
+                    onChange={(e) => setBasicDetails({ ...basicDetails, employeeId: e.target.value })}
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
+                  />
+                </div>
+                <div>
                   <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Designation</label>
                   <input
                     type="text"
@@ -1418,6 +1472,41 @@ const AcademicCounselorReportPage = () => {
                 </div>
 
               </div>
+            </div>
+
+            {/* Form Footer Action Buttons */}
+            <div className="flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800 pt-5">
+              <button
+                type="button"
+                onClick={() => setIsMonthlyModalOpen(true)}
+                className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-sm transition-all"
+              >
+                <Calendar size={16} />
+                Monthly Report
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDownloadPDF}
+                className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-sm transition-all"
+              >
+                <Download size={16} />
+                Download PDF
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveReport}
+                disabled={saving}
+                className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-all shadow-md shadow-indigo-600/10 disabled:opacity-50"
+              >
+                {saving ? (
+                  <Loader2 className="animate-spin" size={16} />
+                ) : (
+                  <Save size={16} />
+                )}
+                Save Report
+              </button>
             </div>
 
           </motion.div>

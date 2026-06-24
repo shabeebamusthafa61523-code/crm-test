@@ -442,7 +442,7 @@ const DeveloperReportPage = () => {
   }, [selectedUserId, fetchSubmittedDates]);
 
   // Fetch developer report data for selected date and user
-  const fetchReport = useCallback(async (userId, dateStr) => {
+  const fetchReport = async (userId, dateStr) => {
     if (!userId || !dateStr) return;
     try {
       setLoading(true);
@@ -454,7 +454,42 @@ const DeveloperReportPage = () => {
       
       if (data.success && data.data) {
         const report = data.data;
-        setBasicDetails(report.basicDetails || {});
+        
+        let freshestUser = currentUser;
+        try {
+          const su = localStorage.getItem('user');
+          if (su) freshestUser = JSON.parse(su);
+        } catch(e){}
+
+        let staffList = [];
+        if (typeof developers !== 'undefined') staffList = developers;
+        else if (typeof marketingStaff !== 'undefined') staffList = marketingStaff;
+        else if (typeof hrStaff !== 'undefined') staffList = hrStaff;
+        else if (typeof designers !== 'undefined') staffList = designers;
+        else if (typeof hods !== 'undefined') staffList = hods;
+        else if (typeof videographers !== 'undefined') staffList = videographers;
+        else if (typeof counselors !== 'undefined') staffList = counselors;
+        else if (typeof accountants !== 'undefined') staffList = accountants;
+        else if (typeof opsStaff !== 'undefined') staffList = opsStaff;
+
+        let isPriv = true;
+        if (typeof isPrivileged !== 'undefined') isPriv = isPrivileged;
+
+        let userDetail = freshestUser;
+        if (isPriv && staffList.length > 0) {
+          userDetail = staffList.find(u => (u._id || u.id) === userId) || freshestUser;
+        }
+
+        const apiBasicDetails = report.basicDetails || {};
+        setBasicDetails({
+          ...apiBasicDetails,
+          employeeName: userDetail.name || apiBasicDetails.employeeName || '',
+          employeeId: userDetail.employeeId || apiBasicDetails.employeeId || '',
+          designation: userDetail.designation || apiBasicDetails.designation || '',
+          reportingTo: userDetail.reportingManager || apiBasicDetails.reportingTo || '',
+          department: userDetail.department || apiBasicDetails.department || ''
+        });
+
         setDailyTaskSummary(report.dailyTaskSummary || []);
         setDevelopmentTaskReport(report.developmentTaskReport || []);
         setResearchLearning(report.researchLearning || []);
@@ -480,14 +515,15 @@ const DeveloperReportPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [getAuthHeaders]);
+  };
 
   // Load report when selection changes
   useEffect(() => {
     if (selectedUserId && selectedDate) {
       fetchReport(selectedUserId, selectedDate);
     }
-  }, [selectedUserId, selectedDate, fetchReport]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedUserId, selectedDate]);
 
   // Cache basicDetails in localStorage when they change
   useEffect(() => {
@@ -499,11 +535,17 @@ const DeveloperReportPage = () => {
     }
   }, [basicDetails, selectedUserId]);
 
-  const initializeBlankReport = (userId, dateStr) => {
+    const initializeBlankReport = (userId, dateStr) => {
+    let freshestUser = currentUser;
+    try {
+      const su = localStorage.getItem('user');
+      if (su) freshestUser = JSON.parse(su);
+    } catch(e){}
+
     // Find selected user info
-    let userDetail = currentUser;
+    let userDetail = freshestUser;
     if (isPrivileged && developers.length > 0) {
-      userDetail = developers.find(d => d._id === userId) || currentUser;
+      userDetail = developers.find(d => (d._id || d.id) === userId) || freshestUser;
     }
 
     const dateObj = new Date(dateStr);
@@ -527,12 +569,12 @@ const DeveloperReportPage = () => {
     setBasicDetails({
       date: formattedDateString,
       day: dayName,
-      employeeName: parsedCached?.employeeName || userDetail.name || '',
-      employeeId: parsedCached?.employeeId || userDetail.employeeId || '',
+      employeeName: userDetail.name || parsedCached?.employeeName || '',
+      employeeId: userDetail.employeeId || parsedCached?.employeeId || '',
       department: parsedCached?.department || 'R&D/ Development',
-      designation: parsedCached?.designation || userDetail.designation || 'Developer',
+      designation: userDetail.designation || parsedCached?.designation || 'Developer',
       shiftTiming: parsedCached?.shiftTiming || '9:00 AM - 5:00 PM',
-      reportingTo: parsedCached?.reportingTo || userDetail.reportingManager || 'HOD - R&D / Developer',
+      reportingTo: userDetail.reportingManager || parsedCached?.reportingTo || 'HOD - R&D / Developer',
       preparedTime: parsedCached?.preparedTime || timeStr
     });
 

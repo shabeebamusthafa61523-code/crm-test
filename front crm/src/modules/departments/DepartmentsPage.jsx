@@ -188,15 +188,12 @@ export const DepartmentsPage = () => {
         {/* Search and View Toggle */}
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
           <div className="relative w-full sm:w-64 max-w-sm">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-              <Search size={18} />
-            </span>
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search departments..."
-              className="w-full pl-12 pr-4 py-3 rounded-2xl bg-white dark:bg-slate-850 border border-slate-200/50 dark:border-slate-800/50 text-slate-800 dark:text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-400"
+              className="w-full pl-4 pr-4 py-3 rounded-2xl bg-white dark:bg-slate-850 border border-slate-200/50 dark:border-slate-800/50 text-slate-800 dark:text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-400"
             />
           </div>
 

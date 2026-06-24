@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import MainLayout from './layouts/MainLayout';
 
 // Page Imports
+import { UserProvider } from './contexts/UserContext'; 
 import Dashboard from './pages/Dashboard';
 import LeadDashboard from './pages/LeadDashboard';
 import MarketingDashboard from './pages/Marketing Dashboard';
@@ -19,6 +20,7 @@ import NotFound from './pages/NotFound';
 import StudentAttendance from './pages/StudentAttendance';
 import DepartmentsPage from './modules/departments/DepartmentsPage';
 import DeveloperReportPage from './pages/DeveloperReportPage';
+import DeveloperDashboard from './pages/DeveloperDashboard';
 import HodRdReportPage from './pages/HodRdReportPage';
 import GraphicDesignerReportPage from './pages/GraphicDesignerReportPage';
 import AcademicCounselorReportPage from './pages/AcademicCounselorReportPage';
@@ -28,6 +30,7 @@ import AccountantReportPage from './pages/AccountantReportPage';
 import MarketingReportPage from './pages/MarketingReportPage';
 import VideographerReportPage from './pages/VideographerReportPage';
 import EmployeeReports from './pages/EmployeeReports';
+import CounselorDashboard from './pages/CounselorDashboard';
 
 
 
@@ -55,7 +58,7 @@ const LandingRoute = () => {
 
 function App() {
   return (
-    <Router>
+    <UserProvider><Router>
       <Routes>
         {/* Auth Routes - No Sidebar */}
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
@@ -75,9 +78,11 @@ function App() {
         <Route path="/student-attendance" element={<ProtectedRoute><MainLayout><StudentAttendance /></MainLayout></ProtectedRoute>} />
         <Route path="/departments" element={<ProtectedRoute><MainLayout><DepartmentsPage /></MainLayout></ProtectedRoute>} />
         <Route path="/developer-report" element={<ProtectedRoute><MainLayout><DeveloperReportPage /></MainLayout></ProtectedRoute>} />
+        <Route path="/developer-dashboard" element={<ProtectedRoute><MainLayout><DeveloperDashboard /></MainLayout></ProtectedRoute>} />
         <Route path="/hod-rd-report" element={<ProtectedRoute><MainLayout><HodRdReportPage /></MainLayout></ProtectedRoute>} />
         <Route path="/graphic-designer-report" element={<ProtectedRoute><MainLayout><GraphicDesignerReportPage /></MainLayout></ProtectedRoute>} />
         <Route path="/academic-counselor-report" element={<ProtectedRoute><MainLayout><AcademicCounselorReportPage /></MainLayout></ProtectedRoute>} />
+        <Route path="/counselor-dashboard" element={<ProtectedRoute><MainLayout><CounselorDashboard /></MainLayout></ProtectedRoute>} />
         <Route path="/hr-report" element={<ProtectedRoute><MainLayout><HrReportPage /></MainLayout></ProtectedRoute>} />
         <Route path="/ops-report" element={<ProtectedRoute><MainLayout><OpsReportPage /></MainLayout></ProtectedRoute>} />
         <Route path="/accountant-report" element={<ProtectedRoute><MainLayout><AccountantReportPage /></MainLayout></ProtectedRoute>} />
@@ -93,7 +98,7 @@ function App() {
         <Route path="/404" element={<NotFound />} />
         <Route path="*" element={<Navigate to="/404" />} />
       </Routes>
-    </Router>
+    </Router></UserProvider>
   );
 }
 

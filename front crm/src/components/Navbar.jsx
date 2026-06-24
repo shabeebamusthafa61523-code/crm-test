@@ -7,6 +7,38 @@ import NotificationPopover from './NotificationPopover';
 const Navbar = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      // 1. Keep visible at the top of the page
+      if (currentScrollY <= 10) {
+        setIsVisible(true);
+        setLastScrollY(currentScrollY);
+        return;
+      }
+
+      // 2. Ignore micro-scroll fluctuations
+      if (Math.abs(currentScrollY - lastScrollY) < 5) {
+        return;
+      }
+
+      // 3. Show when scrolling up, hide when scrolling down
+      if (currentScrollY < lastScrollY) {
+        setIsVisible(true);
+      } else {
+        setIsVisible(false);
+      }
+
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [lastScrollY]);
   
   const [isDark, setIsDark] = useState(() => {
     return localStorage.getItem('theme') === 'dark' || 
@@ -48,7 +80,7 @@ const Navbar = () => {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-40 px-4 md:px-8 py-4 pointer-events-none">
+      <header className={`fixed top-0 left-0 right-0 z-40 px-4 md:px-8 py-4 pointer-events-none transition-all duration-300 ease-out transform ${isVisible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}>
         <div className="mx-auto max-w-[1600px] flex items-center justify-between gap-4 pointer-events-auto bg-white/70 dark:bg-slate-900/80 backdrop-blur-2xl border border-slate-200/50 dark:border-slate-800/50 p-2 rounded-3xl shadow-lg transition-colors">
 
           {/* 1. Search Bar */}

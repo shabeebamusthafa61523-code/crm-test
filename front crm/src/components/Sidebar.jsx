@@ -17,14 +17,15 @@ import {
 } from 'lucide-react';
 
 const menuItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', allowedRoles: ['1', '2', 'hr', 'admin' ,'employee'] 
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', allowedRoles: ['1', '2', 'hr', 'admin' ] 
  },
   {
     icon: BarChart3,
     label: 'Lead Dashboard',
     path: '/lead-dashboard',
     // allowedRoles: ['1', '2', '3', 'hr', 'admin'],
-    allowedDepartments: ['6a26a7d72a56a1f9c49da8a3']
+    allowedDepartments: ['6a26a7d72a56a1f9c49da8a3', '6a27f394558c220a47fff02e', '6a2f91472df21dc234018cab'],
+    allowedDesignations: ['6a27939af292348deb7d0495']
   },
   {
     icon: BarChart3,
@@ -51,7 +52,8 @@ const menuItems = [
     label: 'Telecaller Leads', 
     path: '/leads-telecaller',
     // allowedRoles: ['3'],
-    allowedDepartments: ['6a26a7d72a56a1f9c49da8a3']
+    // allowedDepartments: ['6a26a7d72a56a1f9c49da8a3', '6a27f394558c220a47fff02e'],
+    allowedDesignations: ['6a27939af292348deb7d0495']
   },
   { 
     icon: TrendingUp, 
@@ -59,6 +61,13 @@ const menuItems = [
     path: '/lead-counselor',
     // allowedRoles: ['1', '2', 'hr', 'admin'],
     allowedDepartments: ['6a27f394558c220a47fff02e']
+  },
+  {
+    icon: BarChart3,
+    label: 'Dev Dashboard',
+    path: '/developer-dashboard',
+    allowedDesignations: ['6a1e8e2d01a0dae8b2f3b18c'],
+    // allowedRoles: ['1', '2', 'hr', 'admin']
   },
   {
     icon: FileText,
@@ -85,6 +94,13 @@ const menuItems = [
     icon: FileText,
     label: 'Academic Counselor Report',
     path: '/academic-counselor-report',
+    allowedDesignations: ['6a27939af292348deb7d0495'],
+    // allowedRoles: ['1', '2', 'hr', 'admin']
+  },
+  {
+    icon: BarChart3,
+    label: 'Counselor Dashboard',
+    path: '/counselor-dashboard',
     allowedDesignations: ['6a27939af292348deb7d0495'],
     // allowedRoles: ['1', '2', 'hr', 'admin']
   },
@@ -123,7 +139,7 @@ const menuItems = [
     allowedDesignations: ['6a2f909d2df21dc234018ca8'],
     // allowedRoles: ['1', '2', 'hr', 'admin']
   },
-  { icon: UserCheck, label: 'Attendance', path: '/attendance' },
+  { icon: UserCheck, label: 'Attendance', path: '/attendance', excludeRoles: ['1', '2', 'hr', 'admin'] },
   { icon: ListCheck, label: 'To-Do', path: '/todo' },
   { icon: Users, label: 'Student Attendance', path: '/student-attendance', allowedRoles: ['1', '2', 'hr', 'admin'] },
   { icon: Building, label: 'Departments', path: '/departments', allowedRoles: ['1', '2', 'hr', 'admin'] },
@@ -172,6 +188,9 @@ const Sidebar = () => {
       }
       
       return menuItems.filter(item => {
+        if (item.excludeRoles && item.excludeRoles.includes(currentUserRole)) {
+          return false;
+        }
         if (!item.allowedRoles && !item.allowedDepartments && !item.allowedDesignations) return true;
         const roleMatch = item.allowedRoles && item.allowedRoles.includes(currentUserRole);
         const deptMatch = item.allowedDepartments && item.allowedDepartments.includes(currentUserDept);

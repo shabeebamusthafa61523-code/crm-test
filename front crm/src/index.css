@@ -301,3 +301,114 @@ input:focus, select:focus, textarea:focus {
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }
+
+/* ==========================================
+   GLOBAL DARK MODE FAIL-SAFE OVERRIDES
+   ========================================== */
+.dark .bg-white,
+.dark .bg-slate-50,
+.dark .bg-slate-100,
+.dark .bg-slate-200,
+.dark .bg-gray-50,
+.dark .bg-gray-100,
+.dark .bg-gray-200,
+.dark .bg-zinc-50,
+.dark .bg-zinc-100,
+.dark .bg-zinc-200 {
+  background-color: #1e293b !important;
+}
+
+/* Opacity-based light backgrounds override */
+.dark *[class*="bg-white/"],
+.dark *[class*="bg-slate-50/"],
+.dark *[class*="bg-slate-100/"],
+.dark *[class*="bg-slate-200/"],
+.dark *[class*="bg-slate-900/"],
+.dark *[class*="bg-slate-950/"],
+.dark *[class*="bg-indigo-50/"],
+.dark *[class*="bg-indigo-950/"] {
+  background-color: #1e293b !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Hover background state overrides in dark mode */
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-slate-100:hover,
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-gray-100:hover,
+.dark .hover\:bg-slate-100\/50:hover,
+.dark .hover\:bg-slate-800\/50:hover {
+  background-color: #334155 !important;
+}
+
+.dark .text-slate-950,
+.dark .text-slate-900,
+.dark .text-slate-850,
+.dark .text-slate-800,
+.dark .text-slate-700,
+.dark .text-gray-900,
+.dark .text-gray-800,
+.dark .text-gray-700,
+.dark .text-zinc-900,
+.dark .text-zinc-800,
+.dark .text-zinc-700,
+.dark .text-indigo-950,
+.dark .text-indigo-900,
+.dark .text-indigo-800,
+.dark .text-black {
+  color: #ffffff !important;
+}
+
+.dark .text-slate-600,
+.dark .text-slate-500,
+.dark .text-slate-400,
+.dark .text-gray-600,
+.dark .text-gray-500,
+.dark .text-gray-400,
+.dark .text-zinc-600,
+.dark .text-zinc-500,
+.dark .text-zinc-400 {
+  color: #ffffff !important;
+}
+
+.dark .text-slate-300,
+.dark .text-slate-200,
+.dark .text-slate-100,
+.dark .text-gray-300,
+.dark .text-gray-200,
+.dark .text-gray-100 {
+  color: #ffffff !important;
+}
+
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-slate-300,
+.dark .border-slate-400,
+.dark .border-gray-100,
+.dark .border-gray-200,
+.dark .border-gray-300,
+.dark .border-gray-400,
+.dark .border-zinc-100,
+.dark .border-zinc-200,
+.dark .border-zinc-300,
+.dark .border-zinc-400 {
+  border-color: #334155 !important;
+}
+
+.dark table,
+.dark tr,
+.dark th,
+.dark td {
+  border-color: #334155 !important;
+  color: #ffffff !important;
+}
+
+.dark th {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+}
+
+.dark td {
+  color: #ffffff !important;
+}

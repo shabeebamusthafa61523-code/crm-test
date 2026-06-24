@@ -61,7 +61,19 @@ const LeadDashboard = () => {
         ? String(user.departmentId._id).trim()
         : String(user.departmentId).trim();
     }
-    return ['6a26a7d72a56a1f9c49da8a3', '6a211b6621f80bb8da167efb'].includes(deptId);
+    let desigId = '';
+    if (user.designationId) {
+      desigId = typeof user.designationId === 'object' && user.designationId._id
+        ? String(user.designationId._id).trim()
+        : String(user.designationId).trim();
+    } else if (user.designation_id) {
+      desigId = String(user.designation_id).trim();
+    }
+
+    const allowedDepts = ['6a26a7d72a56a1f9c49da8a3', '6a211b6621f80bb8da167efb', '6a27f394558c220a47fff02e', '6a2f91472df21dc234018cab'];
+    const allowedDesigs = ['6a27939af292348deb7d0495'];
+
+    return allowedDepts.includes(deptId) || allowedDesigs.includes(desigId);
   }, [user]);
 
   const getAuthHeaders = useCallback(() => {
@@ -143,10 +155,13 @@ const LeadDashboard = () => {
     for (let i = 6; i >= 0; i--) {
       const day = new Date(now);
       day.setDate(day.getDate() - i);
-      const dayStr = day.toISOString().split('T')[0];
+      const dayStr = new Intl.DateTimeFormat('en-CA').format(day);
       const count = leads.filter(l => {
-        const cd = new Date(l.createdAt).toISOString().split('T')[0];
-        return cd === dayStr;
+        if (!l.createdAt) return false;
+        try {
+          const cd = new Intl.DateTimeFormat('en-CA').format(new Date(l.createdAt));
+          return cd === dayStr;
+        } catch (e) { return false; }
       }).length;
       weeklyTrend.push({ date: dayStr, label: day.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }), count });
     }
