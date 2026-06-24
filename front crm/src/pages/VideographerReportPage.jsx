@@ -234,7 +234,7 @@ const VideographerReportPage = () => {
   }, [selectedUserId, fetchSubmittedDates]);
 
   // Fetch report data for selected date and user
-  const fetchReport = useCallback(async (userId, dateStr) => {
+  const fetchReport = async (userId, dateStr) => {
     if (!userId || !dateStr) return;
     try {
       setLoading(true);
@@ -246,7 +246,42 @@ const VideographerReportPage = () => {
       
       if (data.success && data.data) {
         const report = data.data;
-        setBasicDetails(report.basicDetails || {});
+        
+        let freshestUser = currentUser;
+        try {
+          const su = localStorage.getItem('user');
+          if (su) freshestUser = JSON.parse(su);
+        } catch(e){}
+
+        let staffList = [];
+        if (typeof developers !== 'undefined') staffList = developers;
+        else if (typeof marketingStaff !== 'undefined') staffList = marketingStaff;
+        else if (typeof hrStaff !== 'undefined') staffList = hrStaff;
+        else if (typeof designers !== 'undefined') staffList = designers;
+        else if (typeof hods !== 'undefined') staffList = hods;
+        else if (typeof videographers !== 'undefined') staffList = videographers;
+        else if (typeof counselors !== 'undefined') staffList = counselors;
+        else if (typeof accountants !== 'undefined') staffList = accountants;
+        else if (typeof opsStaff !== 'undefined') staffList = opsStaff;
+
+        let isPriv = true;
+        if (typeof isPrivileged !== 'undefined') isPriv = isPrivileged;
+
+        let userDetail = freshestUser;
+        if (isPriv && staffList.length > 0) {
+          userDetail = staffList.find(u => (u._id || u.id) === userId) || freshestUser;
+        }
+
+        const apiBasicDetails = report.basicDetails || {};
+        setBasicDetails({
+          ...apiBasicDetails,
+          employeeName: userDetail.name || apiBasicDetails.employeeName || '',
+          employeeId: userDetail.employeeId || apiBasicDetails.employeeId || '',
+          designation: userDetail.designation || apiBasicDetails.designation || '',
+          reportingTo: userDetail.reportingManager || apiBasicDetails.reportingTo || '',
+          department: userDetail.department || apiBasicDetails.department || ''
+        });
+
         setTaskLog(report.taskLog || []);
         setKeyNumbers(report.keyNumbers || DEFAULT_KEY_NUMBERS);
         setBlockers(report.blockers || []);
@@ -260,14 +295,15 @@ const VideographerReportPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [getAuthHeaders]);
+  };
 
   // Load report when selection changes
   useEffect(() => {
     if (selectedUserId && selectedDate) {
       fetchReport(selectedUserId, selectedDate);
     }
-  }, [selectedUserId, selectedDate, fetchReport]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedUserId, selectedDate]);
 
   // Cache basicDetails in localStorage when they change
   useEffect(() => {
@@ -279,10 +315,16 @@ const VideographerReportPage = () => {
     }
   }, [basicDetails, selectedUserId]);
 
-  const initializeBlankReport = (userId, dateStr) => {
-    let userDetail = currentUser;
+    const initializeBlankReport = (userId, dateStr) => {
+    let freshestUser = currentUser;
+    try {
+      const su = localStorage.getItem('user');
+      if (su) freshestUser = JSON.parse(su);
+    } catch(e){}
+
+    let userDetail = freshestUser;
     if (videographers.length > 0) {
-      userDetail = videographers.find(d => d._id === userId) || currentUser;
+      userDetail = videographers.find(d => (d._id || d.id) === userId) || freshestUser;
     }
 
     const dateObj = new Date(dateStr);
@@ -304,12 +346,12 @@ const VideographerReportPage = () => {
     const parsedCached = cached ? JSON.parse(cached) : null;
 
     setBasicDetails({
-      employeeName: parsedCached?.employeeName || userDetail.name || '',
+      employeeName: userDetail.name || parsedCached?.employeeName || '',
       date: formattedDateString,
       day: dayName.toUpperCase().slice(0,3),
-      employeeId: parsedCached?.employeeId || userDetail.employeeId || '',
-      designation: parsedCached?.designation || 'Videographer & Editor',
-      reportingTo: parsedCached?.reportingTo || 'CMO',
+      employeeId: userDetail.employeeId || parsedCached?.employeeId || '',
+      designation: userDetail.designation || parsedCached?.designation || 'Videographer & Editor',
+      reportingTo: userDetail.reportingManager || parsedCached?.reportingTo || 'CMO',
       shiftTiming: parsedCached?.shiftTiming || '9:00 AM - 5:00 PM',
       preparedAt: parsedCached?.preparedAt || timeStr
     });
@@ -1681,6 +1723,41 @@ const VideographerReportPage = () => {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Form Footer Action Buttons */}
+            <div className="flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800 pt-5">
+              <button
+                type="button"
+                onClick={() => setIsMonthlyModalOpen(true)}
+                className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 font-semibold text-sm transition-all border border-indigo-100 dark:border-indigo-900/50"
+              >
+                <Calendar size={16} />
+                Monthly Report
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDownloadPDF}
+                className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-sm transition-all"
+              >
+                <Download size={16} />
+                Download PDF
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveReport}
+                disabled={saving}
+                className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-all shadow-md shadow-indigo-600/10 disabled:opacity-50"
+              >
+                {saving ? (
+                  <Loader2 className="animate-spin" size={16} />
+                ) : (
+                  <Save size={16} />
+                )}
+                Save Report
+              </button>
             </div>
 
           </motion.div>

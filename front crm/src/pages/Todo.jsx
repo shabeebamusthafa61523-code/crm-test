@@ -7,6 +7,7 @@ import {
   Loader2, Camera, ShieldCheck, User, Target, Info
 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
+import ConfirmModal from '../components/ConfirmModal';
 
 const API_BASE = import.meta.env.VITE_API_URL;// --- UTILS & CONSTANTS ---
 const getTaskImageUrl = (path) => {
@@ -440,11 +441,13 @@ const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) 
 
 // --- DETAIL MODAL COMPONENT (CLEANED & INTEGRATED) ---
 const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, DESIGNATIONS, users, API_BASE }) => {
+  const { showToast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [newFile, setNewFile] = useState(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   const statusConfig = {
     pending: { 
@@ -556,9 +559,12 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
     }
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm("ARE YOU SURE? This action will permanently purge this asset.")) return;
-    
+  const handleDelete = () => {
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    setIsDeleteConfirmOpen(false);
     setIsDeleting(true);
     try {
       const res = await fetch(`${API_BASE}/tasks/delete/${task.id}`, { 
@@ -567,14 +573,17 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
       });
 
       if (res.ok) {
+        showToast("Task successfully deleted!", "success");
         await onUpdate();
         onClose();
       } else {
+        showToast("Failed to delete task.", "error");
         console.warn("Backend Session Error detected, forcing UI refresh...");
         await onUpdate();
         onClose();
       }
     } catch (e) {
+      showToast("Error deleting task.", "error");
       console.error("Delete error:", e);
       await onUpdate();
       onClose();
@@ -792,6 +801,17 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
             )}
           </div>
         </div>
+
+        <ConfirmModal
+          isOpen={isDeleteConfirmOpen}
+          onClose={() => setIsDeleteConfirmOpen(false)}
+          onConfirm={handleConfirmDelete}
+          title="Purge Asset"
+          message="Are you sure you want to permanently delete this task asset? This action cannot be undone."
+          confirmText="Yes, Purge"
+          cancelText="Cancel"
+          type="danger"
+        />
       </motion.div>
     </motion.div>
   );
