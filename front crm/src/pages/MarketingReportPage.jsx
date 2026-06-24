@@ -8,6 +8,7 @@ import {
 import { useToast } from '../components/ToastProvider';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { fetchCompletedTasks } from '../utils/taskUtils';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -648,9 +649,39 @@ const MarketingReportPage = () => {
         setApproval(report.approval || {});
       } else {
         initializeBlankReport(userId, dateStr);
+        // Auto-fetch completed tasks for new blank reports
+        try {
+          const completedTasks = await fetchCompletedTasks(userId, dateStr);
+          if (completedTasks && completedTasks.length > 0) {
+            const mappedTasks = completedTasks.map(t => ({ task: t.title, detailsNotes: 'Auto-fetched', status: 'Completed', remarks: '' }));
+            mappedTasks.push({ task: '', detailsNotes: '', status: 'ongoing', remarks: '' });
+            mappedTasks.push({ task: '', detailsNotes: '', status: 'ongoing', remarks: '' });
+            setTaskSummary(mappedTasks);
+          } else {
+            setTaskSummary(prev => [...prev, { task: '', detailsNotes: '', status: 'ongoing', remarks: '' }, { task: '', detailsNotes: '', status: 'ongoing', remarks: '' }]);
+          }
+        } catch(e) {
+          console.error("Error auto-fetching tasks:", e);
+        }
+
       }
     } catch (e) {
       initializeBlankReport(userId, dateStr);
+        // Auto-fetch completed tasks for new blank reports
+        try {
+          const completedTasks = await fetchCompletedTasks(userId, dateStr);
+          if (completedTasks && completedTasks.length > 0) {
+            const mappedTasks = completedTasks.map(t => ({ task: t.title, detailsNotes: 'Auto-fetched', status: 'Completed', remarks: '' }));
+            mappedTasks.push({ task: '', detailsNotes: '', status: 'ongoing', remarks: '' });
+            mappedTasks.push({ task: '', detailsNotes: '', status: 'ongoing', remarks: '' });
+            setTaskSummary(mappedTasks);
+          } else {
+            setTaskSummary(prev => [...prev, { task: '', detailsNotes: '', status: 'ongoing', remarks: '' }, { task: '', detailsNotes: '', status: 'ongoing', remarks: '' }]);
+          }
+        } catch(e) {
+          console.error("Error auto-fetching tasks:", e);
+        }
+
     } finally {
       setLoading(false);
     }

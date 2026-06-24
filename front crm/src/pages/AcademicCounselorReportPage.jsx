@@ -8,6 +8,7 @@ import {
 import { useToast } from '../components/ToastProvider';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { fetchCompletedTasks } from '../utils/taskUtils';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -297,9 +298,39 @@ const AcademicCounselorReportPage = () => {
         setApproval(report.approval || {});
       } else {
         initializeBlankReport(userId, dateStr);
+        // Auto-fetch completed tasks for new blank reports
+        try {
+          const completedTasks = await fetchCompletedTasks(userId, dateStr);
+          if (completedTasks && completedTasks.length > 0) {
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, count: '1', digitalMktg: '', web: '', remarks: 'Auto-fetched' }));
+            mappedTasks.push({ activity: '', count: '', digitalMktg: '', web: '', remarks: '' });
+            mappedTasks.push({ activity: '', count: '', digitalMktg: '', web: '', remarks: '' });
+            setDailyOperations(mappedTasks);
+          } else {
+            setDailyOperations(prev => [...prev, { activity: '', count: '', digitalMktg: '', web: '', remarks: '' }, { activity: '', count: '', digitalMktg: '', web: '', remarks: '' }]);
+          }
+        } catch(e) {
+          console.error("Error auto-fetching tasks:", e);
+        }
+
       }
     } catch (err) {
       initializeBlankReport(userId, dateStr);
+        // Auto-fetch completed tasks for new blank reports
+        try {
+          const completedTasks = await fetchCompletedTasks(userId, dateStr);
+          if (completedTasks && completedTasks.length > 0) {
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, count: '1', digitalMktg: '', web: '', remarks: 'Auto-fetched' }));
+            mappedTasks.push({ activity: '', count: '', digitalMktg: '', web: '', remarks: '' });
+            mappedTasks.push({ activity: '', count: '', digitalMktg: '', web: '', remarks: '' });
+            setDailyOperations(mappedTasks);
+          } else {
+            setDailyOperations(prev => [...prev, { activity: '', count: '', digitalMktg: '', web: '', remarks: '' }, { activity: '', count: '', digitalMktg: '', web: '', remarks: '' }]);
+          }
+        } catch(e) {
+          console.error("Error auto-fetching tasks:", e);
+        }
+
     } finally {
       setLoading(false);
     }
@@ -1177,10 +1208,19 @@ const AcademicCounselorReportPage = () => {
 
             {/* 3. DAILY OPERATIONS SUMMARY */}
             <div className="space-y-4">
-              <h2 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
-                <span className="flex items-center justify-center w-5 h-5 rounded bg-indigo-100 dark:bg-lime-950/50 text-[10px]">3</span>
-                Daily Operations Summary
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
+                  <span className="flex items-center justify-center w-5 h-5 rounded bg-indigo-100 dark:bg-lime-950/50 text-[10px]">3</span>
+                  Daily Operations Summary
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setDailyOperations([...dailyOperations, { activity: '', count: '', digitalMktg: '', web: '', remarks: '' }])}
+                  className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
+                >
+                  <Plus size={14} /> Add Row
+                </button>
+              </div>
 
               <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900">
                 <table className="w-full text-left border-collapse text-sm">
@@ -1188,13 +1228,26 @@ const AcademicCounselorReportPage = () => {
                     <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
                       <th className="px-5 py-4 w-[40%]">Activity</th>
                       <th className="px-5 py-4 w-[25%] text-center">Status</th>
-                      <th className="px-5 py-4 w-[35%]">Remarks</th>
+                      <th className="px-5 py-4 w-[30%]">Remarks</th>
+                      <th className="px-5 py-4 w-[5%] text-center"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {dailyOperations.map((item, index) => (
                       <tr key={index} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5 transition-colors">
-                        <td className="px-5 py-3 font-semibold text-slate-700 dark:text-slate-300">{item.activity}</td>
+                        <td className="px-5 py-3">
+                          <input
+                            type="text"
+                            value={item.activity || ''}
+                            onChange={(e) => {
+                              const updated = [...dailyOperations];
+                              updated[index].activity = e.target.value;
+                              setDailyOperations(updated);
+                            }}
+                            className="w-full bg-transparent border-none focus:outline-none p-0 text-sm font-semibold text-slate-700 dark:text-slate-300"
+                            placeholder="Activity name"
+                          />
+                        </td>
                         <td className="px-5 py-3 text-center">
                           <select
                             value={item.status}
@@ -1222,6 +1275,19 @@ const AcademicCounselorReportPage = () => {
                             placeholder="Add details..."
                             className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
                           />
+                        </td>
+                        <td className="px-5 py-3 text-center">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = [...dailyOperations];
+                              updated.splice(index, 1);
+                              setDailyOperations(updated);
+                            }}
+                            className="text-rose-500 hover:text-rose-600 transition"
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         </td>
                       </tr>
                     ))}

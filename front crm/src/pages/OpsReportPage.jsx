@@ -8,6 +8,7 @@ import {
 import { useToast } from '../components/ToastProvider';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { fetchCompletedTasks } from '../utils/taskUtils';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -372,9 +373,39 @@ const OpsReportPage = () => {
         setApproval(report.approval || {});
       } else {
         initializeBlankReport(userId, dateStr);
+        // Auto-fetch completed tasks for new blank reports
+        try {
+          const completedTasks = await fetchCompletedTasks(userId, dateStr);
+          if (completedTasks && completedTasks.length > 0) {
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: 'Done', remarks: 'Auto-fetched' }));
+            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
+            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
+            setDailyOperations(mappedTasks);
+          } else {
+            setDailyOperations(prev => [...prev, { activity: '', status: 'ongoing', remarks: '' }, { activity: '', status: 'ongoing', remarks: '' }]);
+          }
+        } catch(e) {
+          console.error("Error auto-fetching tasks:", e);
+        }
+
       }
     } catch (e) {
       initializeBlankReport(userId, dateStr);
+        // Auto-fetch completed tasks for new blank reports
+        try {
+          const completedTasks = await fetchCompletedTasks(userId, dateStr);
+          if (completedTasks && completedTasks.length > 0) {
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: 'Done', remarks: 'Auto-fetched' }));
+            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
+            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
+            setDailyOperations(mappedTasks);
+          } else {
+            setDailyOperations(prev => [...prev, { activity: '', status: 'ongoing', remarks: '' }, { activity: '', status: 'ongoing', remarks: '' }]);
+          }
+        } catch(e) {
+          console.error("Error auto-fetching tasks:", e);
+        }
+
     } finally {
       setLoading(false);
     }
@@ -1687,10 +1718,19 @@ const OpsReportPage = () => {
 
             {/* 2. DAILY OPERATIONS SUMMARY */}
             <div className="space-y-4">
-              <h2 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
-                <span className="flex items-center justify-center w-5 h-5 rounded bg-indigo-100 dark:bg-lime-950/50 text-[10px]">2</span>
-                Daily Operations Summary
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
+                  <span className="flex items-center justify-center w-5 h-5 rounded bg-indigo-100 dark:bg-lime-950/50 text-[10px]">2</span>
+                  Daily Operations Summary
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setDailyOperations([...dailyOperations, { activity: '', status: 'ongoing', remarks: '' }])}
+                  className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
+                >
+                  <Plus size={14} /> Add Row
+                </button>
+              </div>
               <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
                 <table className="w-full text-left border-collapse text-sm">
                   <thead>
@@ -1698,12 +1738,25 @@ const OpsReportPage = () => {
                       <th className="px-4 py-3">Activity</th>
                       <th className="px-4 py-3 w-40">Status</th>
                       <th className="px-4 py-3">Remarks</th>
+                      <th className="px-4 py-3 w-12 text-center">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
                     {dailyOperations.map((row, i) => (
                       <tr key={i}>
-                        <td className="px-4 py-2.5 font-semibold text-xs text-slate-500">{row.activity}</td>
+                        <td className="px-4 py-2.5">
+                          <input
+                            type="text"
+                            value={row.activity || ''}
+                            onChange={(e) => {
+                              const newArr = [...dailyOperations];
+                              newArr[i].activity = e.target.value;
+                              setDailyOperations(newArr);
+                            }}
+                            className="w-full bg-transparent border-none focus:outline-none p-0 text-sm font-semibold text-slate-700 dark:text-slate-300"
+                            placeholder="Activity name"
+                          />
+                        </td>
                         <td className="px-4 py-2.5">
                           <input
                             type="text"
@@ -1728,6 +1781,19 @@ const OpsReportPage = () => {
                             className="w-full bg-transparent border-none focus:outline-none p-0 text-sm"
                             placeholder="Add remarks"
                           />
+                        </td>
+                        <td className="px-4 py-2.5 text-center">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = [...dailyOperations];
+                              updated.splice(i, 1);
+                              setDailyOperations(updated);
+                            }}
+                            className="text-rose-500 hover:text-rose-600 transition"
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         </td>
                       </tr>
                     ))}

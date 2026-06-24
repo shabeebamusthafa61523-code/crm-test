@@ -8,6 +8,7 @@ import {
 import { useToast } from '../components/ToastProvider';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { fetchCompletedTasks } from '../utils/taskUtils';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -333,9 +334,39 @@ const AccountantReportPage = () => {
         setApproval(report.approval || {});
       } else {
         initializeBlankReport(userId, dateStr);
+        // Auto-fetch completed tasks for new blank reports
+        try {
+          const completedTasks = await fetchCompletedTasks(userId, dateStr);
+          if (completedTasks && completedTasks.length > 0) {
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: 'Done', remarks: 'Auto-fetched' }));
+            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
+            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
+            setDailyAccountingSummary(mappedTasks);
+          } else {
+            setDailyAccountingSummary(prev => [...prev, { activity: '', status: 'ongoing', remarks: '' }, { activity: '', status: 'ongoing', remarks: '' }]);
+          }
+        } catch(e) {
+          console.error("Error auto-fetching tasks:", e);
+        }
+
       }
     } catch (e) {
       initializeBlankReport(userId, dateStr);
+        // Auto-fetch completed tasks for new blank reports
+        try {
+          const completedTasks = await fetchCompletedTasks(userId, dateStr);
+          if (completedTasks && completedTasks.length > 0) {
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: 'Done', remarks: 'Auto-fetched' }));
+            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
+            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
+            setDailyAccountingSummary(mappedTasks);
+          } else {
+            setDailyAccountingSummary(prev => [...prev, { activity: '', status: 'ongoing', remarks: '' }, { activity: '', status: 'ongoing', remarks: '' }]);
+          }
+        } catch(e) {
+          console.error("Error auto-fetching tasks:", e);
+        }
+
     } finally {
       setLoading(false);
     }
@@ -1519,10 +1550,19 @@ const AccountantReportPage = () => {
 
             {/* 2. DAILY ACCOUNTING SUMMARY */}
             <div className="space-y-4">
-              <h2 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
-                <span className="flex items-center justify-center w-5 h-5 rounded bg-indigo-100 dark:bg-lime-950/50 text-[10px]">2</span>
-                Daily Accounting Summary
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
+                  <span className="flex items-center justify-center w-5 h-5 rounded bg-indigo-100 dark:bg-lime-950/50 text-[10px]">2</span>
+                  Daily Accounting Summary
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setDailyAccountingSummary([...dailyAccountingSummary, { activity: '', status: 'ongoing', remarks: '' }])}
+                  className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
+                >
+                  <Plus size={14} /> Add Row
+                </button>
+              </div>
               <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl">
                 <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800 text-sm">
                   <thead className="bg-slate-50 dark:bg-slate-950">
@@ -1530,12 +1570,25 @@ const AccountantReportPage = () => {
                       <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-1/3">Activity</th>
                       <th className="px-6 py-3 text-center text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-1/4">Status</th>
                       <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Remarks</th>
+                      <th className="px-3 py-3 text-center w-12"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-900">
                     {dailyAccountingSummary.map((item, idx) => (
                       <tr key={idx}>
-                        <td className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">{item.activity}</td>
+                        <td className="px-6 py-4">
+                          <input
+                            type="text"
+                            value={item.activity || ''}
+                            onChange={(e) => {
+                              const updated = [...dailyAccountingSummary];
+                              updated[idx].activity = e.target.value;
+                              setDailyAccountingSummary(updated);
+                            }}
+                            className="w-full bg-transparent border-none focus:outline-none p-0 text-sm font-semibold text-slate-700 dark:text-slate-300"
+                            placeholder="Activity name"
+                          />
+                        </td>
                         <td className="px-6 py-3">
                           <input
                             type="text"
@@ -1559,6 +1612,19 @@ const AccountantReportPage = () => {
                             }}
                             className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none"
                           />
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = [...dailyAccountingSummary];
+                              updated.splice(idx, 1);
+                              setDailyAccountingSummary(updated);
+                            }}
+                            className="text-rose-500 hover:text-rose-600 transition"
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         </td>
                       </tr>
                     ))}
