@@ -753,13 +753,12 @@ const Dashboard = () => {
               </div>
 
               <div className="relative w-full sm:w-60">
-                <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   placeholder="Search staff..."
                   value={userSearch}
                   onChange={(e) => setUserSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium text-slate-855 dark:text-slate-255 focus:outline-none focus:border-indigo-500/50 transition-all placeholder:text-slate-400"
+                  className="w-full pl-4 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium text-slate-855 dark:text-slate-255 focus:outline-none focus:border-indigo-500/50 transition-all placeholder:text-slate-400"
                 />
               </div>
             </div>
@@ -853,13 +852,12 @@ const Dashboard = () => {
             {/* FILTERS & SEARCH */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
               <div className="relative flex-1 sm:flex-initial sm:w-60">
-                <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  // placeholder="Search tasks..."
+                  placeholder="Search tasks..."
                   value={taskSearch}
                   onChange={(e) => setTaskSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium text-slate-850 dark:text-slate-250 focus:outline-none focus:border-indigo-500/50 transition-all placeholder:text-slate-400"
+                  className="w-full pl-4 pr-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium text-slate-850 dark:text-slate-250 focus:outline-none focus:border-indigo-500/50 transition-all placeholder:text-slate-400"
                 />
               </div>
 

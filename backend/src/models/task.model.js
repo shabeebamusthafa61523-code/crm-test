@@ -20,6 +20,11 @@ const taskSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  user_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
   status: {
     type: String,
     enum: ['pending', 'current', 'preview', 'done'],
@@ -41,10 +46,12 @@ const taskSchema = new mongoose.Schema({
     ret.id = ret._id.toString();
 
     if (ret.created_by) {
-      ret.user_id =
-        ret.created_by?._id
-          ? ret.created_by._id.toString()
-          : ret.created_by.toString();
+      if (typeof ret.created_by === 'object') {
+        const idVal = ret.created_by._id || ret.created_by.id || ret.created_by;
+        ret.user_id = idVal ? idVal.toString() : undefined;
+      } else {
+        ret.user_id = ret.created_by.toString();
+      }
     }
 
     if (ret.file_url) {
@@ -65,10 +72,12 @@ toObject: {
     ret.id = ret._id.toString();
 
     if (ret.created_by) {
-      ret.user_id =
-        ret.created_by?._id
-          ? ret.created_by._id.toString()
-          : ret.created_by.toString();
+      if (typeof ret.created_by === 'object') {
+        const idVal = ret.created_by._id || ret.created_by.id || ret.created_by;
+        ret.user_id = idVal ? idVal.toString() : undefined;
+      } else {
+        ret.user_id = ret.created_by.toString();
+      }
     }
 
     if (ret.file_url) {
