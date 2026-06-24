@@ -159,7 +159,22 @@ const [activePriority, setActivePriority] = useState('all');
         departmentId = String(currentUser.departmentId).trim();
       }
     }
-    return departmentId === '6a26a7d72a56a1f9c49da8a3';
+    
+    let designationId = '';
+    if (currentUser.designationId) {
+      if (typeof currentUser.designationId === 'object' && currentUser.designationId._id) {
+        designationId = String(currentUser.designationId._id).trim();
+      } else {
+        designationId = String(currentUser.designationId).trim();
+      }
+    } else if (currentUser.designation_id) {
+      designationId = String(currentUser.designation_id).trim();
+    }
+
+    const allowedDepts = ['6a26a7d72a56a1f9c49da8a3', '6a27f394558c220a47fff02e'];
+    const allowedDesigs = ['6a27939af292348deb7d0495'];
+
+    return allowedDepts.includes(departmentId) || allowedDesigs.includes(designationId);
   }, [currentUser]);
 
   const getAuthHeaders = useCallback(() => {

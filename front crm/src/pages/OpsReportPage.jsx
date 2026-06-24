@@ -111,29 +111,6 @@ const OpsReportPage = () => {
   // Monthly Report States
   const [isMonthlyModalOpen, setIsMonthlyModalOpen] = useState(false);
 
-  // Auto-open monthly modal from URL parameters
-  useEffect(() => {
-    if (selectedUserId) {
-      const queryParams = new URLSearchParams(window.location.search);
-      const savedUser = localStorage.getItem('user');
-      let isUserPrivileged = false;
-      if (savedUser) {
-        try {
-          const userObj = JSON.parse(savedUser);
-          const role = String(userObj.role_id || userObj.role || '').toLowerCase().trim();
-          isUserPrivileged = ['1', '2', 'hr', 'admin'].includes(role);
-        } catch (e) {
-          console.error(e);
-        }
-      }
-      
-      if (isUserPrivileged) {
-        if (queryParams.get('generateMonthly') === 'true') {
-          setIsMonthlyModalOpen(true);
-        }
-      }
-    }
-  }, [selectedUserId]);
   const [monthlyStartDate, setMonthlyStartDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
@@ -193,6 +170,30 @@ const OpsReportPage = () => {
     return '';
   });
   const [opsStaff, setOpsStaff] = useState([]);
+
+  // Auto-open monthly modal from URL parameters
+  useEffect(() => {
+    if (selectedUserId) {
+      const queryParams = new URLSearchParams(window.location.search);
+      const savedUser = localStorage.getItem('user');
+      let isUserPrivileged = false;
+      if (savedUser) {
+        try {
+          const userObj = JSON.parse(savedUser);
+          const role = String(userObj.role_id || userObj.role || '').toLowerCase().trim();
+          isUserPrivileged = ['1', '2', 'hr', 'admin'].includes(role);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      
+      if (isUserPrivileged) {
+        if (queryParams.get('generateMonthly') === 'true') {
+          setIsMonthlyModalOpen(true);
+        }
+      }
+    }
+  }, [selectedUserId]);
   const [submittedDates, setSubmittedDates] = useState([]);
 
   // Form States
@@ -361,11 +362,11 @@ const OpsReportPage = () => {
           department: userDetail.department || apiBasicDetails.department || ''
         });
 
-        setDailyOperations(report.dailyOperations || []);
-        setSalesActivity(report.salesActivity || []);
-        setSalesPerformance(report.salesPerformance || []);
-        setRevenueTracking(report.revenueTracking || []);
-        setAcademyStatus(report.academyStatus || []);
+        setDailyOperations(Array.isArray(report.dailyOperations) ? report.dailyOperations : []);
+        setSalesActivity(Array.isArray(report.salesActivity) ? report.salesActivity : []);
+        setSalesPerformance(Array.isArray(report.salesPerformance) ? report.salesPerformance : []);
+        setRevenueTracking(Array.isArray(report.revenueTracking) ? report.revenueTracking : []);
+        setAcademyStatus(Array.isArray(report.academyStatus) ? report.academyStatus : []);
         setIssuesEscalations(report.issuesEscalations || { issue: '', priority: '', actionTaken: '' });
         setHandover(report.handover || { pendingLeadsShared: 'Yes', crmUpdated: 'Yes / No- NA', reportsSubmitted: 'Yes', teamUpdated: 'Yes' });
         setApproval(report.approval || {});
