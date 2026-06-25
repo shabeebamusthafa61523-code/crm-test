@@ -23,6 +23,8 @@ import DeveloperReportPage from './pages/DeveloperReportPage';
 import DeveloperDashboard from './pages/DeveloperDashboard';
 import HodRdReportPage from './pages/HodRdReportPage';
 import GraphicDesignerReportPage from './pages/GraphicDesignerReportPage';
+import GraphicDesignerDashboard from './pages/GraphicDesignerDashboard';
+import VideographerDashboard from './pages/VideographerDashboard';
 import AcademicCounselorReportPage from './pages/AcademicCounselorReportPage';
 import HrReportPage from './pages/HrReportPage';
 import OpsReportPage from './pages/OpsReportPage';
@@ -81,6 +83,8 @@ function App() {
         <Route path="/developer-dashboard" element={<ProtectedRoute><MainLayout><DeveloperDashboard /></MainLayout></ProtectedRoute>} />
         <Route path="/hod-rd-report" element={<ProtectedRoute><MainLayout><HodRdReportPage /></MainLayout></ProtectedRoute>} />
         <Route path="/graphic-designer-report" element={<ProtectedRoute><MainLayout><GraphicDesignerReportPage /></MainLayout></ProtectedRoute>} />
+        <Route path="/graphic-designer-dashboard" element={<ProtectedRoute><MainLayout><GraphicDesignerDashboard /></MainLayout></ProtectedRoute>} />
+        <Route path="/videographer-dashboard" element={<ProtectedRoute><MainLayout><VideographerDashboard /></MainLayout></ProtectedRoute>} />
         <Route path="/academic-counselor-report" element={<ProtectedRoute><MainLayout><AcademicCounselorReportPage /></MainLayout></ProtectedRoute>} />
         <Route path="/counselor-dashboard" element={<ProtectedRoute><MainLayout><CounselorDashboard /></MainLayout></ProtectedRoute>} />
         <Route path="/hr-report" element={<ProtectedRoute><MainLayout><HrReportPage /></MainLayout></ProtectedRoute>} />

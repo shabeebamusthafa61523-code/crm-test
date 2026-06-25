@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Code2, CheckCircle2, Clock, Eye, Layout, RefreshCw,
+  Video, CheckCircle2, Clock, Eye, Layout, RefreshCw,
   Zap, Target, TrendingUp, BarChart3, FileText,
   AlertCircle, Loader2, Search, ListChecks,
-  GitBranch, Terminal, Cpu, Activity, ArrowUpRight,
+  Film, Clapperboard, Layers, Activity, ArrowUpRight,
   Flame, Sparkles, Shield, Star, Calendar, Award,
-  ChevronRight, ChevronUp, Users, Database, Layers,
-  GitCommit, MonitorDot, Package, Rocket, Braces
+  ChevronRight, ChevronUp, Users, Database,
+  Camera, MonitorPlay, Package, Rocket, Scissors
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ToastProvider';
@@ -140,7 +140,7 @@ const BigMetricCard = ({ label, value, icon: Icon, color, subtext, trend, delay 
 );
 
 /* ─── Main Dashboard ─── */
-const DeveloperDashboard = () => {
+const VideographerDashboard = () => {
   const [user, setUser]               = useState(null);
   const [currentUserId, setCurrentUserId] = useState('');
   const [tasks, setTasks]             = useState([]);
@@ -232,7 +232,7 @@ const DeveloperDashboard = () => {
     return rotated;
   }, [myTasks]);
 
-  /* team developer task load */
+  /* team videographer task load */
   const devUserTasks = useMemo(() => {
     if (!user || !user.departmentId) return [];
     const myDeptId = typeof user.departmentId === 'object' ? (user.departmentId._id || user.departmentId.id) : user.departmentId;
@@ -253,7 +253,7 @@ const DeveloperDashboard = () => {
 
       const name = aObj?.name || (() => {
         const f = allUsers.find(u => String(u._id || u.id) === aId);
-        return f?.name || `Dev #${aId.slice(0,5)}`;
+        return f?.name || `Editor #${aId.slice(0,5)}`;
       })();
       if (!map[aId]) map[aId] = { name, aId, total: 0, done: 0, current: 0, pending: 0, preview: 0 };
       map[aId].total++;
@@ -297,13 +297,13 @@ const DeveloperDashboard = () => {
         className="flex flex-col items-center gap-5">
         <div className="relative">
           <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl">
-            <Code2 size={40} className="text-indigo-500" />
+            <Video size={40} className="text-indigo-500" />
           </div>
           <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-lime-400 border-2 border-white dark:border-slate-950 animate-bounce" />
         </div>
         <div className="flex items-center gap-2">
           <Loader2 size={16} className="text-indigo-400 animate-spin" />
-          <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Loading Developer Dashboard</p>
+          <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Loading Video Editor Dashboard</p>
         </div>
       </motion.div>
     </div>
@@ -323,18 +323,18 @@ const DeveloperDashboard = () => {
         <div className="flex items-center gap-5">
           <div className="relative">
             <div className="p-4 rounded-3xl bg-white-500/10 border border-indigo-500/20 shadow-sm shadow-indigo-500/10">
-              <Code2 size={30} className="text-indigo-500" />
+              <Video size={30} className="text-indigo-500" />
             </div>
             <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-lime-400 border-2 border-white dark:border-slate-950 animate-pulse" />
           </div>
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-[9px] font-black text-indigo-500 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-full uppercase tracking-widest">
-                Developer Command Centre
+                Videographer Command Centre
               </span>
             </div>
             <h1 className="text-2xl lg:text-3xl font-black text-slate-800 dark:text-slate-100 leading-tight">
-              {user?.name ? `${user.name.split(' ')[0]}'s Dashboard` : 'Developer Dashboard'}
+              {user?.name ? `${user.name.split(' ')[0]}'s Dashboard` : 'Video Editor Dashboard'}
             </h1>
             <p className="text-sm font-semibold text-slate-400 dark:text-slate-500 mt-0.5">
               {fmtDate(currentTime)}
@@ -367,7 +367,7 @@ const DeveloperDashboard = () => {
           </button>
 
           {/* Report */}
-          <button onClick={() => navigate('/developer-report')}
+          <button onClick={() => navigate('/videographer-report')}
             className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-black transition-all shadow-md shadow-indigo-500/25">
             <FileText size={13} />
             Daily Report
@@ -626,9 +626,9 @@ const DeveloperDashboard = () => {
       {/* ══ ROW 4: Quick Stats ══ */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
         {[
-          { icon: Braces,     label: 'Total Team Tasks', value: devUserTasks.reduce((sum, u) => sum + u.total, 0),                               color: '#6366f1' },
+          { icon: Scissors,     label: 'Total Team Tasks', value: devUserTasks.reduce((sum, u) => sum + u.total, 0),                               color: '#6366f1' },
           { icon: Users,      label: 'Team Members',     value: devUserTasks.length,                        color: '#e5a23a' },
-          { icon: GitCommit,  label: 'My Completion',    value: `${completionRate}%`,                       color: '#9dd384' },
+          { icon: Camera,  label: 'My Completion',    value: `${completionRate}%`,                       color: '#9dd384' },
           { icon: Flame,      label: 'Active Tasks',     value: statusCounts.current + statusCounts.preview, color: '#e26a6a' },
         ].map((s, i) => (
           <motion.div key={i}
@@ -694,7 +694,7 @@ const DeveloperDashboard = () => {
         {filteredTasks.length === 0 ? (
           <div className="py-20 flex flex-col items-center gap-4 text-center">
             <div className="p-5 rounded-3xl bg-slate-100 dark:bg-slate-800">
-              <Terminal size={28} className="text-slate-400 dark:text-slate-500" />
+              <Clapperboard size={28} className="text-slate-400 dark:text-slate-500" />
             </div>
             <p className="text-base font-black text-slate-500 dark:text-slate-400">
               {myTasks.length === 0 ? 'No tasks assigned yet' : 'No tasks match your filter'}
@@ -857,7 +857,7 @@ const DeveloperDashboard = () => {
             })}
           </div>
           <div className="ml-auto flex items-center gap-2 text-[9px] font-bold text-slate-400">
-            <Terminal size={11} className="text-indigo-400" />
+            <Clapperboard size={11} className="text-indigo-400" />
             <span>{myTasks.length} total tasks · {completionRate}% completion rate</span>
             <span className="text-slate-300 dark:text-slate-700">· click any row to expand</span>
           </div>
@@ -867,4 +867,4 @@ const DeveloperDashboard = () => {
   );
 };
 
-export default DeveloperDashboard;
+export default VideographerDashboard;
