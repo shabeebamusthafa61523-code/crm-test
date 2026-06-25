@@ -7,10 +7,12 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "dev:kill": "powershell -Command \"Get-NetTCPConnection -LocalPort 5000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }; Write-Host 'Port 5000 cleared.'\"",
+    "dev:fresh": "npm run dev:kill && npm run dev",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "node prisma/seeds/seed.js",
-    "test": "jest"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

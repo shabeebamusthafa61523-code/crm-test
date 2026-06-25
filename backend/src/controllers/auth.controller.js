@@ -31,6 +31,20 @@ export const signup = async (req, res) => {
     };
     const userRole = roleMap[role_id] || String(role_id || 'employee');
 
+    // Fetch designation name for designation ID
+    let designationName = '';
+    if (designation_id) {
+      try {
+        const Designation = (await import('../models/designation.model.js')).default;
+        const des = await Designation.findById(designation_id);
+        if (des) {
+          designationName = des.name;
+        }
+      } catch (e) {
+        console.error("Failed to query designation name:", e);
+      }
+    }
+
     // 3. Create document instance
     const newUser = new User({
       name,
@@ -42,7 +56,8 @@ export const signup = async (req, res) => {
       role: userRole,
       status: status || 'active',
       isActive: (status || 'active') === 'active',
-      designation_id: String(designation_id),
+      designationId: designation_id || undefined,
+      designation: designationName || undefined,
       joining_date: new Date(joining_date),
       salary: parseFloat(salary) || 0,
       address,
@@ -88,7 +103,7 @@ export const login = async (req, res) => {
         role: user.role,
         departmentId: user.departmentId || null
       },
-      process.env.JWT_SECRET,
+      JWT_SECRET,
       {
         expiresIn: '7d'
       }

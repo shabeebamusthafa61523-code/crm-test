@@ -47,7 +47,8 @@ export const DepartmentUsersDrawer = ({ isOpen, onClose, department }) => {
     if (isOpen) {
       const fetchAllUsers = async () => {
         try {
-          const API_URL = import.meta.env?.VITE_API_URL || import.meta.env?.REACT_APP_API_URL || 'http://localhost:5000/api/v1';
+          const rawApiUrl = import.meta.env?.VITE_API_URL || import.meta.env?.REACT_APP_API_URL || 'http://localhost:5000/api/v1';
+const API_URL = rawApiUrl.endsWith('/v1') ? rawApiUrl : `${rawApiUrl}/v1`;
           const token = localStorage.getItem('token');
           const res = await axios.get(`${API_URL}/v1/users/list`, {
             headers: { Authorization: `Bearer ${token}` }

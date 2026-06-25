@@ -13,7 +13,11 @@ import {
   Building,
   TrendingUp,
   BarChart3,
-  FileText
+  FileText,
+  Coins,
+  Wallet,
+  ArrowUpRight,
+  ArrowDownLeft
 } from 'lucide-react';
 
 const menuItems = [
@@ -128,6 +132,40 @@ const menuItems = [
   { icon: Users, label: 'Student Attendance', path: '/student-attendance', allowedRoles: ['1', '2', 'hr', 'admin'] },
   { icon: Building, label: 'Departments', path: '/departments', allowedRoles: ['1', '2', 'hr', 'admin'] },
   { icon: Users, label: 'Employee Reports', path: '/employee-reports', allowedRoles: ['1', '2', 'hr', 'admin'] },
+  { 
+    icon: Coins, 
+    label: 'Accounting Console', 
+    path: '/accounting', 
+    allowedRoles: ['1', '2', 'hr', 'admin'],
+    allowedDesignations: ['6a2f915e2df21dc234018cac']
+  },
+  { 
+    icon: ArrowDownLeft, 
+    label: 'Income In', 
+    path: '/accounting?tab=income', 
+    allowedRoles: ['1', '2', 'hr', 'admin'],
+    allowedDesignations: ['6a2f915e2df21dc234018cac']
+  },
+  { 
+    icon: ArrowUpRight, 
+    label: 'Income Out', 
+    path: '/accounting?tab=expenses', 
+    allowedRoles: ['1', '2', 'hr', 'admin'],
+    allowedDesignations: ['6a2f915e2df21dc234018cac']
+  },
+  { 
+    icon: FileText, 
+    label: 'Salary Slips', 
+    path: '/hr/salary-slips', 
+    allowedRoles: ['1', '2', 'hr', 'admin'],
+    allowedDesignations: ['6a2f8efea2fe388770a38987', '6a2f915e2df21dc234018cac']
+  },
+  { 
+    icon: Wallet, 
+    label: 'My Payroll', 
+    path: '/my-payroll', 
+    allowedRoles: ['1', '2', '3', 'hr', 'admin', 'employee'] 
+  }
 ];
 
 
@@ -211,15 +249,21 @@ const Sidebar = () => {
 
       <div className="flex lg:flex-col gap-3 lg:gap-4 overflow-x-auto lg:overflow-y-auto max-w-full lg:max-h-full scrollbar-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-0.5 px-0.5">
 
-        {visibleMenuItems.map((item) => (
-          <NavItem 
-            key={item.path}
-            icon={<item.icon size={22} />} 
-            label={item.label} 
-            to={item.path} 
-            active={activePath === item.path} 
-          />
-        ))}
+        {visibleMenuItems.map((item) => {
+          const isItemActive = item.path.includes('?') 
+            ? (location.pathname + location.search) === item.path
+            : location.pathname === item.path;
+
+          return (
+            <NavItem 
+              key={item.path}
+              icon={<item.icon size={22} />} 
+              label={item.label} 
+              to={item.path} 
+              active={isItemActive} 
+            />
+          );
+        })}
       </div>
 
       <div className="hidden lg:block w-full h-[1px] bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-800 to-transparent my-2 shrink-0" />

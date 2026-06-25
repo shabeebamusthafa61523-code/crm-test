@@ -59,7 +59,7 @@ export const userController = {
 
       const users = await User.find(
         { 
-          isActive: true,
+          isActive: { $ne: false },
           role: { $nin: ['student', 'Student'] },
           role_id: { $nin: ['10', 10] }
         },

@@ -18,9 +18,15 @@ import academicCounselorReportRoutes from './academicCounselorReport.routes.js';
 import videographerReportRoutes from './videographerReport.routes.js';
 import employeeReportPDFRoutes from './employeeReportPDF.routes.js';
 
-
-
-
+// New Accounting & Payroll routes
+import customerRoutes from './customer.routes.js';
+import vendorRoutes from './vendor.routes.js';
+import incomeRoutes from './income.routes.js';
+import expenseRoutes from './expense.routes.js';
+import purchaseRoutes from './purchase.routes.js';
+import invoiceRoutes from './invoice.routes.js';
+import salaryRoutes from './salary.routes.js';
+import accountingDashboardRoutes from './accountingDashboard.routes.js';
 
 const router = Router();
 
@@ -43,5 +49,15 @@ router.use('/graphic-designer-reports', graphicDesignerReportRoutes);
 router.use('/academic-counselor-reports', academicCounselorReportRoutes);
 router.use('/videographer-reports', videographerReportRoutes);
 router.use('/employee-reports', employeeReportPDFRoutes);
+
+// Mount new modules
+router.use('/accounting/customers', customerRoutes);
+router.use('/accounting/vendors', vendorRoutes);
+router.use('/accounting/income', incomeRoutes);
+router.use('/accounting/expenses', expenseRoutes);
+router.use('/accounting/purchases', purchaseRoutes);
+router.use('/accounting/invoices', invoiceRoutes);
+router.use('/payroll/salaries', salaryRoutes);
+router.use('/accounting/dashboard', accountingDashboardRoutes);
 
 export default router;

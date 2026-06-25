@@ -47,6 +47,7 @@ const Register = () => {
     { id: "7", name: "Fullstack Developer" },
     { id: "8", name: "Admin" },
     { id: "9", name: "Manager" },
+    { id: "6a2f915e2df21dc234018cac", name: "Accountant" },
     { id: "10", name: "Student" }
   ]);
 

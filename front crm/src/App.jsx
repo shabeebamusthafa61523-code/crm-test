@@ -28,10 +28,14 @@ import AccountantReportPage from './pages/AccountantReportPage';
 import MarketingReportPage from './pages/MarketingReportPage';
 import VideographerReportPage from './pages/VideographerReportPage';
 import EmployeeReports from './pages/EmployeeReports';
-
+import AccountingPage from './modules/accounting/AccountingPage';
+import EmployeePortal from './modules/self-service/EmployeePortal';
+import SalarySlipsHRPage from './modules/payroll/SalarySlipsHRPage';
+import ErrorBoundary from './components/ErrorBoundary';
 
 
 // Route Guards
+// ... (omitted guards, keep unchanged)
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   if (!token) {
@@ -84,6 +88,9 @@ function App() {
         <Route path="/marketing-report" element={<ProtectedRoute><MainLayout><MarketingReportPage /></MainLayout></ProtectedRoute>} />
         <Route path="/videographer-report" element={<ProtectedRoute><MainLayout><VideographerReportPage /></MainLayout></ProtectedRoute>} />
         <Route path="/employee-reports" element={<ProtectedRoute><MainLayout><EmployeeReports /></MainLayout></ProtectedRoute>} />
+        <Route path="/accounting" element={<ProtectedRoute><MainLayout><AccountingPage /></MainLayout></ProtectedRoute>} />
+        <Route path="/hr/salary-slips" element={<ProtectedRoute><MainLayout><ErrorBoundary><SalarySlipsHRPage /></ErrorBoundary></MainLayout></ProtectedRoute>} />
+        <Route path="/my-payroll" element={<ProtectedRoute><MainLayout><ErrorBoundary><EmployeePortal /></ErrorBoundary></MainLayout></ProtectedRoute>} />
 
 
 
