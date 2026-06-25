@@ -17,8 +17,15 @@ import {
 } from 'lucide-react';
 
 const menuItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', allowedRoles: ['1', '2', 'hr', 'admin' ], allowedDepartments: ['6a3caed51194353cbc8a3686'] 
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', allowedRoles: ['1', '2', 'admin' ],   //allowedDepartments: ['6a3caed51194353cbc8a3686'] 
  },
+
+  {
+    icon: LayoutDashboard,
+    label: 'HR Dashboard',
+    path: '/hr-dashboard',
+    allowedDesignations: ['6a2f8efea2fe388770a38987'],
+  },
   {
     icon: BarChart3,
     label: 'Lead Dashboard',
@@ -125,6 +132,7 @@ const menuItems = [
     allowedDesignations: ['6a2f912c2df21dc234018caa'],
     // allowedRoles: ['1', '2', 'hr', 'admin']
   },
+ 
   {
     icon: FileText,
     label: 'HR Shift Report',
