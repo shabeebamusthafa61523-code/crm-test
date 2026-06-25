@@ -6,6 +6,8 @@ import {
   Trash2, Edit3, Save, Upload, Image as ImageIcon, 
   Loader2, Camera, ShieldCheck, User, Target, Info
 } from 'lucide-react';
+import { useToast } from '../components/ToastProvider';
+import ConfirmModal from '../components/ConfirmModal';
 
 const API_BASE = import.meta.env.VITE_API_URL;// --- UTILS & CONSTANTS ---
 const getTaskImageUrl = (path) => {
@@ -138,7 +140,7 @@ const fetchData = useCallback(async () => {
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-[#050507] flex flex-col items-center justify-center">
+    <div className="min-h-[75vh] bg-transparent flex flex-col items-center justify-center">
       <div className="relative">
         <Loader2 className="animate-spin text-indigo-500" size={48} />
         <div className="absolute inset-0 blur-xl bg-indigo-500/20 animate-pulse" />
@@ -153,9 +155,9 @@ console.log("HEADERS:", getAuthHeaders());
       <style>{`.no-scrollbar::-webkit-scrollbar { display: none; }`}</style>
       
       <div className="max-w-[1700px] mx-auto px-6 py-10">
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-16 border-b border-slate-200 dark:border-slate-800 pb-10">
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-10 border-b border-slate-200 dark:border-slate-800 pb-5">
           <div>
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-3 ">
               <div className="h-2 w-2 bg-indigo-500 rounded-full animate-ping" />
               <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500/70 dark:text-indigo-400/80">System Live</span>
             </div>
@@ -181,14 +183,19 @@ console.log("HEADERS:", getAuthHeaders());
                 {(provided, snapshot) => (
                   <div 
                     {...provided.droppableProps} ref={provided.innerRef} 
-                    className={`flex flex-col min-h-[70vh] rounded-[2.5rem] transition-all duration-500 border ${snapshot.isDraggingOver ? 'bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none'}`}
+                    className={`flex flex-col min-h-[75vh] rounded-[2.25rem] transition-all duration-300 border ${snapshot.isDraggingOver ? 'bg-indigo-500/[0.03] dark:bg-indigo-500/[0.01] border-indigo-500/30 dark:border-indigo-500/20 shadow-inner' : 'bg-slate-50/50 dark:bg-slate-950/20 border-slate-200/50 dark:border-slate-800/40'}`}
                   >
-                    <div className="p-6 pb-2 flex items-center justify-between">
+                    <div className="p-6 pb-4 flex items-center justify-between border-b border-slate-100 dark:border-slate-900/80">
                       <div className="flex items-center gap-3">
-                        <div className={`w-2 h-6 rounded-full ${COLUMN_META[statusKey].color}`} />
-                        <h2 className="font-black text-slate-900 dark:text-slate-100 uppercase text-[12px] tracking-[0.2em]">{COLUMN_META[statusKey].label}</h2>
+                        <div className={`p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/60 shadow-sm ${COLUMN_META[statusKey].glow}`}>
+                          {React.createElement(COLUMN_META[statusKey].icon, {
+                            size: 15,
+                            className: COLUMN_META[statusKey].color.replace('bg-', 'text-')
+                          })}
+                        </div>
+                        <h2 className="font-bold text-slate-800 dark:text-slate-200 uppercase text-[11px] tracking-[0.2em]">{COLUMN_META[statusKey].label}</h2>
                       </div>
-                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-950/40 px-3 py-1 rounded-full">{tasks.filter(t => t.status === statusKey).length}</span>
+                      <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-900 px-3 py-1 rounded-lg border border-slate-200/20 dark:border-slate-800/30">{tasks.filter(t => t.status === statusKey).length}</span>
                     </div>
 
                     <div className="p-4 space-y-4">
@@ -198,32 +205,41 @@ console.log("HEADERS:", getAuthHeaders());
                             <div 
                               ref={p.innerRef} {...p.draggableProps} {...p.dragHandleProps} 
                               onClick={() => setSelectedTask(task)} 
-                              className={`group p-6 rounded-[2rem] bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-900/60 shadow-sm hover:shadow-md hover:border-indigo-500/30 dark:hover:border-indigo-500/50 transition-all ${s.isDragging ? 'rotate-3 scale-105 shadow-xl z-50 bg-slate-50 dark:bg-slate-900' : ''}`}
+                              className={`group relative p-5 pl-7 rounded-[1.75rem] bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/50 shadow-sm hover:shadow-lg dark:hover:shadow-indigo-500/[0.02] transition-all duration-300 cursor-grab active:cursor-grabbing hover:-translate-y-[2px] ${s.isDragging ? 'rotate-[1.5deg] scale-[1.02] shadow-2xl z-50 bg-white/95 dark:bg-slate-900/95 border-indigo-500/40 dark:border-indigo-500/50 ring-2 ring-indigo-500/10' : ''}`}
                             >
-                              <div className="flex items-center gap-2 mb-4">
-                                <div className="h-1.5 w-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]" />
-                                <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                              {/* Left Accent Bar */}
+                              <div className={`absolute left-0 top-6 bottom-6 w-[3px] rounded-r-full transition-all duration-300 group-hover:top-4 group-hover:bottom-4 ${COLUMN_META[statusKey].color}`} />
+
+                              <div className="flex items-center gap-2 mb-3">
+                                <div className="h-1.5 w-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)] animate-pulse" />
+                                <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                                   {designations.find(d => String(d.id) === String(task.designation_id))?.name || "General"}
                                 </span>
                               </div>
-                              <h3 className="text-slate-800 dark:text-slate-200 font-bold text-[15px] mb-4 leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{task.title}</h3>
+                              <h3 className="text-slate-800 dark:text-slate-200 font-bold text-[14px] leading-snug mb-4 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-300">{task.title}</h3>
                               
-                              <div className="flex items-center gap-3 pt-4 border-t border-slate-100 dark:border-slate-900">
-                                <div className="w-8 h-8 rounded-full bg-indigo-500/10 dark:bg-indigo-500/20 flex items-center justify-center border border-indigo-500/20 dark:border-indigo-800/40">
-                                  <User size={14} className="text-indigo-400 dark:text-indigo-300" />
+                              <div className="flex items-center justify-between pt-4 border-t border-slate-100/60 dark:border-slate-850/50">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-850 border border-slate-200/50 dark:border-slate-750/50 flex items-center justify-center text-slate-500 dark:text-slate-400">
+                                    <User size={12} />
+                                  </div>
+                                  <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 tracking-wide truncate max-w-[120px]">
+                                    {
+                                      typeof task.assigned_to === "object"
+                                        ? task.assigned_to?.name
+                                        : users.find(
+                                            u => String(u.id || u._id) === String(task.assigned_to)
+                                          )?.name
+                                          || task.assigned_to
+                                          || "No Agent"
+                                    }
+                                  </span>
                                 </div>
-                                <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider truncate">
-                                  {
-typeof task.assigned_to === "object"
-? task.assigned_to?.name
-: users.find(
-    u=>String(u.id || u._id)===String(task.assigned_to)
-  )?.name
-  ||
-  task.assigned_to
-  ||
-  "No Agent"
-}                                </span>
+                                {task.image && (
+                                  <div className="p-1.5 rounded-lg bg-white-500/10 text-white-500 dark:text-indigo-400 border border-indigo-500/10">
+                                    <ImageIcon size={12} />
+                                  </div>
+                                )}
                               </div>
                             </div>
                           )}
@@ -266,6 +282,7 @@ typeof task.assigned_to === "object"
 
 // --- CREATE MODAL COMPONENT ---
 const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) => {
+  const { showToast } = useToast();
   const [form, setForm] = useState({ title: '', description: '', assigned_to: '', designation_id: '', image: null });
   const [preview, setPreview] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -313,18 +330,20 @@ const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) 
     const data = await res.json();
 
     console.log("STATUS:", res.status);
-console.log("RESPONSE:", data);
-console.log("ERRORS FULL:", JSON.stringify(data.errors, null, 2));
+    console.log("RESPONSE:", data);
+    console.log("ERRORS FULL:", JSON.stringify(data.errors, null, 2));
     if (!res.ok) {
-      alert(data.message || "Task creation failed");
+      showToast(data.message || "Task creation failed", "error");
       return;
     }
 
+    showToast("Task successfully created!", "success");
     await refresh();
     onClose();
 
   } catch (e) {
     console.error("CREATE ERROR:", e);
+    showToast("Network error. Task creation failed.", "error");
   } finally {
     setIsSubmitting(false);
   }
@@ -368,32 +387,37 @@ console.log("ERRORS FULL:", JSON.stringify(data.errors, null, 2));
               <label className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.2em] ml-2">assign to</label>
               <div className="grid grid-cols-2 gap-3">
                 <select
-  required
-  className="appearance-none bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 p-5 rounded-2xl text-gray-900 dark:text-gray-200 text-[11px] font-bold outline-none"
-  value={form.assigned_to}
-  onChange={e => setForm({ ...form, assigned_to: e.target.value })}
->
-  <option value="" staff>Assign to</option>
-  {users.map(u => (
-    <option key={u.id || u._id} value={u.id || u._id} className="bg-white text-gray-900">
-    
-      {u.name}
-    </option>
-  ))}
-</select>
-                <select 
-                  required 
-                  className="bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 p-5 rounded-2xl text-gray-900 dark:text-gray-200 text-[11px] font-bold outline-none" 
-                  value={form.designation_id} 
-                  onChange={e => setForm({...form, designation_id: e.target.value})}
+                  required
+                  className="appearance-none bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 p-5 rounded-2xl text-gray-900 dark:text-gray-200 text-[11px] font-bold outline-none"
+                  value={form.assigned_to}
+                  onChange={e => {
+                    const userId = e.target.value;
+                    const user = users.find(u => String(u.id || u._id) === String(userId));
+                    let desigId = '';
+                    if (user) {
+                      if (user.designationId) {
+                        desigId = typeof user.designationId === 'object'
+                          ? (user.designationId._id || user.designationId.id || '')
+                          : String(user.designationId);
+                      } else if (user.designation) {
+                        desigId = String(user.designation);
+                      }
+                    }
+                    setForm({ ...form, assigned_to: userId, designation_id: desigId });
+                  }}
                 >
-                  <option value="">designation</option>
-                  {designations.map(d => (
-                    <option key={d.id} value={d.id} className="bg-white text-gray-900">
-                      {d.name}
+                  <option value="">Assign to</option>
+                  {users.map(u => (
+                    <option key={u.id || u._id} value={u.id || u._id} className="bg-white text-gray-900">
+                      {u.name}
                     </option>
                   ))}
                 </select>
+                <div className="bg-slate-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-650 p-5 rounded-2xl text-gray-500 dark:text-gray-400 text-[11px] font-bold flex items-center">
+                  <span>
+                    {designations.find(d => String(d.id || d._id) === String(form.designation_id))?.name || "Designation"}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -417,11 +441,13 @@ console.log("ERRORS FULL:", JSON.stringify(data.errors, null, 2));
 
 // --- DETAIL MODAL COMPONENT (CLEANED & INTEGRATED) ---
 const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, DESIGNATIONS, users, API_BASE }) => {
+  const { showToast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [newFile, setNewFile] = useState(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   const statusConfig = {
     pending: { 
@@ -447,12 +473,28 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
   };
 
   const canModify = useMemo(() => {
-    const creatorId = (
-      task?.user_id ||
-      task?.created_by?._id ||
-      task?.created_by?.id ||
-      task?.created_by
-    )?.toString().trim();
+    const getCreatorId = () => {
+      const candidates = [
+        task?.user_id,
+        task?.created_by?._id,
+        task?.created_by?.id,
+        task?.created_by
+      ];
+
+      for (const val of candidates) {
+        if (!val) continue;
+        const str = typeof val === 'object'
+          ? (val._id || val.id || '').toString().trim()
+          : val.toString().trim();
+
+        if (str && str !== '[object Object]') {
+          return str;
+        }
+      }
+      return null;
+    };
+
+    const creatorId = getCreatorId();
     return currentUserId && creatorId && String(currentUserId).trim() === creatorId;
   }, [task, currentUserId]);
 
@@ -517,9 +559,12 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
     }
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm("ARE YOU SURE? This action will permanently purge this asset.")) return;
-    
+  const handleDelete = () => {
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    setIsDeleteConfirmOpen(false);
     setIsDeleting(true);
     try {
       const res = await fetch(`${API_BASE}/tasks/delete/${task.id}`, { 
@@ -528,14 +573,17 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
       });
 
       if (res.ok) {
+        showToast("Task successfully deleted!", "success");
         await onUpdate();
         onClose();
       } else {
+        showToast("Failed to delete task.", "error");
         console.warn("Backend Session Error detected, forcing UI refresh...");
         await onUpdate();
         onClose();
       }
     } catch (e) {
+      showToast("Error deleting task.", "error");
       console.error("Delete error:", e);
       await onUpdate();
       onClose();
@@ -657,7 +705,21 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
                     required
                     className="w-full appearance-none bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-xl text-slate-900 dark:text-slate-100 text-[11px] font-bold outline-none cursor-pointer"
                     value={editForm.assigned_to}
-                    onChange={e => setEditForm({ ...editForm, assigned_to: e.target.value })}
+                    onChange={e => {
+                      const userId = e.target.value;
+                      const user = users.find(u => String(u.id || u._id) === String(userId));
+                      let desigId = '';
+                      if (user) {
+                        if (user.designationId) {
+                          desigId = typeof user.designationId === 'object'
+                            ? (user.designationId._id || user.designationId.id || '')
+                            : String(user.designationId);
+                        } else if (user.designation) {
+                          desigId = String(user.designation);
+                        }
+                      }
+                      setEditForm({ ...editForm, assigned_to: userId, designation_id: desigId });
+                    }}
                   >
                     <option value="">Assign to</option>
                     {users.map(u => (
@@ -689,20 +751,8 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
             <div>
               <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.3em] block mb-2">Designation</span>
               {isEditing ? (
-                <div className="relative">
-                  <select
-                    required
-                    className="w-full appearance-none bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-xl text-slate-900 dark:text-slate-100 text-[11px] font-bold outline-none cursor-pointer"
-                    value={editForm.designation_id}
-                    onChange={e => setEditForm({ ...editForm, designation_id: e.target.value })}
-                  >
-                    <option value="">Designation</option>
-                    {DESIGNATIONS.map(d => (
-                      <option key={d.id} value={d.id}>
-                        {d.name}
-                      </option>
-                    ))}
-                  </select>
+                <div className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-xl text-gray-500 dark:text-gray-400 text-[11px] font-bold">
+                  {DESIGNATIONS?.find(d => String(d.id || d._id) === String(editForm.designation_id))?.name || "Designation"}
                 </div>
               ) : (
                 <div className="flex items-center gap-3">
@@ -751,6 +801,17 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
             )}
           </div>
         </div>
+
+        <ConfirmModal
+          isOpen={isDeleteConfirmOpen}
+          onClose={() => setIsDeleteConfirmOpen(false)}
+          onConfirm={handleConfirmDelete}
+          title="Purge Asset"
+          message="Are you sure you want to permanently delete this task asset? This action cannot be undone."
+          confirmText="Yes, Purge"
+          cancelText="Cancel"
+          type="danger"
+        />
       </motion.div>
     </motion.div>
   );

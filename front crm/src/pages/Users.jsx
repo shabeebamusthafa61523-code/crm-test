@@ -6,6 +6,7 @@ import {
   Loader2, User, ChevronRight, CheckCircle2, AlertTriangle, Shield
 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
+import ConfirmModal from '../components/ConfirmModal';
 const API_BASE = import.meta.env.VITE_API_URL;
 const ROLES = [
   { id: "1", name: "hr" },
@@ -27,6 +28,7 @@ const Users = () => {
   // Ensure it is initialized like this inside your component:
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [deleteUserConfirm, setDeleteUserConfirm] = useState({ isOpen: false, id: null, name: '' });
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -179,10 +181,13 @@ React.useEffect(() => { setCurrentPage(1); }, [activeTab, searchQuery]);
 const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
 const pagedUsers = filteredUsers.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
-  const handleDeleteUser = async (id, name) => {
-    if (!window.confirm(`Are you absolutely sure you want to delete employee "${name}"? This action is permanent.`)) {
-      return;
-    }
+  const handleDeleteUser = (id, name) => {
+    setDeleteUserConfirm({ isOpen: true, id, name });
+  };
+
+  const handleConfirmDeleteUser = async () => {
+    const { id, name } = deleteUserConfirm;
+    setDeleteUserConfirm({ isOpen: false, id: null, name: '' });
     try {
       const res = await fetch(`${API_BASE}/v1/users/delete/${id}`, {
         method: 'DELETE',
@@ -263,13 +268,12 @@ const pagedUsers = filteredUsers.slice((currentPage - 1) * ITEMS_PER_PAGE, curre
 
           {/* Search Box */}
           <div className="relative max-w-md w-full">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input 
               type="text" 
-              placeholder="" 
+              placeholder="Search users..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 dark:bg-slate-950 dark:border-slate-800/80 py-3.5 pl-12 pr-4 rounded-xl text-sm font-medium focus:border-indigo-500/50 dark:focus:border-indigo-400/50 outline-none transition-all duration-300"
+              className="w-full bg-slate-50 border border-slate-200 dark:bg-slate-950 dark:border-slate-800/80 py-3.5 pl-4 pr-4 rounded-xl text-sm font-medium focus:border-indigo-500/50 dark:focus:border-indigo-400/50 outline-none transition-all duration-300"
             />
             {searchQuery && (
               <button 
@@ -535,6 +539,17 @@ const pagedUsers = filteredUsers.slice((currentPage - 1) * ITEMS_PER_PAGE, curre
           />
         )}
       </AnimatePresence>
+
+      <ConfirmModal
+        isOpen={deleteUserConfirm.isOpen}
+        onClose={() => setDeleteUserConfirm({ isOpen: false, id: null, name: '' })}
+        onConfirm={handleConfirmDeleteUser}
+        title="Purge Employee Records"
+        message={`Are you absolutely sure you want to delete employee "${deleteUserConfirm.name}"? This action is permanent and cannot be undone.`}
+        confirmText="Yes, Purge"
+        cancelText="Cancel"
+        type="danger"
+      />
     </div>
   );
 };
@@ -544,6 +559,7 @@ const ManageDesignationsModal = ({ onClose, designations, getAuthHeaders, onDesi
   const [editName, setEditName] = useState('');
   const [savingId, setSavingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [deleteDesignationConfirm, setDeleteDesignationConfirm] = useState({ isOpen: false, id: null, name: '' });
 
   const handleEditStart = (id, currentName) => {
     setEditingId(id);
@@ -580,10 +596,13 @@ const ManageDesignationsModal = ({ onClose, designations, getAuthHeaders, onDesi
     }
   };
 
-  const handleDelete = async (id, name) => {
-    const confirmDelete = window.confirm(`Are you sure you want to delete the designation "${name}"?`);
-    if (!confirmDelete) return;
+  const handleDelete = (id, name) => {
+    setDeleteDesignationConfirm({ isOpen: true, id, name });
+  };
 
+  const handleConfirmDeleteDesignation = async () => {
+    const { id, name } = deleteDesignationConfirm;
+    setDeleteDesignationConfirm({ isOpen: false, id: null, name: '' });
     setDeletingId(id);
     try {
       const res = await fetch(`${API_BASE}/v1/designations/${id}`, {
@@ -608,7 +627,7 @@ const ManageDesignationsModal = ({ onClose, designations, getAuthHeaders, onDesi
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] flex items-start justify-center p-4 pt-16 bg-slate-950/40 backdrop-blur-sm overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -682,6 +701,17 @@ const ManageDesignationsModal = ({ onClose, designations, getAuthHeaders, onDesi
             <p className="text-xs text-slate-400 text-center py-6">No designations available.</p>
           )}
         </div>
+
+        <ConfirmModal
+          isOpen={deleteDesignationConfirm.isOpen}
+          onClose={() => setDeleteDesignationConfirm({ isOpen: false, id: null, name: '' })}
+          onConfirm={handleConfirmDeleteDesignation}
+          title="Delete Designation"
+          message={`Are you sure you want to delete the designation "${deleteDesignationConfirm.name}"?`}
+          confirmText="Yes, Delete"
+          cancelText="Cancel"
+          type="danger"
+        />
       </motion.div>
     </div>
   );

@@ -37,7 +37,7 @@ const SOURCE_COLORS = {
   'MARKETING':     { bar: 'from-orange-500 to-amber-400', dot: 'bg-orange-500' },
 };
 
-const MarketingDashboard = () => {
+const CounselorDashboard = () => {
   const [user, setUser] = useState(null);
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -54,14 +54,17 @@ const MarketingDashboard = () => {
   const hasAccess = useMemo(() => {
     if (!user) return false;
     const roleId = String(user.role_id || user.roleId || user.role || '').toLowerCase().trim();
-    if (['1', '2', '3', 'hr', 'admin', 'marketing'].includes(roleId)) return true;
-    let deptId = '';
-    if (user.departmentId) {
-      deptId = typeof user.departmentId === 'object' && user.departmentId._id
-        ? String(user.departmentId._id).trim()
-        : String(user.departmentId).trim();
+    if (['1', '2', 'hr', 'admin'].includes(roleId)) return true; // Admins can view
+    let desigId = '';
+    if (user.designationId) {
+      desigId = typeof user.designationId === 'object' && user.designationId._id
+        ? String(user.designationId._id).trim()
+        : String(user.designationId).trim();
+    } else if (user.designation_id) {
+      desigId = String(user.designation_id).trim();
     }
-    return ['6a26a7d72a56a1f9c49da8a3', '6a211b6621f80bb8da167efb'].includes(deptId);
+    // Allow Academic Counselor designation
+    return ['6a27939af292348deb7d0495'].includes(desigId);
   }, [user]);
 
   const getAuthHeaders = useCallback(() => {
@@ -108,11 +111,14 @@ const MarketingDashboard = () => {
     const total = leads.length;
     const newLeads24h = leads.filter(l => new Date(l.createdAt) >= past24h).length;
     const mtdLeads = leads.filter(l => new Date(l.createdAt) >= startOfMonth).length;
+    const converted = leads.filter(l => l.status === 'Converted').length;
+    const lost = leads.filter(l => l.status === 'Lost').length;
+    const followUpPending = leads.filter(l => l.status === 'Follow Up').length;
+    const conversionRate = total > 0 ? ((converted / total) * 100).toFixed(1) : '0.0';
 
-    const genuineLeads = leads.filter(l => {
-      const interest = (l.interestedService || '').trim().toUpperCase();
-      return ['HOT LEAD', 'WARM LEAD', 'COLD LEAD'].includes(interest);
-    }).length;
+    // Admission stats
+    const admissionYes = leads.filter(l => l.admissionYesNo === 'Yes').length;
+    const meetingYes = leads.filter(l => l.clientMeetingFixed === 'Yes').length;
 
     // Status breakdown
     const statusBreakdown = {};
@@ -128,13 +134,6 @@ const MarketingDashboard = () => {
       if (s) interestBreakdown[s] = (interestBreakdown[s] || 0) + 1;
     });
 
-    // Course breakdown
-    const courseBreakdown = {};
-    leads.forEach(l => {
-      const s = (l.course || '').trim();
-      if (s) courseBreakdown[s] = (courseBreakdown[s] || 0) + 1;
-    });
-
     // Source breakdown
     const sourceBreakdown = {};
     leads.forEach(l => {
@@ -147,18 +146,16 @@ const MarketingDashboard = () => {
     for (let i = 6; i >= 0; i--) {
       const day = new Date(now);
       day.setDate(day.getDate() - i);
-      const dayStr = day.toISOString().split('T')[0];
-      const count = leads.filter(l => {
-        const cd = new Date(l.createdAt).toISOString().split('T')[0];
-        return cd === dayStr;
+      const dayStr = new Intl.DateTimeFormat('en-CA').format(day);
+      const count = myLeads.filter(l => {
+        if (!l.createdAt) return false;
+        try {
+          const cd = new Intl.DateTimeFormat('en-CA').format(new Date(l.createdAt));
+          return cd === dayStr;
+        } catch (e) { return false; }
       }).length;
       weeklyTrend.push({ date: dayStr, label: day.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }), count });
     }
-
-    // Weekly stats calculations
-    const weeklyTotal = weeklyTrend.reduce((sum, d) => sum + d.count, 0);
-    const weeklyAvg = (weeklyTotal / 7).toFixed(1);
-    const weeklyPeak = weeklyTrend.reduce((maxDay, d) => d.count > maxDay.count ? d : maxDay, { label: 'None', count: 0 });
 
     // Recent leads (last 5)
     const recentLeads = [...leads]
@@ -166,10 +163,10 @@ const MarketingDashboard = () => {
       .slice(0, 8);
 
     return {
-      total, newLeads24h, mtdLeads, genuineLeads,
-      statusBreakdown, interestBreakdown, sourceBreakdown, courseBreakdown,
-      weeklyTrend, recentLeads,
-      weeklyTotal, weeklyAvg, weeklyPeak
+      total, newLeads24h, mtdLeads, converted, lost, followUpPending,
+      conversionRate, admissionYes, meetingYes,
+      statusBreakdown, interestBreakdown, sourceBreakdown,
+      weeklyTrend, recentLeads
     };
   }, [leads]);
 
@@ -186,7 +183,7 @@ const MarketingDashboard = () => {
             Access <span className="text-red-500">Restricted</span>
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
-            This Marketing Dashboard is reserved for authorized departments only.
+            This Lead Dashboard is reserved for authorized departments only.
           </p>
           <button onClick={() => window.location.href = '/dashboard'}
             className="w-full py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs uppercase rounded-xl transition-all cursor-pointer">
@@ -202,7 +199,7 @@ const MarketingDashboard = () => {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center">
         <Loader2 className="animate-spin text-indigo-500 mb-4" size={40} />
-        <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">Loading Marketing Dashboard...</p>
+        <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">Loading Lead Dashboard...</p>
       </div>
     );
   }
@@ -220,13 +217,13 @@ const MarketingDashboard = () => {
             <div>
               <div className="flex items-center gap-2 mb-0.5">
                 <span className="px-2 py-0.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[8px] font-black uppercase tracking-wider rounded-md">
-                  Marketing Analytics
+                  Telecaller Analytics
                 </span>
                 <span className="w-1.5 h-1.5 bg-lime-500 rounded-full animate-pulse" />
                 <span className="text-[9px] text-lime-500 font-bold uppercase">Live</span>
               </div>
               <h1 className="text-2xl lg:text-3xl font-black tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-                Marketing Dashboard
+                Lead Dashboard
               </h1>
             </div>
           </div>
@@ -237,7 +234,7 @@ const MarketingDashboard = () => {
               <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
               Refresh
             </button>
-            <button onClick={() => window.location.href = '/leads'}
+            <button onClick={() => window.location.href = '/leads-telecaller'}
               className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-lg shadow-indigo-500/20 transition-all cursor-pointer">
               Manage Leads
               <ChevronRight size={14} />
@@ -248,10 +245,13 @@ const MarketingDashboard = () => {
         {analytics && (
           <>
             {/* ─── KPI Cards ─── */}
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
               <KpiCard icon={<Target size={20} />} label="Total Leads" value={analytics.total} color="indigo" />
-              <KpiCard icon={<Award size={20} />} label="Genuine Leads" value={analytics.genuineLeads} color="violet" />
               <KpiCard icon={<Zap size={20} />} label="New (24h)" value={analytics.newLeads24h} color="cyan" />
+              <KpiCard icon={<Clock size={20} />} label="Follow-Up" value={analytics.followUpPending} color="amber" />
+              <KpiCard icon={<CheckCircle2 size={20} />} label="Converted" value={analytics.converted} sub={`${analytics.conversionRate}%`} color="emerald" />
+              <KpiCard icon={<Award size={20} />} label="Admissions" value={analytics.admissionYes} color="violet" />
+              <KpiCard icon={<Eye size={20} />} label="Meetings Fixed" value={analytics.meetingYes} color="sky" />
             </div>
 
             {/* ─── Main Content Grid ─── */}
@@ -295,78 +295,30 @@ const MarketingDashboard = () => {
 
               {/* ─── Weekly Trend (1 col) ─── */}
               <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl p-6 shadow-sm">
-                <div className="flex justify-between items-center mb-5">
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                    <span className="w-1 h-5 bg-lime-500 rounded-full" />
-                    Leads This Week
-                  </h3>
-                  <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-850 px-2.5 py-1 rounded-full border border-slate-100 dark:border-slate-800">
-                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-300">Active Week</span>
-                  </div>
-                </div>
-
-                <div className="relative h-44 mt-4">
-                  {/* Grid Lines */}
-                  <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
-                    {[0, 1, 2, 3, 4].map((gridIndex) => (
-                      <div 
-                        key={gridIndex} 
-                        className="w-full border-t border-dashed border-slate-100 dark:border-slate-800/80 h-0" 
-                      />
-                    ))}
-                  </div>
-
-                  {/* Bars Container */}
-                  <div className="absolute inset-0 flex items-end justify-between gap-1.5 pt-2">
-                    {analytics.weeklyTrend.map((day, idx) => {
-                      const max = Math.max(...analytics.weeklyTrend.map(d => d.count), 1);
-                      const hPct = Math.round((day.count / max) * 100);
-                      return (
-                        <div key={idx} className="flex flex-col items-center flex-1 h-full justify-end group relative z-10">
-                          {/* Rich Tooltip */}
-                          <div className="absolute bottom-[105%] opacity-0 group-hover:opacity-100 bg-slate-900/90 dark:bg-white/95 backdrop-blur-sm text-white dark:text-slate-950 text-[10px] font-bold px-3 py-1.5 rounded-xl shadow-xl transition-all duration-300 pointer-events-none transform translate-y-1 group-hover:translate-y-0 whitespace-nowrap z-20 flex flex-col items-center gap-0.5 border border-slate-700/30 dark:border-slate-200/50">
-                            <span className="text-[8px] text-slate-400 dark:text-slate-500 font-semibold">{day.label}</span>
-                            <span className="text-xs font-extrabold">{day.count} leads</span>
-                          </div>
-
-                          {/* Interactive Bar */}
-                          <motion.div
-                            initial={{ height: 0 }}
-                            animate={{ height: `${Math.max(hPct, 5)}%` }}
-                            transition={{ duration: 0.6, delay: idx * 0.05, type: "spring", stiffness: 80 }}
-                            className="w-full max-w-[28px] bg-gradient-to-t from-lime-650 via-lime-500 to-lime-400 group-hover:from-lime-500 group-hover:via-lime-400 group-hover:to-lime-300 rounded-t-xl transition-all duration-300 min-h-[6px] cursor-pointer shadow-md shadow-lime-500/10 group-hover:shadow-lg group-hover:shadow-lime-500/20 relative"
-                          >
-                            {/* Glowing dot on top of bar */}
-                            {day.count > 0 && (
-                              <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-lime-300 dark:bg-lime-100 shadow-[0_0_8px_#84cc16] animate-pulse" />
-                            )}
-                          </motion.div>
-                          <span className="text-[8px] text-slate-400 dark:text-slate-550 font-bold mt-2 tracking-tight">{day.label}</span>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 mb-5 flex items-center gap-2">
+                  <span className="w-1 h-5 bg-cyan-500 rounded-full" />
+                  Leads This Week
+                </h3>
+                <div className="flex items-end justify-between h-44 pt-4 gap-1">
+                  {analytics.weeklyTrend.map((day, idx) => {
+                    const max = Math.max(...analytics.weeklyTrend.map(d => d.count), 1);
+                    const hPct = Math.round((day.count / max) * 100);
+                    return (
+                      <div key={idx} className="flex flex-col items-center flex-1 group relative">
+                        <div className="absolute bottom-[105%] opacity-0 group-hover:opacity-100 bg-slate-800 dark:bg-white text-white dark:text-slate-900 text-[9px] font-bold px-2 py-1 rounded-lg shadow-lg transition duration-200 pointer-events-none whitespace-nowrap z-10">
+                          {day.count} leads
                         </div>
-                      );
-                    })}
-                  </div>
+                        <motion.div
+                          initial={{ height: 0 }}
+                          animate={{ height: `${Math.max(hPct, 4)}%` }}
+                          transition={{ duration: 0.6, delay: idx * 0.08 }}
+                          className="w-full max-w-[28px] bg-gradient-to-t from-indigo-500 to-purple-400 group-hover:from-indigo-400 group-hover:to-purple-300 rounded-t-lg transition-colors min-h-[4px] cursor-pointer"
+                        />
+                        <span className="text-[8px] text-slate-400 font-bold mt-2 tracking-tight">{day.label}</span>
+                      </div>
+                    );
+                  })}
                 </div>
-
-                {/* Stats Summary Rows */}
-                <div className="grid grid-cols-3 gap-2 mt-5 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800/60">
-                  <div className="text-center">
-                    <span className="block text-[8px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-black">Weekly Total</span>
-                    <span className="text-xs font-black text-slate-800 dark:text-white mt-0.5 block">{analytics.weeklyTotal}</span>
-                  </div>
-                  <div className="text-center border-x border-slate-200/50 dark:border-slate-800/50">
-                    <span className="block text-[8px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-black">Daily Avg</span>
-                    <span className="text-xs font-black text-slate-800 dark:text-white mt-0.5 block">{analytics.weeklyAvg}</span>
-                  </div>
-                  <div className="text-center">
-                    <span className="block text-[8px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-black">Peak Day</span>
-                    <span className="text-[10px] font-black text-lime-600 dark:text-lime-400 mt-0.5 block truncate" title={`${analytics.weeklyPeak.label}: ${analytics.weeklyPeak.count}`}>
-                      {analytics.weeklyPeak.count} ({analytics.weeklyPeak.label})
-                    </span>
-                  </div>
-                </div>
-
                 <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                   <span className="text-[10px] text-slate-400 font-semibold">MTD Total</span>
                   <span className="text-sm font-black text-indigo-500 font-mono">{analytics.mtdLeads}</span>
@@ -374,17 +326,17 @@ const MarketingDashboard = () => {
               </div>
             </div>
 
-            {/* ─── Course Interest + Course + Source ─── */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* ─── Course Interest + Source ─── */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
               {/* Course Interest Breakdown */}
               <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl p-6 shadow-sm">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 mb-5 flex items-center gap-2">
                   <span className="w-1 h-5 bg-emerald-500 rounded-full" />
-                  Category Temperature
+                  Course Interest Breakdown
                 </h3>
                 {Object.keys(analytics.interestBreakdown).length === 0 ? (
-                  <p className="text-xs text-slate-400 text-center py-10">No lead categories yet.</p>
+                  <p className="text-xs text-slate-400 text-center py-10">No course interest data yet.</p>
                 ) : (
                   <div className="space-y-3">
                     {Object.entries(analytics.interestBreakdown)
@@ -409,46 +361,6 @@ const MarketingDashboard = () => {
                                 animate={{ width: `${Math.max(pct, 3)}%` }}
                                 transition={{ duration: 0.7 }}
                                 className={`h-full bg-gradient-to-r ${colors.bar} rounded-lg`}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                )}
-              </div>
-
-              {/* Course Distribution */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl p-6 shadow-sm">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 mb-5 flex items-center gap-2">
-                  <span className="w-1 h-5 bg-indigo-500 rounded-full" />
-                  Course Distribution
-                </h3>
-                {Object.keys(analytics.courseBreakdown).length === 0 ? (
-                  <p className="text-xs text-slate-400 text-center py-10">No course statistics yet.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {Object.entries(analytics.courseBreakdown)
-                      .sort((a, b) => b[1] - a[1])
-                      .map(([course, count]) => {
-                        const max = Math.max(...Object.values(analytics.courseBreakdown), 1);
-                        const pct = Math.round((count / max) * 100);
-                        const totalPct = analytics.total > 0 ? Math.round((count / analytics.total) * 100) : 0;
-                        return (
-                          <div key={course}>
-                            <div className="flex items-center justify-between text-xs mb-1 px-1">
-                              <span className="font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
-                                <span className="w-2 h-2 rounded-full bg-indigo-500" />
-                                {course}
-                              </span>
-                              <span className="font-mono font-bold text-slate-800 dark:text-white">{count} <span className="text-slate-400 font-normal">({totalPct}%)</span></span>
-                            </div>
-                            <div className="w-full bg-slate-100 dark:bg-slate-800 h-5 rounded-lg overflow-hidden">
-                              <motion.div
-                                initial={{ width: 0 }}
-                                animate={{ width: `${Math.max(pct, 3)}%` }}
-                                transition={{ duration: 0.7 }}
-                                className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-lg"
                               />
                             </div>
                           </div>
@@ -507,7 +419,7 @@ const MarketingDashboard = () => {
                   <span className="w-1 h-5 bg-amber-500 rounded-full" />
                   Recent Leads
                 </h3>
-                <button onClick={() => window.location.href = '/leads'}
+                <button onClick={() => window.location.href = '/leads-telecaller'}
                   className="text-[10px] text-indigo-500 font-bold uppercase tracking-wider hover:text-indigo-400 cursor-pointer flex items-center gap-1 transition">
                   View All <ChevronRight size={12} />
                 </button>
@@ -520,7 +432,6 @@ const MarketingDashboard = () => {
                       <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Lead Name</th>
                       <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Contact</th>
                       <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Course Interest</th>
-                      <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Course</th>
                       <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Source</th>
                       <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</th>
                       <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Created</th>
@@ -552,9 +463,6 @@ const MarketingDashboard = () => {
                                 {interest}
                               </span>
                             ) : <span className="text-[10px] text-slate-400 italic">—</span>}
-                          </td>
-                          <td className="px-5 py-3.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
-                            {lead.course || <span className="text-[10px] text-slate-400 italic">—</span>}
                           </td>
                           <td className="px-5 py-3.5 text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase">{lead.source || '—'}</td>
                           <td className="px-5 py-3.5">
@@ -621,4 +529,4 @@ const KpiCard = ({ icon, label, value, sub, color }) => {
   );
 };
 
-export default MarketingDashboard;
+export default CounselorDashboard;

@@ -11,6 +11,7 @@ const graphicDesignerReportSchema = new mongoose.Schema({
     required: true
   },
   basicDetails: {
+    employeeName: { type: String },
     employeeId: { type: String },
     designation: { type: String, default: 'Graphic Designer' },
     reportingTo: { type: String, default: 'CMO' },

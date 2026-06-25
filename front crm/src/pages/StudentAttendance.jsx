@@ -187,7 +187,41 @@ const StudentAttendance = () => {
       return;
     }
 
-    const finalPayload = { ...formData, salary: 1, role_id: STUDENT_ROLE_ID };
+    // ID Document Number validation
+    const idType = formData.identityType;
+    const idNum = (formData.identityNumber || '').trim();
+
+    if (!idNum) {
+      showToast('ID Document Number is required.', 'warning');
+      setIsAddingStudent(false);
+      return;
+    }
+
+    let cleanIdentityNumber = idNum;
+    if (idType === 'aadhaar') {
+      const cleanAadhaar = idNum.replace(/[\s-]/g, '');
+      if (!/^\d{12}$/.test(cleanAadhaar)) {
+        showToast('Aadhaar Card number must be exactly 12 digits.', 'warning');
+        setIsAddingStudent(false);
+        return;
+      }
+      cleanIdentityNumber = cleanAadhaar;
+    } else if (idType === 'pancard') {
+      const cleanPAN = idNum.toUpperCase();
+      if (!/^[A-Z]{5}\d{4}[A-Z]{1}$/.test(cleanPAN)) {
+        showToast('Invalid PAN Card format. E.g. ABCDE1234F', 'warning');
+        setIsAddingStudent(false);
+        return;
+      }
+      cleanIdentityNumber = cleanPAN;
+    }
+
+    const finalPayload = { 
+      ...formData, 
+      identityNumber: cleanIdentityNumber,
+      salary: 1, 
+      role_id: STUDENT_ROLE_ID 
+    };
 
     try {
       const response = await fetch(`${API_BASE}/auth/signup`, {
@@ -204,11 +238,19 @@ const StudentAttendance = () => {
           designation_id: '10', joining_date: new Date().toISOString().split('T')[0],
           address: '', identityType: 'aadhaar', identityNumber: '', profile_image: ''
         });
+        showToast("Scholar enrolled successfully!", "success");
       } else {
-        showToast("Enrollment failed. Please check registration fields.", 'error');
+        let errMsg = "Enrollment failed.";
+        try {
+          const result = await response.json();
+          errMsg = result.detail || result.message || result.error || "Please check registration fields.";
+        } catch (parseErr) {
+          errMsg = response.statusText || "Please check registration fields.";
+        }
+        showToast(errMsg, 'error');
       }
     } catch (error) {
-      showToast("Database connection timeout.", 'error');
+      showToast(error.message || "Database connection timeout.", 'error');
     } finally {
       setIsAddingStudent(false);
     }
@@ -316,10 +358,9 @@ const StudentAttendance = () => {
 
         <div className="flex flex-col lg:flex-row gap-4 mb-10">
           <div className="relative flex-1 group">
-            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={18} />
             <input 
               placeholder="Search active page student profiles..." 
-              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 pl-14 rounded-2xl text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500/40 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium shadow-sm"
+              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500/40 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium shadow-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -558,7 +599,15 @@ const StudentAttendance = () => {
                     </div>
                   </div>
 
-                  <FormInput label="ID Document Number" name="identityNumber" icon={<CreditCard size={14}/>} value={formData.identityNumber} onChange={(e) => setFormData({...formData, identityNumber: e.target.value})} />
+                  <div className="space-y-1">
+                    <FormInput label="ID Document Number" name="identityNumber" icon={<CreditCard size={14}/>} value={formData.identityNumber} onChange={(e) => setFormData({...formData, identityNumber: e.target.value})} />
+                    {formData.identityNumber && formData.identityType === 'aadhaar' && !/^\d{12}$/.test(formData.identityNumber.replace(/[\s-]/g, '')) && (
+                      <p className="text-[10px] text-red-500 mt-1 ml-2">Aadhaar must be exactly 12 digits.</p>
+                    )}
+                    {formData.identityNumber && formData.identityType === 'pancard' && !/^[A-Za-z]{5}\d{4}[A-Za-z]{1}$/.test(formData.identityNumber) && (
+                      <p className="text-[10px] text-red-500 mt-1 ml-2">Invalid PAN format (E.g. ABCDE1234F).</p>
+                    )}
+                  </div>
 
                   <div className="lg:col-span-3 mt-6">
                     <button 
