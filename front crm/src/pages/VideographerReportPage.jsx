@@ -8,6 +8,7 @@ import {
 import { useToast } from '../components/ToastProvider';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { fetchCompletedTasks } from '../utils/taskUtils';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -289,9 +290,39 @@ const VideographerReportPage = () => {
         setApproval(report.approval || {});
       } else {
         initializeBlankReport(userId, dateStr);
+        // Auto-fetch completed tasks for new blank reports
+        try {
+          const completedTasks = await fetchCompletedTasks(userId, dateStr);
+          if (completedTasks && completedTasks.length > 0) {
+            const mappedTasks = completedTasks.map(t => ({ taskProjectName: t.title, descriptionDetails: 'Auto-fetched', startTime: '', endTime: '', status: 'Completed', fileLink: '' }));
+            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' });
+            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' });
+            setTaskLog(mappedTasks);
+          } else {
+            setTaskLog(prev => [...prev, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' }, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' }]);
+          }
+        } catch(e) {
+          console.error("Error auto-fetching tasks:", e);
+        }
+
       }
     } catch (err) {
       initializeBlankReport(userId, dateStr);
+        // Auto-fetch completed tasks for new blank reports
+        try {
+          const completedTasks = await fetchCompletedTasks(userId, dateStr);
+          if (completedTasks && completedTasks.length > 0) {
+            const mappedTasks = completedTasks.map(t => ({ taskProjectName: t.title, descriptionDetails: 'Auto-fetched', startTime: '', endTime: '', status: 'Completed', fileLink: '' }));
+            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' });
+            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' });
+            setTaskLog(mappedTasks);
+          } else {
+            setTaskLog(prev => [...prev, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' }, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' }]);
+          }
+        } catch(e) {
+          console.error("Error auto-fetching tasks:", e);
+        }
+
     } finally {
       setLoading(false);
     }

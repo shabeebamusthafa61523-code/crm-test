@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 
 const menuItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', allowedRoles: ['1', '2', 'hr', 'admin' ] 
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', allowedRoles: ['1', '2', 'hr', 'admin' ], allowedDepartments: ['6a3caed51194353cbc8a3686'] 
  },
   {
     icon: BarChart3,
@@ -39,7 +39,8 @@ const menuItems = [
     icon: Users, 
     label: 'Users', 
     path: '/users', 
-    allowedRoles: ['1', '2', 'hr', 'admin'] 
+    allowedRoles: ['1', '2', 'hr', 'admin'],
+    allowedDepartments: ['6a3caed51194353cbc8a3686']
   },
   { 
     icon: TrendingUp, 
@@ -59,14 +60,21 @@ const menuItems = [
     icon: TrendingUp, 
     label: 'Lead Counselor', 
     path: '/lead-counselor',
-    // allowedRoles: ['1', '2', 'hr', 'admin'],
-    allowedDepartments: ['6a27f394558c220a47fff02e']
+    allowedDesignations: ['6a2f91472df21dc234018cab'], // allowedRoles: ['1', '2', 'hr', 'admin'],
+    // allowedDepartments: ['6a27f394558c220a47fff02e']
   },
   {
     icon: BarChart3,
     label: 'Dev Dashboard',
     path: '/developer-dashboard',
-    allowedDesignations: ['6a1e8e2d01a0dae8b2f3b18c'],
+    allowedDepartments: ['6a1d5d3ea35c97490f38b383'],
+    // allowedRoles: ['1', '2', 'hr', 'admin']
+  },
+  {
+    icon: BarChart3,
+    label: 'GD Dashboard',
+    path: '/graphic-designer-dashboard',
+    allowedDesignations: ['6a1e8e6e01a0dae8b2f3b18d'],
     // allowedRoles: ['1', '2', 'hr', 'admin']
   },
   {
@@ -97,12 +105,18 @@ const menuItems = [
     allowedDesignations: ['6a27939af292348deb7d0495'],
     // allowedRoles: ['1', '2', 'hr', 'admin']
   },
+  // {
+  //   icon: BarChart3,
+  //   label: 'Counselor Dashboard',
+  //   path: '/counselor-dashboard',
+  //   allowedDesignations: ['6a27939af292348deb7d0495'],
+  //   // allowedRoles: ['1', '2', 'hr', 'admin']
+  // },
   {
-    icon: BarChart3,
-    label: 'Counselor Dashboard',
-    path: '/counselor-dashboard',
-    allowedDesignations: ['6a27939af292348deb7d0495'],
-    // allowedRoles: ['1', '2', 'hr', 'admin']
+    icon: LayoutDashboard,
+    label: 'Video Dashboard',
+    path: '/videographer-dashboard',
+    allowedDesignations: ['6a2f912c2df21dc234018caa'],
   },
   {
     icon: FileText,
@@ -141,9 +155,9 @@ const menuItems = [
   },
   { icon: UserCheck, label: 'Attendance', path: '/attendance', excludeRoles: ['1', '2', 'hr', 'admin'] },
   { icon: ListCheck, label: 'To-Do', path: '/todo' },
-  { icon: Users, label: 'Student Attendance', path: '/student-attendance', allowedRoles: ['1', '2', 'hr', 'admin'] },
-  { icon: Building, label: 'Departments', path: '/departments', allowedRoles: ['1', '2', 'hr', 'admin'] },
-  { icon: Users, label: 'Employee Reports', path: '/employee-reports', allowedRoles: ['1', '2', 'hr', 'admin'] },
+  { icon: Users, label: 'Student Attendance', path: '/student-attendance', allowedRoles: ['1', '2', 'hr', 'admin'], allowedDepartments: ['6a3caed51194353cbc8a3686'] },
+  { icon: Building, label: 'Departments', path: '/departments', allowedRoles: ['1', '2', 'hr', 'admin'], allowedDepartments: ['6a3caed51194353cbc8a3686'] },
+  { icon: Users, label: 'Employee Reports', path: '/employee-reports', allowedRoles: ['1', '2', 'hr', 'admin'], allowedDepartments: ['6a3caed51194353cbc8a3686'] },
 ];
 
 

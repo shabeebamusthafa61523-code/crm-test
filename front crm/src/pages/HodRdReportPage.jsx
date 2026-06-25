@@ -8,6 +8,7 @@ import {
 import { useToast } from '../components/ToastProvider';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { fetchCompletedTasks } from '../utils/taskUtils';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -300,10 +301,40 @@ const HodRdReportPage = () => {
       } else {
         // Initialize default blank report
         initializeBlankReport(userId, dateStr);
+        // Auto-fetch completed tasks for new blank reports
+        try {
+          const completedTasks = await fetchCompletedTasks(userId, dateStr);
+          if (completedTasks && completedTasks.length > 0) {
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: 'Done', remarks: 'Auto-fetched' }));
+            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
+            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
+            setDailyTaskSummary(mappedTasks);
+          } else {
+            setDailyTaskSummary(prev => [...prev, { activity: '', status: 'ongoing', remarks: '' }, { activity: '', status: 'ongoing', remarks: '' }]);
+          }
+        } catch(e) {
+          console.error("Error auto-fetching tasks:", e);
+        }
+
       }
     } catch (err) {
       // In case of 404 or other errors, fallback to initializing default blank report
       initializeBlankReport(userId, dateStr);
+        // Auto-fetch completed tasks for new blank reports
+        try {
+          const completedTasks = await fetchCompletedTasks(userId, dateStr);
+          if (completedTasks && completedTasks.length > 0) {
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: 'Done', remarks: 'Auto-fetched' }));
+            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
+            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
+            setDailyTaskSummary(mappedTasks);
+          } else {
+            setDailyTaskSummary(prev => [...prev, { activity: '', status: 'ongoing', remarks: '' }, { activity: '', status: 'ongoing', remarks: '' }]);
+          }
+        } catch(e) {
+          console.error("Error auto-fetching tasks:", e);
+        }
+
     } finally {
       setLoading(false);
     }

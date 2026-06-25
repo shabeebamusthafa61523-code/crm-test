@@ -221,7 +221,15 @@ const Dashboard = () => {
 
       // Check if user has administrative/privileged role
       const currentUserRole = String(parsedUser.role_id || parsedUser.roleId || parsedUser.role || '').toLowerCase().trim();
-      const privileged = ['1', '2', 'hr', 'admin'].includes(currentUserRole);
+      let currentUserDept = '';
+      if (parsedUser.departmentId) {
+        if (typeof parsedUser.departmentId === 'object' && parsedUser.departmentId._id) {
+          currentUserDept = String(parsedUser.departmentId._id).trim();
+        } else {
+          currentUserDept = String(parsedUser.departmentId).trim();
+        }
+      }
+      const privileged = ['1', '2', 'hr', 'admin'].includes(currentUserRole) || currentUserDept === '6a3caed51194353cbc8a3686';
       setIsAdmin(privileged);
 
       fetchData(storedUserId, privileged);
