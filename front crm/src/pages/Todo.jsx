@@ -207,7 +207,11 @@ console.log("HEADERS:", getAuthHeaders());
                             <div 
                               ref={p.innerRef} {...p.draggableProps} {...p.dragHandleProps} 
                               onClick={() => setSelectedTask(task)} 
+
                               className={`group relative p-5 pl-7 rounded-[1.75rem] bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border ${isUrgent ? 'border-rose-500 bg-rose-50/50 dark:bg-rose-900/20' : 'border-slate-200/50 dark:border-slate-800/50'} shadow-sm hover:shadow-lg dark:hover:shadow-indigo-500/[0.02] transition-all duration-300 cursor-grab active:cursor-grabbing hover:-translate-y-[2px] ${s.isDragging ? 'rotate-[1.5deg] scale-[1.02] shadow-2xl z-50 bg-white/95 dark:bg-slate-900/95 border-indigo-500/40 dark:border-indigo-500/50 ring-2 ring-indigo-500/10' : ''}`}
+
+                              className={`group relative p-5 pl-7 rounded-[1.75rem] bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/50 shadow-sm hover:shadow-lg dark:hover:shadow-indigo-500/[0.02] transition-all duration-300 cursor-grab active:cursor-grabbing hover:-translate-y-[2px] ${s.isDragging ? 'rotate-[1.5deg] scale-[1.02] shadow-2xl z-50 bg-white/95 dark:bg-slate-900/95 border-indigo-500/40 dark:border-indigo-500/50 ring-2 ring-indigo-500/10' : ''}`}
+
                             >
                               {/* Left Accent Bar */}
                               <div className={`absolute left-0 top-6 bottom-6 w-[3px] rounded-r-full transition-all duration-300 group-hover:top-4 group-hover:bottom-4 ${COLUMN_META[statusKey].color}`} />
@@ -218,12 +222,16 @@ console.log("HEADERS:", getAuthHeaders());
                                   {designations.find(d => String(d.id) === String(task.designation_id))?.name || "General"}
                                 </span>
                               </div>
+
                               <h3 className="text-slate-800 dark:text-slate-200 font-bold text-[14px] leading-snug mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-300">{task.title}</h3>
                               {task.dueDate && (
                                 <div className={`text-[10px] font-bold mb-4 ${isUrgent ? 'text-rose-500' : 'text-slate-500'}`}>
                                   Due: {new Date(task.dueDate).toLocaleDateString()}
                                 </div>
                               )}
+
+                              <h3 className="text-slate-800 dark:text-slate-200 font-bold text-[14px] leading-snug mb-4 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-300">{task.title}</h3>
+
                               
                               <div className="flex items-center justify-between pt-4 border-t border-slate-100/60 dark:border-slate-850/50">
                                 <div className="flex items-center gap-2">
@@ -291,7 +299,11 @@ console.log("HEADERS:", getAuthHeaders());
 // --- CREATE MODAL COMPONENT ---
 const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) => {
   const { showToast } = useToast();
+
   const [form, setForm] = useState({ title: '', description: '', assigned_to: '', designation_id: '', image: null, dueDate: '' });
+
+  const [form, setForm] = useState({ title: '', description: '', assigned_to: '', designation_id: '', image: null });
+
   const [preview, setPreview] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 

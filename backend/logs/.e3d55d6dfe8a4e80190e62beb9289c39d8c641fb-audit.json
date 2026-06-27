@@ -86,11 +86,11 @@
             "hash": "38c4736d7d62767b735cb7a291a37317a977772d57a51e59ed304c32643a581a"
         },
         {
-<<<<<<< HEAD
+
             "date": 1782378997441,
             "name": "logs\\audit-2026-06-25.log",
             "hash": "1925438a52f9e79b74ed1163a34f42c2e45ca150dcd53a1a253a5bb777335abc"
-=======
+        },
             "date": 1782111394335,
             "name": "logs\\audit-2026-06-22.log",
             "hash": "a97c8885beec5e247602a4f20ed0065322e5f5a24ebb1f93c4ae3f66b6615454"
@@ -109,7 +109,7 @@
             "date": 1782361070571,
             "name": "logs\\audit-2026-06-25.log",
             "hash": "cc8fb1d49b27c63233f8da6ffdf70c1f24681159e2b2c60b57e7b57b1b908a53"
->>>>>>> 9e0fc9b8247226b6082f723090da2f9705f75398
+
         }
     ],
     "hashType": "sha256"

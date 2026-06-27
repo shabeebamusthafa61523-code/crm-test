@@ -617,11 +617,13 @@ export default function HrDashboard() {
                                 <div className="flex justify-between items-start gap-4">
                                   <div>
                                     <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-100">{task.title || 'Untitled Task'}</h4>
+
                                     {task.dueDate && (
                                       <p className={`text-[10px] font-bold mt-1 ${(new Date(task.dueDate) - new Date()) <= 24 * 60 * 60 * 1000 && task.status !== 'done' ? 'text-rose-500' : 'text-slate-500'}`}>
                                         Due: {new Date(task.dueDate).toLocaleDateString()}
                                       </p>
                                     )}
+
                                     {task.description && (
                                       <p className="text-xs text-slate-500 mt-1 line-clamp-2">{task.description}</p>
                                     )}
