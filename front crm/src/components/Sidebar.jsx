@@ -185,6 +185,7 @@ const PortalTooltip = ({ children }) => {
 const Sidebar = () => {
   const location = useLocation();
   const activePath = location.pathname;
+  const [isHovered, setIsHovered] = useState(false);
 
 
   const getVisibleMenuItems = () => {
@@ -243,20 +244,33 @@ const Sidebar = () => {
   const visibleMenuItems = getVisibleMenuItems();
 
   return (
-    <motion.aside
-      className={`
-        mt-18 fixed z-50 transition-all duration-500
-        /* Mobile: Bottom Center Dock */
-        bottom-6 left-1/2 -translate-x-1/2 flex-row py-3 px-6 gap-3 rounded-full max-w-[92vw]
-        /* Desktop: Left Center Dock */
-        lg:bottom-auto lg:top-1/2 lg:left-8 lg:-translate-y-1/2 lg:-translate-x-0 lg:flex-col lg:py-8 lg:px-4 lg:gap-5 lg:rounded-[2.5rem] lg:max-h-[82vh]
-        
-        flex items-center bg-white/80 dark:bg-slate-900/80 border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-3xl shadow-lg
-      `}
-      initial={{ x: -100, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      transition={{ type: 'spring', damping: 25, stiffness: 120 }}
+    <div
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="fixed lg:left-0 lg:top-0 lg:bottom-0 lg:w-28 z-50 flex items-center justify-start pointer-events-none max-lg:contents"
     >
+      <motion.aside
+        className={`
+          pointer-events-auto
+          mt-18 fixed z-50
+          /* Mobile: Bottom Center Dock */
+          bottom-6 left-1/2 -translate-x-1/2 flex-row py-3 px-6 gap-3 rounded-full max-w-[92vw]
+          /* Desktop: Left Center Dock */
+          lg:bottom-auto lg:top-1/2 lg:left-4 lg:-translate-y-1/2 lg:flex-col lg:py-8 lg:px-4 lg:gap-5 lg:rounded-[2.5rem] lg:max-h-[82vh]
+          
+          flex items-center bg-white/80 dark:bg-slate-900/80 border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-3xl shadow-lg
+          
+          /* Desktop Hover Slide Effect */
+          lg:transition-all lg:duration-300 lg:ease-out
+          ${isHovered 
+            ? 'lg:translate-x-0 lg:opacity-100 lg:scale-100 lg:shadow-2xl' 
+            : 'lg:-translate-x-[75%] lg:opacity-20 lg:scale-95 lg:shadow-none'
+          }
+        `}
+        initial={{ x: -100, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 120 }}
+      >
 
       <div className="flex lg:flex-col gap-3 lg:gap-4 overflow-x-auto lg:overflow-y-auto max-w-full lg:max-h-full scrollbar-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-0.5 px-0.5">
 
@@ -288,7 +302,8 @@ const Sidebar = () => {
           }}
         />
       </div>
-    </motion.aside>
+      </motion.aside>
+    </div>
   );
 };
 
