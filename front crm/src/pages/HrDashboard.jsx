@@ -8,6 +8,22 @@ import { useNavigate } from 'react-router-dom';
 
 const API_URL = import.meta.env?.VITE_API_URL || import.meta.env?.REACT_APP_API_URL || 'http://localhost:5000/api/v1';
 
+const formatTime = (timeString) => {
+  if (!timeString) return 'N/A';
+  return new Date(timeString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+
+const getWorkHours = (record) => {
+  if (!record || !record.check_in_time) return '0.00 hrs';
+  
+  const start = new Date(record.check_in_time);
+  const end = record.check_out_time ? new Date(record.check_out_time) : new Date();
+  
+  const diffMs = end - start;
+  const diffHrs = Math.max(0, diffMs / (1000 * 60 * 60));
+  return `${diffHrs.toFixed(2)} hrs`;
+};
+
 // Custom SVG Doughnut Chart Component
 const DoughnutChart = ({ data }) => {
   const total = data.reduce((sum, item) => sum + item.value, 0);
@@ -552,6 +568,8 @@ export default function HrDashboard() {
                     return assignedId === selectedUser._id;
                   });
 
+                  const todayRecord = attendance.find(a => a.user_id.toString() === selectedUser._id.toString());
+
                   const counts = { pending: 0, current: 0, preview: 0, done: 0 };
                   userTasks.forEach(t => {
                     if (counts[t.status] !== undefined) counts[t.status]++;
@@ -570,6 +588,35 @@ export default function HrDashboard() {
 
                   return (
                     <div className="space-y-8">
+                      {/* Attendance Card */}
+                      {todayRecord ? (
+                        <div className="p-5 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 grid grid-cols-3 gap-4">
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Checked In</span>
+                            <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{formatTime(todayRecord.check_in_time)}</span>
+                          </div>
+                          <div className="space-y-1 border-x border-slate-200/50 dark:border-slate-800/50 px-4">
+                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Checked Out</span>
+                            <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                              {todayRecord.check_out_time ? formatTime(todayRecord.check_out_time) : (
+                                <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Active
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                          <div className="space-y-1 pl-2">
+                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Work Hours</span>
+                            <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{getWorkHours(todayRecord)}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                          <AlertCircle size={14} className="text-slate-400" />
+                          <span>Staff has not checked in today.</span>
+                        </div>
+                      )}
+
                       {/* Overall Progress */}
                       <div className="flex flex-col md:flex-row items-center gap-8 justify-center">
                         <DoughnutChart data={doughnutData} />

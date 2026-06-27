@@ -95,28 +95,27 @@ const AiReport = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0B1120] p-4 md:p-8 font-sans transition-colors duration-300 relative">
-      <div className="max-w-4xl mx-auto space-y-8 pb-20">
+    <div className="w-full max-w-7xl mx-auto space-y-8 pb-20 relative">
         
         {/* Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
-            <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
-              <Sparkles className="text-indigo-500" size={32} />
+            <h1 className="text-3xl md:text-4xl font-black bg-gradient-to-r from-indigo-600 via-purple-650 to-pink-600 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent tracking-tight flex items-center gap-3">
+              <Sparkles className="text-indigo-500 animate-pulse" size={32} />
               AI Insights
             </h1>
-            <p className="text-slate-500 dark:text-slate-400 font-medium text-sm md:text-base mt-2">
-              Automated smart reports powered by Groq AI
+            <p className="text-slate-500 dark:text-slate-400 font-bold text-xs md:text-sm mt-2 tracking-wider uppercase">
+              Automated intelligence engine • powered by Groq Llama 3
             </p>
           </div>
           <div className="flex items-center gap-4 flex-wrap">
             {/* Department Filter */}
-            <div className="flex items-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 shadow-sm">
-              <Filter size={16} className="text-slate-400 mr-2" />
+            <div className="flex items-center bg-white/80 dark:bg-slate-900/80 border border-slate-200/50 dark:border-slate-800/50 rounded-xl px-3.5 py-2 shadow-sm backdrop-blur-md">
+              <Filter size={15} className="text-indigo-500 mr-2.5" />
               <select 
                 value={selectedDept}
                 onChange={(e) => setSelectedDept(e.target.value)}
-                className="bg-transparent text-sm font-semibold text-slate-700 dark:text-slate-200 outline-none cursor-pointer"
+                className="bg-transparent text-xs font-bold text-slate-700 dark:text-slate-200 outline-none cursor-pointer tracking-wide uppercase"
               >
                 <option value="all">All Departments</option>
                 {departments.map(dept => (
@@ -129,45 +128,45 @@ const AiReport = () => {
             <button
               onClick={handleExportPDF}
               disabled={!reportData || loading}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold text-sm shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-all active:scale-95 disabled:opacity-50"
+              className="flex items-center gap-2 px-4.5 py-2 rounded-xl bg-white/80 dark:bg-slate-900/80 text-slate-700 dark:text-slate-200 border border-slate-200/50 dark:border-slate-800/50 font-bold text-xs shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95 disabled:opacity-50 tracking-wider uppercase cursor-pointer"
             >
-              <Download size={16} />
+              <Download size={15} className="text-slate-500" />
               Export
             </button>
-
+ 
             {/* Regenerate Button */}
             <button
               onClick={() => fetchReport(true)}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-indigo-600 text-white font-semibold text-sm shadow-sm hover:bg-indigo-700 hover:shadow transition-all active:scale-95 disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-xs shadow-md shadow-indigo-500/20 hover:bg-indigo-700 hover:shadow-lg transition-all active:scale-95 disabled:opacity-50 tracking-wider uppercase cursor-pointer"
               disabled={loading}
             >
-              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
               Regenerate
             </button>
           </div>
         </div>
-
+ 
         {/* Tabs */}
-        <div className="flex bg-slate-200/50 dark:bg-slate-800/50 p-1 rounded-xl w-full max-w-sm">
+        <div className="flex bg-slate-100 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-850 p-1 rounded-xl w-full max-w-xs shadow-sm">
           <button
             onClick={() => setActiveTab('daily')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-all ${
+            className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all tracking-wider uppercase ${
               activeTab === 'daily' 
-                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' 
-                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-white shadow-sm border border-slate-200/10' 
+                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'
             }`}
           >
-            Daily Summary
+            Daily
           </button>
           <button
             onClick={() => setActiveTab('monthly')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-all ${
+            className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all tracking-wider uppercase ${
               activeTab === 'monthly' 
-                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' 
-                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-white shadow-sm border border-slate-200/10' 
+                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'
             }`}
           >
-            <Calendar size={16} /> Monthly Report
+            Monthly
           </button>
         </div>
 
@@ -178,15 +177,19 @@ const AiReport = () => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] flex flex-col justify-between"
+              className="p-6 rounded-2xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-xl shadow-xl shadow-slate-100/10 dark:shadow-none flex flex-col justify-between group hover:border-indigo-500/30 transition-all duration-300"
             >
               <div>
-                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Team Sentiment</span>
-                <h3 className="text-xl font-bold text-slate-800 dark:text-white mt-1 flex items-center gap-2">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2">Team Sentiment</span>
+                <h3 className="text-xl font-black text-slate-800 dark:text-white mt-1 flex items-center gap-2.5 tracking-tight">
+                  <span className="flex h-2.5 w-2.5 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-450 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                  </span>
                   {reportStats.teamVibe || '⚡ Active'}
                 </h3>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-4 leading-relaxed">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-4 leading-relaxed font-semibold">
                 AI parsed sentiment based on active tasks and submitted logs.
               </p>
             </motion.div>
@@ -196,16 +199,17 @@ const AiReport = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="p-6 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 dark:border-indigo-500/10 shadow-sm flex flex-col justify-between md:col-span-2"
+              className="p-6 rounded-2xl bg-gradient-to-br from-indigo-50/50 to-purple-50/50 dark:from-indigo-950/20 dark:to-purple-950/20 border border-indigo-100 dark:border-indigo-900/30 shadow-xl backdrop-blur-xl flex flex-col justify-between md:col-span-2 relative overflow-hidden group hover:border-indigo-500/40 transition-all duration-300"
             >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
               <div>
-                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block mb-2">AI Executive Summary</span>
-                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 mt-2 leading-relaxed">
-                  {reportStats.summary || 'Summary generation processing...'}
+                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest block mb-2">AI Executive Summary</span>
+                <p className="text-xs md:text-sm font-semibold text-slate-700 dark:text-slate-200 mt-2 leading-relaxed italic">
+                  "{reportStats.summary || 'Summary generation processing...'}"
                 </p>
               </div>
-              <div className="text-[11px] text-indigo-500 dark:text-indigo-400 font-bold mt-4">
-                Groq Llama 3.3 • Live Analysis
+              <div className="text-[10px] text-indigo-500 dark:text-indigo-400 font-bold mt-4 tracking-wider flex items-center gap-1.5 uppercase">
+                <Sparkles size={12} className="animate-pulse" /> Groq Llama 3.3 • Live Analysis
               </div>
             </motion.div>
 
@@ -214,15 +218,15 @@ const AiReport = () => {
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="p-6 rounded-2xl bg-amber-500/5 dark:bg-amber-500/[0.02] border border-amber-500/20 dark:border-amber-500/10 shadow-sm md:col-span-3 flex flex-col sm:flex-row items-center gap-6"
+                className="p-6 rounded-2xl bg-gradient-to-br from-amber-50/60 via-orange-50/30 to-transparent dark:from-amber-500/[0.04] dark:via-orange-500/[0.01] dark:to-transparent border border-amber-200/50 dark:border-amber-500/10 shadow-xl backdrop-blur-xl md:col-span-3 flex flex-col sm:flex-row items-center gap-6 group hover:border-amber-500/30 transition-all duration-300"
               >
-                <div className="h-16 w-16 bg-amber-500/10 rounded-2xl border border-amber-500/20 flex items-center justify-center text-amber-500 shrink-0">
+                <div className="h-16 w-16 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl shadow-lg shadow-amber-500/20 flex items-center justify-center text-white shrink-0 transform group-hover:scale-105 transition-transform duration-300">
                   <Sparkles size={32} />
                 </div>
                 <div className="space-y-1 text-center sm:text-left">
-                  <span className="text-[10px] font-bold text-amber-600 dark:text-amber-500 uppercase tracking-wider block">🏆 Employee of the Month Spotlight</span>
-                  <h4 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">{reportStats.employeeOfTheMonth.name}</h4>
-                  <p className="text-xs text-slate-505 dark:text-slate-400 leading-relaxed max-w-2xl">{reportStats.employeeOfTheMonth.reason}</p>
+                  <span className="text-[10px] font-bold text-amber-600 dark:text-amber-500 uppercase tracking-widest block">🏆 Monthly Performance Spotlight</span>
+                  <h4 className="text-xl font-black text-slate-800 dark:text-white tracking-tight">{reportStats.employeeOfTheMonth.name}</h4>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 leading-relaxed max-w-2xl mt-1">{reportStats.employeeOfTheMonth.reason}</p>
                 </div>
               </motion.div>
             )}
@@ -230,7 +234,7 @@ const AiReport = () => {
         )}
 
         {/* Report Content */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] rounded-2xl min-h-[400px] relative overflow-hidden">
+        <div className="bg-white/70 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/50 shadow-xl backdrop-blur-xl rounded-3xl min-h-[400px] relative overflow-hidden">
           
           <AnimatePresence mode="wait">
             {loading ? (
@@ -271,7 +275,7 @@ const AiReport = () => {
                 className="p-6 md:p-10 prose dark:prose-invert prose-indigo max-w-none"
               >
                 {/* Wrap content in a div for PDF capture */}
-                <div ref={reportRef} className="pdf-container p-4 md:p-8 bg-white dark:bg-slate-900 print:absolute print:left-0 print:top-0 print:w-full print:bg-white print:text-black">
+                <div ref={reportRef} className="pdf-container bg-transparent print:absolute print:left-0 print:top-0 print:w-full print:bg-white print:text-black print:p-8">
                   <style>
                     {`
                       @media print {
@@ -285,20 +289,31 @@ const AiReport = () => {
                   </style>
                   <ReactMarkdown
                     components={{
-                      h1: ({node, ...props}) => <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white mb-6 border-b border-slate-100 dark:border-slate-800 pb-4" {...props} />,
-                      h2: ({node, ...props}) => <h2 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-slate-100 mt-8 mb-4 flex items-center gap-2" {...props} />,
-                      p: ({node, ...props}) => <p className="text-slate-600 dark:text-slate-300 leading-relaxed mb-4" {...props} />,
-                      strong: ({node, ...props}) => <strong className="font-bold text-indigo-700 dark:text-indigo-400" {...props} />,
+                      h1: ({node, ...props}) => <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white mb-6 border-b border-slate-200/40 dark:border-slate-800/80 pb-4.5 tracking-tight" {...props} />,
+                      h2: ({node, ...props}) => <h2 className="text-lg md:text-xl font-extrabold text-slate-800 dark:text-slate-100 mt-10 mb-4.5 flex items-center gap-2.5 border-l-4 border-indigo-500 pl-3 tracking-tight" {...props} />,
+                      h3: ({node, ...props}) => <h3 className="text-sm md:text-md font-bold text-slate-855 dark:text-slate-200 mt-6 mb-3 tracking-tight" {...props} />,
+                      p: ({node, ...props}) => <p className="text-slate-650 dark:text-slate-300 leading-relaxed mb-4 text-sm md:text-base font-medium" {...props} />,
+                      strong: ({node, ...props}) => <strong className="font-extrabold text-indigo-650 dark:text-indigo-400" {...props} />,
                       ul: ({node, ...props}) => <ul className="space-y-2 mb-6" {...props} />,
                       li: ({node, ...props}) => (
-                        <li className="flex items-start">
-                          <span className="mr-3 text-indigo-500 mt-1">•</span>
-                          <span className="text-slate-600 dark:text-slate-300" {...props} />
+                        <li className="flex items-start mb-2.5">
+                          <span className="mr-3 text-indigo-550 dark:text-indigo-400 mt-1.5 flex-shrink-0">
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400 block shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
+                          </span>
+                          <span className="text-slate-650 dark:text-slate-350 text-sm font-semibold leading-relaxed" {...props} />
                         </li>
                       ),
                       blockquote: ({node, ...props}) => (
-                        <blockquote className="border-l-4 border-amber-500 bg-amber-50 dark:bg-amber-500/10 dark:border-amber-500/50 p-4 rounded-r-lg text-amber-800 dark:text-amber-200 my-6 italic text-sm" {...props} />
+                        <blockquote className="border-l-4 border-amber-500 bg-amber-50/50 dark:bg-amber-500/5 dark:border-amber-500/30 p-4 rounded-r-2xl text-amber-800 dark:text-amber-300 my-6 italic text-xs md:text-sm font-medium leading-relaxed" {...props} />
                       ),
+                      table: ({node, ...props}) => (
+                        <div className="overflow-x-auto my-6 rounded-2xl border border-slate-200/50 dark:border-slate-800/50 shadow-sm backdrop-blur-md">
+                          <table className="min-w-full divide-y divide-slate-200/60 dark:divide-slate-850 text-xs md:text-sm" {...props} />
+                        </div>
+                      ),
+                      thead: ({node, ...props}) => <thead className="bg-slate-50/50 dark:bg-slate-850/40" {...props} />,
+                      th: ({node, ...props}) => <th className="px-4 py-3.5 text-left font-extrabold text-slate-850 dark:text-white uppercase tracking-wider text-[10px] md:text-[11px]" {...props} />,
+                      td: ({node, ...props}) => <td className="px-4 py-3.5 text-slate-650 dark:text-slate-350 border-t border-slate-100/50 dark:border-slate-850/50 font-semibold" {...props} />,
                     }}
                   >
                     {reportData}
@@ -313,7 +328,6 @@ const AiReport = () => {
           </AnimatePresence>
           
         </div>
-      </div>
 
       {/* Render the AI Chat Widget if we have report data to give it context */}
       <AiChatWidget reportContext={reportData} />
