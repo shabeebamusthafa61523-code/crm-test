@@ -32,9 +32,13 @@ export const departmentService = {
     return Promise.all(departments.map(async d => {
       const dept = d.toObject();
       
-      // Compute member counts from userDepartments
-      const memberCount = await UserDepartment.countDocuments({ departmentId: dept._id });
-      dept.memberCount = memberCount;
+      // Compute member counts from userDepartments and User model
+      const udUsers = await UserDepartment.find({ departmentId: dept._id }).select('userId');
+      const udIds = udUsers.map(u => u.userId ? u.userId.toString() : '');
+      const nUsers = await User.find({ departmentId: dept._id }).select('_id');
+      const nIds = nUsers.map(u => u._id.toString());
+      const allIds = new Set([...udIds, ...nIds].filter(Boolean));
+      dept.memberCount = allIds.size;
 
       if (dept.managerId) {
         const fullName = dept.managerId.name || '';
@@ -189,15 +193,37 @@ export const departmentService = {
    */
   async getDepartmentUsers(id) {
     const userDepts = await UserDepartment.find({ departmentId: id })
-      .populate('userId', 'employeeId name email designation_id status isActive');
+      .populate('userId', 'employeeId name email designation_id status isActive createdAt');
 
-    return userDepts
-      .map(ud => {
-        if (!ud.userId) return null;
-        const user = ud.userId.toObject();
+    const mappedDict = {};
+
+    userDepts.forEach(ud => {
+      if (!ud.userId) return;
+      const user = ud.userId.toObject();
+      const fullName = user.name || '';
+      const parts = fullName.trim().split(/\s+/);
+      const uId = user._id.toString();
+      mappedDict[uId] = {
+        _id: user._id,
+        employeeId: user.employeeId || user.email || '',
+        firstName: parts[0] || '',
+        lastName: parts.slice(1).join(' ') || '',
+        email: user.email || '',
+        designation: user.designation_id || 'Staff',
+        status: user.status || (user.isActive ? 'active' : 'inactive') || 'active',
+        roleInDepartment: ud.roleInDepartment || 'member',
+        isPrimary: ud.isPrimary !== undefined ? ud.isPrimary : true,
+        assignedAt: ud.assignedAt
+      };
+    });
+
+    const nativeUsers = await User.find({ departmentId: id }).select('employeeId name email designation_id status isActive createdAt');
+    nativeUsers.forEach(user => {
+      const uId = user._id.toString();
+      if (!mappedDict[uId]) {
         const fullName = user.name || '';
         const parts = fullName.trim().split(/\s+/);
-        return {
+        mappedDict[uId] = {
           _id: user._id,
           employeeId: user.employeeId || user.email || '',
           firstName: parts[0] || '',
@@ -205,12 +231,14 @@ export const departmentService = {
           email: user.email || '',
           designation: user.designation_id || 'Staff',
           status: user.status || (user.isActive ? 'active' : 'inactive') || 'active',
-          roleInDepartment: ud.roleInDepartment || 'member',
-          isPrimary: ud.isPrimary !== undefined ? ud.isPrimary : true,
-          assignedAt: ud.assignedAt
+          roleInDepartment: 'member',
+          isPrimary: true,
+          assignedAt: user.createdAt
         };
-      })
-      .filter(Boolean);
+      }
+    });
+
+    return Object.values(mappedDict);
   },
 
   /**

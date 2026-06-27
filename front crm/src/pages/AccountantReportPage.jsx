@@ -8,6 +8,7 @@ import {
 import { useToast } from '../components/ToastProvider';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { fetchCompletedTasks } from '../utils/taskUtils';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -268,7 +269,7 @@ const AccountantReportPage = () => {
   }, [selectedUserId, fetchSubmittedDates]);
 
   // Fetch Accountant report data
-  const fetchReport = useCallback(async (userId, dateStr) => {
+  const fetchReport = async (userId, dateStr) => {
     if (!userId || !dateStr) return;
     try {
       setLoading(true);
@@ -279,7 +280,42 @@ const AccountantReportPage = () => {
 
       if (data.success && data.data) {
         const report = data.data;
-        setBasicDetails(report.basicDetails || {});
+        
+        let freshestUser = currentUser;
+        try {
+          const su = localStorage.getItem('user');
+          if (su) freshestUser = JSON.parse(su);
+        } catch(e){}
+
+        let staffList = [];
+        if (typeof developers !== 'undefined') staffList = developers;
+        else if (typeof marketingStaff !== 'undefined') staffList = marketingStaff;
+        else if (typeof hrStaff !== 'undefined') staffList = hrStaff;
+        else if (typeof designers !== 'undefined') staffList = designers;
+        else if (typeof hods !== 'undefined') staffList = hods;
+        else if (typeof videographers !== 'undefined') staffList = videographers;
+        else if (typeof counselors !== 'undefined') staffList = counselors;
+        else if (typeof accountants !== 'undefined') staffList = accountants;
+        else if (typeof opsStaff !== 'undefined') staffList = opsStaff;
+
+        let isPriv = true;
+        if (typeof isPrivileged !== 'undefined') isPriv = isPrivileged;
+
+        let userDetail = freshestUser;
+        if (isPriv && staffList.length > 0) {
+          userDetail = staffList.find(u => (u._id || u.id) === userId) || freshestUser;
+        }
+
+        const apiBasicDetails = report.basicDetails || {};
+        setBasicDetails({
+          ...apiBasicDetails,
+          employeeName: userDetail.name || apiBasicDetails.employeeName || '',
+          employeeId: userDetail.employeeId || apiBasicDetails.employeeId || '',
+          designation: userDetail.designation || apiBasicDetails.designation || '',
+          reportingTo: userDetail.reportingManager || apiBasicDetails.reportingTo || '',
+          department: userDetail.department || apiBasicDetails.department || ''
+        });
+
         setDailyAccountingSummary(report.dailyAccountingSummary || []);
         setTransactionReport(report.transactionReport || []);
         setInvoiceBillingReport(report.invoiceBillingReport || []);
@@ -298,19 +334,50 @@ const AccountantReportPage = () => {
         setApproval(report.approval || {});
       } else {
         initializeBlankReport(userId, dateStr);
+        // Auto-fetch completed tasks for new blank reports
+        try {
+          const completedTasks = await fetchCompletedTasks(userId, dateStr);
+          if (completedTasks && completedTasks.length > 0) {
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: 'Done', remarks: 'Auto-fetched' }));
+            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
+            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
+            setDailyAccountingSummary(mappedTasks);
+          } else {
+            setDailyAccountingSummary(prev => [...prev, { activity: '', status: 'ongoing', remarks: '' }, { activity: '', status: 'ongoing', remarks: '' }]);
+          }
+        } catch(e) {
+          console.error("Error auto-fetching tasks:", e);
+        }
+
       }
     } catch (e) {
       initializeBlankReport(userId, dateStr);
+        // Auto-fetch completed tasks for new blank reports
+        try {
+          const completedTasks = await fetchCompletedTasks(userId, dateStr);
+          if (completedTasks && completedTasks.length > 0) {
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: 'Done', remarks: 'Auto-fetched' }));
+            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
+            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
+            setDailyAccountingSummary(mappedTasks);
+          } else {
+            setDailyAccountingSummary(prev => [...prev, { activity: '', status: 'ongoing', remarks: '' }, { activity: '', status: 'ongoing', remarks: '' }]);
+          }
+        } catch(e) {
+          console.error("Error auto-fetching tasks:", e);
+        }
+
     } finally {
       setLoading(false);
     }
-  }, [getAuthHeaders]);
+  };
 
   useEffect(() => {
     if (selectedUserId && selectedDate) {
       fetchReport(selectedUserId, selectedDate);
     }
-  }, [selectedUserId, selectedDate, fetchReport]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedUserId, selectedDate]);
 
   // Cache basicDetails in localStorage when they change
   useEffect(() => {
@@ -322,10 +389,16 @@ const AccountantReportPage = () => {
     }
   }, [basicDetails, selectedUserId]);
 
-  const initializeBlankReport = (userId, dateStr) => {
-    let userDetail = currentUser;
+    const initializeBlankReport = (userId, dateStr) => {
+    let freshestUser = currentUser;
+    try {
+      const su = localStorage.getItem('user');
+      if (su) freshestUser = JSON.parse(su);
+    } catch(e){}
+
+    let userDetail = freshestUser;
     if (isPrivileged && accountantStaff.length > 0) {
-      userDetail = accountantStaff.find(u => u._id === userId) || currentUser;
+      userDetail = accountantStaff.find(u => (u._id || u.id) === userId) || freshestUser;
     }
 
     const dateObj = new Date(dateStr);
@@ -348,12 +421,12 @@ const AccountantReportPage = () => {
     setBasicDetails({
       date: formattedDateString,
       day: dayName.toUpperCase(),
-      employeeName: parsedCached?.employeeName || userDetail.name || '',
-      employeeId: parsedCached?.employeeId || userDetail.employeeId || '',
-      department: parsedCached?.department || 'Accounts & Finance',
-      designation: parsedCached?.designation || userDetail.designation || 'Accountant / Accounts Executive',
+      employeeName: userDetail.name || parsedCached?.employeeName || '',
+      employeeId: userDetail.employeeId || parsedCached?.employeeId || '',
+      department: userDetail.department || parsedCached?.department || 'Accounts & Finance',
+      designation: userDetail.designation || parsedCached?.designation || 'Accountant / Accounts Executive',
       shiftTiming: parsedCached?.shiftTiming || '9:00 TO 05:00',
-      reportingTo: parsedCached?.reportingTo || 'Accounts Manager / COO',
+      reportingTo: userDetail.reportingManager || parsedCached?.reportingTo || 'Accounts Manager / COO',
       preparedTime: parsedCached?.preparedTime || timeStr
     });
 
@@ -1477,10 +1550,19 @@ const AccountantReportPage = () => {
 
             {/* 2. DAILY ACCOUNTING SUMMARY */}
             <div className="space-y-4">
-              <h2 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
-                <span className="flex items-center justify-center w-5 h-5 rounded bg-indigo-100 dark:bg-lime-950/50 text-[10px]">2</span>
-                Daily Accounting Summary
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
+                  <span className="flex items-center justify-center w-5 h-5 rounded bg-indigo-100 dark:bg-lime-950/50 text-[10px]">2</span>
+                  Daily Accounting Summary
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setDailyAccountingSummary([...dailyAccountingSummary, { activity: '', status: 'ongoing', remarks: '' }])}
+                  className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
+                >
+                  <Plus size={14} /> Add Row
+                </button>
+              </div>
               <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl">
                 <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800 text-sm">
                   <thead className="bg-slate-50 dark:bg-slate-950">
@@ -1488,12 +1570,25 @@ const AccountantReportPage = () => {
                       <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-1/3">Activity</th>
                       <th className="px-6 py-3 text-center text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-1/4">Status</th>
                       <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Remarks</th>
+                      <th className="px-3 py-3 text-center w-12"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-900">
                     {dailyAccountingSummary.map((item, idx) => (
                       <tr key={idx}>
-                        <td className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">{item.activity}</td>
+                        <td className="px-6 py-4">
+                          <input
+                            type="text"
+                            value={item.activity || ''}
+                            onChange={(e) => {
+                              const updated = [...dailyAccountingSummary];
+                              updated[idx].activity = e.target.value;
+                              setDailyAccountingSummary(updated);
+                            }}
+                            className="w-full bg-transparent border-none focus:outline-none p-0 text-sm font-semibold text-slate-700 dark:text-slate-300"
+                            placeholder="Activity name"
+                          />
+                        </td>
                         <td className="px-6 py-3">
                           <input
                             type="text"
@@ -1517,6 +1612,19 @@ const AccountantReportPage = () => {
                             }}
                             className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none"
                           />
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = [...dailyAccountingSummary];
+                              updated.splice(idx, 1);
+                              setDailyAccountingSummary(updated);
+                            }}
+                            className="text-rose-500 hover:text-rose-600 transition"
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -2075,6 +2183,41 @@ const AccountantReportPage = () => {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Form Footer Action Buttons */}
+            <div className="flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800 pt-5">
+              <button
+                type="button"
+                onClick={() => setIsMonthlyModalOpen(true)}
+                className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 font-semibold text-sm transition-all"
+              >
+                <Calendar size={16} />
+                Monthly Report
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDownloadPDF}
+                className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-sm transition-all"
+              >
+                <Download size={16} />
+                Download PDF
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveReport}
+                disabled={saving}
+                className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-all shadow-md shadow-indigo-600/10 disabled:opacity-50"
+              >
+                {saving ? (
+                  <Loader2 className="animate-spin" size={16} />
+                ) : (
+                  <Save size={16} />
+                )}
+                Save Report
+              </button>
             </div>
           </motion.div>
         )}

@@ -83,9 +83,22 @@ const Login = () => {
         }
 
         // 3. Save full user object for profile/other uses
-        localStorage.setItem('user', JSON.stringify(result.user || { id: userId }));
+        const userObj = result.user || { id: userId };
+        localStorage.setItem('user', JSON.stringify(userObj));
+        showToast('Login successful!', 'success');
 
-        navigate('/attendance');
+        // Check if user is an admin
+        const currentUserRole = String(userObj.role_id || userObj.roleId || userObj.role || '').toLowerCase().trim();
+        const isAdmin = ['1', '2', 'admin'].includes(currentUserRole);
+        const isHr = currentUserRole === 'hr';
+
+        if (isHr) {
+          navigate('/hr-dashboard');
+        } else if (isAdmin) {
+          navigate('/dashboard');
+        } else {
+          navigate('/attendance');
+        }
       } else {
         showToast(result.detail || "Authentication Failed", 'error');
       }

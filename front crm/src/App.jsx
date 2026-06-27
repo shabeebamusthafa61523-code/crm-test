@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import MainLayout from './layouts/MainLayout';
 
 // Page Imports
+import { UserProvider } from './contexts/UserContext'; 
 import Dashboard from './pages/Dashboard';
 import LeadDashboard from './pages/LeadDashboard';
 import MarketingDashboard from './pages/Marketing Dashboard';
@@ -19,15 +20,21 @@ import NotFound from './pages/NotFound';
 import StudentAttendance from './pages/StudentAttendance';
 import DepartmentsPage from './modules/departments/DepartmentsPage';
 import DeveloperReportPage from './pages/DeveloperReportPage';
+import DeveloperDashboard from './pages/DeveloperDashboard';
 import HodRdReportPage from './pages/HodRdReportPage';
 import GraphicDesignerReportPage from './pages/GraphicDesignerReportPage';
+import GraphicDesignerDashboard from './pages/GraphicDesignerDashboard';
+import VideographerDashboard from './pages/VideographerDashboard';
 import AcademicCounselorReportPage from './pages/AcademicCounselorReportPage';
 import HrReportPage from './pages/HrReportPage';
+import HrDashboard from './pages/HrDashboard';
 import OpsReportPage from './pages/OpsReportPage';
 import AccountantReportPage from './pages/AccountantReportPage';
 import MarketingReportPage from './pages/MarketingReportPage';
 import VideographerReportPage from './pages/VideographerReportPage';
 import EmployeeReports from './pages/EmployeeReports';
+import CounselorDashboard from './pages/CounselorDashboard';
+import AiReport from './pages/AiReport';
 
 
 
@@ -43,6 +50,18 @@ const ProtectedRoute = ({ children }) => {
 const PublicRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   if (token) {
+    try {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const userObj = JSON.parse(userStr);
+        const role = String(userObj.role_id || userObj.roleId || userObj.role || '').toLowerCase().trim();
+        if (role === 'hr') {
+          return <Navigate to="/hr-dashboard" replace />;
+        }
+      }
+    } catch (e) {
+      console.error("Public redirect role parse failed:", e);
+    }
     return <Navigate to="/dashboard" replace />;
   }
   return children;
@@ -50,12 +69,27 @@ const PublicRoute = ({ children }) => {
 
 const LandingRoute = () => {
   const token = localStorage.getItem('token');
-  return token ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />;
+  if (!token) return <Navigate to="/login" replace />;
+
+  try {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      const userObj = JSON.parse(userStr);
+      const role = String(userObj.role_id || userObj.roleId || userObj.role || '').toLowerCase().trim();
+      if (role === 'hr') {
+        return <Navigate to="/hr-dashboard" replace />;
+      }
+    }
+  } catch (e) {
+    console.error("Landing redirect role parse failed:", e);
+  }
+
+  return <Navigate to="/dashboard" replace />;
 };
 
 function App() {
   return (
-    <Router>
+    <UserProvider><Router>
       <Routes>
         {/* Auth Routes - No Sidebar */}
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
@@ -75,15 +109,21 @@ function App() {
         <Route path="/student-attendance" element={<ProtectedRoute><MainLayout><StudentAttendance /></MainLayout></ProtectedRoute>} />
         <Route path="/departments" element={<ProtectedRoute><MainLayout><DepartmentsPage /></MainLayout></ProtectedRoute>} />
         <Route path="/developer-report" element={<ProtectedRoute><MainLayout><DeveloperReportPage /></MainLayout></ProtectedRoute>} />
+        <Route path="/developer-dashboard" element={<ProtectedRoute><MainLayout><DeveloperDashboard /></MainLayout></ProtectedRoute>} />
         <Route path="/hod-rd-report" element={<ProtectedRoute><MainLayout><HodRdReportPage /></MainLayout></ProtectedRoute>} />
         <Route path="/graphic-designer-report" element={<ProtectedRoute><MainLayout><GraphicDesignerReportPage /></MainLayout></ProtectedRoute>} />
+        <Route path="/graphic-designer-dashboard" element={<ProtectedRoute><MainLayout><GraphicDesignerDashboard /></MainLayout></ProtectedRoute>} />
+        <Route path="/videographer-dashboard" element={<ProtectedRoute><MainLayout><VideographerDashboard /></MainLayout></ProtectedRoute>} />
         <Route path="/academic-counselor-report" element={<ProtectedRoute><MainLayout><AcademicCounselorReportPage /></MainLayout></ProtectedRoute>} />
+        <Route path="/counselor-dashboard" element={<ProtectedRoute><MainLayout><CounselorDashboard /></MainLayout></ProtectedRoute>} />
         <Route path="/hr-report" element={<ProtectedRoute><MainLayout><HrReportPage /></MainLayout></ProtectedRoute>} />
+        <Route path="/hr-dashboard" element={<ProtectedRoute><MainLayout><HrDashboard /></MainLayout></ProtectedRoute>} />
         <Route path="/ops-report" element={<ProtectedRoute><MainLayout><OpsReportPage /></MainLayout></ProtectedRoute>} />
         <Route path="/accountant-report" element={<ProtectedRoute><MainLayout><AccountantReportPage /></MainLayout></ProtectedRoute>} />
         <Route path="/marketing-report" element={<ProtectedRoute><MainLayout><MarketingReportPage /></MainLayout></ProtectedRoute>} />
         <Route path="/videographer-report" element={<ProtectedRoute><MainLayout><VideographerReportPage /></MainLayout></ProtectedRoute>} />
         <Route path="/employee-reports" element={<ProtectedRoute><MainLayout><EmployeeReports /></MainLayout></ProtectedRoute>} />
+        <Route path="/ai-report" element={<ProtectedRoute><MainLayout><AiReport /></MainLayout></ProtectedRoute>} />
 
 
 
@@ -93,7 +133,7 @@ function App() {
         <Route path="/404" element={<NotFound />} />
         <Route path="*" element={<Navigate to="/404" />} />
       </Routes>
-    </Router>
+    </Router></UserProvider>
   );
 }
 

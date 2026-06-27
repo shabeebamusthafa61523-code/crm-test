@@ -8,6 +8,7 @@ import {
 import { useToast } from '../components/ToastProvider';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { fetchCompletedTasks } from '../utils/taskUtils';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -69,6 +70,7 @@ const GraphicDesignerReportPage = () => {
   
   // Form State
   const [basicDetails, setBasicDetails] = useState({
+    employeeName: '',
     employeeId: '',
     designation: 'Graphic Designer',
     reportingTo: 'CMO',
@@ -275,7 +277,7 @@ const GraphicDesignerReportPage = () => {
   }, [selectedUserId, fetchSubmittedDates]);
 
   // Fetch report data for selected date and user
-  const fetchReport = useCallback(async (userId, dateStr) => {
+  const fetchReport = async (userId, dateStr) => {
     if (!userId || !dateStr) return;
     try {
       setLoading(true);
@@ -287,7 +289,42 @@ const GraphicDesignerReportPage = () => {
       
       if (data.success && data.data) {
         const report = data.data;
-        setBasicDetails(report.basicDetails || {});
+        
+        let freshestUser = currentUser;
+        try {
+          const su = localStorage.getItem('user');
+          if (su) freshestUser = JSON.parse(su);
+        } catch(e){}
+
+        let staffList = [];
+        if (typeof developers !== 'undefined') staffList = developers;
+        else if (typeof marketingStaff !== 'undefined') staffList = marketingStaff;
+        else if (typeof hrStaff !== 'undefined') staffList = hrStaff;
+        else if (typeof designers !== 'undefined') staffList = designers;
+        else if (typeof hods !== 'undefined') staffList = hods;
+        else if (typeof videographers !== 'undefined') staffList = videographers;
+        else if (typeof counselors !== 'undefined') staffList = counselors;
+        else if (typeof accountants !== 'undefined') staffList = accountants;
+        else if (typeof opsStaff !== 'undefined') staffList = opsStaff;
+
+        let isPriv = true;
+        if (typeof isPrivileged !== 'undefined') isPriv = isPrivileged;
+
+        let userDetail = freshestUser;
+        if (isPriv && staffList.length > 0) {
+          userDetail = staffList.find(u => (u._id || u.id) === userId) || freshestUser;
+        }
+
+        const apiBasicDetails = report.basicDetails || {};
+        setBasicDetails({
+          ...apiBasicDetails,
+          employeeName: userDetail.name || apiBasicDetails.employeeName || '',
+          employeeId: userDetail.employeeId || apiBasicDetails.employeeId || '',
+          designation: userDetail.designation || apiBasicDetails.designation || '',
+          reportingTo: userDetail.reportingManager || apiBasicDetails.reportingTo || '',
+          department: userDetail.department || apiBasicDetails.department || ''
+        });
+
         setTaskLog(report.taskLog || []);
         setKeyNumbers(report.keyNumbers || DEFAULT_KEY_NUMBERS);
         setBlockers(report.blockers || []);
@@ -295,20 +332,51 @@ const GraphicDesignerReportPage = () => {
         setApproval(report.approval || {});
       } else {
         initializeBlankReport(userId, dateStr);
+        // Auto-fetch completed tasks for new blank reports
+        try {
+          const completedTasks = await fetchCompletedTasks(userId, dateStr);
+          if (completedTasks && completedTasks.length > 0) {
+            const mappedTasks = completedTasks.map(t => ({ taskProjectName: t.title, descriptionDetails: 'Auto-fetched', startTime: '', endTime: '', status: 'Completed', fileLink: '' }));
+            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' });
+            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' });
+            setTaskLog(mappedTasks);
+          } else {
+            setTaskLog(prev => [...prev, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' }, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' }]);
+          }
+        } catch(e) {
+          console.error("Error auto-fetching tasks:", e);
+        }
+
       }
     } catch (err) {
       initializeBlankReport(userId, dateStr);
+        // Auto-fetch completed tasks for new blank reports
+        try {
+          const completedTasks = await fetchCompletedTasks(userId, dateStr);
+          if (completedTasks && completedTasks.length > 0) {
+            const mappedTasks = completedTasks.map(t => ({ taskProjectName: t.title, descriptionDetails: 'Auto-fetched', startTime: '', endTime: '', status: 'Completed', fileLink: '' }));
+            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' });
+            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' });
+            setTaskLog(mappedTasks);
+          } else {
+            setTaskLog(prev => [...prev, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' }, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' }]);
+          }
+        } catch(e) {
+          console.error("Error auto-fetching tasks:", e);
+        }
+
     } finally {
       setLoading(false);
     }
-  }, [getAuthHeaders]);
+  };
 
   // Load report when selection changes
   useEffect(() => {
     if (selectedUserId && selectedDate) {
       fetchReport(selectedUserId, selectedDate);
     }
-  }, [selectedUserId, selectedDate, fetchReport]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedUserId, selectedDate]);
 
   // Cache basicDetails in localStorage when they change
   useEffect(() => {
@@ -320,10 +388,16 @@ const GraphicDesignerReportPage = () => {
     }
   }, [basicDetails, selectedUserId]);
 
-  const initializeBlankReport = (userId, dateStr) => {
-    let userDetail = currentUser;
+    const initializeBlankReport = (userId, dateStr) => {
+    let freshestUser = currentUser;
+    try {
+      const su = localStorage.getItem('user');
+      if (su) freshestUser = JSON.parse(su);
+    } catch(e){}
+
+    let userDetail = freshestUser;
     if (isPrivileged && designers.length > 0) {
-      userDetail = designers.find(d => d._id === userId) || currentUser;
+      userDetail = designers.find(d => (d._id || d.id) === userId) || freshestUser;
     }
 
     const dateObj = new Date(dateStr);
@@ -344,9 +418,10 @@ const GraphicDesignerReportPage = () => {
     const parsedCached = cached ? JSON.parse(cached) : null;
 
     setBasicDetails({
-      employeeId: parsedCached?.employeeId || userDetail.employeeId || '',
-      designation: parsedCached?.designation || 'Graphic Designer',
-      reportingTo: parsedCached?.reportingTo || 'CMO',
+      employeeName: userDetail.name || parsedCached?.employeeName || '',
+      employeeId: userDetail.employeeId || parsedCached?.employeeId || '',
+      designation: userDetail.designation || parsedCached?.designation || 'Graphic Designer',
+      reportingTo: userDetail.reportingManager || parsedCached?.reportingTo || 'CMO',
       shiftTiming: parsedCached?.shiftTiming || '9:00 AM - 5:00 PM',
       preparedAt: parsedCached?.preparedAt || timeStr
     });
@@ -1060,6 +1135,16 @@ const GraphicDesignerReportPage = () => {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 bg-slate-50/50 dark:bg-slate-950/20 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
                 <div>
+                  <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Employee Name</label>
+                  <input
+                    type="text"
+                    value={basicDetails.employeeName || ''}
+                    onChange={(e) => setBasicDetails({ ...basicDetails, employeeName: e.target.value })}
+                    readOnly={!isEditingBasic}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${isEditingBasic ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/50 border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
+                  />
+                </div>
+                <div>
                   <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Employee ID</label>
                   <input
                     type="text"
@@ -1627,6 +1712,41 @@ const GraphicDesignerReportPage = () => {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Form Footer Action Buttons */}
+            <div className="flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800 pt-5">
+              <button
+                type="button"
+                onClick={() => setIsMonthlyModalOpen(true)}
+                className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-sm transition-all"
+              >
+                <Calendar size={16} />
+                Monthly Report
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDownloadPDF}
+                className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-sm transition-all"
+              >
+                <Download size={16} />
+                Download PDF
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveReport}
+                disabled={saving}
+                className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-all shadow-md shadow-indigo-600/10 disabled:opacity-50"
+              >
+                {saving ? (
+                  <Loader2 className="animate-spin" size={16} />
+                ) : (
+                  <Save size={16} />
+                )}
+                Save Report
+              </button>
             </div>
 
           </motion.div>

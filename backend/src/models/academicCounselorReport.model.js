@@ -14,6 +14,7 @@ const academicCounselorReportSchema = new mongoose.Schema({
     date: { type: String },
     day: { type: String },
     employeeName: { type: String },
+    employeeId: { type: String },
     designation: { type: String, default: 'Sales Executive / Tele Caller & Academic Counselor' },
     department: { type: String, default: 'Sales & Growth / Academy' },
     shiftTiming: { type: String, default: '9:00 AM - 5.00 PM' },

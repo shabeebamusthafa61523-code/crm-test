@@ -212,35 +212,44 @@ export const checkOut = async (req, res) => {
 // ===============================
 
 export const getAttendanceByDate =
-  async (req, res) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({
-          detail: "Authentication required."
+    async (req, res) => {
+      try {
+        if (!req.user) {
+          return res.status(401).json({
+            detail: "Authentication required."
+          });
+        }
+  
+        const userId =
+          req.user.id || req.user._id;
+  
+        const { date } = req.params;
+  
+        const record =
+          await Attendance.findOne({
+            user_id: userId,
+            date
+          });
+  
+        return res.status(200).json(
+          serializeAttendance(record)
+        );
+      } catch (err) {
+        console.error(err);
+        return res.status(500).json({
+          detail: "Server Error"
         });
       }
+    };
 
-      const userId =
-        req.user.id || req.user._id;
-
-      const { date } = req.params;
-
-      const record =
-        await Attendance.findOne({
-          user_id: userId,
-          date
-        });
-
-      return res.status(200).json(
-        serializeAttendance(record)
-      );
-
-    } catch (error) {
-      console.error(error);
-
-      return res.status(500).json({
-        detail:
-          "Database retrieval failed."
-      });
-    }
-  };
+export const getAllAttendanceByDate =
+    async (req, res) => {
+      try {
+        const { date } = req.params;
+        const records = await Attendance.find({ date });
+        return res.status(200).json(records.map(serializeAttendance));
+      } catch (err) {
+        console.error(err);
+        return res.status(500).json({ detail: "Server Error" });
+      }
+    };
