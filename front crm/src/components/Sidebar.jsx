@@ -13,7 +13,8 @@ import {
   Building,
   TrendingUp,
   BarChart3,
-  FileText
+  FileText,
+  Sparkles
 } from 'lucide-react';
 
 const menuItems = [
@@ -139,6 +140,13 @@ const menuItems = [
     path: '/hr-report',
     allowedDesignations: ['6a2f8efea2fe388770a38987'],
     // allowedRoles: ['1', '2', 'hr', 'admin']
+  },
+  {
+    icon: Sparkles,
+    label: 'AI Reports',
+    path: '/ai-report',
+    allowedDesignations: ['6a2f8efea2fe388770a38987'],
+    allowedRoles: ['1', '2', 'admin' ],
   },
   {
     icon: FileText,

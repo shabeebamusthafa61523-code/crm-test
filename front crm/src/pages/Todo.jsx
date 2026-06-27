@@ -199,13 +199,19 @@ console.log("HEADERS:", getAuthHeaders());
                     </div>
 
                     <div className="p-4 space-y-4">
-                      {tasks.filter(t => t.status === statusKey).map((task, index) => (
+                      {tasks.filter(t => t.status === statusKey).map((task, index) => {
+                        const isUrgent = task.dueDate && statusKey !== 'done' && (new Date(task.dueDate) - new Date()) <= 24 * 60 * 60 * 1000;
+                        return (
                         <Draggable key={task.id.toString()} draggableId={task.id.toString()} index={index}>
                           {(p, s) => (
                             <div 
                               ref={p.innerRef} {...p.draggableProps} {...p.dragHandleProps} 
                               onClick={() => setSelectedTask(task)} 
+
+                              className={`group relative p-5 pl-7 rounded-[1.75rem] bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border ${isUrgent ? 'border-rose-500 bg-rose-50/50 dark:bg-rose-900/20' : 'border-slate-200/50 dark:border-slate-800/50'} shadow-sm hover:shadow-lg dark:hover:shadow-indigo-500/[0.02] transition-all duration-300 cursor-grab active:cursor-grabbing hover:-translate-y-[2px] ${s.isDragging ? 'rotate-[1.5deg] scale-[1.02] shadow-2xl z-50 bg-white/95 dark:bg-slate-900/95 border-indigo-500/40 dark:border-indigo-500/50 ring-2 ring-indigo-500/10' : ''}`}
+
                               className={`group relative p-5 pl-7 rounded-[1.75rem] bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/50 shadow-sm hover:shadow-lg dark:hover:shadow-indigo-500/[0.02] transition-all duration-300 cursor-grab active:cursor-grabbing hover:-translate-y-[2px] ${s.isDragging ? 'rotate-[1.5deg] scale-[1.02] shadow-2xl z-50 bg-white/95 dark:bg-slate-900/95 border-indigo-500/40 dark:border-indigo-500/50 ring-2 ring-indigo-500/10' : ''}`}
+
                             >
                               {/* Left Accent Bar */}
                               <div className={`absolute left-0 top-6 bottom-6 w-[3px] rounded-r-full transition-all duration-300 group-hover:top-4 group-hover:bottom-4 ${COLUMN_META[statusKey].color}`} />
@@ -216,7 +222,16 @@ console.log("HEADERS:", getAuthHeaders());
                                   {designations.find(d => String(d.id) === String(task.designation_id))?.name || "General"}
                                 </span>
                               </div>
+
+                              <h3 className="text-slate-800 dark:text-slate-200 font-bold text-[14px] leading-snug mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-300">{task.title}</h3>
+                              {task.dueDate && (
+                                <div className={`text-[10px] font-bold mb-4 ${isUrgent ? 'text-rose-500' : 'text-slate-500'}`}>
+                                  Due: {new Date(task.dueDate).toLocaleDateString()}
+                                </div>
+                              )}
+
                               <h3 className="text-slate-800 dark:text-slate-200 font-bold text-[14px] leading-snug mb-4 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-300">{task.title}</h3>
+
                               
                               <div className="flex items-center justify-between pt-4 border-t border-slate-100/60 dark:border-slate-850/50">
                                 <div className="flex items-center gap-2">
@@ -244,7 +259,8 @@ console.log("HEADERS:", getAuthHeaders());
                             </div>
                           )}
                         </Draggable>
-                      ))}
+                        );
+                      })}
                       {provided.placeholder}
                     </div>
                   </div>
@@ -283,7 +299,11 @@ console.log("HEADERS:", getAuthHeaders());
 // --- CREATE MODAL COMPONENT ---
 const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) => {
   const { showToast } = useToast();
+
+  const [form, setForm] = useState({ title: '', description: '', assigned_to: '', designation_id: '', image: null, dueDate: '' });
+
   const [form, setForm] = useState({ title: '', description: '', assigned_to: '', designation_id: '', image: null });
+
   const [preview, setPreview] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -310,6 +330,9 @@ const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) 
   fd.append('assigned_to', form.assigned_to);
   fd.append('designation_id', form.designation_id);
   fd.append('status', 'pending');
+  if (form.dueDate) {
+    fd.append('dueDate', form.dueDate);
+  }
 
   if (form.image) {
     fd.append('file', form.image);
@@ -384,6 +407,10 @@ const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) 
               <input required className="w-full bg-white border border-slate-200 p-5 rounded-2xl text-slate-900 font-bold outline-none focus:border-indigo-500/50" placeholder="TITLE" value={form.title} onChange={e => setForm({...form, title: e.target.value})} />
             </div>
             <div className="space-y-2">
+              <label className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.2em] ml-2">Due Date</label>
+              <input type="date" className="w-full bg-white border border-slate-200 p-5 rounded-2xl text-slate-900 font-bold outline-none focus:border-indigo-500/50" value={form.dueDate} onChange={e => setForm({...form, dueDate: e.target.value})} />
+            </div>
+            <div className="space-y-2 md:col-span-2">
               <label className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.2em] ml-2">assign to</label>
               <div className="grid grid-cols-2 gap-3">
                 <select
@@ -520,6 +547,7 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
     fd.append('designation_id', editForm.designation_id);
 
     if (newFile) fd.append('file', newFile);
+    if (editForm.dueDate) fd.append('dueDate', editForm.dueDate);
 
     try {
       await fetch(`${API_BASE}/tasks/update/${task.id}`, {
@@ -696,7 +724,7 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-8 py-8 border-y border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/20 rounded-2xl px-6 mt-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 py-8 border-y border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/20 rounded-2xl px-6 mt-8">
             <div>
               <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.3em] block mb-2">Staff</span>
               {isEditing ? (
@@ -761,6 +789,26 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
                   </div>
                   <span className="text-slate-900 dark:text-slate-100 font-bold tracking-tight uppercase text-sm">
                     {DESIGNATIONS?.find(d => String(d.id) === String(task.designation_id))?.name || "General"}
+                  </span>
+                </div>
+              )}
+            </div>
+            <div>
+              <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.3em] block mb-2">Due Date</span>
+              {isEditing ? (
+                <input 
+                  type="date"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-xl text-gray-500 dark:text-gray-400 text-[11px] font-bold outline-none"
+                  value={editForm.dueDate ? new Date(editForm.dueDate).toISOString().split('T')[0] : ''}
+                  onChange={e => setEditForm({...editForm, dueDate: e.target.value})} 
+                />
+              ) : (
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 bg-rose-500/10 rounded-full flex items-center justify-center border border-rose-500/20 text-rose-400">
+                    <Clock size={18} />
+                  </div>
+                  <span className="text-slate-900 dark:text-slate-100 font-bold tracking-tight uppercase text-sm">
+                    {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No Due Date'}
                   </span>
                 </div>
               )}

@@ -38,7 +38,10 @@ const taskSchema = new mongoose.Schema({
   },
  designation_id: {
   type: String
-}
+},
+  dueDate: {
+    type: Date
+  }
 }, {
   timestamps: true,
   toJSON: {

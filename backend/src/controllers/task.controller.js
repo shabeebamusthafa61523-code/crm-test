@@ -79,7 +79,7 @@ const formatLeanTask = (task) => {
  */
 export const createTask = async (req, res, next) => {
   try {
-    const { title, description, assigned_to, designation_id } = req.body;
+    const { title, description, assigned_to, designation_id, dueDate } = req.body;
 
     const userId = req.user.id || req.user._id;
 
@@ -100,6 +100,7 @@ export const createTask = async (req, res, next) => {
 
       assigned_to,
       designation_id: designation_id || undefined,
+      dueDate: dueDate || undefined,
 
       status: "pending",
 
@@ -295,6 +296,7 @@ export const updateTask = async (req, res, next) => {
     if (title !== undefined) task.title = title.trim();
     if (description !== undefined) task.description = description;
     if (assigned_to !== undefined) task.assigned_to = assigned_to;
+    if (req.body.dueDate !== undefined) task.dueDate = req.body.dueDate;
     // Explicit check for designation_id updates (handles empty string resets)
     if (designation_id !== undefined) {
       task.designation_id = designation_id || undefined;

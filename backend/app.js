@@ -13,6 +13,7 @@ import taskRoutes from './src/routes/task.routes.js';
 import studentRoutes from './src/routes/student.routes.js';
 import crmRoutes from './src/routes/index.js';
 import apiRoutes from './src/routes/api.js';
+import aiRoutes from './src/routes/ai.routes.js';
 import Designation from './src/models/designation.model.js';
 
 dotenv.config();
@@ -70,6 +71,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/attendance', attendanceRoutes); 
 app.use('/api/user', userRoutes); 
 app.use('/api/tasks', taskRoutes);
+app.use('/api/v1/ai', aiRoutes);
 
 // 4. Broad, Versioned, & Catch-all Fallbacks (Broadest matching paths go lower)
 app.use('/api/v1', crmRoutes);

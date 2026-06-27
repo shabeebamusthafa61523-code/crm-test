@@ -35,6 +35,9 @@ import VideographerReportPage from './pages/VideographerReportPage';
 import EmployeeReports from './pages/EmployeeReports';
 import CounselorDashboard from './pages/CounselorDashboard';
 
+import AiReport from './pages/AiReport';
+
+
 
 
 // Route Guards
@@ -49,6 +52,18 @@ const ProtectedRoute = ({ children }) => {
 const PublicRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   if (token) {
+    try {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const userObj = JSON.parse(userStr);
+        const role = String(userObj.role_id || userObj.roleId || userObj.role || '').toLowerCase().trim();
+        if (role === 'hr') {
+          return <Navigate to="/hr-dashboard" replace />;
+        }
+      }
+    } catch (e) {
+      console.error("Public redirect role parse failed:", e);
+    }
     return <Navigate to="/dashboard" replace />;
   }
   return children;
@@ -56,7 +71,22 @@ const PublicRoute = ({ children }) => {
 
 const LandingRoute = () => {
   const token = localStorage.getItem('token');
-  return token ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />;
+  if (!token) return <Navigate to="/login" replace />;
+
+  try {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      const userObj = JSON.parse(userStr);
+      const role = String(userObj.role_id || userObj.roleId || userObj.role || '').toLowerCase().trim();
+      if (role === 'hr') {
+        return <Navigate to="/hr-dashboard" replace />;
+      }
+    }
+  } catch (e) {
+    console.error("Landing redirect role parse failed:", e);
+  }
+
+  return <Navigate to="/dashboard" replace />;
 };
 
 function App() {
@@ -95,6 +125,7 @@ function App() {
         <Route path="/marketing-report" element={<ProtectedRoute><MainLayout><MarketingReportPage /></MainLayout></ProtectedRoute>} />
         <Route path="/videographer-report" element={<ProtectedRoute><MainLayout><VideographerReportPage /></MainLayout></ProtectedRoute>} />
         <Route path="/employee-reports" element={<ProtectedRoute><MainLayout><EmployeeReports /></MainLayout></ProtectedRoute>} />
+        <Route path="/ai-report" element={<ProtectedRoute><MainLayout><AiReport /></MainLayout></ProtectedRoute>} />
 
 
 
