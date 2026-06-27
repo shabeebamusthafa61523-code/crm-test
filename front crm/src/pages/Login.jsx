@@ -47,7 +47,12 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    const apiBaseUrl = import.meta.env.VITE_API_URL || '';
+    // Clear any stale session data before attempting a fresh login
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('user_id');
+
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
     try {
       const response = await fetch(`${apiBaseUrl}/auth/login`, {
@@ -57,6 +62,7 @@ const Login = () => {
       });
 
       const result = await response.json();
+      console.log('Login response:', response.status, result);
 
       if (response.ok && result.token) {
         // 1. Save the token
@@ -87,7 +93,8 @@ const Login = () => {
 
         navigate('/attendance');
       } else {
-        showToast(result.detail || "Authentication Failed", 'error');
+        const errorMsg = result.detail || result.message || `Login failed (${response.status})`;
+        showToast(errorMsg, 'error');
       }
     } catch (error) {
       console.error("Login Error:", error);

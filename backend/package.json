@@ -5,9 +5,9 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
-    "dev:kill": "powershell -Command \"Get-NetTCPConnection -LocalPort 5000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }; Write-Host 'Port 5000 cleared.'\"",
+    "start": "node kill-port.js && node server.js",
+    "dev": "node kill-port.js && nodemon server.js",
+    "dev:kill": "node kill-port.js",
     "dev:fresh": "npm run dev:kill && npm run dev",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

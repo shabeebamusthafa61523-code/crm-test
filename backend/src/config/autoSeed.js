@@ -44,7 +44,7 @@ export const autoSeed = async () => {
 
     const hashedPassword = bcryptjs.hashSync('password123', 10);
 
-    // 3. Ensure Admin exists
+    // 3. Ensure Admin exists — always sync password so restarts don't break login
     const adminEmail = 'admin@kodbrand.com';
     let admin = await User.findOne({ email: adminEmail });
     if (!admin) {
@@ -53,6 +53,7 @@ export const autoSeed = async () => {
         email: adminEmail,
         phone: '9876543210',
         password: hashedPassword,
+        passwordHash: hashedPassword,
         role: 'admin',
         roleId: '2',
         role_id: '2',
@@ -61,6 +62,9 @@ export const autoSeed = async () => {
         employeeId: 'KOD-EMP-001'
       });
       console.log(' [AutoSeed] Seeded Admin: admin@kodbrand.com / password123');
+    } else {
+      // Always keep password in sync so a stale hash never blocks login
+      await User.findByIdAndUpdate(admin._id, { $set: { password: hashedPassword, passwordHash: hashedPassword, isActive: true, status: 'active' } });
     }
 
     // 4. Ensure Developer exists
@@ -85,13 +89,8 @@ export const autoSeed = async () => {
       });
       console.log(' [AutoSeed] Seeded Developer: developer@kodbrand.com / password123');
     } else {
-      // Ensure the designationId is set correctly
-      if (!developer.designationId || String(developer.designationId) !== '6a1e8e2d01a0dae8b2f3b18c') {
-        developer.designationId = '6a1e8e2d01a0dae8b2f3b18c';
-        developer.designation = 'MERN Stack Developer';
-        await developer.save();
-        console.log(' [AutoSeed] Updated Developer designation ID.');
-      }
+      // Always keep password + designation in sync
+      await User.findByIdAndUpdate(developer._id, { $set: { password: hashedPassword, passwordHash: hashedPassword, isActive: true, status: 'active', designationId: '6a1e8e2d01a0dae8b2f3b18c', designation: 'MERN Stack Developer' } });
     }
 
     // 5. Ensure Accountant exists
@@ -116,13 +115,8 @@ export const autoSeed = async () => {
       });
       console.log(' [AutoSeed] Seeded Accountant: accountant@kodbrand.com / password123');
     } else {
-      // Ensure the designationId is set correctly
-      if (!accountant.designationId || String(accountant.designationId) !== '6a2f915e2df21dc234018cac') {
-        accountant.designationId = '6a2f915e2df21dc234018cac';
-        accountant.designation = 'Accountant';
-        await accountant.save();
-        console.log(' [AutoSeed] Updated Accountant designation ID.');
-      }
+      // Always keep password + designation in sync
+      await User.findByIdAndUpdate(accountant._id, { $set: { password: hashedPassword, passwordHash: hashedPassword, isActive: true, status: 'active', designationId: '6a2f915e2df21dc234018cac', designation: 'Accountant' } });
     }
 
     // 6. Ensure HR Manager exists
@@ -147,13 +141,8 @@ export const autoSeed = async () => {
       });
       console.log(' [AutoSeed] Seeded HR Manager: hr@kodbrand.com / password123');
     } else {
-      // Ensure the designationId is set correctly
-      if (!hr.designationId || String(hr.designationId) !== '6a2f8efea2fe388770a38987') {
-        hr.designationId = '6a2f8efea2fe388770a38987';
-        hr.designation = 'HR Manager';
-        await hr.save();
-        console.log(' [AutoSeed] Updated HR Manager designation ID.');
-      }
+      // Always keep password + designation in sync
+      await User.findByIdAndUpdate(hr._id, { $set: { password: hashedPassword, passwordHash: hashedPassword, isActive: true, status: 'active', designationId: '6a2f8efea2fe388770a38987', designation: 'HR Manager' } });
     }
 
     console.log(' [AutoSeed] Seeding process finished successfully.');

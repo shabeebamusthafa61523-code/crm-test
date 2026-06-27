@@ -81,10 +81,12 @@ export const signup = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const cleanEmail = email?.toLowerCase().trim();
 
     // 1. Find user by email
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: cleanEmail });
     if (!user) {
+      console.warn(`[Login Failure] User profile not found for email: "${cleanEmail}"`);
       return res.status(401).json({ detail: "Invalid credentials provided." });
     }
 
@@ -92,6 +94,7 @@ export const login = async (req, res) => {
     const storedPassword = user.password || user.passwordHash;
     const validPassword = storedPassword && await bcrypt.compare(password, storedPassword);
     if (!validPassword) {
+      console.warn(`[Login Failure] Password mismatch for user: "${cleanEmail}"`);
       return res.status(401).json({ detail: "Invalid credentials provided." });
     }
 
