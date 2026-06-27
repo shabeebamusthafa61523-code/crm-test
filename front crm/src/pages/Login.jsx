@@ -89,6 +89,7 @@ const Login = () => {
 
         // Check if user is an admin
         const currentUserRole = String(userObj.role_id || userObj.roleId || userObj.role || '').toLowerCase().trim();
+
         const isAdmin = ['1', '2', 'admin'].includes(currentUserRole);
         const isHr = currentUserRole === 'hr';
 
