@@ -31,7 +31,7 @@ const Register = () => {
   }, [isDark]);
 
   const [roles] = useState([
-    { id: "1", name: "hr" },
+    { id: "1", name: "employee" },
     { id: "2", name: "admin" },
     // { id: "3", name: "employee" },
     // { id: "10", name: "student" }
