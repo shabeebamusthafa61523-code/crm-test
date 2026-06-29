@@ -49,6 +49,8 @@ const Dashboard = () => {
   const [userSearch, setUserSearch] = useState("");
   const [taskFilter, setTaskFilter] = useState("all");
   const [taskSearch, setTaskSearch] = useState("");
+  const [activeAnalyticsDept, setActiveAnalyticsDept] = useState("all");
+  const [userPerformanceSort, setUserPerformanceSort] = useState("completion");
 
   const navigate = useNavigate();
 
@@ -298,6 +300,539 @@ const Dashboard = () => {
     });
   }, [tasks, taskSearch, taskFilter, allUsers]);
 
+  // Dynamic department list from allUsers
+  const departmentsList = useMemo(() => {
+    const depts = new Set();
+    allUsers.forEach(u => {
+      if (u.department) depts.add(u.department);
+    });
+    return Array.from(depts);
+  }, [allUsers]);
+
+  // Processed todo task metrics grouped by department and sorted (initialized for all departments)
+  const processedTodoAnalytics = useMemo(() => {
+    const groups = {};
+
+    // Initialize every department from departmentsList
+    departmentsList.forEach(dept => {
+      groups[dept] = { department: dept, total: 0, completed: 0, pending: 0 };
+    });
+
+    tasks.forEach(t => {
+      const assignedId = (t.assigned_to && typeof t.assigned_to === "object")
+        ? (t.assigned_to.id || t.assigned_to._id)
+        : t.assigned_to;
+      
+      const userObj = allUsers.find(u => String(u.id || u._id) === String(assignedId));
+      const dept = userObj ? (userObj.department || "Unassigned") : "Unassigned";
+
+      if (!groups[dept]) {
+        groups[dept] = { department: dept, total: 0, completed: 0, pending: 0 };
+      }
+
+      groups[dept].total += 1;
+      if (String(t.status).toLowerCase() === 'done') {
+        groups[dept].completed += 1;
+      } else {
+        groups[dept].pending += 1;
+      }
+    });
+
+    const list = Object.values(groups).map(g => ({
+      ...g,
+      completionRate: g.total ? Math.round((g.completed / g.total) * 100) : 0
+    }));
+
+    // Sorting alphabetically by default
+    list.sort((a, b) => a.department.localeCompare(b.department));
+
+    return list;
+  }, [tasks, allUsers, departmentsList]);
+
+
+
+  // Processed user todo performance list (filtered by department and sorted)
+  const processedUserTodoPerformance = useMemo(() => {
+    let list = allUsers.map(u => {
+      const userIdStr = String(u.id || u._id || "").trim();
+      const userTasks = tasks.filter(t => {
+        const assignedId = (t.assigned_to && typeof t.assigned_to === "object")
+          ? (t.assigned_to.id || t.assigned_to._id)
+          : t.assigned_to;
+        return String(assignedId).trim() === userIdStr;
+      });
+
+      const total = userTasks.length;
+      const completed = userTasks.filter(t => String(t.status).toLowerCase() === 'done').length;
+      const completionRate = total ? Math.round((completed / total) * 100) : 0;
+
+      return {
+        ...u,
+        total,
+        completed,
+        completionRate
+      };
+    });
+
+    // Filter by active department selection
+    if (activeAnalyticsDept !== "all") {
+      list = list.filter(u => String(u.department || "").toLowerCase().trim() === activeAnalyticsDept.toLowerCase().trim());
+    }
+
+    // Sort by selected criteria
+    if (userPerformanceSort === "completion") {
+      list.sort((a, b) => b.completionRate - a.completionRate);
+    } else if (userPerformanceSort === "workload") {
+      list.sort((a, b) => b.total - a.total);
+    } else if (userPerformanceSort === "name") {
+      list.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+    }
+
+    return list;
+  }, [allUsers, tasks, activeAnalyticsDept, userPerformanceSort]);
+
+  // SVG Bar Chart Generator for User Todo Performance (Premium Edition)
+  const renderUserTodoPerformanceChart = () => {
+    const data = processedUserTodoPerformance;
+
+    if (data.length === 0) {
+      return (
+        <div className="flex flex-col justify-center items-center h-[200px] text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50 dark:bg-slate-950/40">
+          <Users className="text-slate-355 dark:text-slate-655 mb-2 animate-bounce" size={24} />
+          <p className="text-[10px] font-black text-slate-550 dark:text-slate-455 uppercase tracking-widest">
+            No Operators Found in this Department
+          </p>
+        </div>
+      );
+    }
+
+    const width = 500;
+    const rowHeight = 35;
+    const headerHeight = 20;
+    const paddingLeft = 120; // for user names
+    const paddingRight = 100; // for completion rate and ratio
+    const chartWidth = width - paddingLeft - paddingRight;
+    const height = headerHeight + (data.length * rowHeight) + 15;
+
+    return (
+      <div className="w-full h-full flex flex-col justify-between">
+        <div className="relative flex-1" style={{ minHeight: `${height}px` }}>
+          <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
+            <defs>
+              <linearGradient id="userTodoGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor="#8b5cf6" />
+                <stop offset="100%" stopColor="#ec4899" />
+              </linearGradient>
+              <filter id="shadow-user" x="-10%" y="-20%" width="120%" height="150%">
+                <feDropShadow dx="0" dy="1.5" stdDeviation="2" floodColor="#ec4899" floodOpacity="0.25" />
+              </filter>
+            </defs>
+
+            {/* Grid Lines */}
+            {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
+              const x = paddingLeft + ratio * chartWidth;
+              return (
+                <g key={idx} className="opacity-15 dark:opacity-[0.05]">
+                  <line x1={x} y1={headerHeight} x2={x} y2={height - 15} stroke="currentColor" strokeWidth="1" strokeDasharray="2 2" className="text-slate-400" />
+                  <text x={x} y={headerHeight - 5} textAnchor="middle" className="text-[8px] font-black text-slate-500 fill-current">{ratio * 100}%</text>
+                </g>
+              );
+            })}
+
+            {/* Rows */}
+            {data.map((user, idx) => {
+              const y = headerHeight + (idx * rowHeight) + 10;
+              const barWidth = (user.completionRate / 100) * chartWidth;
+
+              return (
+                <g key={user.name || idx} className="group/row cursor-pointer transition-all duration-300 hover:opacity-90">
+                  {/* User Name */}
+                  <text
+                    x={paddingLeft - 12}
+                    y={y + 8}
+                    textAnchor="end"
+                    className="text-[9px] font-black text-slate-705 dark:text-slate-355 fill-current tracking-wide transition-colors group-hover/row:fill-indigo-500"
+                  >
+                    {user.name}
+                  </text>
+
+                  {/* Background Bar */}
+                  <rect
+                    x={paddingLeft}
+                    y={y}
+                    width={chartWidth}
+                    height="10"
+                    rx="3"
+                    className="fill-slate-100 dark:fill-slate-900 transition-all duration-300"
+                  />
+
+                  {/* Progress Bar */}
+                  <rect
+                    x={paddingLeft}
+                    y={y}
+                    width={Math.max(barWidth, 0)}
+                    height="10"
+                    rx="3"
+                    fill="url(#userTodoGrad)"
+                    filter="url(#shadow-user)"
+                    className="transition-all duration-500"
+                  />
+
+                  {/* Completed / Total Label */}
+                  <text
+                    x={paddingLeft + Math.max(barWidth, 2) + 8}
+                    y={y + 8}
+                    className="text-[9px] font-extrabold text-slate-500 dark:text-slate-455 fill-current"
+                  >
+                    {user.completed}/{user.total}
+                  </text>
+
+                  {/* Completion Rate Badge */}
+                  <text
+                    x={width - 5}
+                    y={y + 8}
+                    textAnchor="end"
+                    className="text-[9px] font-black text-pink-500 dark:text-pink-400 fill-current tracking-wider"
+                  >
+                    {user.completionRate}% Done
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+      </div>
+    );
+  };
+
+  // Memoized completed tasks trend data for each user in selected department
+  const completedUsersTrendData = useMemo(() => {
+    const dates = [];
+    const dateLabels = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      dates.push(dateStr);
+      
+      const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      dateLabels.push({ dateStr, label });
+    }
+
+    const deptUsers = processedUserTodoPerformance;
+
+    const trend = deptUsers.map(user => {
+      const userIdStr = String(user.id || user._id || "").trim();
+      const userTasks = tasks.filter(t => {
+        const assignedId = (t.assigned_to && typeof t.assigned_to === "object")
+          ? (t.assigned_to.id || t.assigned_to._id)
+          : t.assigned_to;
+        return String(assignedId).trim() === userIdStr;
+      });
+
+      const counts = dates.map(dStr => {
+        return userTasks.filter(t => {
+          const isDone = String(t.status).toLowerCase() === 'done';
+          if (!isDone) return false;
+          
+          const taskDateVal = t.updatedAt || t.completedAt || t.createdAt || t.dueDate;
+          if (!taskDateVal) return false;
+          
+          const taskDate = new Date(taskDateVal);
+          const y = taskDate.getFullYear();
+          const m = String(taskDate.getMonth() + 1).padStart(2, '0');
+          const d = String(taskDate.getDate()).padStart(2, '0');
+          const taskDateStr = `${y}-${m}-${d}`;
+          
+          return taskDateStr === dStr;
+        }).length;
+      });
+
+      const totalCompletions = counts.reduce((a, b) => a + b, 0);
+
+      return {
+        name: user.name,
+        counts,
+        totalCompletions
+      };
+    });
+
+    const activeUsers = trend
+      .filter(u => u.totalCompletions > 0 || deptUsers.length <= 5)
+      .slice(0, 5);
+
+    return {
+      dateLabels,
+      usersTrend: activeUsers
+    };
+  }, [tasks, processedUserTodoPerformance]);
+
+  // SVG Multi-Line Chart for User Completed Tasks Activity Trend (Premium Edition)
+  const renderTasksTrendLineChart = () => {
+    const { dateLabels, usersTrend } = completedUsersTrendData;
+
+    if (usersTrend.length === 0) {
+      return (
+        <div className="flex flex-col justify-center items-center h-[200px] text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50 dark:bg-slate-950/40">
+          <Activity className="text-slate-355 dark:text-slate-655 mb-2 animate-bounce" size={24} />
+          <p className="text-[10px] font-black text-slate-550 dark:text-slate-455 uppercase tracking-widest">
+            No Active User Trends Found
+          </p>
+        </div>
+      );
+    }
+
+    let maxVal = 2;
+    usersTrend.forEach(user => {
+      const userMax = Math.max(...user.counts);
+      if (userMax > maxVal) maxVal = userMax;
+    });
+
+    const width = 500;
+    const height = 200;
+    const paddingTop = 30;
+    const paddingBottom = 30;
+    const paddingLeft = 30;
+    const paddingRight = 20;
+
+    const chartWidth = width - paddingLeft - paddingRight;
+    const chartHeight = height - paddingTop - paddingBottom;
+
+    const lineColors = [
+      "#6366f1", // indigo
+      "#ec4899", // pink
+      "#10b981", // emerald
+      "#f59e0b", // amber
+      "#3b82f6", // blue
+      "#a855f7", // purple
+      "#06b6d4"  // cyan
+    ];
+
+    return (
+      <div className="w-full h-full flex flex-col justify-between">
+        <div className="relative flex-1" style={{ minHeight: `${height}px` }}>
+          <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
+            {/* Grid lines */}
+            {[0, 0.5, 1].map((ratio, i) => {
+              const y = paddingTop + chartHeight * ratio;
+              const val = Math.round(maxVal * (1 - ratio));
+              return (
+                <g key={i} className="opacity-10 dark:opacity-[0.05]">
+                  <line x1={paddingLeft} y1={y} x2={width - paddingRight} y2={y} stroke="currentColor" strokeWidth="1" strokeDasharray="3 3" className="text-slate-400" />
+                  <text x={paddingLeft - 8} y={y + 3} textAnchor="end" className="text-[9px] font-black text-slate-500 fill-current">{val}</text>
+                </g>
+              );
+            })}
+
+            {/* X-axis date labels */}
+            {dateLabels.map((d, i) => {
+              const x = paddingLeft + (i * (chartWidth / (dateLabels.length - 1)));
+              return (
+                <text 
+                  key={i}
+                  x={x} 
+                  y={paddingTop + chartHeight + 15} 
+                  textAnchor="middle" 
+                  className="text-[8px] font-extrabold text-slate-500 fill-current"
+                >
+                  {d.label}
+                </text>
+              );
+            })}
+
+            {/* Paths and Dots for each user */}
+            {usersTrend.map((user, uIdx) => {
+              const userColor = lineColors[uIdx % lineColors.length];
+              const points = user.counts.map((count, i) => {
+                const x = paddingLeft + (i * (chartWidth / (dateLabels.length - 1)));
+                const y = paddingTop + chartHeight - ((count / maxVal) * chartHeight);
+                return { x, y, count };
+              });
+
+              const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+
+              return (
+                <g key={user.name}>
+                  <defs>
+                    <filter id={`glow-${uIdx}`} x="-10%" y="-20%" width="120%" height="150%">
+                      <feDropShadow dx="0" dy="1.5" stdDeviation="2.5" floodColor={userColor} floodOpacity="0.25" />
+                    </filter>
+                  </defs>
+
+                  {/* Line path */}
+                  {pathD && (
+                    <path 
+                      d={pathD} 
+                      fill="none" 
+                      stroke={userColor} 
+                      strokeWidth="2.5" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round"
+                      filter={`url(#glow-${uIdx})`}
+                      className="transition-all duration-300 hover:stroke-[3px]"
+                    />
+                  )}
+
+                  {/* Individual Point Circles */}
+                  {points.map((p, idx) => (
+                    <g key={idx} className="group/dot cursor-pointer">
+                      <circle 
+                        cx={p.x} 
+                        cy={p.y} 
+                        r="3.5" 
+                        fill={userColor}
+                        className="stroke-white dark:stroke-slate-900 stroke-2 transition-transform duration-300 group-hover/dot:scale-[1.35]" 
+                      />
+                      <text 
+                        x={p.x} 
+                        y={p.y - 8} 
+                        textAnchor="middle" 
+                        className="text-[9px] font-black text-slate-705 dark:text-slate-350 fill-current opacity-0 group-hover/dot:opacity-100 transition-opacity duration-200 pointer-events-none"
+                      >
+                        {user.name}: {p.count} Done
+                      </text>
+                    </g>
+                  ))}
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+
+        {/* Legend */}
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-4 justify-center border-t border-slate-50 dark:border-slate-850 pt-3">
+          {usersTrend.map((user, idx) => (
+            <div key={user.name} className="flex items-center gap-1.5 text-[9px] font-bold text-slate-600 dark:text-slate-400">
+              <span className="w-2.5 h-1.5 rounded-full" style={{ backgroundColor: lineColors[idx % lineColors.length] }} />
+              <span>{user.name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // Processed staff performance list (sorted by conversion rate)
+  const processedStaffPerformance = useMemo(() => {
+    let list = [...staffPerformance];
+    list.sort((a, b) => (b.conversionRate || 0) - (a.conversionRate || 0));
+    return list;
+  }, [staffPerformance]);
+
+  // SVG Bar Chart Generator for Staff Performance
+  const renderStaffPerformanceChart = () => {
+    const data = processedStaffPerformance.slice(0, 5); // top 5 operators
+
+    if (data.length === 0) {
+      return (
+        <div className="flex flex-col justify-center items-center h-[200px] text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50 dark:bg-slate-950/40">
+          <Users className="text-slate-355 dark:text-slate-655 mb-2" size={24} />
+          <p className="text-[10px] font-bold text-slate-550 dark:text-slate-455 uppercase tracking-widest">
+            No Staff Performance Found
+          </p>
+        </div>
+      );
+    }
+
+    const width = 500;
+    const rowHeight = 35;
+    const headerHeight = 20;
+    const paddingLeft = 110; // for names
+    const paddingRight = 85; // for values & leads count
+    const chartWidth = width - paddingLeft - paddingRight;
+    const height = headerHeight + (data.length * rowHeight) + 15;
+
+    return (
+      <div className="w-full h-full flex flex-col justify-between">
+        <div className="relative flex-1" style={{ minHeight: `${height}px` }}>
+          <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
+            <defs>
+              <linearGradient id="barGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor="#6366f1" />
+                <stop offset="100%" stopColor="#a855f7" />
+              </linearGradient>
+            </defs>
+
+            {/* Grid Lines */}
+            {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
+              const x = paddingLeft + ratio * chartWidth;
+              return (
+                <g key={idx} className="opacity-15 dark:opacity-[0.07]">
+                  <line x1={x} y1={headerHeight} x2={x} y2={height - 15} stroke="currentColor" strokeWidth="1" strokeDasharray="2 2" className="text-slate-400" />
+                  <text x={x} y={headerHeight - 5} textAnchor="middle" className="text-[8px] font-black text-slate-500 fill-current">{ratio * 100}%</text>
+                </g>
+              );
+            })}
+
+            {/* Rows */}
+            {data.map((staff, idx) => {
+              const y = headerHeight + (idx * rowHeight) + 10;
+              const rate = staff.conversionRate ? Math.round(staff.conversionRate) : 0;
+              const barWidth = (rate / 100) * chartWidth;
+
+              return (
+                <g key={staff.name || idx} className="group/row">
+                  {/* Operator Name */}
+                  <text
+                    x={paddingLeft - 10}
+                    y={y + 10}
+                    textAnchor="end"
+                    className="text-[9px] font-black text-slate-705 dark:text-slate-355 fill-current truncate cursor-pointer hover:fill-indigo-500 transition-colors"
+                  >
+                    {staff.name}
+                  </text>
+
+                  {/* Background Bar */}
+                  <rect
+                    x={paddingLeft}
+                    y={y}
+                    width={chartWidth}
+                    height="12"
+                    rx="3"
+                    className="fill-slate-100 dark:fill-slate-900 transition-all duration-300"
+                  />
+
+                  {/* Progress Bar */}
+                  <rect
+                    x={paddingLeft}
+                    y={y}
+                    width={Math.max(barWidth, 2)}
+                    height="12"
+                    rx="3"
+                    fill="url(#barGrad)"
+                    className="transition-all duration-500"
+                  />
+
+                  {/* Value Label */}
+                  <text
+                    x={paddingLeft + Math.max(barWidth, 2) + 6}
+                    y={y + 9}
+                    className="text-[9px] font-black text-slate-800 dark:text-slate-200 fill-current"
+                  >
+                    {rate}%
+                  </text>
+
+                  {/* Total Assigned Badge */}
+                  <text
+                    x={width - 5}
+                    y={y + 9}
+                    textAnchor="end"
+                    className="text-[8px] font-bold text-slate-450 fill-current"
+                  >
+                    {staff.totalAssigned} leads
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+      </div>
+    );
+  };
+
   // ----------------------------------------------------
   // SVG LINE/AREA CHART GENERATOR (Real Activity Timeline)
   // ----------------------------------------------------
@@ -515,13 +1050,79 @@ const Dashboard = () => {
 
         {/* CHARTS SECTION 1 - SVG TIMELINE & LEAD STAGE FUNNEL */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* WEEKLY ACTIVITY SVG CHART */}
-          <div className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm h-full flex flex-col justify-between">
-            {renderWeeklyActivityChart()}
-          </div>
+          {/* UNIFIED DEPARTMENT & USER TODO ANALYTICS CONSOLE (Full-Width Premium Dashboard Card) */}
+          <div className="lg:col-span-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm flex flex-col justify-between">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 border-b border-slate-50 dark:border-slate-850 pb-4">
+              <div>
+                <h3 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                  Operational Task Analytics
+                </h3>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+                  Select a department to view individual user completion rates and task trends
+                </p>
+              </div>
+              
+              <div className="flex items-center gap-3 flex-wrap">
+                {/* Department Dropdown Selector */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] font-black uppercase text-slate-450 dark:text-slate-500">Department:</span>
+                  <select
+                    value={activeAnalyticsDept}
+                    onChange={(e) => setActiveAnalyticsDept(e.target.value)}
+                    className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider text-slate-750 dark:text-slate-350 focus:outline-none cursor-pointer hover:border-indigo-500/50 transition-colors"
+                  >
+                    <option value="all">All Departments</option>
+                    {departmentsList.map(dept => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
+                  </select>
+                </div>
 
+                {/* Sort Users Selector */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] font-black uppercase text-slate-455 dark:text-slate-500">Sort Users:</span>
+                  <select
+                    value={userPerformanceSort}
+                    onChange={(e) => setUserPerformanceSort(e.target.value)}
+                    className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider text-slate-750 dark:text-slate-350 focus:outline-none cursor-pointer hover:border-indigo-500/50 transition-colors"
+                  >
+                    <option value="completion">Completion Rate</option>
+                    <option value="workload">Total Workload</option>
+                    <option value="name">Name</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* CHARTS CONTAINER (GRID 1:2) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1">
+              {/* USER COMPLETION BAR CHART */}
+              <div className="flex flex-col">
+                <p className="text-[10px] font-black text-slate-455 dark:text-slate-500 uppercase tracking-widest mb-4 pb-1.5 border-b border-slate-50 dark:border-slate-850">
+                  User Task Completions
+                </p>
+                <div className="flex-1 overflow-y-auto max-h-[250px] scrollbar-thin">
+                  {renderUserTodoPerformanceChart()}
+                </div>
+              </div>
+
+              {/* ACTIVITY TREND LINE CHART */}
+              <div className="flex flex-col">
+                <p className="text-[10px] font-black text-slate-455 dark:text-slate-500 uppercase tracking-widest mb-4 pb-1.5 border-b border-slate-50 dark:border-slate-850">
+                  Department Activity Trend (Last 7 Days)
+                </p>
+                <div className="flex-1">
+                  {renderTasksTrendLineChart()}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* CHARTS SECTION 2 - LEADS FUNNEL, MARKETING SOURCES, AND OPERATOR PERFORMANCE */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* LEAD PIPELINE FUNNEL CHART */}
-          <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm flex flex-col justify-between">
+          <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm flex flex-col justify-between">
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h2 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">
@@ -572,19 +1173,16 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="flex flex-col justify-center items-center py-12 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50 dark:bg-slate-950/40 h-full">
-                <BarChart2 className="mx-auto text-slate-350 dark:text-slate-650 mb-2" size={24} />
+                <BarChart2 className="mx-auto text-slate-350 dark:text-slate-655 mb-2" size={24} />
                 <p className="text-[10px] font-bold text-slate-550 dark:text-slate-450 uppercase tracking-widest">
                   No Funnel Data Registered
                 </p>
               </div>
             )}
           </div>
-        </div>
 
-        {/* CHARTS SECTION 2 - LEAD SOURCES & OPERATOR CONVERSION LEADERBOARD */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* LEAD SOURCE ATTRIBUTION */}
-          <div className="lg:col-span-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm flex flex-col">
+          <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm flex flex-col">
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h3 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">
@@ -637,63 +1235,25 @@ const Dashboard = () => {
             )}
           </div>
 
-          {/* STAFF LEADERBOARD (CONVERSION RATE) */}
-          <div className="lg:col-span-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm flex flex-col">
+          {/* OPERATOR CONVERSION LEADERBOARD */}
+          <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm flex flex-col justify-between">
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h3 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-                  Operator Performance Leaderboard
+                  Operator Conversion Analytics
                 </h3>
                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
-                  Lead conversion ranking across operator staff
+                  Lead conversion rate comparison leaderboard
                 </p>
               </div>
-              <span className="text-[9px] font-black text-amber-500 bg-amber-500/5 px-2 py-0.5 border border-amber-500/10 rounded uppercase">
-                Ranking
+              <span className="text-[9px] font-black text-indigo-500 bg-indigo-500/5 px-2 py-0.5 border border-indigo-500/10 rounded uppercase">
+                Leaderboard
               </span>
             </div>
 
-            {staffPerformance && staffPerformance.length > 0 ? (
-              <div className="space-y-4 flex-1 flex flex-col justify-center">
-                {staffPerformance.slice(0, 4).map((staff, i) => {
-                  const rate = staff.conversionRate ? Math.round(staff.conversionRate) : 0;
-                  
-                  return (
-                    <div key={staff.name || i} className="flex items-center gap-4">
-                      <div className="w-8 h-8 rounded-lg overflow-hidden border border-slate-150 dark:border-slate-855 bg-slate-50 dark:bg-slate-950 shrink-0 flex items-center justify-center font-bold text-xs text-indigo-500">
-                        {String(staff.name || "?").charAt(0)}
-                      </div>
-
-                      <div className="flex-1 space-y-1">
-                        <div className="flex justify-between items-baseline text-[11px] font-bold text-slate-700 dark:text-slate-350">
-                          <span className="truncate max-w-[150px]">{staff.name}</span>
-                          <div className="flex gap-2.5 text-slate-450 font-medium">
-                            <span>{staff.totalAssigned} Assigned</span>
-                            <span className="text-emerald-500 font-black">{rate}% Conv.</span>
-                          </div>
-                        </div>
-
-                        <div className="h-1.5 bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${rate}%` }}
-                            transition={{ duration: 0.8, delay: i * 0.05 }}
-                            className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-lime-500"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="flex flex-col justify-center items-center py-12 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50 dark:bg-slate-950/40 h-full">
-                <Users className="mx-auto text-slate-350 dark:text-slate-655 mb-2" size={24} />
-                <p className="text-[10px] font-bold text-slate-550 dark:text-slate-455 uppercase tracking-widest">
-                  No Operator Performance Registered
-                </p>
-              </div>
-            )}
+            <div className="flex-1 min-h-[200px]">
+              {renderStaffPerformanceChart()}
+            </div>
           </div>
         </div>
 

@@ -283,7 +283,54 @@ const VideographerReportPage = () => {
           department: userDetail.department || apiBasicDetails.department || ''
         });
 
-        setTaskLog(report.taskLog || []);
+        const savedLog = report.taskLog || [];
+        setTaskLog(savedLog);
+        
+        // Auto-fetch and merge new/missing tasks or update existing ones
+        try {
+          fetchCompletedTasks(userId, dateStr).then(completedTasks => {
+            if (completedTasks && completedTasks.length > 0) {
+              const cleanTitle = (title) => {
+                if (!title) return '';
+                return title.replace(/\[[^\]]+\]/g, '').trim().toLowerCase();
+              };
+
+              const updatedLog = [...savedLog];
+              const addedTasks = [];
+
+              completedTasks.forEach(t => {
+                const cleanT = cleanTitle(t.title);
+                const matchIndex = updatedLog.findIndex(row => cleanTitle(row.taskProjectName || '') === cleanT);
+
+                if (matchIndex > -1) {
+                  // Update existing task details in the saved report
+                  updatedLog[matchIndex] = {
+                    ...updatedLog[matchIndex],
+                    taskProjectName: t.title,
+                    status: t.status === 'Done' ? 'Done' : 'Pending',
+                    startTime: t.startTime || updatedLog[matchIndex].startTime || '',
+                    endTime: t.endTime || updatedLog[matchIndex].endTime || ''
+                  };
+                } else {
+                  // Append new task
+                  addedTasks.push({
+                    taskProjectName: t.title,
+                    descriptionDetails: 'Auto-fetched',
+                    startTime: t.startTime || '',
+                    endTime: t.endTime || '',
+                    status: t.status === 'Done' ? 'Done' : 'Pending',
+                    fileLink: ''
+                  });
+                }
+              });
+
+              setTaskLog([...updatedLog, ...addedTasks]);
+            }
+          });
+        } catch (e) {
+          console.error("Error merging additional tasks:", e);
+        }
+
         setKeyNumbers(report.keyNumbers || DEFAULT_KEY_NUMBERS);
         setBlockers(report.blockers || []);
         setTomorrowTasks(report.tomorrowTasks || []);
@@ -294,7 +341,7 @@ const VideographerReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ taskProjectName: t.title, descriptionDetails: 'Auto-fetched', startTime: '', endTime: '', status: 'Completed', fileLink: '' }));
+            const mappedTasks = completedTasks.map(t => ({ taskProjectName: t.title, descriptionDetails: 'Auto-fetched', startTime: t.startTime || '', endTime: t.endTime || '', status: t.status === 'Done' ? 'Done' : 'Pending', fileLink: '' }));
             mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' });
             mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' });
             setTaskLog(mappedTasks);
@@ -312,7 +359,7 @@ const VideographerReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ taskProjectName: t.title, descriptionDetails: 'Auto-fetched', startTime: '', endTime: '', status: 'Completed', fileLink: '' }));
+            const mappedTasks = completedTasks.map(t => ({ taskProjectName: t.title, descriptionDetails: 'Auto-fetched', startTime: t.startTime || '', endTime: t.endTime || '', status: t.status === 'Done' ? 'Done' : 'Pending', fileLink: '' }));
             mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' });
             mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' });
             setTaskLog(mappedTasks);

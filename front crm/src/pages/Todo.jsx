@@ -200,21 +200,27 @@ console.log("HEADERS:", getAuthHeaders());
 
                     <div className="p-4 space-y-4">
                       {tasks.filter(t => t.status === statusKey).map((task, index) => {
-                        const isUrgent = task.dueDate && statusKey !== 'done' && (new Date(task.dueDate) - new Date()) <= 24 * 60 * 60 * 1000;
+                        const checkIsUrgent = (dateString) => {
+                          if (!dateString) return false;
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          const due = new Date(dateString);
+                          due.setHours(0, 0, 0, 0);
+                          const diffTime = due.getTime() - today.getTime();
+                          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                          return diffDays <= 1; // Today, tomorrow, or overdue
+                        };
+                        const isUrgent = task.dueDate && statusKey !== 'done' && checkIsUrgent(task.dueDate);
                         return (
                         <Draggable key={task.id.toString()} draggableId={task.id.toString()} index={index}>
                           {(p, s) => (
                             <div 
                               ref={p.innerRef} {...p.draggableProps} {...p.dragHandleProps} 
                               onClick={() => setSelectedTask(task)} 
-
-                              className={`group relative p-5 pl-7 rounded-[1.75rem] bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border ${isUrgent ? 'border-rose-500 bg-rose-50/50 dark:bg-rose-900/20' : 'border-slate-200/50 dark:border-slate-800/50'} shadow-sm hover:shadow-lg dark:hover:shadow-indigo-500/[0.02] transition-all duration-300 cursor-grab active:cursor-grabbing hover:-translate-y-[2px] ${s.isDragging ? 'rotate-[1.5deg] scale-[1.02] shadow-2xl z-50 bg-white/95 dark:bg-slate-900/95 border-indigo-500/40 dark:border-indigo-500/50 ring-2 ring-indigo-500/10' : ''}`}
-
-                              className={`group relative p-5 pl-7 rounded-[1.75rem] bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/50 shadow-sm hover:shadow-lg dark:hover:shadow-indigo-500/[0.02] transition-all duration-300 cursor-grab active:cursor-grabbing hover:-translate-y-[2px] ${s.isDragging ? 'rotate-[1.5deg] scale-[1.02] shadow-2xl z-50 bg-white/95 dark:bg-slate-900/95 border-indigo-500/40 dark:border-indigo-500/50 ring-2 ring-indigo-500/10' : ''}`}
-
+                              className={`group relative p-5 pl-7 rounded-[1.75rem] bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border ${isUrgent ? 'border-rose-500 bg-rose-50/20 dark:bg-rose-950/20' : 'border-slate-200/50 dark:border-slate-800/50'} shadow-sm hover:shadow-lg dark:hover:shadow-indigo-500/[0.02] transition-all duration-300 cursor-grab active:cursor-grabbing hover:-translate-y-[2px] ${s.isDragging ? 'rotate-[1.5deg] scale-[1.02] shadow-2xl z-50 bg-white/95 dark:bg-slate-900/95 border-indigo-500/40 dark:border-indigo-500/50 ring-2 ring-indigo-500/10' : ''}`}
                             >
                               {/* Left Accent Bar */}
-                              <div className={`absolute left-0 top-6 bottom-6 w-[3px] rounded-r-full transition-all duration-300 group-hover:top-4 group-hover:bottom-4 ${COLUMN_META[statusKey].color}`} />
+                              <div className={`absolute left-0 top-6 bottom-6 w-[3px] rounded-r-full transition-all duration-300 group-hover:top-4 group-hover:bottom-4 ${isUrgent ? 'bg-rose-500' : COLUMN_META[statusKey].color}`} />
 
                               <div className="flex items-center gap-2 mb-3">
                                 <div className="h-1.5 w-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)] animate-pulse" />
@@ -225,12 +231,11 @@ console.log("HEADERS:", getAuthHeaders());
 
                               <h3 className="text-slate-800 dark:text-slate-200 font-bold text-[14px] leading-snug mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-300">{task.title}</h3>
                               {task.dueDate && (
-                                <div className={`text-[10px] font-bold mb-4 ${isUrgent ? 'text-rose-500' : 'text-slate-500'}`}>
-                                  Due: {new Date(task.dueDate).toLocaleDateString()}
+                                <div className={`text-[10px] font-bold mb-4 flex items-center gap-1.5 ${isUrgent ? 'text-rose-500' : 'text-slate-500'}`}>
+                                  <Clock size={12} />
+                                  <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
                                 </div>
                               )}
-
-                              <h3 className="text-slate-800 dark:text-slate-200 font-bold text-[14px] leading-snug mb-4 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-300">{task.title}</h3>
 
                               
                               <div className="flex items-center justify-between pt-4 border-t border-slate-100/60 dark:border-slate-850/50">
