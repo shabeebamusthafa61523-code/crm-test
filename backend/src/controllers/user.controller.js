@@ -437,7 +437,8 @@ export const userController = {
         salary,
         address,
         identityType,
-        identityNumber
+        identityNumber,
+        employeeId
       } = req.body;
 
       const existingUser =
@@ -485,6 +486,14 @@ export const userController = {
           throw new AppError('Conflict: Email address is already registered by another account.', 409);
         }
         updateFields.email = email;
+      }
+
+      if (employeeId && employeeId !== existingUser.employeeId) {
+        const empIdTaken = await User.findOne({ employeeId, _id: { $ne: id } });
+        if (empIdTaken) {
+          throw new AppError('Conflict: Employee ID is already registered to another account.', 409);
+        }
+        updateFields.employeeId = employeeId;
       }
 
       if (fileUrl) {
