@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { signup, login, verifyForgotPassword, resetForgotPassword } from '../controllers/auth.controller.js';
+import { designationController } from '../controllers/designation.controller.js';
+import { departmentController } from '../modules/departments/department.controller.js';
 import verifyJWT from '../middleware/auth.middleware.js';
 import User from '../models/user.model.js';
 import { AppError } from '../middleware/errorHandler.js';
@@ -16,6 +18,8 @@ router.post('/signup', signup);
 router.post('/login', login);
 router.post('/forgot-password/verify', verifyForgotPassword);
 router.post('/forgot-password/reset', resetForgotPassword);
+router.get('/designations', designationController.getDesignations);
+router.get('/departments', departmentController.getAll);
 
 router.put(
   '/update-status/:user_id',

@@ -110,7 +110,7 @@ const MainLayout = ({ children }) => {
       <Navbar />
 
       {/* 3. Main Content Section with Fluid Transitions */}
-      <main className="transition-all duration-500 pt-32 pb-32 px-6 lg:pt-36 lg:pl-28 lg:pr-12 max-w-[1920px] mx-auto">
+      <main className="transition-all duration-500 pt-32 pb-28 px-6 lg:pt-36 lg:pl-24 lg:pr-12 max-w-[1920px] mx-auto">
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}

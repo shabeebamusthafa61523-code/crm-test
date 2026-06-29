@@ -2,6 +2,7 @@ import User from '../models/user.model.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import redis from '../config/redis.js';
+import mongoose from 'mongoose';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key';
 
@@ -9,7 +10,7 @@ export const signup = async (req, res) => {
   try {
     const {
       name, email, password, phone, role_id, status,
-      designation_id, joining_date, salary, address,
+      designation_id, department_id, departmentId, joining_date, salary, address,
       identityType, identityNumber, profile_image
     } = req.body;
 
@@ -31,6 +32,30 @@ export const signup = async (req, res) => {
     };
     const userRole = roleMap[role_id] || String(role_id || 'employee');
 
+    // 2.5 Resolve designation and department names if provided
+    let resolvedDesignationName = '';
+    let resolvedDesignationId = null;
+    if (designation_id && mongoose.Types.ObjectId.isValid(String(designation_id))) {
+      const Designation = (await import('../models/designation.model.js')).default;
+      const designationObj = await Designation.findById(designation_id);
+      if (designationObj) {
+        resolvedDesignationName = designationObj.name;
+        resolvedDesignationId = designationObj._id;
+      }
+    }
+
+    let resolvedDepartmentName = '';
+    let resolvedDepartmentId = null;
+    const deptId = departmentId || department_id;
+    if (deptId && mongoose.Types.ObjectId.isValid(String(deptId))) {
+      const Department = (await import('../modules/departments/department.model.js')).default;
+      const departmentObj = await Department.findById(deptId);
+      if (departmentObj) {
+        resolvedDepartmentName = departmentObj.name;
+        resolvedDepartmentId = departmentObj._id;
+      }
+    }
+
     // 3. Create document instance
     const newUser = new User({
       name,
@@ -42,7 +67,11 @@ export const signup = async (req, res) => {
       role: userRole,
       status: status || 'active',
       isActive: (status || 'active') === 'active',
-      designation_id: String(designation_id),
+      designation: resolvedDesignationName,
+      designationId: resolvedDesignationId,
+      department: resolvedDepartmentName,
+      departmentId: resolvedDepartmentId,
+      designation_id: resolvedDesignationId ? String(resolvedDesignationId) : String(designation_id),
       joining_date: new Date(joining_date),
       salary: parseFloat(salary) || 0,
       address,
