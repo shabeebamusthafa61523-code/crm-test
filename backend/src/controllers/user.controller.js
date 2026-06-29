@@ -197,7 +197,12 @@ export const userController = {
         isActive: u.isActive,
         status: u.status || (u.isActive ? 'active' : 'inactive'),
         lastLogin: u.lastLogin,
-        createdAt: u.createdAt
+        createdAt: u.createdAt,
+        joining_date: u.joining_date,
+        salary: u.salary,
+        address: u.address,
+        identityType: u.identityType,
+        identityNumber: u.identityNumber
         });
       });
 
@@ -265,7 +270,12 @@ export const userController = {
           isActive: user.isActive,
           status: user.status || (user.isActive ? 'active' : 'inactive'),
           lastLogin: user.lastLogin,
-          createdAt: user.createdAt
+          createdAt: user.createdAt,
+          joining_date: user.joining_date,
+          salary: user.salary,
+          address: user.address,
+          identityType: user.identityType,
+          identityNumber: user.identityNumber
         }
       });
 
@@ -290,7 +300,12 @@ export const userController = {
         employeeId,
         avatar,
         profile_image,
-        password
+        password,
+        joining_date,
+        salary,
+        address,
+        identityType,
+        identityNumber
       } = req.body;
 
       const existingUser =
@@ -344,7 +359,12 @@ export const userController = {
           employeeId,
           avatar: fileUrl,
           profile_image: fileUrl,
-          passwordHash
+          passwordHash,
+          joining_date: joining_date ? new Date(joining_date) : new Date(),
+          salary: parseFloat(salary) || 0,
+          address: address || '',
+          identityType: identityType || 'aadhaar',
+          identityNumber: identityNumber || ''
         });
 
       await recordAudit(req, {
@@ -412,7 +432,12 @@ export const userController = {
         status,
         avatar,
         profile_image,
-        isActive
+        isActive,
+        joining_date,
+        salary,
+        address,
+        identityType,
+        identityNumber
       } = req.body;
 
       const existingUser =
@@ -447,6 +472,12 @@ export const userController = {
         designationId: selectedDesignation?._id,
         reportingManager,
       };
+
+      if (joining_date !== undefined) updateFields.joining_date = joining_date ? new Date(joining_date) : null;
+      if (salary !== undefined) updateFields.salary = parseFloat(salary) || 0;
+      if (address !== undefined) updateFields.address = address;
+      if (identityType !== undefined) updateFields.identityType = identityType;
+      if (identityNumber !== undefined) updateFields.identityNumber = identityNumber;
 
       if (email && email !== existingUser.email) {
         const emailTaken = await User.findOne({ email, _id: { $ne: id } });

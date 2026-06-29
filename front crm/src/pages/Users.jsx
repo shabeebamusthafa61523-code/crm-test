@@ -825,7 +825,12 @@ const CreateModal = ({ onClose, refresh, getAuthHeaders, designations, onDesigna
     reportingManager: '',
     status: 'active',
     role: 'employee',
-    avatar: null
+    avatar: null,
+    joining_date: new Date().toISOString().split('T')[0],
+    salary: '',
+    address: '',
+    identityType: 'aadhaar',
+    identityNumber: ''
   });
   const [preview, setPreview] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1027,13 +1032,38 @@ const CreateModal = ({ onClose, refresh, getAuthHeaders, designations, onDesigna
                 <option value="blocked">Blocked</option>
               </select>
             </div>
-            <div className="space-y-2">
+             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">System Role</label>
               <select name="role" className="w-full" value={form.role} onChange={handleInputChange}>
                 {ROLES.map(r => (
                   <option key={r.id} value={r.name}>{r.name.toUpperCase()}</option>
                 ))}
               </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Monthly Salary</label>
+              <input name="salary" type="number" className="w-full" placeholder="SALARY" value={form.salary} onChange={handleInputChange} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Joining Date</label>
+              <input required name="joining_date" type="date" className="w-full" value={form.joining_date} onChange={handleInputChange} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Identity Type</label>
+              <select name="identityType" className="w-full" value={form.identityType} onChange={handleInputChange}>
+                <option value="aadhaar">Aadhaar</option>
+                <option value="pan">PAN</option>
+                <option value="passport">Passport</option>
+                <option value="driving_license">Driving License</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">ID Number</label>
+              <input required name="identityNumber" className="w-full" placeholder="ID NUMBER" value={form.identityNumber} onChange={handleInputChange} />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Residential Address</label>
+              <textarea name="address" rows={2} className="w-full bg-slate-50 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:border-indigo-500/50 outline-none transition" placeholder="ADDRESS" value={form.address} onChange={handleInputChange} />
             </div>
           </div>
 
@@ -1070,7 +1100,12 @@ const EditModal = ({ user, onClose, refresh, getAuthHeaders, designations, onDes
     reportingManager: user.reportingManager || '',
     status: user.status || 'active',
     role: user.role || 'employee',
-    avatar: null
+    avatar: null,
+    joining_date: user.joining_date ? new Date(user.joining_date).toISOString().split('T')[0] : '',
+    salary: user.salary || '',
+    address: user.address || '',
+    identityType: user.identityType || 'aadhaar',
+    identityNumber: user.identityNumber || ''
   });
   const [preview, setPreview] = useState(user.avatar || user.profile_image || null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1261,13 +1296,38 @@ const EditModal = ({ user, onClose, refresh, getAuthHeaders, designations, onDes
                 <option value="blocked">Blocked</option>
               </select>
             </div>
-            <div className="space-y-2">
+             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">System Role</label>
               <select name="role" className="w-full" value={form.role} onChange={handleInputChange}>
                 {ROLES.map(r => (
                   <option key={r.id} value={r.name}>{r.name.toUpperCase()}</option>
                 ))}
               </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Monthly Salary</label>
+              <input name="salary" type="number" className="w-full" placeholder="SALARY" value={form.salary} onChange={handleInputChange} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Joining Date</label>
+              <input required name="joining_date" type="date" className="w-full" value={form.joining_date} onChange={handleInputChange} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Identity Type</label>
+              <select name="identityType" className="w-full" value={form.identityType} onChange={handleInputChange}>
+                <option value="aadhaar">Aadhaar</option>
+                <option value="pan">PAN</option>
+                <option value="passport">Passport</option>
+                <option value="driving_license">Driving License</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">ID Number</label>
+              <input required name="identityNumber" className="w-full" placeholder="ID NUMBER" value={form.identityNumber} onChange={handleInputChange} />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Residential Address</label>
+              <textarea name="address" rows={2} className="w-full bg-slate-50 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:border-indigo-500/50 outline-none transition" placeholder="ADDRESS" value={form.address} onChange={handleInputChange} />
             </div>
           </div>
 
@@ -1363,6 +1423,10 @@ const ViewModal = ({ user, getDesignationName, getDepartmentName, onClose }) => 
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{user.employeeId || 'N/A'}</span>
               </div>
               <div className="space-y-1">
+                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Corporate Email</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{user.email || 'N/A'}</span>
+              </div>
+              <div className="space-y-1">
                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">System Role</span>
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">{user.role || 'employee'}</span>
               </div>
@@ -1373,6 +1437,34 @@ const ViewModal = ({ user, getDesignationName, getDepartmentName, onClose }) => 
               <div className="space-y-1">
                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Reporting Manager</span>
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{user.reportingManager || 'Unassigned'}</span>
+              </div>
+              <div className="space-y-1">
+                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Monthly Salary</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">${user.salary || '0'}</span>
+              </div>
+              <div className="space-y-1">
+                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Joining Date</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  {user.joining_date ? new Date(user.joining_date).toLocaleDateString() : 'N/A'}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Identity Document</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">
+                  {user.identityType || 'N/A'}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">ID Number</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  {user.identityNumber || 'N/A'}
+                </span>
+              </div>
+              <div className="space-y-1 col-span-2">
+                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Residential Address</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  {user.address || 'N/A'}
+                </span>
               </div>
             </div>
 
