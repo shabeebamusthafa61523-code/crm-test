@@ -15,6 +15,7 @@ import crmRoutes from './src/routes/index.js';
 import apiRoutes from './src/routes/api.js';
 import aiRoutes from './src/routes/ai.routes.js';
 import Designation from './src/models/designation.model.js';
+import Department from './src/modules/departments/department.model.js';
 
 dotenv.config();
 const app = express();
@@ -144,6 +145,26 @@ mongoose.connect(MONGO_URI)
       }
     } catch (seedErr) {
       console.error(' ❌ Failed to seed default designations:', seedErr.message);
+    }
+
+    try {
+      const deptCount = await Department.countDocuments();
+      if (deptCount === 0) {
+        const defaultDepartments = [
+          { name: "HR & Admin", code: "HR" },
+          { name: "Marketing", code: "MKT" },
+          { name: "Development", code: "DEV" },
+          { name: "Designing", code: "DSN" }
+        ];
+        await Department.insertMany(defaultDepartments.map(d => ({ 
+          name: d.name, 
+          code: d.code, 
+          status: true 
+        })));
+        console.log(' 🌱 Successfully seeded default departments.');
+      }
+    } catch (seedErr) {
+      console.error(' ❌ Failed to seed default departments:', seedErr.message);
     }
   })
   .catch((error) => {

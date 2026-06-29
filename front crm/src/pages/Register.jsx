@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  User, Mail, Lock, ShieldPlus, Phone, Briefcase, 
+  User, Mail, Lock, ShieldPlus, Phone, Briefcase, Building,
   ShieldCheck, CreditCard, DollarSign, 
   Eye, EyeOff, MapPin, Calendar, Image as ImageIcon, Loader2, AlertTriangle, Sun, Moon
 } from 'lucide-react';
@@ -33,38 +33,119 @@ const Register = () => {
   const [roles] = useState([
     { id: "1", name: "hr" },
     { id: "2", name: "admin" },
-    { id: "3", name: "employee" },
-    { id: "10", name: "student" }
+    // { id: "3", name: "employee" },
+    // { id: "10", name: "student" }
   ]);
 
-  const [designations] = useState([
-    { id: "1", name: "Hr Manager" },
-    { id: "2", name: "Graphic Designer" },
-    { id: "3", name: "Digital Marketer" },
-    { id: "4", name: "React Developer" },
-    { id: "5", name: "Node Developer" },
-    { id: "6", name: "Flutter Developer" },
-    { id: "7", name: "Fullstack Developer" },
-    { id: "8", name: "Admin" },
-    { id: "9", name: "Manager" },
-    { id: "10", name: "Student" }
-  ]);
+  const [designations, setDesignations] = useState([]);
+  const [departments, setDepartments] = useState([]);
 
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     phone: '',
-    role_id: '3', // Fix 1: Explicitly set default
+    role_id: '3', // Explicitly set default
     status: 'active',
-    designation_id: '4', // Fix 1: Explicitly set default
+    designation_id: '', // Set empty initially, set dynamically once loaded
+    department_id: '', // Set empty initially, set dynamically once loaded
     joining_date: new Date().toISOString().split('T')[0],
     salary: '',
     address: '',
     identityType: 'aadhaar', 
     identityNumber: '',
-    // profile_image: ''
   });
+
+  React.useEffect(() => {
+    const apiBaseUrl = import.meta.env.VITE_API_URL || '';
+
+    const fetchDesignations = async () => {
+      try {
+        const res = await fetch(`${apiBaseUrl}/auth/designations`);
+        const data = await res.json();
+        
+        let loadedDesignations = [];
+        if (data.success && Array.isArray(data.data)) {
+          loadedDesignations = data.data;
+        } else if (Array.isArray(data)) {
+          loadedDesignations = data;
+        }
+        
+        if (loadedDesignations.length > 0) {
+          setDesignations(loadedDesignations);
+          // Set first designation as default
+          setFormData(prev => ({
+            ...prev,
+            designation_id: String(loadedDesignations[0].id || loadedDesignations[0]._id || '')
+          }));
+        } else {
+          throw new Error('Empty designations list');
+        }
+      } catch (err) {
+        console.error("Failed to fetch designations:", err);
+        // Fallback on error
+        const fallback = [
+          { id: "1", name: "Hr Manager" },
+          { id: "2", name: "Graphic Designer" },
+          { id: "3", name: "Digital Marketer" },
+          { id: "4", name: "React Developer" },
+          { id: "5", name: "Node Developer" },
+          { id: "6", name: "Flutter Developer" },
+          { id: "7", name: "Fullstack Developer" },
+          { id: "8", name: "Admin" },
+          { id: "9", name: "Manager" },
+          { id: "10", name: "Student" }
+        ];
+        setDesignations(fallback);
+        setFormData(prev => ({
+          ...prev,
+          designation_id: "4"
+        }));
+      }
+    };
+
+    const fetchDepartments = async () => {
+      try {
+        const res = await fetch(`${apiBaseUrl}/auth/departments`);
+        const data = await res.json();
+        
+        let loadedDepartments = [];
+        // The department GET returns sendSuccess format
+        if (data.success && Array.isArray(data.data)) {
+          loadedDepartments = data.data;
+        } else if (Array.isArray(data)) {
+          loadedDepartments = data;
+        }
+        
+        if (loadedDepartments.length > 0) {
+          setDepartments(loadedDepartments);
+          // Set first department as default
+          setFormData(prev => ({
+            ...prev,
+            department_id: String(loadedDepartments[0].id || loadedDepartments[0]._id || '')
+          }));
+        } else {
+          throw new Error('Empty departments list');
+        }
+      } catch (err) {
+        console.error("Failed to fetch departments:", err);
+        const fallback = [
+          { id: "6a3caed51194353cbc8a3686", name: "HR & Admin" },
+          { id: "6a26a7d72a56a1f9c49da8a3", name: "Marketing" },
+          { id: "6a3caeb31194353cbc8a3683", name: "Development" },
+          { id: "6a3caec01194353cbc8a3684", name: "Designing" }
+        ];
+        setDepartments(fallback);
+        setFormData(prev => ({
+          ...prev,
+          department_id: fallback[0].id
+        }));
+      }
+    };
+    
+    fetchDesignations();
+    fetchDepartments();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -88,14 +169,13 @@ const Register = () => {
 
     // Pull Render backend target URL from env variables
     const apiBaseUrl = import.meta.env.VITE_API_URL || '';
-
     const finalPayload = {
       ...formData,
       salary: parseFloat(formData.salary) || 0,
       role_id: String(formData.role_id || "3"),
-      designation_id: String(formData.designation_id || "4")
+      designation_id: String(formData.designation_id || (designations[0] && (designations[0].id || designations[0]._id)) || "4"),
+      department_id: String(formData.department_id || (departments[0] && (departments[0].id || departments[0]._id)) || "")
     };
-
     try {
       const response = await fetch(`${apiBaseUrl}/auth/signup`, {
         method: 'POST',
@@ -207,20 +287,51 @@ const Register = () => {
       </option>
     ))}
   </select>
-
 </div>
             </div>
 
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase ml-2 tracking-widest">Designation</label>
               <div className="relative">
-<Briefcase
-  className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none transition-all duration-200 text-slate-500
-  ${formData.designation_id ? "opacity-0" : "opacity-100"}`}
-  size={16}
-/>                <select name="designation_id" 
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-2xl py-3 pl-12 text-slate-900 dark:text-slate-100 outline-none appearance-none focus:border-[#374b69] focus:ring-2 focus:ring-[#374b69] transition-all cursor-pointer peer" onChange={handleChange} value={formData.designation_id}>
-                  {designations.map(d => <option key={d.id} value={d.id} className="dark:bg-slate-900">{d.name}</option>)}
+                <Briefcase
+                  className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none transition-all duration-200 text-slate-500
+                  ${formData.designation_id ? "opacity-0" : "opacity-100"}`}
+                  size={16}
+                />
+                <select 
+                  name="designation_id" 
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-2xl py-3 pl-12 text-slate-900 dark:text-slate-100 outline-none appearance-none focus:border-[#374b69] focus:ring-2 focus:ring-[#374b69] transition-all cursor-pointer peer" 
+                  onChange={handleChange} 
+                  value={formData.designation_id}
+                >
+                  {designations.map(d => (
+                    <option key={d.id || d._id} value={d.id || d._id} className="dark:bg-slate-900">
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase ml-2 tracking-widest">Department</label>
+              <div className="relative">
+                <Building
+                  className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none transition-all duration-200 text-slate-500
+                  ${formData.department_id ? "opacity-0" : "opacity-100"}`}
+                  size={16}
+                />
+                <select 
+                  name="department_id" 
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-2xl py-3 pl-12 text-slate-900 dark:text-slate-100 outline-none appearance-none focus:border-[#374b69] focus:ring-2 focus:ring-[#374b69] transition-all cursor-pointer peer" 
+                  onChange={handleChange} 
+                  value={formData.department_id}
+                >
+                  {departments.map(dept => (
+                    <option key={dept.id || dept._id} value={dept.id || dept._id} className="dark:bg-slate-900">
+                      {dept.name}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
