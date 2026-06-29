@@ -653,7 +653,7 @@ const MarketingReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ task: t.title, detailsNotes: 'Auto-fetched', status: 'Completed', remarks: '' }));
+            const mappedTasks = completedTasks.map(t => ({ task: t.title, detailsNotes: 'Auto-fetched', status: t.status === 'Done' ? 'Completed' : 'Pending', remarks: '' }));
             mappedTasks.push({ task: '', detailsNotes: '', status: 'ongoing', remarks: '' });
             mappedTasks.push({ task: '', detailsNotes: '', status: 'ongoing', remarks: '' });
             setTaskSummary(mappedTasks);
@@ -671,7 +671,7 @@ const MarketingReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ task: t.title, detailsNotes: 'Auto-fetched', status: 'Completed', remarks: '' }));
+            const mappedTasks = completedTasks.map(t => ({ task: t.title, detailsNotes: 'Auto-fetched', status: t.status === 'Done' ? 'Completed' : 'Pending', remarks: '' }));
             mappedTasks.push({ task: '', detailsNotes: '', status: 'ongoing', remarks: '' });
             mappedTasks.push({ task: '', detailsNotes: '', status: 'ongoing', remarks: '' });
             setTaskSummary(mappedTasks);

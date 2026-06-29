@@ -152,11 +152,11 @@ const Login = () => {
                 Email
               </label>
               <div className="relative">
-                <Mail
+                {/* <Mail
                   className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none transition-all duration-200 text-slate-500
                   ${loginData.email ? "opacity-0" : "opacity-100"}`}
                   size={18}
-                />
+                /> */}
                 <input
                   required
                   name="email"
@@ -184,11 +184,11 @@ const Login = () => {
                 </button>
               </div>
               <div className="relative">
-                <Lock
+                {/* <Lock
                   className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none transition-all duration-200 text-slate-500
                   ${loginData.password ? "opacity-0" : "opacity-100"}`}
                   size={18}
-                />
+                /> */}
                 <input
                   required
                   name="password"

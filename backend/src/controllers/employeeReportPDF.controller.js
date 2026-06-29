@@ -151,25 +151,34 @@ export const employeeReportPDFController = {
       // Generate the PDF using pdfkit utility
       const pdfBuffer = await generateReportPDFBuffer(report, employee.name, designationName);
 
-      // Upload the PDF to Cloudinary dynamically using employee ID folder
-      const uploadResult = await uploadToCloudinary(pdfBuffer, userId, `${dateString}_daily`);
-
-      // Save or update the record in EmployeeReports model
       const cleanFilename = `${finalReportType || 'Report'}_Daily_${employee.name.replace(/[^a-zA-Z0-9]/g, '_')}_${dateString}.pdf`;
-      await EmployeeReports.findOneAndUpdate(
-        { employee_id: userId, report_date: dateString, report_period: 'daily' },
-        {
-          pdf_url: uploadResult.secure_url,
-          pdf_public_id: uploadResult.public_id,
-          filename: cleanFilename,
-          employee_id: userId,
-          report_date: dateString,
-          report_type: finalReportType || 'daily',
-          report_period: 'daily',
-          created_at: new Date()
-        },
-        { upsert: true, new: true }
-      );
+
+      // Upload the PDF to Cloudinary dynamically using employee ID folder
+      // Wrap in a try-catch block so network/Cloudinary failures don't block the download
+      let uploadResult = null;
+      try {
+        uploadResult = await uploadToCloudinary(pdfBuffer, userId, `${dateString}_daily`);
+      } catch (uploadError) {
+        console.error('Error uploading PDF to Cloudinary (ignoring to allow local download):', uploadError.message);
+      }
+
+      if (uploadResult) {
+        // Save or update the record in EmployeeReports model
+        await EmployeeReports.findOneAndUpdate(
+          { employee_id: userId, report_date: dateString, report_period: 'daily' },
+          {
+            pdf_url: uploadResult.secure_url,
+            pdf_public_id: uploadResult.public_id,
+            filename: cleanFilename,
+            employee_id: userId,
+            report_date: dateString,
+            report_type: finalReportType || 'daily',
+            report_period: 'daily',
+            created_at: new Date()
+          },
+          { upsert: true, new: true }
+        );
+      }
 
       // Serve the PDF back to the browser as a downloadable attachment
       res.setHeader('Content-Type', 'application/pdf');

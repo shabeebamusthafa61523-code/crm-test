@@ -15,12 +15,16 @@ export const createTaskSchema = z.object({
     .min(1, { message: 'Title cannot be empty' }),
   description: z.string().trim().optional(),
   assigned_to: objectIdSchema('assigned_to'),
- // CREATE
-designation_id: z
-  .string()
-  .optional()
-  .or(z.literal(''))
-  .transform(val => val === '' ? undefined : val)
+  designation_id: z
+    .string()
+    .optional()
+    .or(z.literal(''))
+    .transform(val => val === '' ? undefined : val),
+  dueDate: z
+    .string()
+    .optional()
+    .or(z.literal(''))
+    .transform(val => val === '' ? undefined : val)
 });
 
 // Body validation for updating a task
@@ -28,13 +32,18 @@ export const updateTaskSchema = z.object({
   title: z.string().trim().min(1, { message: 'Title cannot be empty' }).optional(),
   description: z.string().trim().optional(),
   assigned_to: objectIdSchema('assigned_to').optional(),
- // UPDATE
-designation_id: z
-  .string()
-  .optional()
-  .or(z.literal(''))
-  .or(z.literal(null))
-  .transform(val => val === '' ? undefined : val)
+  designation_id: z
+    .string()
+    .optional()
+    .or(z.literal(''))
+    .or(z.literal(null))
+    .transform(val => val === '' ? undefined : val),
+  dueDate: z
+    .string()
+    .optional()
+    .or(z.literal(''))
+    .or(z.literal(null))
+    .transform(val => val === '' ? undefined : val)
 });
 
 // Query validation for updating task status

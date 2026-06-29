@@ -338,7 +338,7 @@ const AccountantReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: 'Done', remarks: 'Auto-fetched' }));
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', remarks: 'Auto-fetched' }));
             mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
             mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
             setDailyAccountingSummary(mappedTasks);
@@ -356,7 +356,7 @@ const AccountantReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: 'Done', remarks: 'Auto-fetched' }));
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', remarks: 'Auto-fetched' }));
             mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
             mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
             setDailyAccountingSummary(mappedTasks);

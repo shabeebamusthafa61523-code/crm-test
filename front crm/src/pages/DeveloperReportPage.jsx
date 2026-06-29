@@ -491,7 +491,46 @@ const DeveloperReportPage = () => {
           department: userDetail.department || apiBasicDetails.department || ''
         });
 
-        setDailyTaskSummary(report.dailyTaskSummary || []);
+        const savedLog = report.dailyTaskSummary || [];
+        setDailyTaskSummary(savedLog);
+        try {
+          fetchCompletedTasks(userId, dateStr).then(completedTasks => {
+            if (completedTasks && completedTasks.length > 0) {
+              const cleanTitle = (title) => {
+                if (!title) return '';
+                return title.replace(/\[[^\]]+\]/g, '').trim().toLowerCase();
+              };
+
+              const updatedLog = [...savedLog];
+              const addedTasks = [];
+
+              completedTasks.forEach(t => {
+                const cleanT = cleanTitle(t.title);
+                const matchIndex = updatedLog.findIndex(row => cleanTitle(row.activity || '') === cleanT);
+
+                if (matchIndex > -1) {
+                  // Update existing task details in the saved report
+                  updatedLog[matchIndex] = {
+                    ...updatedLog[matchIndex],
+                    activity: t.title,
+                    status: t.status || 'Done'
+                  };
+                } else {
+                  // Append new task
+                  addedTasks.push({
+                    activity: t.title,
+                    status: t.status || 'Done',
+                    remarks: 'Auto-fetched'
+                  });
+                }
+              });
+
+              setDailyTaskSummary([...updatedLog, ...addedTasks]);
+            }
+          });
+        } catch (e) {
+          console.error("Error merging additional tasks:", e);
+        }
         setDevelopmentTaskReport(report.developmentTaskReport || []);
         setResearchLearning(report.researchLearning || []);
         setPerformanceTracker(report.performanceTracker || {
@@ -513,7 +552,7 @@ const DeveloperReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: 'Done', remarks: 'Auto-fetched' }));
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', remarks: 'Auto-fetched' }));
             mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
             mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
             setDailyTaskSummary(mappedTasks);
@@ -532,7 +571,7 @@ const DeveloperReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: 'Done', remarks: 'Auto-fetched' }));
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', remarks: 'Auto-fetched' }));
             mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
             mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
             setDailyTaskSummary(mappedTasks);
