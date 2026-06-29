@@ -1217,7 +1217,7 @@ const EditModal = ({ user, onClose, refresh, getAuthHeaders, designations, onDes
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Employee ID</label>
-              <input required name="employeeId" className="w-full" value={form.employeeId} onChange={handleInputChange} disabled />
+              <input required name="employeeId" className="w-full" value={form.employeeId} onChange={handleInputChange} />
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Full Name</label>
