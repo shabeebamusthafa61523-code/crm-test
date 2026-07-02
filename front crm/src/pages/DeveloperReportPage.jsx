@@ -493,44 +493,7 @@ const DeveloperReportPage = () => {
 
         const savedLog = report.dailyTaskSummary || [];
         setDailyTaskSummary(savedLog);
-        try {
-          fetchCompletedTasks(userId, dateStr).then(completedTasks => {
-            if (completedTasks && completedTasks.length > 0) {
-              const cleanTitle = (title) => {
-                if (!title) return '';
-                return title.replace(/\[[^\]]+\]/g, '').trim().toLowerCase();
-              };
 
-              const updatedLog = [...savedLog];
-              const addedTasks = [];
-
-              completedTasks.forEach(t => {
-                const cleanT = cleanTitle(t.title);
-                const matchIndex = updatedLog.findIndex(row => cleanTitle(row.activity || '') === cleanT);
-
-                if (matchIndex > -1) {
-                  // Update existing task details in the saved report
-                  updatedLog[matchIndex] = {
-                    ...updatedLog[matchIndex],
-                    activity: t.title,
-                    status: t.status || 'Done'
-                  };
-                } else {
-                  // Append new task
-                  addedTasks.push({
-                    activity: t.title,
-                    status: t.status || 'Done',
-                    remarks: 'Auto-fetched'
-                  });
-                }
-              });
-
-              setDailyTaskSummary([...updatedLog, ...addedTasks]);
-            }
-          });
-        } catch (e) {
-          console.error("Error merging additional tasks:", e);
-        }
         setDevelopmentTaskReport(report.developmentTaskReport || []);
         setResearchLearning(report.researchLearning || []);
         setPerformanceTracker(report.performanceTracker || {
@@ -676,13 +639,18 @@ const DeveloperReportPage = () => {
   const handleSaveReport = async () => {
     try {
       setSaving(true);
+
+      const cleanDailyTaskSummary = dailyTaskSummary.filter(t => (t.activity || '').trim() !== '');
+      const cleanDevelopmentTaskReport = developmentTaskReport.filter(t => (t.project || '').trim() !== '' || (t.activity || '').trim() !== '');
+      const cleanResearchLearning = researchLearning.filter(t => (t.activity || '').trim() !== '' || (t.details || '').trim() !== '');
+
       const payload = {
         userId: selectedUserId,
         dateString: selectedDate,
         basicDetails,
-        dailyTaskSummary,
-        developmentTaskReport,
-        researchLearning,
+        dailyTaskSummary: cleanDailyTaskSummary,
+        developmentTaskReport: cleanDevelopmentTaskReport,
+        researchLearning: cleanResearchLearning,
         performanceTracker,
         toolsUsed,
         challengesFaced,

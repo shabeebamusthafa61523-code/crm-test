@@ -1096,20 +1096,31 @@ const HrReportPage = () => {
   const handleSaveReport = async () => {
     try {
       setSaving(true);
+
+      const cleanDailyOperations = dailyOperations.filter(t => (t.activity || '').trim() !== '');
+      const cleanEmployeeManagement = employeeManagement.filter(t => (t.particulars || '').trim() !== '');
+      const cleanRecruitmentReport = recruitmentReport.filter(t => (t.position || '').trim() !== '' || (t.candidateName || '').trim() !== '');
+      const cleanAttendanceLeave = attendanceLeave.filter(t => (t.particulars || '').trim() !== '');
+      const cleanAdminOperations = adminOperations.filter(t => (t.particulars || '').trim() !== '');
+      const cleanDocumentationCompliance = documentationCompliance.filter(t => (t.particulars || '').trim() !== '');
+      const cleanKpiTracking = kpiTracking.filter(t => (t.kpi || '').trim() !== '');
+      const cleanIssuesEscalations = issuesEscalations.filter(t => (t.issue || '').trim() !== '');
+      const cleanFinalShiftHandover = finalShiftHandover.filter(t => (t.particulars || '').trim() !== '');
+
       const payload = {
         userId: selectedUserId,
         dateString: selectedDate,
         basicDetails,
-        dailyOperations,
-        employeeManagement,
-        recruitmentReport,
-        attendanceLeave,
-        adminOperations,
-        documentationCompliance,
-        kpiTracking,
-        issuesEscalations,
+        dailyOperations: cleanDailyOperations,
+        employeeManagement: cleanEmployeeManagement,
+        recruitmentReport: cleanRecruitmentReport,
+        attendanceLeave: cleanAttendanceLeave,
+        adminOperations: cleanAdminOperations,
+        documentationCompliance: cleanDocumentationCompliance,
+        kpiTracking: cleanKpiTracking,
+        issuesEscalations: cleanIssuesEscalations,
         nextDayActionPlan,
-        finalShiftHandover,
+        finalShiftHandover: cleanFinalShiftHandover,
         hrAdminComments,
         approval
       };

@@ -7,6 +7,18 @@ const __dirname = path.dirname(__filename);
 const logoPath = path.join(__dirname, '../assets/logo3.png');
 
 /**
+ * Helper to check if a row is essentially empty (ignoring metadata and status/priority fields)
+ */
+const isRowEmpty = (item) => {
+  if (!item || typeof item !== 'object') return true;
+  const skipKeys = new Set(['_id', 'id', 'status', 'priority', 'stage', 'statusRemarks']);
+  return !Object.entries(item).some(([k, v]) => {
+    if (skipKeys.has(k)) return false;
+    return v !== null && v !== undefined && String(v).trim() !== '';
+  });
+};
+
+/**
  * Generates a beautiful PDF report from report data
  * @param {Object} report - Mongoose document or JS object containing report details
  * @param {String} empName - Name of the employee
@@ -205,17 +217,21 @@ export const generateReportPDFBuffer = (report, empName, designation) => {
       );
 
       if (summaryKey && Array.isArray(report[summaryKey]) && report[summaryKey].length > 0) {
-        drawSectionHeader('2. Daily Task Summary');
-        
-        const headers = ['Activity', 'Status', 'Remarks'];
-        const columnWidths = [245, 100, 170]; // total 515
-        const rows = report[summaryKey].map(t => [
-          t.activity || t.task || '',
-          t.status || '',
-          t.remarks || t.remark || ''
-        ]);
+        const filledTasks = report[summaryKey].filter(t => (t.activity || t.task || '').trim() !== '');
 
-        drawTable(headers, rows, columnWidths);
+        if (filledTasks.length > 0) {
+          drawSectionHeader('2. Daily Task Summary');
+          
+          const headers = ['Activity', 'Status', 'Remarks'];
+          const columnWidths = [245, 100, 170]; // total 515
+          const rows = filledTasks.map(t => [
+            t.activity || t.task || '',
+            t.status || '',
+            t.remarks || t.remark || ''
+          ]);
+
+          drawTable(headers, rows, columnWidths);
+        }
       }
 
       // 3. OTHER DYNAMIC SECTIONS
@@ -231,36 +247,53 @@ export const generateReportPDFBuffer = (report, empName, designation) => {
         if (skipKeys.has(key)) continue;
 
         if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object') {
-          // It's a structured array of details
-          const title = key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ');
-          drawSectionHeader(`${sectionIndex}. ${title}`);
-          
-          // Extract unique field names from all items in array (excluding mongoose _id/id)
-          const allKeys = [];
-          val.forEach(item => {
-            Object.keys(item).forEach(k => {
-              if (k !== '_id' && k !== 'id' && !allKeys.includes(k)) {
-                allKeys.push(k);
-              }
+          // Filter out empty rows
+          const filledRows = val.filter(item => !isRowEmpty(item));
+
+          if (filledRows.length > 0) {
+            const title = key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ');
+            
+            // Extract unique field names from all items in array (excluding mongoose _id/id)
+            const allKeys = [];
+            filledRows.forEach(item => {
+              Object.keys(item).forEach(k => {
+                if (k !== '_id' && k !== 'id' && !allKeys.includes(k)) {
+                  allKeys.push(k);
+                }
+              });
             });
-          });
 
-          // Build headers
-          const headers = allKeys.map(k => k.replace(/([A-Z])/g, ' $1').replace(/_/g, ' '));
-          
-          // Row data
-          const rows = val.map(item => allKeys.map(k => item[k] || ''));
+            // Filter columns: keep only keys that have at least one non-empty value in filledRows (or are critical columns like status/priority)
+            const criticalKeys = new Set(['status', 'priority', 'stage', 'statusRemarks', 'remarks', 'remark']);
+            const activeKeys = allKeys.filter(k => {
+              if (criticalKeys.has(k)) return true;
+              return filledRows.some(item => {
+                const v = item[k];
+                return v !== null && v !== undefined && String(v).trim() !== '';
+              });
+            });
 
-          // Distribute columns evenly
-          const columnWidths = allKeys.map(() => Math.floor(515 / allKeys.length));
-          // Adjust last column to ensure total is exactly 515
-          const totalWidth = columnWidths.reduce((sum, w) => sum + w, 0);
-          if (totalWidth < 515) {
-            columnWidths[columnWidths.length - 1] += (515 - totalWidth);
+            if (activeKeys.length > 0) {
+              drawSectionHeader(`${sectionIndex}. ${title}`);
+              
+              // Build headers
+              const headers = activeKeys.map(k => k.replace(/([A-Z])/g, ' $1').replace(/_/g, ' '));
+              
+              // Row data
+              const rows = filledRows.map(item => activeKeys.map(k => item[k] || ''));
+
+              // Distribute columns evenly
+              const columnWidths = activeKeys.map(() => Math.floor(515 / activeKeys.length));
+              // Adjust last column to ensure total is exactly 515
+              const totalWidth = columnWidths.reduce((sum, w) => sum + w, 0);
+              if (totalWidth < 515) {
+                columnWidths[columnWidths.length - 1] += (515 - totalWidth);
+              }
+
+              drawTable(headers, rows, columnWidths);
+              sectionIndex++;
+            }
           }
-
-          drawTable(headers, rows, columnWidths);
-          sectionIndex++;
         } else if (typeof val === 'string' && val.trim()) {
           // Standard text area field
           const title = key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ');

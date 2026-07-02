@@ -454,20 +454,31 @@ const AccountantReportPage = () => {
   const handleSaveReport = async () => {
     try {
       setSaving(true);
+
+      const cleanDailyAccountingSummary = dailyAccountingSummary.filter(t => (t.activity || '').trim() !== '');
+      const cleanTransactionReport = transactionReport.filter(t => (t.particulars || '').trim() !== '' || (t.amount || '').trim() !== '');
+      const cleanInvoiceBillingReport = invoiceBillingReport.filter(t => (t.clientName || '').trim() !== '' || (t.invoiceNumber || '').trim() !== '');
+      const cleanPayrollPaymentStatus = payrollPaymentStatus.filter(t => (t.employeeName || '').trim() !== '');
+      const cleanExpenseTracking = expenseTracking.filter(t => (t.expenseParticulars || '').trim() !== '' || (t.amount || '').trim() !== '');
+      const cleanDocumentationCompliance = documentationCompliance.filter(t => (t.particulars || '').trim() !== '');
+      const cleanKpiTracking = kpiTracking.filter(t => (t.kpi || '').trim() !== '');
+      const cleanIssuesSupportRequired = issuesSupportRequired.filter(t => (t.issue || '').trim() !== '');
+      const cleanFinalShiftHandover = finalShiftHandover.filter(t => (t.particulars || '').trim() !== '');
+
       const payload = {
         userId: selectedUserId,
         dateString: selectedDate,
         basicDetails,
-        dailyAccountingSummary,
-        transactionReport,
-        invoiceBillingReport,
-        payrollPaymentStatus,
-        expenseTracking,
-        documentationCompliance,
-        kpiTracking,
-        issuesSupportRequired,
+        dailyAccountingSummary: cleanDailyAccountingSummary,
+        transactionReport: cleanTransactionReport,
+        invoiceBillingReport: cleanInvoiceBillingReport,
+        payrollPaymentStatus: cleanPayrollPaymentStatus,
+        expenseTracking: cleanExpenseTracking,
+        documentationCompliance: cleanDocumentationCompliance,
+        kpiTracking: cleanKpiTracking,
+        issuesSupportRequired: cleanIssuesSupportRequired,
         nextDayTaskPlan,
-        finalShiftHandover,
+        finalShiftHandover: cleanFinalShiftHandover,
         accountantComments,
         approval
       };
