@@ -125,31 +125,42 @@ export const leadController = {
         ];
       }
 
+      const isPaginationRequested = req.query.page !== undefined || req.query.limit !== undefined;
       const sortDirection = sortOrder === 'asc' ? 1 : -1;
-      const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-      const limit = Math.max(1, Math.min(100, parseInt(req.query.limit, 10) || 50));
-      const skip = (page - 1) * limit;
+
+      let query = Lead.find(whereClause)
+        .populate('assignedTo', 'name email role profile_image')
+        .populate('createdBy', 'name email')
+        .sort({ createdAt: sortDirection });
+
+      let page = 1;
+      let limit = 0;
+
+      if (isPaginationRequested) {
+        page = Math.max(1, parseInt(req.query.page, 10) || 1);
+        limit = Math.max(1, Math.min(100, parseInt(req.query.limit, 10) || 50));
+        const skip = (page - 1) * limit;
+        query = query.skip(skip).limit(limit);
+      }
 
       // Parallelize count and find operations to save IO execution wait loops
       const [totalLeads, leads] = await Promise.all([
         Lead.countDocuments(whereClause),
-        Lead.find(whereClause)
-          .populate('assignedTo', 'name email role profile_image')
-          .populate('createdBy', 'name email')
-          .sort({ createdAt: sortDirection })
-          .skip(skip)
-          .limit(limit)
-          .lean() // Converts mongoose records to plain JS objects for faster processing
+        query.lean() // Converts mongoose records to plain JS objects for faster processing
       ]);
+
+      const responsePage = isPaginationRequested ? page : 1;
+      const responseLimit = isPaginationRequested ? limit : totalLeads || 1;
+      const responsePages = isPaginationRequested ? Math.ceil(totalLeads / limit) : 1;
 
       return res.status(200).json({
         success: true,
         data: leads,
         pagination: {
           total: totalLeads,
-          page,
-          limit,
-          pages: Math.ceil(totalLeads / limit)
+          page: responsePage,
+          limit: responseLimit,
+          pages: responsePages
         }
       });
     } catch (error) {
