@@ -125,7 +125,8 @@ export const leadController = {
         ];
       }
 
-      const isPaginationRequested = req.query.page !== undefined || req.query.limit !== undefined;
+      const isPaginationRequested = (req.query.page !== undefined && req.query.page !== '' && !isNaN(req.query.page)) || 
+                                    (req.query.limit !== undefined && req.query.limit !== '' && !isNaN(req.query.limit));
       const sortDirection = sortOrder === 'asc' ? 1 : -1;
 
       let query = Lead.find(whereClause)
@@ -134,11 +135,11 @@ export const leadController = {
         .sort({ createdAt: sortDirection });
 
       let page = 1;
-      let limit = 0;
+      let limit = 1000000; // Default to 1 million (virtually unlimited)
 
       if (isPaginationRequested) {
         page = Math.max(1, parseInt(req.query.page, 10) || 1);
-        limit = Math.max(1, Math.min(100, parseInt(req.query.limit, 10) || 50));
+        limit = Math.max(1, parseInt(req.query.limit, 10) || 1000000);
         const skip = (page - 1) * limit;
         query = query.skip(skip).limit(limit);
       }
