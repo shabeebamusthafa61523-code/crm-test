@@ -929,7 +929,27 @@ const [activePriority, setActivePriority] = useState('all');
                 </>
               )}
             </div>
-          </div>          {(activeTab !== 'all' || activePriority !== 'all' || staffFilter !== 'all' || cityFilter !== 'all' || (dateFrom && dateTo) || sortOrder !== 'desc') && (
+
+            {/* Page Size Selector */}
+            {filteredLeads.length > 10 && (
+              <select
+                value={itemsPerPage === 100000 ? 'all' : itemsPerPage}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setItemsPerPage(val === 'all' ? 100000 : parseInt(val, 10));
+                  setCurrentPage(1);
+                }}
+                className="px-3.5 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:border-indigo-400 hover:text-indigo-600 focus:outline-none shadow-sm cursor-pointer transition-all outline-none"
+              >
+                <option value={10}>10 per page</option>
+                <option value={20}>20 per page</option>
+                <option value={50}>50 per page</option>
+                <option value={100}>100 per page</option>
+                <option value="all">Show All</option>
+              </select>
+            )}
+          </div>
+          {(activeTab !== 'all' || activePriority !== 'all' || staffFilter !== 'all' || cityFilter !== 'all' || (dateFrom && dateTo) || sortOrder !== 'desc') && (
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Active:</span>
               {activeTab !== 'all' && (
@@ -1298,25 +1318,8 @@ const [activePriority, setActivePriority] = useState('all');
             {/* Pagination Controls */}
             {filteredLeads.length > 10 && (
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4.5 bg-slate-50 dark:bg-slate-800/20 border-t border-slate-100 dark:border-slate-800">
-                <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
-                  <span>
-                    Showing <span className="font-semibold text-slate-700 dark:text-slate-350">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-semibold text-slate-700 dark:text-slate-350">{Math.min(currentPage * itemsPerPage, filteredLeads.length)}</span> of <span className="font-semibold text-slate-700 dark:text-slate-350">{filteredLeads.length}</span> leads
-                  </span>
-                  <select
-                    value={itemsPerPage === 100000 ? 'all' : itemsPerPage}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setItemsPerPage(val === 'all' ? 100000 : parseInt(val, 10));
-                      setCurrentPage(1);
-                    }}
-                    className="px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-650 dark:text-slate-350 outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer shadow-sm"
-                  >
-                    <option value={10}>10 per page</option>
-                    <option value={20}>20 per page</option>
-                    <option value={50}>50 per page</option>
-                    <option value={100}>100 per page</option>
-                    <option value="all">Show All</option>
-                  </select>
+                <div className="text-xs text-slate-500">
+                  Showing <span className="font-semibold text-slate-700 dark:text-slate-350">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-semibold text-slate-700 dark:text-slate-350">{Math.min(currentPage * itemsPerPage, filteredLeads.length)}</span> of <span className="font-semibold text-slate-700 dark:text-slate-350">{filteredLeads.length}</span> leads
                 </div>
                 {totalPages > 1 && (
                   <div className="flex items-center gap-1">
