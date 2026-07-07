@@ -220,11 +220,17 @@ export const generateReportPDFBuffer = (report, empName, designation) => {
 
         drawSectionHeader('2. Daily Task Summary');
         
-        const headers = ['Activity', 'Due Date', 'Status', 'Remarks'];
-        const columnWidths = [195, 70, 90, 160]; // total 515
+        const hasTaskDates = report[summaryKey].some(t => t.startDate || t.endDate);
+        const headers = hasTaskDates
+          ? ['Activity', 'Due Date', 'Start Date', 'End Date', 'Status', 'Remarks']
+          : ['Activity', 'Due Date', 'Status', 'Remarks'];
+        const columnWidths = hasTaskDates
+          ? [145, 60, 75, 75, 60, 100]
+          : [195, 70, 90, 160]; // total 515
         const rows = report[summaryKey].map(t => [
           t.activity || t.task || '',
           t.dueDate || '',
+          ...(hasTaskDates ? [t.startDate || '', t.endDate || ''] : []),
           t.status || '',
           t.remarks || t.remark || ''
         ]);

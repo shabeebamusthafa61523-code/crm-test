@@ -24,6 +24,8 @@ const marketingReportSchema = new mongoose.Schema({
     {
       task: { type: String },
       dueDate: { type: String },
+      startDate: { type: String },
+      endDate: { type: String },
       detailsNotes: { type: String },
       status: { type: String },
       remarks: { type: String }
