@@ -373,17 +373,13 @@ const OpsReportPage = () => {
         setHandover(report.handover || { pendingLeadsShared: 'Yes', crmUpdated: 'Yes / No- NA', reportsSubmitted: 'Yes', teamUpdated: 'Yes' });
         setApproval(report.approval || {});
       } else {
-        initializeBlankReport(userId, dateStr);
+        await initializeBlankReport(userId, dateStr);
         // Auto-fetch completed tasks for new blank reports
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
             const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', dueDate: t.dueDate || '', remarks: 'Auto-fetched' }));
-            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
-            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
             setDailyOperations(mappedTasks);
-          } else {
-            setDailyOperations(prev => [...prev, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -391,17 +387,13 @@ const OpsReportPage = () => {
 
       }
     } catch (e) {
-      initializeBlankReport(userId, dateStr);
+      await initializeBlankReport(userId, dateStr);
         // Auto-fetch completed tasks for new blank reports
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
             const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', dueDate: t.dueDate || '', remarks: 'Auto-fetched' }));
-            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
-            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
             setDailyOperations(mappedTasks);
-          } else {
-            setDailyOperations(prev => [...prev, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -1301,7 +1293,7 @@ const OpsReportPage = () => {
     }
   };
 
-    const initializeBlankReport = (userId, dateStr) => {
+    const initializeBlankReport = async (userId, dateStr) => {
     let freshestUser = currentUser;
     try {
       const su = localStorage.getItem('user');
@@ -1343,7 +1335,23 @@ const OpsReportPage = () => {
     });
 
     setDailyOperations(DEFAULT_DAILY_OPERATIONS);
-    setSalesActivity(DEFAULT_SALES_ACTIVITY);
+
+    // Auto-fetch lead stats from CRM for the selected date
+    try {
+      const res = await fetch(`${API_BASE}/v1/ops-reports/lead-stats?date=${dateStr}`, {
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setSalesActivity(data.data);
+      } else {
+        setSalesActivity(DEFAULT_SALES_ACTIVITY);
+      }
+    } catch (e) {
+      console.error('Failed to auto-fetch lead stats:', e);
+      setSalesActivity(DEFAULT_SALES_ACTIVITY);
+    }
+
     setSalesPerformance(DEFAULT_SALES_PERFORMANCE);
     setRevenueTracking(DEFAULT_REVENUE_TRACKING);
     setAcademyStatus(DEFAULT_ACADEMY_STATUS);
@@ -1817,7 +1825,6 @@ const OpsReportPage = () => {
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
                       <th className="px-4 py-3">Activity</th>
-                      <th className="px-4 py-3">Due Date</th>
                       <th className="px-4 py-3 w-32 text-center">Count</th>
                       <th className="px-4 py-3 w-32 text-center">Digital Mktg</th>
                       <th className="px-4 py-3 w-32 text-center">Web</th>

@@ -132,8 +132,7 @@ export const login = async (req, res) => {
     }
 
     const Department = (await import('../modules/departments/department.model.js')).default;
-    const isTeamLead = await Department.exists({ teamLeadId: user._id }) ? true : false;
-    const isDepartmentManager = await Department.exists({ managerId: user._id }) ? true : false;
+    const isTeamLead = await Department.exists({ managerId: user._id }) ? true : false;
 
     // 4. Return matching data structure required by your React components
     res.json({
@@ -160,7 +159,6 @@ export const login = async (req, res) => {
         status: user.status || "active",
         joining_date: user.joining_date,
         isTeamLead,
-        isDepartmentManager,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt
       }

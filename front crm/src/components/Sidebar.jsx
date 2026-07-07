@@ -224,8 +224,8 @@ const Sidebar = () => {
         if (item.excludeRoles && item.excludeRoles.includes(currentUserRole)) {
           return false;
         }
-        // Allow department managers and team leads to see Employee Reports page
-        if (item.label === 'Employee Reports' && (userObj.isTeamLead || userObj.isDepartmentManager)) {
+        // Allow department team leads to see Employee Reports page
+        if (item.label === 'Employee Reports' && userObj.isTeamLead) {
           return true;
         }
         if (!item.allowedRoles && !item.allowedDepartments && !item.allowedDesignations) return true;

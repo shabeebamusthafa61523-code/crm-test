@@ -67,15 +67,14 @@ export const userController = {
         role_id: { $nin: ['10', 10] }
       };
 
-      if (!isPrivileged && loggedInUserId) {
+      // Only filter users by department if the request is originating from the employee-reports page
+      const referer = req.get('referer') || '';
+      const isReportsPage = referer.includes('employee-reports');
+
+      if (isReportsPage && !isPrivileged && loggedInUserId) {
         // Check departments managed or led by this user
         const Department = (await import('../modules/departments/department.model.js')).default;
-        const ledDepartments = await Department.find({ 
-          $or: [
-            { teamLeadId: loggedInUserId },
-            { managerId: loggedInUserId }
-          ]
-        }).select('_id');
+        const ledDepartments = await Department.find({ managerId: loggedInUserId }).select('_id');
 
         if (ledDepartments.length > 0) {
           const ledDeptIds = ledDepartments.map(d => d._id);
@@ -282,8 +281,7 @@ export const userController = {
       const isDeptActive = user.departmentId && user.departmentId.status !== false;
 
       const Department = (await import('../modules/departments/department.model.js')).default;
-      const isTeamLead = await Department.exists({ teamLeadId: user._id }) ? true : false;
-      const isDepartmentManager = await Department.exists({ managerId: user._id }) ? true : false;
+      const isTeamLead = await Department.exists({ managerId: user._id }) ? true : false;
 
       return sendSuccess(res, {
         status: 200,
@@ -307,7 +305,6 @@ export const userController = {
           status: user.status || (user.isActive ? 'active' : 'inactive'),
           lastLogin: user.lastLogin,
           isTeamLead,
-          isDepartmentManager,
           createdAt: user.createdAt,
           joining_date: user.joining_date,
           salary: user.salary,
