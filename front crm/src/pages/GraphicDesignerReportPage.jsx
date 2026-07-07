@@ -40,7 +40,7 @@ const DEFAULT_TOMORROW = [
 const GraphicDesignerReportPage = () => {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isEditingBasic, setIsEditingBasic] = useState(false);
   const [currentUser, setCurrentUser] = useState({});
@@ -321,7 +321,7 @@ const GraphicDesignerReportPage = () => {
           ...apiBasicDetails,
           employeeName: userDetail.name || apiBasicDetails.employeeName || '',
           employeeId: userDetail.employeeId || apiBasicDetails.employeeId || '',
-          designation: userDetail.designation || apiBasicDetails.designation || '',
+          designation: userDetail.designationName || userDetail.designation || apiBasicDetails.designation || '',
           reportingTo: userDetail.reportingManager || apiBasicDetails.reportingTo || '',
           department: userDetail.department || apiBasicDetails.department || ''
         });
@@ -471,7 +471,7 @@ const GraphicDesignerReportPage = () => {
     setBasicDetails({
       employeeName: userDetail.name || parsedCached?.employeeName || '',
       employeeId: userDetail.employeeId || parsedCached?.employeeId || '',
-      designation: userDetail.designation || parsedCached?.designation || 'Graphic Designer',
+      designation: userDetail.designationName || userDetail.designation || parsedCached?.designation || 'Graphic Designer',
       reportingTo: userDetail.reportingManager || parsedCached?.reportingTo || 'CMO',
       shiftTiming: parsedCached?.shiftTiming || '9:00 AM - 5:00 PM',
       preparedAt: parsedCached?.preparedAt || timeStr

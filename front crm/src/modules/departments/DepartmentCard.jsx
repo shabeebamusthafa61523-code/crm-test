@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import StatusBadge from '../../components/StatusBadge';
 
 export const DepartmentCard = ({ department, onEdit, onDelete, onViewUsers }) => {
-  const { name, code, description, managerId, teamLeadId, status, memberCount = 0 } = department;
+  const { name, code, description, managerId, status, memberCount = 0 } = department;
 
   // Helper to extract initials for manager avatar
   const getInitials = (user) => {
@@ -41,8 +41,8 @@ export const DepartmentCard = ({ department, onEdit, onDelete, onViewUsers }) =>
           {description || 'No description provided for this department.'}
         </p>
 
-        {/* Manager Profile Box */}
-        <div className="p-4 rounded-2xl bg-slate-50/50 dark:bg-slate-800/30 border border-slate-200/30 dark:border-slate-800/30 mb-3 flex items-center gap-3">
+        {/* Team Lead Profile Box */}
+        <div className="p-4 rounded-2xl bg-slate-50/50 dark:bg-slate-800/30 border border-slate-200/30 dark:border-slate-800/30 mb-6 flex items-center gap-3">
           {managerId ? (
             <>
               {managerId.avatar ? (
@@ -57,15 +57,15 @@ export const DepartmentCard = ({ department, onEdit, onDelete, onViewUsers }) =>
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <p className="text-xs text-slate-400 font-semibold tracking-wide uppercase">Manager</p>
+                <p className="text-xs text-slate-400 font-semibold tracking-wide uppercase">Team Lead</p>
                 <p className="text-sm font-bold text-slate-800 dark:text-white truncate">
                   {managerId.name}
                 </p>
                 <p className="text-[11px] font-semibold text-indigo-500 dark:text-lime-400 truncate">
-                  {managerId.designation || 'Department Manager'}
+                  {managerId.designation || 'Department Team Lead'}
                 </p>
                 {managerId.email && (
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium truncate">
+                  <p className="text-[10px] text-slate-400 dark:text-slate-550 font-medium truncate">
                     {managerId.email}
                   </p>
                 )}
@@ -73,57 +73,12 @@ export const DepartmentCard = ({ department, onEdit, onDelete, onViewUsers }) =>
             </>
           ) : (
             <>
-              <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 flex items-center justify-center border border-dashed border-slate-300 dark:border-slate-700">
-                <User size={18} />
-              </div>
-              <div>
-                <p className="text-xs text-slate-400 font-semibold tracking-wide uppercase">Manager</p>
-                <p className="text-sm font-semibold text-slate-400 dark:text-slate-500 italic">
-                  Unassigned
-                </p>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Team Lead Profile Box */}
-        <div className="p-4 rounded-2xl bg-slate-50/50 dark:bg-slate-800/30 border border-slate-200/30 dark:border-slate-800/30 mb-6 flex items-center gap-3">
-          {teamLeadId ? (
-            <>
-              {teamLeadId.avatar ? (
-                <img
-                  src={teamLeadId.avatar}
-                  alt={teamLeadId.name}
-                  className="w-10 h-10 rounded-xl object-cover ring-2 ring-indigo-500/20"
-                />
-              ) : (
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 text-white font-bold text-sm flex items-center justify-center ring-2 ring-indigo-500/20">
-                  {getInitials(teamLeadId)}
-                </div>
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="text-xs text-slate-400 font-semibold tracking-wide uppercase">Team Lead</p>
-                <p className="text-sm font-bold text-slate-800 dark:text-white truncate">
-                  {teamLeadId.name}
-                </p>
-                <p className="text-[11px] font-semibold text-indigo-500 dark:text-lime-400 truncate">
-                  {teamLeadId.designation || 'Department Team Lead'}
-                </p>
-                {teamLeadId.email && (
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium truncate">
-                    {teamLeadId.email}
-                  </p>
-                )}
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 flex items-center justify-center border border-dashed border-slate-300 dark:border-slate-700">
+              <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-550 flex items-center justify-center border border-dashed border-slate-300 dark:border-slate-700">
                 <User size={18} />
               </div>
               <div>
                 <p className="text-xs text-slate-400 font-semibold tracking-wide uppercase">Team Lead</p>
-                <p className="text-sm font-semibold text-slate-400 dark:text-slate-500 italic">
+                <p className="text-sm font-semibold text-slate-400 dark:text-slate-550 italic">
                   Unassigned
                 </p>
               </div>

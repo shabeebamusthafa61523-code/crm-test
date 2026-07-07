@@ -80,12 +80,7 @@ const isAuthorizedToAccessUser = async (reqUser, targetUserId) => {
     const Department = (await import('../modules/departments/department.model.js')).default;
     const UserDepartment = (await import('../models/userDepartment.model.js')).default;
 
-    const ledDepartments = await Department.find({ 
-      $or: [
-        { teamLeadId: loggedInUserId },
-        { managerId: loggedInUserId }
-      ]
-    }).select('_id');
+    const ledDepartments = await Department.find({ managerId: loggedInUserId }).select('_id');
 
     if (ledDepartments.length > 0) {
       const ledDeptIds = ledDepartments.map(d => String(d._id));

@@ -14,12 +14,12 @@ const API_BASE = import.meta.env.VITE_API_URL;
 
 // Defaults from mockup
 const DEFAULT_TASK_SUMMARY = [
-  { task: 'Instagram post published', detailsNotes: 'Gangeee poster and software development reel', status: 'Done', dueDate: '', remarks: '' },
-  { task: 'Stories uploaded', detailsNotes: 'poll poster of world cup 2026 Grp E,F', status: 'Done', dueDate: '', remarks: '' },
-  { task: 'Client works', detailsNotes: 'ipas post about GST UPDATE 2026 , Bail & Anticipatory Bail', status: 'Done', dueDate: '', remarks: '' },
-  { task: '', detailsNotes: '', status: 'N/A', dueDate: '', remarks: '' },
-  { task: '', detailsNotes: '', status: 'N/A', dueDate: '', remarks: '' },
-  { task: '', detailsNotes: '', status: 'N/A', dueDate: '', remarks: '' }
+  { task: 'Instagram post published', detailsNotes: 'Gangeee poster and software development reel', status: 'Done', dueDate: '', startDate: '', endDate: '', remarks: '' },
+  { task: 'Stories uploaded', detailsNotes: 'poll poster of world cup 2026 Grp E,F', status: 'Done', dueDate: '', startDate: '', endDate: '', remarks: '' },
+  { task: 'Client works', detailsNotes: 'ipas post about GST UPDATE 2026 , Bail & Anticipatory Bail', status: 'Done', dueDate: '', startDate: '', endDate: '', remarks: '' },
+  { task: '', detailsNotes: '', status: 'N/A', dueDate: '', startDate: '', endDate: '', remarks: '' },
+  { task: '', detailsNotes: '', status: 'N/A', dueDate: '', startDate: '', endDate: '', remarks: '' },
+  { task: '', detailsNotes: '', status: 'N/A', dueDate: '', startDate: '', endDate: '', remarks: '' }
 ];
 
 const DEFAULT_KPI_TRACKING = [
@@ -38,7 +38,7 @@ const DEFAULT_BLOCKERS_PLAN = [
 const MarketingReportPage = () => {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isEditingBasic, setIsEditingBasic] = useState(false);
   const [currentUser, setCurrentUser] = useState({});
@@ -147,7 +147,7 @@ const MarketingReportPage = () => {
   const addMonthlyTaskRow = () => {
     setMonthlyTaskSummary([
       ...monthlyTaskSummary,
-      { task: '', detailsNotes: '', status: 'Done', dueDate: '', remarks: '' }
+      { task: '', detailsNotes: '', status: 'Done', dueDate: '', startDate: '', endDate: '', remarks: '' }
     ]);
   };
 
@@ -224,12 +224,15 @@ const MarketingReportPage = () => {
         tasks.forEach(t => {
           const taskName = (t.task || '').trim();
           if (!taskName) return;
-          if (!taskMap[taskName]) {
+           if (!taskMap[taskName]) {
             taskMap[taskName] = {
               task: taskName,
               detailsNotes: [],
               status: t.status || 'Done',
-              dueDate: t.dueDate || '', remarks: []
+              dueDate: t.dueDate || '',
+              startDate: t.startDate || '',
+              endDate: t.endDate || '',
+              remarks: []
             };
           }
           if (t.detailsNotes && !taskMap[taskName].detailsNotes.includes(t.detailsNotes.trim())) {
@@ -241,18 +244,25 @@ const MarketingReportPage = () => {
           if (t.status && t.status.toLowerCase() === 'done') {
             taskMap[taskName].status = 'Done';
           }
+          // Preserve dates if not set yet
+          if (t.dueDate && !taskMap[taskName].dueDate) taskMap[taskName].dueDate = t.dueDate;
+          if (t.startDate && !taskMap[taskName].startDate) taskMap[taskName].startDate = t.startDate;
+          if (t.endDate && !taskMap[taskName].endDate) taskMap[taskName].endDate = t.endDate;
         });
       });
 
       const consolidatedTasks = Object.values(taskMap).map(item => ({
         task: item.task,
+        dueDate: item.dueDate,
+        startDate: item.startDate,
+        endDate: item.endDate,
         detailsNotes: item.detailsNotes.filter(Boolean).join('; '),
         status: item.status,
-        dueDate: '', remarks: item.remarks.filter(Boolean).join('; ')
+        remarks: item.remarks.filter(Boolean).join('; ')
       }));
 
       if (consolidatedTasks.length === 0) {
-        consolidatedTasks.push({ task: '', detailsNotes: '', status: 'N/A', dueDate: '', remarks: '' });
+        consolidatedTasks.push({ task: '', detailsNotes: '', status: 'N/A', dueDate: '', startDate: '', endDate: '', remarks: '' });
       }
       setMonthlyTaskSummary(consolidatedTasks);
 
@@ -438,8 +448,8 @@ const MarketingReportPage = () => {
 
       // 2. TASK SUMMARY
       drawSectionHeader("2. Consolidated Task summary");
-      const taskHeaders = [["Task", "Details / notes", "Status", "Remarks"]];
-      const taskRows = monthlyTaskSummary.map(t => [t.task || '', t.detailsNotes || '', t.status || '', t.remarks || '']);
+      const taskHeaders = [["Task", "Due Date", "Start Date", "End Date", "Details / notes", "Status", "Remarks"]];
+      const taskRows = monthlyTaskSummary.map(t => [t.task || '', t.dueDate || '', t.startDate || '', t.endDate || '', t.detailsNotes || '', t.status || '', t.remarks || '']);
 
       autoTable(doc, {
         head: taskHeaders,
@@ -449,10 +459,13 @@ const MarketingReportPage = () => {
         headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
         styles: { fontSize: 7.5, cellPadding: 1.8, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
         columnStyles: {
-          0: { width: 45 },
-          1: { width: 75 },
-          2: { width: 27, halign: 'center' },
-          3: { width: 35 }
+          0: { width: 35 },
+          1: { width: 20 },
+          2: { width: 20 },
+          3: { width: 20 },
+          4: { width: 45 },
+          5: { width: 20, halign: 'center' },
+          6: { width: 22 }
         },
         margin: { left: 14, right: 14 }
       });
@@ -639,7 +652,7 @@ const MarketingReportPage = () => {
           ...apiBasicDetails,
           employeeName: userDetail.name || apiBasicDetails.employeeName || '',
           employeeId: userDetail.employeeId || apiBasicDetails.employeeId || '',
-          designation: userDetail.designation || apiBasicDetails.designation || '',
+          designation: userDetail.designationName || userDetail.designation || apiBasicDetails.designation || '',
           reportingTo: userDetail.reportingManager || apiBasicDetails.reportingTo || '',
           department: userDetail.department || apiBasicDetails.department || ''
         });
@@ -654,12 +667,16 @@ const MarketingReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ task: t.title, detailsNotes: 'Auto-fetched', status: t.status === 'Done' ? 'Completed' : 'Pending', dueDate: t.dueDate || '', remarks: '' }));
-            mappedTasks.push({ task: '', detailsNotes: '', status: 'ongoing', dueDate: '', remarks: '' });
-            mappedTasks.push({ task: '', detailsNotes: '', status: 'ongoing', dueDate: '', remarks: '' });
+            const mappedTasks = completedTasks.map(t => ({
+              task: t.title,
+              dueDate: t.dueDate || '',
+              startDate: t.startTime || '',
+              endDate: t.endTime || '',
+              detailsNotes: t.description || 'Auto-fetched',
+              status: t.status || 'Pending',
+              remarks: ''
+            }));
             setTaskSummary(mappedTasks);
-          } else {
-            setTaskSummary(prev => [...prev, { task: '', detailsNotes: '', status: 'ongoing', dueDate: '', remarks: '' }, { task: '', detailsNotes: '', status: 'ongoing', dueDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -672,12 +689,16 @@ const MarketingReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ task: t.title, detailsNotes: 'Auto-fetched', status: t.status === 'Done' ? 'Completed' : 'Pending', dueDate: t.dueDate || '', remarks: '' }));
-            mappedTasks.push({ task: '', detailsNotes: '', status: 'ongoing', dueDate: '', remarks: '' });
-            mappedTasks.push({ task: '', detailsNotes: '', status: 'ongoing', dueDate: '', remarks: '' });
+            const mappedTasks = completedTasks.map(t => ({
+              task: t.title,
+              dueDate: t.dueDate || '',
+              startDate: t.startTime || '',
+              endDate: t.endTime || '',
+              detailsNotes: t.description || 'Auto-fetched',
+              status: t.status || 'Pending',
+              remarks: ''
+            }));
             setTaskSummary(mappedTasks);
-          } else {
-            setTaskSummary(prev => [...prev, { task: '', detailsNotes: '', status: 'ongoing', dueDate: '', remarks: '' }, { task: '', detailsNotes: '', status: 'ongoing', dueDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -737,7 +758,7 @@ const MarketingReportPage = () => {
     setBasicDetails({
       employeeName: userDetail.name || parsedCached?.employeeName || '',
       employeeId: userDetail.employeeId || parsedCached?.employeeId || '',
-      designation: userDetail.designation || parsedCached?.designation || 'Digital Marketer',
+      designation: userDetail.designationName || userDetail.designation || parsedCached?.designation || 'Digital Marketer',
       reportingTo: userDetail.reportingManager || parsedCached?.reportingTo || 'CMO',
       date: formattedDateString,
       day: dayName.toLowerCase(),
@@ -859,7 +880,7 @@ const MarketingReportPage = () => {
   const addTaskRow = () => {
     setTaskSummary([
       ...taskSummary,
-      { task: '', detailsNotes: '', status: '', dueDate: '', remarks: '' }
+      { task: '', detailsNotes: '', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' }
     ]);
   };
 
@@ -1137,7 +1158,9 @@ const MarketingReportPage = () => {
                     <tr>
                       <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Task</th>
                       <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Due Date</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-1/2">Details / Notes</th>
+                      <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Start Date</th>
+                      <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">End Date</th>
+                      <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-1/3">Details / Notes</th>
                       <th className="px-4 py-3 text-center text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-32">Status</th>
                       <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Remarks</th>
                       <th className="px-3 py-3 text-center w-12"></th>
@@ -1153,6 +1176,33 @@ const MarketingReportPage = () => {
                             onChange={(e) => handleTaskChange(idx, 'task', e.target.value)}
                             className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-2.5 py-1.5 text-sm focus:outline-none"
                             placeholder="e.g. Stories uploaded"
+                          />
+                        </td>
+                        <td className="px-4 py-2">
+                          <input
+                            type="text"
+                            value={item.dueDate || ''}
+                            onChange={(e) => handleTaskChange(idx, 'dueDate', e.target.value)}
+                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-2.5 py-1.5 text-sm focus:outline-none"
+                            placeholder="Due date"
+                          />
+                        </td>
+                        <td className="px-4 py-2">
+                          <input
+                            type="text"
+                            value={item.startDate || ''}
+                            onChange={(e) => handleTaskChange(idx, 'startDate', e.target.value)}
+                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-2.5 py-1.5 text-sm focus:outline-none"
+                            placeholder="Start date"
+                          />
+                        </td>
+                        <td className="px-4 py-2">
+                          <input
+                            type="text"
+                            value={item.endDate || ''}
+                            onChange={(e) => handleTaskChange(idx, 'endDate', e.target.value)}
+                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-2.5 py-1.5 text-sm focus:outline-none"
+                            placeholder="End date"
                           />
                         </td>
                         <td className="px-4 py-2">
@@ -1557,8 +1607,10 @@ const MarketingReportPage = () => {
                               <thead className="bg-slate-50 dark:bg-slate-950">
                                 <tr>
                                   <th className="px-3 py-2 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Task</th>
-                      <th className="px-3 py-2 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Due Date</th>
-                                  <th className="px-3 py-2 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-1/2">Details / Notes</th>
+                                  <th className="px-3 py-2 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Due Date</th>
+                                  <th className="px-3 py-2 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Start Date</th>
+                                  <th className="px-3 py-2 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">End Date</th>
+                                  <th className="px-3 py-2 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-1/3">Details / Notes</th>
                                   <th className="px-3 py-2 text-center text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-28">Status</th>
                                   <th className="px-3 py-2 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Remarks</th>
                                   <th className="px-2 py-2 text-center w-10"></th>
@@ -1573,6 +1625,33 @@ const MarketingReportPage = () => {
                                         value={item.task || ''}
                                         onChange={(e) => handleMonthlyTaskChange(idx, 'task', e.target.value)}
                                         className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none text-slate-800 dark:text-slate-200"
+                                      />
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      <input
+                                        type="text"
+                                        value={item.dueDate || ''}
+                                        onChange={(e) => handleMonthlyTaskChange(idx, 'dueDate', e.target.value)}
+                                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none text-slate-800 dark:text-slate-200"
+                                        placeholder="Due date"
+                                      />
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      <input
+                                        type="text"
+                                        value={item.startDate || ''}
+                                        onChange={(e) => handleMonthlyTaskChange(idx, 'startDate', e.target.value)}
+                                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none text-slate-800 dark:text-slate-200"
+                                        placeholder="Start date"
+                                      />
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      <input
+                                        type="text"
+                                        value={item.endDate || ''}
+                                        onChange={(e) => handleMonthlyTaskChange(idx, 'endDate', e.target.value)}
+                                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none text-slate-800 dark:text-slate-200"
+                                        placeholder="End date"
                                       />
                                     </td>
                                     <td className="px-3 py-2">

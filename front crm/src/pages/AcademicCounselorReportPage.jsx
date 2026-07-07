@@ -14,27 +14,29 @@ const API_BASE = import.meta.env.VITE_API_URL;
 
 // Default items for Daily Course Counseling & Sales Activity
 const DEFAULT_SALES_ACTIVITY = [
-  { activity: 'New Leads Generated', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'New Leads Generated from marketing team', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Qualified Lead', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
   { activity: 'Total Calls Made', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Total Follow up', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
   { activity: 'Hot Leads', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
   { activity: 'Warm Leads', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
   { activity: 'Cold Leads', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
   { activity: 'Call back Leads', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
   { activity: 'RNT Leads (Ring Next Time)', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
   { activity: 'Switch Off Leads', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
-  { activity: 'Wrong lead', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
-  { activity: 'Follow-ups Completed', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Wrong leads', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Total Pending Follow-ups', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Total Pending Leads', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
   { activity: 'Client/Student Meetings Fixed', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
-  { activity: 'Admissions/Closings Done', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
-  { activity: 'Pending Follow-ups', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' }
+  { activity: 'Admissions/Closings Done', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' }
 ];
 
 // Default items for Daily Operations Summary
 const DEFAULT_DAILY_OPERATIONS = [
-  { activity: 'Team Attendance Verified', status: 'Done', dueDate: '', remarks: '' },
-  { activity: 'Daily Sales Targets Assigned', status: 'Pending', dueDate: '', remarks: '' },
-  { activity: 'Lead Follow-up Reviewed', status: 'Done', dueDate: '', remarks: '' },
-  { activity: 'Client Meetings Conducted', status: 'Done', dueDate: '', remarks: '' }
+  { activity: 'Team Attendance Verified', status: 'Done', dueDate: '', startDate: '', endDate: '', remarks: '' },
+  { activity: 'Daily Sales Targets Assigned', status: 'Pending', dueDate: '', startDate: '', endDate: '', remarks: '' },
+  { activity: 'Lead Follow-up Reviewed', status: 'Done', dueDate: '', startDate: '', endDate: '', remarks: '' },
+  { activity: 'Client Meetings Conducted', status: 'Done', dueDate: '', startDate: '', endDate: '', remarks: '' }
 ];
 
 // Default items for Performance KPI
@@ -48,7 +50,7 @@ const DEFAULT_PERFORMANCE_KPIS = [
 const AcademicCounselorReportPage = () => {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isEditingBasic, setIsEditingBasic] = useState(false);
   const [currentUser, setCurrentUser] = useState({});
@@ -285,7 +287,7 @@ const AcademicCounselorReportPage = () => {
           ...apiBasicDetails,
           employeeName: userDetail.name || apiBasicDetails.employeeName || '',
           employeeId: userDetail.employeeId || apiBasicDetails.employeeId || '',
-          designation: userDetail.designation || apiBasicDetails.designation || '',
+          designation: userDetail.designationName || userDetail.designation || apiBasicDetails.designation || '',
           reportingTo: userDetail.reportingManager || apiBasicDetails.reportingTo || '',
           department: userDetail.department || apiBasicDetails.department || ''
         });
@@ -298,17 +300,20 @@ const AcademicCounselorReportPage = () => {
         setFinalHandover(report.finalHandover || { crmUpdated: 'No', reportsSubmitted: 'No' });
         setApproval(report.approval || {});
       } else {
-        initializeBlankReport(userId, dateStr);
+        await initializeBlankReport(userId, dateStr);
         // Auto-fetch completed tasks for new blank reports
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ activity: t.title, count: '1', digitalMktg: '', web: '', dueDate: t.dueDate || '', remarks: 'Auto-fetched' }));
-            mappedTasks.push({ activity: '', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' });
-            mappedTasks.push({ activity: '', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' });
+            const mappedTasks = completedTasks.map(t => ({
+              activity: t.title,
+              dueDate: t.dueDate || '',
+              startDate: t.startTime || '',
+              endDate: t.endTime || '',
+              status: t.status || 'Done',
+              remarks: t.description || ''
+            }));
             setDailyOperations(mappedTasks);
-          } else {
-            setDailyOperations(prev => [...prev, { activity: '', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' }, { activity: '', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -316,17 +321,20 @@ const AcademicCounselorReportPage = () => {
 
       }
     } catch (err) {
-      initializeBlankReport(userId, dateStr);
+      await initializeBlankReport(userId, dateStr);
         // Auto-fetch completed tasks for new blank reports
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ activity: t.title, count: '1', digitalMktg: '', web: '', dueDate: t.dueDate || '', remarks: 'Auto-fetched' }));
-            mappedTasks.push({ activity: '', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' });
-            mappedTasks.push({ activity: '', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' });
+            const mappedTasks = completedTasks.map(t => ({
+              activity: t.title,
+              dueDate: t.dueDate || '',
+              startDate: t.startTime || '',
+              endDate: t.endTime || '',
+              status: t.status || 'Done',
+              remarks: t.description || ''
+            }));
             setDailyOperations(mappedTasks);
-          } else {
-            setDailyOperations(prev => [...prev, { activity: '', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' }, { activity: '', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -355,7 +363,7 @@ const AcademicCounselorReportPage = () => {
     }
   }, [basicDetails, selectedUserId]);
 
-    const initializeBlankReport = (userId, dateStr) => {
+    const initializeBlankReport = async (userId, dateStr) => {
     let freshestUser = currentUser;
     try {
       const su = localStorage.getItem('user');
@@ -380,13 +388,28 @@ const AcademicCounselorReportPage = () => {
       day: dayName,
       employeeName: userDetail.name || parsedCached?.employeeName || '',
       employeeId: userDetail.employeeId || parsedCached?.employeeId || '',
-      designation: userDetail.designation || parsedCached?.designation || 'Sales Executive / Tele Caller & Academic Counselor',
+      designation: userDetail.designationName || userDetail.designation || parsedCached?.designation || 'Sales Executive / Tele Caller & Academic Counselor',
       department: userDetail.department || parsedCached?.department || 'Sales & Growth / Academy',
       shiftTiming: parsedCached?.shiftTiming || '9:00 AM - 5.00 PM',
       reportingTo: userDetail.reportingManager || parsedCached?.reportingTo || 'Manager - OPS Sales & Growth'
     });
 
-    setSalesActivity(DEFAULT_SALES_ACTIVITY);
+    // Auto-fetch lead stats from CRM for the selected date
+    try {
+      const res = await fetch(`${API_BASE}/v1/ops-reports/lead-stats?date=${dateStr}`, {
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setSalesActivity(data.data);
+      } else {
+        setSalesActivity(DEFAULT_SALES_ACTIVITY);
+      }
+    } catch (e) {
+      console.error('Failed to auto-fetch lead stats:', e);
+      setSalesActivity(DEFAULT_SALES_ACTIVITY);
+    }
+
     setDailyOperations(DEFAULT_DAILY_OPERATIONS);
     setReportsCollectedDone(false);
     setPerformanceKpis(DEFAULT_PERFORMANCE_KPIS);
@@ -603,6 +626,9 @@ const AcademicCounselorReportPage = () => {
         let doneCount = 0;
         let pendingCount = 0;
         let naCount = 0;
+        let dueDateVal = '';
+        let startDateVal = '';
+        let endDateVal = '';
 
         validReports.forEach(report => {
           const opsItem = report.dailyOperations?.find(o => o.activity === item.activity);
@@ -612,6 +638,9 @@ const AcademicCounselorReportPage = () => {
             else naCount++;
             
             if (opsItem.remarks) remarksList.push(opsItem.remarks);
+            if (opsItem.dueDate && !dueDateVal) dueDateVal = opsItem.dueDate;
+            if (opsItem.startDate && !startDateVal) startDateVal = opsItem.startDate;
+            if (opsItem.endDate && !endDateVal) endDateVal = opsItem.endDate;
           }
         });
 
@@ -622,7 +651,10 @@ const AcademicCounselorReportPage = () => {
         return {
           activity: item.activity,
           status: finalStatus,
-          dueDate: '', remarks: Array.from(new Set(remarksList)).join('; ')
+          dueDate: dueDateVal,
+          startDate: startDateVal,
+          endDate: endDateVal,
+          remarks: Array.from(new Set(remarksList)).join('; ')
         };
       });
       setMonthlyDailyOperations(consolidatedOps);
@@ -761,15 +793,21 @@ const AcademicCounselorReportPage = () => {
 
       drawSectionHeader("3. OPERATIONS SUMMARY (CONSOLIDATED)");
       
-      const opsHeaders = [["Activity", "Status", "Remarks"]];
+      const opsHeaders = [["Activity", "Due Date", "Start Date", "End Date", "Status", "Remarks"]];
       const opsRows = monthlyDailyOperations.map(t => [
         t.activity || '',
+        t.dueDate || '',
+        t.startDate || '',
+        t.endDate || '',
         t.status || '',
         t.remarks || ''
       ]);
       
       opsRows.push([
         "Reports Collected from Team",
+        "",
+        "",
+        "",
         monthlyReportsCollectedDone ? "Done" : "Pending",
         ""
       ]);
@@ -782,9 +820,12 @@ const AcademicCounselorReportPage = () => {
         headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
         styles: { fontSize: 8, cellPadding: 2.5, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
         columnStyles: {
-          0: { width: 70 },
-          1: { width: 35, halign: 'center' },
-          2: { width: 77 }
+          0: { width: 50 },
+          1: { width: 25, halign: 'center' },
+          2: { width: 25, halign: 'center' },
+          3: { width: 25, halign: 'center' },
+          4: { width: 25, halign: 'center' },
+          5: { width: 32 }
         },
         margin: { left: 14, right: 14 }
       });
@@ -1136,12 +1177,11 @@ const AcademicCounselorReportPage = () => {
                 <table className="w-full text-left border-collapse text-sm">
                   <thead>
                     <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
-                      <th className="px-5 py-4 w-[35%]">Activity</th>
-                      <th className="px-5 py-4 w-[35%]">Due Date</th>
+                      <th className="px-5 py-4 w-[40%]">Activity</th>
                       <th className="px-5 py-4 w-[15%] text-center">Count</th>
                       <th className="px-5 py-4 w-[15%] text-center">Digital Mktg</th>
                       <th className="px-5 py-4 w-[15%] text-center">Web</th>
-                      <th className="px-5 py-4 w-[20%]">Remarks</th>
+                      <th className="px-5 py-4 w-[15%]">Remarks</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1216,7 +1256,7 @@ const AcademicCounselorReportPage = () => {
                 </h2>
                 <button
                   type="button"
-                  onClick={() => setDailyOperations([...dailyOperations, { activity: '', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' }])}
+                  onClick={() => setDailyOperations([...dailyOperations, { activity: '', dueDate: '', startDate: '', endDate: '', status: 'Pending', remarks: '' }])}
                   className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
                 >
                   <Plus size={14} /> Add Row
@@ -1227,14 +1267,16 @@ const AcademicCounselorReportPage = () => {
                 <table className="w-full text-left border-collapse text-sm">
                   <thead>
                     <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
-                      <th className="px-5 py-4 w-[40%]">Activity</th>
-                      <th className="px-5 py-4 w-[40%]">Due Date</th>
-                      <th className="px-5 py-4 w-[25%] text-center">Status</th>
-                      <th className="px-5 py-4 w-[30%]">Remarks</th>
-                      <th className="px-5 py-4 w-[5%] text-center"></th>
+                      <th className="px-5 py-4">Activity</th>
+                      <th className="px-5 py-4 w-36">Due Date</th>
+                      <th className="px-5 py-4 w-44">Start Date</th>
+                      <th className="px-5 py-4 w-44">End Date</th>
+                      <th className="px-5 py-4 w-40 text-center">Status</th>
+                      <th className="px-5 py-4">Remarks</th>
+                      <th className="px-5 py-4 w-12 text-center">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
                     {dailyOperations.map((item, index) => (
                       <tr key={index} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5 transition-colors">
                         <td className="px-5 py-3">
@@ -1250,9 +1292,48 @@ const AcademicCounselorReportPage = () => {
                             placeholder="Activity name"
                           />
                         </td>
+                        <td className="px-5 py-3">
+                          <input
+                            type="text"
+                            value={item.dueDate || ''}
+                            onChange={(e) => {
+                              const updated = [...dailyOperations];
+                              updated[index].dueDate = e.target.value;
+                              setDailyOperations(updated);
+                            }}
+                            className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                            placeholder="Due date"
+                          />
+                        </td>
+                        <td className="px-5 py-3">
+                          <input
+                            type="text"
+                            value={item.startDate || ''}
+                            onChange={(e) => {
+                              const updated = [...dailyOperations];
+                              updated[index].startDate = e.target.value;
+                              setDailyOperations(updated);
+                            }}
+                            className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                            placeholder="Start date"
+                          />
+                        </td>
+                        <td className="px-5 py-3">
+                          <input
+                            type="text"
+                            value={item.endDate || ''}
+                            onChange={(e) => {
+                              const updated = [...dailyOperations];
+                              updated[index].endDate = e.target.value;
+                              setDailyOperations(updated);
+                            }}
+                            className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                            placeholder="End date"
+                          />
+                        </td>
                         <td className="px-5 py-3 text-center">
                           <select
-                            value={item.status}
+                            value={item.status || 'Pending'}
                             onChange={(e) => {
                               const updated = [...dailyOperations];
                               updated[index].status = e.target.value;
@@ -1262,13 +1343,14 @@ const AcademicCounselorReportPage = () => {
                           >
                             <option value="Done">Done</option>
                             <option value="Pending">Pending</option>
+                            <option value="In Progress">In Progress</option>
                             <option value="NA">NA</option>
                           </select>
                         </td>
                         <td className="px-5 py-3">
                           <input
                             type="text"
-                            value={item.remarks}
+                            value={item.remarks || ''}
                             onChange={(e) => {
                               const updated = [...dailyOperations];
                               updated[index].remarks = e.target.value;
@@ -1797,12 +1879,11 @@ const AcademicCounselorReportPage = () => {
                         <table className="w-full text-left border-collapse text-sm">
                           <thead>
                             <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
-                              <th className="px-5 py-4 w-[35%]">Activity</th>
-                      <th className="px-5 py-4 w-[35%]">Due Date</th>
+                              <th className="px-5 py-4 w-[40%]">Activity</th>
                               <th className="px-5 py-4 w-[15%] text-center">Count</th>
                               <th className="px-5 py-4 w-[15%] text-center">Digital Mktg</th>
                               <th className="px-5 py-4 w-[15%] text-center">Web</th>
-                              <th className="px-5 py-4 w-[20%]">Remarks</th>
+                              <th className="px-5 py-4 w-[15%]">Remarks</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1869,19 +1950,60 @@ const AcademicCounselorReportPage = () => {
                         <table className="w-full text-left border-collapse text-sm">
                           <thead>
                             <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
-                              <th className="px-5 py-4 w-[40%]">Activity</th>
-                      <th className="px-5 py-4 w-[40%]">Due Date</th>
-                              <th className="px-5 py-4 w-[25%] text-center">Status</th>
-                              <th className="px-5 py-4 w-[35%]">Remarks</th>
+                              <th className="px-5 py-4">Activity</th>
+                              <th className="px-5 py-4 w-36">Due Date</th>
+                              <th className="px-5 py-4 w-44">Start Date</th>
+                              <th className="px-5 py-4 w-44">End Date</th>
+                              <th className="px-5 py-4 w-40 text-center">Status</th>
+                              <th className="px-5 py-4">Remarks</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                             {monthlyDailyOperations.map((item, index) => (
                               <tr key={index} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5 transition-colors">
                                 <td className="px-5 py-3 font-semibold text-slate-700 dark:text-slate-300">{item.activity}</td>
+                                <td className="px-5 py-3">
+                                  <input
+                                    type="text"
+                                    value={item.dueDate || ''}
+                                    onChange={(e) => {
+                                      const updated = [...monthlyDailyOperations];
+                                      updated[index].dueDate = e.target.value;
+                                      setMonthlyDailyOperations(updated);
+                                    }}
+                                    className="w-full bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none text-slate-700 dark:text-slate-200 px-2 py-1"
+                                    placeholder="Due date"
+                                  />
+                                </td>
+                                <td className="px-5 py-3">
+                                  <input
+                                    type="text"
+                                    value={item.startDate || ''}
+                                    onChange={(e) => {
+                                      const updated = [...monthlyDailyOperations];
+                                      updated[index].startDate = e.target.value;
+                                      setMonthlyDailyOperations(updated);
+                                    }}
+                                    className="w-full bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none text-slate-700 dark:text-slate-200 px-2 py-1"
+                                    placeholder="Start date"
+                                  />
+                                </td>
+                                <td className="px-5 py-3">
+                                  <input
+                                    type="text"
+                                    value={item.endDate || ''}
+                                    onChange={(e) => {
+                                      const updated = [...monthlyDailyOperations];
+                                      updated[index].endDate = e.target.value;
+                                      setMonthlyDailyOperations(updated);
+                                    }}
+                                    className="w-full bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none text-slate-700 dark:text-slate-200 px-2 py-1"
+                                    placeholder="End date"
+                                  />
+                                </td>
                                 <td className="px-5 py-3 text-center">
                                   <select
-                                    value={item.status}
+                                    value={item.status || 'Pending'}
                                     onChange={(e) => {
                                       const updated = [...monthlyDailyOperations];
                                       updated[index].status = e.target.value;
@@ -1891,13 +2013,14 @@ const AcademicCounselorReportPage = () => {
                                   >
                                     <option value="Done">Done</option>
                                     <option value="Pending">Pending</option>
+                                    <option value="In Progress">In Progress</option>
                                     <option value="NA">NA</option>
                                   </select>
                                 </td>
                                 <td className="px-5 py-3">
                                   <input
                                     type="text"
-                                    value={item.remarks}
+                                    value={item.remarks || ''}
                                     onChange={(e) => {
                                       const updated = [...monthlyDailyOperations];
                                       updated[index].remarks = e.target.value;

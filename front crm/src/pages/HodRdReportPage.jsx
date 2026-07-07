@@ -43,7 +43,7 @@ const DEFAULT_ISSUES = [
 const HodRdReportPage = () => {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isEditingBasic, setIsEditingBasic] = useState(false);
   const [currentUser, setCurrentUser] = useState({});
@@ -286,7 +286,7 @@ const HodRdReportPage = () => {
           ...apiBasicDetails,
           employeeName: userDetail.name || apiBasicDetails.employeeName || '',
           employeeId: userDetail.employeeId || apiBasicDetails.employeeId || '',
-          designation: userDetail.designation || apiBasicDetails.designation || '',
+          designation: userDetail.designationName || userDetail.designation || apiBasicDetails.designation || '',
           reportingTo: userDetail.reportingManager || apiBasicDetails.reportingTo || '',
           department: userDetail.department || apiBasicDetails.department || ''
         });
@@ -395,7 +395,7 @@ const HodRdReportPage = () => {
       employeeName: userDetail.name || parsedCached?.employeeName || '',
       employeeId: userDetail.employeeId || parsedCached?.employeeId || '',
       department: userDetail.department || parsedCached?.department || 'R&D/ Development',
-      designation: userDetail.designation || parsedCached?.designation || 'HOD-R&D Software & Web Developer',
+      designation: userDetail.designationName || userDetail.designation || parsedCached?.designation || 'HOD-R&D Software & Web Developer',
       shiftTiming: parsedCached?.shiftTiming || '9:00 AM - 5:00 PM',
       reportingTo: userDetail.reportingManager || parsedCached?.reportingTo || 'Manager - OPS Creative & Marketing',
       preparedTime: parsedCached?.preparedTime || timeStr

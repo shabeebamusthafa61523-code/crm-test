@@ -14,12 +14,7 @@ const API_BASE = import.meta.env.VITE_API_URL;
 
 // Default items for Task Log
 const DEFAULT_TASK_LOG = [
-
-  { taskProjectName: 'PASS THE BALL VIDEO EDITING', descriptionDetails: 'completed the editing entire pass the ball video fotage', startTime: '9.30am', endTime: '12.30pm', dueDate: '', status: 'Done', fileLink: 'kood brand shoots\\9-6-26\\clip\\final\\pass the ball' },
-  { taskProjectName: 'CALICUT SCRIPTED VIDEO CONTENT2', descriptionDetails: 'completed the editing entireCONTENT 2 of calicut ad video fotage', startTime: '1.30pm', endTime: '5.00pm', dueDate: '', status: 'Done', fileLink: 'kood brand shoots\\calicut shoot\\final\\calicut content 2' },
-  { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'N/A', fileLink: '' },
-  { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'N/A', fileLink: '' }
-
+  { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'Pending', fileLink: '' }
 ];
 
 // Default Key Numbers
@@ -42,7 +37,7 @@ const DEFAULT_TOMORROW = [
 const VideographerReportPage = () => {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isEditingBasic, setIsEditingBasic] = useState(false);
   const [currentUser, setCurrentUser] = useState({});
@@ -281,7 +276,7 @@ const VideographerReportPage = () => {
           ...apiBasicDetails,
           employeeName: userDetail.name || apiBasicDetails.employeeName || '',
           employeeId: userDetail.employeeId || apiBasicDetails.employeeId || '',
-          designation: userDetail.designation || apiBasicDetails.designation || '',
+          designation: userDetail.designationName || userDetail.designation || apiBasicDetails.designation || '',
           reportingTo: userDetail.reportingManager || apiBasicDetails.reportingTo || '',
           department: userDetail.department || apiBasicDetails.department || ''
         });
@@ -311,19 +306,21 @@ const VideographerReportPage = () => {
                   updatedLog[matchIndex] = {
                     ...updatedLog[matchIndex],
                     taskProjectName: t.title,
-                  dueDate: t.dueDate || '',
+                    dueDate: t.dueDate || '',
                     status: t.status === 'Done' ? 'Done' : 'Pending',
                     startTime: t.startTime || updatedLog[matchIndex].startTime || '',
-                    endTime: t.endTime || updatedLog[matchIndex].endTime || ''
+                    endTime: t.endTime || updatedLog[matchIndex].endTime || '',
+                    descriptionDetails: t.description || updatedLog[matchIndex].descriptionDetails || ''
                   };
                 } else {
                   // Append new task
                   addedTasks.push({
                     taskProjectName: t.title,
-                    descriptionDetails: 'Auto-fetched',
+                    descriptionDetails: t.description || '',
                     startTime: t.startTime || '',
                     endTime: t.endTime || '',
-                    dueDate: t.dueDate || '', status: t.status === 'Done' ? 'Done' : 'Pending',
+                    dueDate: t.dueDate || '',
+                    status: t.status === 'Done' ? 'Done' : 'Pending',
                     fileLink: ''
                   });
                 }
@@ -347,17 +344,20 @@ const VideographerReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ taskProjectName: t.title, descriptionDetails: 'Auto-fetched', startTime: t.startTime || '', endTime: t.endTime || '', dueDate: t.dueDate || '', status: t.status === 'Done' ? 'Done' : 'Pending', fileLink: '' }));
-            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' });
-            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' });
+            const mappedTasks = completedTasks.map(t => ({
+              taskProjectName: t.title,
+              descriptionDetails: t.description || '',
+              startTime: t.startTime || '',
+              endTime: t.endTime || '',
+              dueDate: t.dueDate || '',
+              status: t.status === 'Done' ? 'Done' : 'Pending',
+              fileLink: ''
+            }));
             setTaskLog(mappedTasks);
-          } else {
-            setTaskLog(prev => [...prev, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' }, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
         }
-
       }
     } catch (err) {
       initializeBlankReport(userId, dateStr);
@@ -365,12 +365,16 @@ const VideographerReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ taskProjectName: t.title, descriptionDetails: 'Auto-fetched', startTime: t.startTime || '', endTime: t.endTime || '', dueDate: t.dueDate || '', status: t.status === 'Done' ? 'Done' : 'Pending', fileLink: '' }));
-            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' });
-            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' });
+            const mappedTasks = completedTasks.map(t => ({
+              taskProjectName: t.title,
+              descriptionDetails: t.description || '',
+              startTime: t.startTime || '',
+              endTime: t.endTime || '',
+              dueDate: t.dueDate || '',
+              status: t.status === 'Done' ? 'Done' : 'Pending',
+              fileLink: ''
+            }));
             setTaskLog(mappedTasks);
-          } else {
-            setTaskLog(prev => [...prev, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' }, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -434,7 +438,7 @@ const VideographerReportPage = () => {
       date: formattedDateString,
       day: dayName.toUpperCase().slice(0,3),
       employeeId: userDetail.employeeId || parsedCached?.employeeId || '',
-      designation: userDetail.designation || parsedCached?.designation || 'Videographer & Editor',
+      designation: userDetail.designationName || userDetail.designation || parsedCached?.designation || 'Videographer & Editor',
       reportingTo: userDetail.reportingManager || parsedCached?.reportingTo || 'CMO',
       shiftTiming: parsedCached?.shiftTiming || '9:00 AM - 5:00 PM',
       preparedAt: parsedCached?.preparedAt || timeStr

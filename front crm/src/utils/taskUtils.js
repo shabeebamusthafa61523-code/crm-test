@@ -13,7 +13,7 @@ export const fetchCompletedTasks = async (userId, dateStr) => {
     const data = await res.json();
     const tasks = Array.isArray(data) ? data : (data.tasks || data.data || []);
     
-    // Filter for tasks assigned to the user matching the date or currently active
+    // Filter for tasks assigned to the user matching the selected report date.
     const filteredTasks = tasks.filter(t => {
       // Check user assignment
       const assignedUser = t.assigned_to?._id || t.assigned_to?.id || t.assigned_to || t.assignedTo?._id || t.assignedTo?.id || t.assignedTo;
@@ -45,9 +45,8 @@ export const fetchCompletedTasks = async (userId, dateStr) => {
       };
 
       const dateMatches = matchesDate(t.date) || matchesDate(t.updatedAt) || matchesDate(t.createdAt) || matchesDate(t.dueDate);
-      const isCompleted = String(t.status || 'pending').toLowerCase() === 'done';
       
-      return isCompleted && dateMatches;
+      return dateMatches;
     });
 
     // Format task title and attributes timezone-safely for reports
@@ -102,6 +101,8 @@ export const fetchCompletedTasks = async (userId, dateStr) => {
         status: statusText,
         startTime,
         endTime,
+        startDate: startTime,
+        endDate: endTime,
         dueDate: formattedDueDate,
         title: `${t.title} [${statusText.toUpperCase()}]`
       };

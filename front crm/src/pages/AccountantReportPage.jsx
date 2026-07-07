@@ -70,7 +70,7 @@ const DEFAULT_HANDOVER = [
 const AccountantReportPage = () => {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isEditingBasic, setIsEditingBasic] = useState(false);
   const [currentUser, setCurrentUser] = useState({});
@@ -312,7 +312,7 @@ const AccountantReportPage = () => {
           ...apiBasicDetails,
           employeeName: userDetail.name || apiBasicDetails.employeeName || '',
           employeeId: userDetail.employeeId || apiBasicDetails.employeeId || '',
-          designation: userDetail.designation || apiBasicDetails.designation || '',
+          designation: userDetail.designationName || userDetail.designation || apiBasicDetails.designation || '',
           reportingTo: userDetail.reportingManager || apiBasicDetails.reportingTo || '',
           department: userDetail.department || apiBasicDetails.department || ''
         });
@@ -425,7 +425,7 @@ const AccountantReportPage = () => {
       employeeName: userDetail.name || parsedCached?.employeeName || '',
       employeeId: userDetail.employeeId || parsedCached?.employeeId || '',
       department: userDetail.department || parsedCached?.department || 'Accounts & Finance',
-      designation: userDetail.designation || parsedCached?.designation || 'Accountant / Accounts Executive',
+      designation: userDetail.designationName || userDetail.designation || parsedCached?.designation || 'Accountant / Accounts Executive',
       shiftTiming: parsedCached?.shiftTiming || '9:00 TO 05:00',
       reportingTo: userDetail.reportingManager || parsedCached?.reportingTo || 'Accounts Manager / COO',
       preparedTime: parsedCached?.preparedTime || timeStr
@@ -573,7 +573,7 @@ const AccountantReportPage = () => {
           employeeName: userDetail.name || '',
           employeeId: userDetail.employeeId || '',
           department: 'Accounts & Finance',
-          designation: userDetail.designation || 'Accountant / Accounts Executive',
+          designation: userDetail.designationName || userDetail.designation || 'Accountant / Accounts Executive',
           shiftTiming: '9:00 TO 05:00',
           reportingTo: 'Accounts Manager / COO',
           preparedTime: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })

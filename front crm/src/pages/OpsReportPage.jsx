@@ -64,7 +64,7 @@ const DEFAULT_ACADEMY_STATUS = [
 const OpsReportPage = () => {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isEditingBasic, setIsEditingBasic] = useState(false);
   const [currentUser, setCurrentUser] = useState({});
@@ -359,7 +359,7 @@ const OpsReportPage = () => {
           ...apiBasicDetails,
           employeeName: userDetail.name || apiBasicDetails.employeeName || '',
           employeeId: userDetail.employeeId || apiBasicDetails.employeeId || '',
-          designation: userDetail.designation || apiBasicDetails.designation || '',
+          designation: userDetail.designationName || userDetail.designation || apiBasicDetails.designation || '',
           reportingTo: userDetail.reportingManager || apiBasicDetails.reportingTo || '',
           department: userDetail.department || apiBasicDetails.department || ''
         });
@@ -373,17 +373,20 @@ const OpsReportPage = () => {
         setHandover(report.handover || { pendingLeadsShared: 'Yes', crmUpdated: 'Yes / No- NA', reportsSubmitted: 'Yes', teamUpdated: 'Yes' });
         setApproval(report.approval || {});
       } else {
-        initializeBlankReport(userId, dateStr);
+        await initializeBlankReport(userId, dateStr);
         // Auto-fetch completed tasks for new blank reports
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', dueDate: t.dueDate || '', remarks: 'Auto-fetched' }));
-            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
-            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
+            const mappedTasks = completedTasks.map(t => ({
+              activity: t.title,
+              dueDate: t.dueDate || '',
+              startDate: t.startTime || '',
+              endDate: t.endTime || '',
+              status: t.status || 'Done',
+              remarks: t.description || ''
+            }));
             setDailyOperations(mappedTasks);
-          } else {
-            setDailyOperations(prev => [...prev, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -391,17 +394,20 @@ const OpsReportPage = () => {
 
       }
     } catch (e) {
-      initializeBlankReport(userId, dateStr);
+      await initializeBlankReport(userId, dateStr);
         // Auto-fetch completed tasks for new blank reports
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', dueDate: t.dueDate || '', remarks: 'Auto-fetched' }));
-            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
-            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
+            const mappedTasks = completedTasks.map(t => ({
+              activity: t.title,
+              dueDate: t.dueDate || '',
+              startDate: t.startTime || '',
+              endDate: t.endTime || '',
+              status: t.status || 'Done',
+              remarks: t.description || ''
+            }));
             setDailyOperations(mappedTasks);
-          } else {
-            setDailyOperations(prev => [...prev, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -608,7 +614,7 @@ const OpsReportPage = () => {
         employeeName: userDetail.name || '',
         employeeId: userDetail.employeeId || '',
         department: 'Sales & Growth',
-        designation: userDetail.designation || 'Manager - OPS',
+        designation: userDetail.designationName || userDetail.designation || 'Manager - OPS',
         shiftTiming: '9:30 AM - 5:30 PM',
         reportingTo: 'Executive Director'
       });
@@ -801,7 +807,7 @@ const OpsReportPage = () => {
         employeeName: userDetail.name || '',
         employeeId: userDetail.employeeId || '',
         department: 'Sales & Growth',
-        designation: userDetail.designation || 'Manager - OPS',
+        designation: userDetail.designationName || userDetail.designation || 'Manager - OPS',
         shiftTiming: '9:30 AM - 5:30 PM',
         reportingTo: 'Executive Director'
       });
@@ -1301,7 +1307,7 @@ const OpsReportPage = () => {
     }
   };
 
-    const initializeBlankReport = (userId, dateStr) => {
+    const initializeBlankReport = async (userId, dateStr) => {
     let freshestUser = currentUser;
     try {
       const su = localStorage.getItem('user');
@@ -1336,14 +1342,30 @@ const OpsReportPage = () => {
       employeeName: userDetail.name || parsedCached?.employeeName || '',
       employeeId: userDetail.employeeId || parsedCached?.employeeId || '',
       department: parsedCached?.department || 'Sales & Growth',
-      designation: userDetail.designation || parsedCached?.designation || 'Manager - OPS',
+      designation: userDetail.designationName || userDetail.designation || parsedCached?.designation || 'Manager - OPS',
       shiftTiming: parsedCached?.shiftTiming || '9:30 AM - 5:30 PM',
       reportingTo: userDetail.reportingManager || parsedCached?.reportingTo || 'Executive Director',
       preparedTime: parsedCached?.preparedTime || timeStr
     });
 
     setDailyOperations(DEFAULT_DAILY_OPERATIONS);
-    setSalesActivity(DEFAULT_SALES_ACTIVITY);
+
+    // Auto-fetch lead stats from CRM for the selected date
+    try {
+      const res = await fetch(`${API_BASE}/v1/ops-reports/lead-stats?date=${dateStr}`, {
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setSalesActivity(data.data);
+      } else {
+        setSalesActivity(DEFAULT_SALES_ACTIVITY);
+      }
+    } catch (e) {
+      console.error('Failed to auto-fetch lead stats:', e);
+      setSalesActivity(DEFAULT_SALES_ACTIVITY);
+    }
+
     setSalesPerformance(DEFAULT_SALES_PERFORMANCE);
     setRevenueTracking(DEFAULT_REVENUE_TRACKING);
     setAcademyStatus(DEFAULT_ACADEMY_STATUS);
@@ -1728,7 +1750,7 @@ const OpsReportPage = () => {
                 </h2>
                 <button
                   type="button"
-                  onClick={() => setDailyOperations([...dailyOperations, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }])}
+                  onClick={() => setDailyOperations([...dailyOperations, { activity: '', dueDate: '', startDate: '', endDate: '', status: 'ongoing', remarks: '' }])}
                   className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
                 >
                   <Plus size={14} /> Add Row
@@ -1739,7 +1761,9 @@ const OpsReportPage = () => {
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
                       <th className="px-4 py-3">Activity</th>
-                      <th className="px-4 py-3">Due Date</th>
+                      <th className="px-4 py-3 w-36">Due Date</th>
+                      <th className="px-4 py-3 w-44">Start Date</th>
+                      <th className="px-4 py-3 w-44">End Date</th>
                       <th className="px-4 py-3 w-40">Status</th>
                       <th className="px-4 py-3">Remarks</th>
                       <th className="px-4 py-3 w-12 text-center">Action</th>
@@ -1764,7 +1788,46 @@ const OpsReportPage = () => {
                         <td className="px-4 py-2.5">
                           <input
                             type="text"
-                            value={row.status}
+                            value={row.dueDate || ''}
+                            onChange={(e) => {
+                              const newArr = [...dailyOperations];
+                              newArr[i].dueDate = e.target.value;
+                              setDailyOperations(newArr);
+                            }}
+                            className="w-full bg-transparent border-none focus:outline-none p-0 text-sm"
+                            placeholder="Due date"
+                          />
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <input
+                            type="text"
+                            value={row.startDate || ''}
+                            onChange={(e) => {
+                              const newArr = [...dailyOperations];
+                              newArr[i].startDate = e.target.value;
+                              setDailyOperations(newArr);
+                            }}
+                            className="w-full bg-transparent border-none focus:outline-none p-0 text-sm"
+                            placeholder="Start date"
+                          />
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <input
+                            type="text"
+                            value={row.endDate || ''}
+                            onChange={(e) => {
+                              const newArr = [...dailyOperations];
+                              newArr[i].endDate = e.target.value;
+                              setDailyOperations(newArr);
+                            }}
+                            className="w-full bg-transparent border-none focus:outline-none p-0 text-sm"
+                            placeholder="End date"
+                          />
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <input
+                            type="text"
+                            value={row.status || ''}
                             onChange={(e) => {
                               const newArr = [...dailyOperations];
                               newArr[i].status = e.target.value;
@@ -1776,7 +1839,7 @@ const OpsReportPage = () => {
                         <td className="px-4 py-2.5">
                           <input
                             type="text"
-                            value={row.remarks}
+                            value={row.remarks || ''}
                             onChange={(e) => {
                               const newArr = [...dailyOperations];
                               newArr[i].remarks = e.target.value;
@@ -1817,7 +1880,6 @@ const OpsReportPage = () => {
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
                       <th className="px-4 py-3">Activity</th>
-                      <th className="px-4 py-3">Due Date</th>
                       <th className="px-4 py-3 w-32 text-center">Count</th>
                       <th className="px-4 py-3 w-32 text-center">Digital Mktg</th>
                       <th className="px-4 py-3 w-32 text-center">Web</th>

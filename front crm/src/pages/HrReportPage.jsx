@@ -80,7 +80,7 @@ const DEFAULT_HANDOVER = [
 const HrReportPage = () => {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isEditingBasic, setIsEditingBasic] = useState(false);
   const [currentUser, setCurrentUser] = useState({});
@@ -512,7 +512,7 @@ const HrReportPage = () => {
         employeeName: userDetail.name || '',
         employeeId: userDetail.employeeId || '',
         department: 'HR / Admin',
-        designation: userDetail.designation || 'HR / Admin Manager',
+        designation: userDetail.designationName || userDetail.designation || 'HR / Admin Manager',
         reportingTo: userDetail.reportingManager || 'COO / Executive Director',
         preparedTime: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
       });
@@ -958,7 +958,7 @@ const HrReportPage = () => {
           ...apiBasicDetails,
           employeeName: userDetail.name || apiBasicDetails.employeeName || '',
           employeeId: userDetail.employeeId || apiBasicDetails.employeeId || '',
-          designation: userDetail.designation || apiBasicDetails.designation || '',
+          designation: userDetail.designationName || userDetail.designation || apiBasicDetails.designation || '',
           reportingTo: userDetail.reportingManager || apiBasicDetails.reportingTo || '',
           department: userDetail.department || apiBasicDetails.department || ''
         });
@@ -1067,7 +1067,7 @@ const HrReportPage = () => {
       employeeName: userDetail.name || parsedCached?.employeeName || '',
       employeeId: userDetail.employeeId || parsedCached?.employeeId || '',
       department: userDetail.department || parsedCached?.department || 'HR / Admin',
-      designation: userDetail.designation || parsedCached?.designation || 'HR / Admin Manager',
+      designation: userDetail.designationName || userDetail.designation || parsedCached?.designation || 'HR / Admin Manager',
       shiftTiming: parsedCached?.shiftTiming || '9:00 AM – 5:00 PM',
       reportingTo: userDetail.reportingManager || parsedCached?.reportingTo || 'COO / Executive Director',
       preparedTime: parsedCached?.preparedTime || timeStr
