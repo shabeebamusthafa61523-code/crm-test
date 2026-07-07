@@ -170,7 +170,7 @@ const menuItems = [
     // allowedRoles: ['1', '2', 'hr', 'admin']
   },
   { icon: UserCheck, label: 'Attendance', path: '/attendance', excludeRoles: ['1', '2', 'hr', 'admin'] },
-  { icon: ListCheck, label: 'To-Do', path: '/todo' },
+  { icon: ListCheck, label: 'Task Assign', path: '/todo' },
   { icon: Users, label: 'Student Attendance', path: '/student-attendance', allowedRoles: ['1', '2', 'hr', 'admin'], allowedDepartments: ['6a3caed51194353cbc8a3686'] },
   { icon: Building, label: 'Departments', path: '/departments', allowedRoles: ['1', '2', 'hr', 'admin'], allowedDepartments: ['6a3caed51194353cbc8a3686'] },
   { icon: Users, label: 'Employee Reports', path: '/employee-reports', allowedRoles: ['1', '2', 'hr', 'admin'], allowedDepartments: ['6a3caed51194353cbc8a3686'] },

@@ -24,6 +24,7 @@ const developerReportSchema = new mongoose.Schema({
   dailyTaskSummary: [
     {
       activity: { type: String },
+      dueDate: { type: String },
       status: { type: String },
       remarks: { type: String }
     }
@@ -32,6 +33,7 @@ const developerReportSchema = new mongoose.Schema({
     {
       project: { type: String },
       activity: { type: String },
+      dueDate: { type: String },
       status: { type: String },
       remark: { type: String }
     }
@@ -39,6 +41,7 @@ const developerReportSchema = new mongoose.Schema({
   researchLearning: [
     {
       activity: { type: String },
+      dueDate: { type: String },
       details: { type: String }
     }
   ],

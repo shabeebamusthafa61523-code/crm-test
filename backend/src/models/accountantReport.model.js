@@ -24,6 +24,7 @@ const accountantReportSchema = new mongoose.Schema({
   dailyAccountingSummary: [
     {
       activity: { type: String },
+      dueDate: { type: String },
       status: { type: String },
       remarks: { type: String }
     }
@@ -47,6 +48,7 @@ const accountantReportSchema = new mongoose.Schema({
   payrollPaymentStatus: [
     {
       activity: { type: String },
+      dueDate: { type: String },
       status: { type: String },
       remarks: { type: String }
     }
@@ -61,6 +63,7 @@ const accountantReportSchema = new mongoose.Schema({
   documentationCompliance: [
     {
       activity: { type: String },
+      dueDate: { type: String },
       status: { type: String }
     }
   ],

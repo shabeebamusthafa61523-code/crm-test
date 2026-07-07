@@ -14,12 +14,12 @@ const API_BASE = import.meta.env.VITE_API_URL;
 
 // Defaults from mockup
 const DEFAULT_TASK_SUMMARY = [
-  { task: 'Instagram post published', detailsNotes: 'Gangeee poster and software development reel', status: 'Done', remarks: '' },
-  { task: 'Stories uploaded', detailsNotes: 'poll poster of world cup 2026 Grp E,F', status: 'Done', remarks: '' },
-  { task: 'Client works', detailsNotes: 'ipas post about GST UPDATE 2026 , Bail & Anticipatory Bail', status: 'Done', remarks: '' },
-  { task: '', detailsNotes: '', status: 'N/A', remarks: '' },
-  { task: '', detailsNotes: '', status: 'N/A', remarks: '' },
-  { task: '', detailsNotes: '', status: 'N/A', remarks: '' }
+  { task: 'Instagram post published', detailsNotes: 'Gangeee poster and software development reel', status: 'Done', dueDate: '', remarks: '' },
+  { task: 'Stories uploaded', detailsNotes: 'poll poster of world cup 2026 Grp E,F', status: 'Done', dueDate: '', remarks: '' },
+  { task: 'Client works', detailsNotes: 'ipas post about GST UPDATE 2026 , Bail & Anticipatory Bail', status: 'Done', dueDate: '', remarks: '' },
+  { task: '', detailsNotes: '', status: 'N/A', dueDate: '', remarks: '' },
+  { task: '', detailsNotes: '', status: 'N/A', dueDate: '', remarks: '' },
+  { task: '', detailsNotes: '', status: 'N/A', dueDate: '', remarks: '' }
 ];
 
 const DEFAULT_KPI_TRACKING = [
@@ -146,7 +146,7 @@ const MarketingReportPage = () => {
   const addMonthlyTaskRow = () => {
     setMonthlyTaskSummary([
       ...monthlyTaskSummary,
-      { task: '', detailsNotes: '', status: 'Done', remarks: '' }
+      { task: '', detailsNotes: '', status: 'Done', dueDate: '', remarks: '' }
     ]);
   };
 
@@ -228,7 +228,7 @@ const MarketingReportPage = () => {
               task: taskName,
               detailsNotes: [],
               status: t.status || 'Done',
-              remarks: []
+              dueDate: t.dueDate || '', remarks: []
             };
           }
           if (t.detailsNotes && !taskMap[taskName].detailsNotes.includes(t.detailsNotes.trim())) {
@@ -247,11 +247,11 @@ const MarketingReportPage = () => {
         task: item.task,
         detailsNotes: item.detailsNotes.filter(Boolean).join('; '),
         status: item.status,
-        remarks: item.remarks.filter(Boolean).join('; ')
+        dueDate: '', remarks: item.remarks.filter(Boolean).join('; ')
       }));
 
       if (consolidatedTasks.length === 0) {
-        consolidatedTasks.push({ task: '', detailsNotes: '', status: 'N/A', remarks: '' });
+        consolidatedTasks.push({ task: '', detailsNotes: '', status: 'N/A', dueDate: '', remarks: '' });
       }
       setMonthlyTaskSummary(consolidatedTasks);
 
@@ -653,12 +653,12 @@ const MarketingReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ task: t.title, detailsNotes: 'Auto-fetched', status: t.status === 'Done' ? 'Completed' : 'Pending', remarks: '' }));
-            mappedTasks.push({ task: '', detailsNotes: '', status: 'ongoing', remarks: '' });
-            mappedTasks.push({ task: '', detailsNotes: '', status: 'ongoing', remarks: '' });
+            const mappedTasks = completedTasks.map(t => ({ task: t.title, detailsNotes: 'Auto-fetched', status: t.status === 'Done' ? 'Completed' : 'Pending', dueDate: t.dueDate || '', remarks: '' }));
+            mappedTasks.push({ task: '', detailsNotes: '', status: 'ongoing', dueDate: '', remarks: '' });
+            mappedTasks.push({ task: '', detailsNotes: '', status: 'ongoing', dueDate: '', remarks: '' });
             setTaskSummary(mappedTasks);
           } else {
-            setTaskSummary(prev => [...prev, { task: '', detailsNotes: '', status: 'ongoing', remarks: '' }, { task: '', detailsNotes: '', status: 'ongoing', remarks: '' }]);
+            setTaskSummary(prev => [...prev, { task: '', detailsNotes: '', status: 'ongoing', dueDate: '', remarks: '' }, { task: '', detailsNotes: '', status: 'ongoing', dueDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -671,12 +671,12 @@ const MarketingReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ task: t.title, detailsNotes: 'Auto-fetched', status: t.status === 'Done' ? 'Completed' : 'Pending', remarks: '' }));
-            mappedTasks.push({ task: '', detailsNotes: '', status: 'ongoing', remarks: '' });
-            mappedTasks.push({ task: '', detailsNotes: '', status: 'ongoing', remarks: '' });
+            const mappedTasks = completedTasks.map(t => ({ task: t.title, detailsNotes: 'Auto-fetched', status: t.status === 'Done' ? 'Completed' : 'Pending', dueDate: t.dueDate || '', remarks: '' }));
+            mappedTasks.push({ task: '', detailsNotes: '', status: 'ongoing', dueDate: '', remarks: '' });
+            mappedTasks.push({ task: '', detailsNotes: '', status: 'ongoing', dueDate: '', remarks: '' });
             setTaskSummary(mappedTasks);
           } else {
-            setTaskSummary(prev => [...prev, { task: '', detailsNotes: '', status: 'ongoing', remarks: '' }, { task: '', detailsNotes: '', status: 'ongoing', remarks: '' }]);
+            setTaskSummary(prev => [...prev, { task: '', detailsNotes: '', status: 'ongoing', dueDate: '', remarks: '' }, { task: '', detailsNotes: '', status: 'ongoing', dueDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -858,7 +858,7 @@ const MarketingReportPage = () => {
   const addTaskRow = () => {
     setTaskSummary([
       ...taskSummary,
-      { task: '', detailsNotes: '', status: '', remarks: '' }
+      { task: '', detailsNotes: '', status: '', dueDate: '', remarks: '' }
     ]);
   };
 
@@ -889,27 +889,7 @@ const MarketingReportPage = () => {
     <div className="flex flex-col lg:flex-row gap-6 items-start">
       {/* LEFT PANEL: Date Select Sidebar */}
       <div className="w-full lg:w-72 shrink-0 bg-white/70 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-md rounded-3xl p-5 shadow-sm">
-        {isPrivileged && (
-          <div className="mb-6">
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-              Select Marketing Staff
-            </label>
-            <div className="relative">
-              <select
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
-              >
-                {marketingStaff.map(staff => (
-                  <option key={staff._id} value={staff._id}>
-                    {staff.name} ({staff.employeeId || 'No ID'})
-                  </option>
-                ))}
-              </select>
-              <User size={16} className="absolute right-3 top-3.5 text-slate-400 pointer-events-none" />
-            </div>
-          </div>
-        )}
+        
 
         <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-4 flex items-center gap-2">
           <Calendar size={14} className="text-indigo-500 dark:text-lime-400" />
@@ -1142,6 +1122,7 @@ const MarketingReportPage = () => {
                   <thead className="bg-slate-50 dark:bg-slate-950">
                     <tr>
                       <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Task</th>
+                      <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Due Date</th>
                       <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-1/2">Details / Notes</th>
                       <th className="px-4 py-3 text-center text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-32">Status</th>
                       <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Remarks</th>
@@ -1562,6 +1543,7 @@ const MarketingReportPage = () => {
                               <thead className="bg-slate-50 dark:bg-slate-950">
                                 <tr>
                                   <th className="px-3 py-2 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Task</th>
+                      <th className="px-3 py-2 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Due Date</th>
                                   <th className="px-3 py-2 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-1/2">Details / Notes</th>
                                   <th className="px-3 py-2 text-center text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-28">Status</th>
                                   <th className="px-3 py-2 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Remarks</th>

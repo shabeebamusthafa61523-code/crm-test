@@ -14,11 +14,11 @@ const API_BASE = import.meta.env.VITE_API_URL;
 
 // Default items for Daily Task Summary (matching the mockup)
 const DEFAULT_TASK_SUMMARY = [
-  { activity: 'Website Development', status: 'Done', remarks: '' },
-  { activity: 'CRM Software Planning', status: 'Done', remarks: '' },
-  { activity: 'Testing/Bug Fixing', status: 'NA', remarks: '' },
-  { activity: 'UI/UX Improvements', status: 'NA', remarks: '' },
-  { activity: 'Client Revision Work', status: 'NA', remarks: '' }
+  { activity: 'Website Development', status: 'Done', dueDate: '', remarks: '' },
+  { activity: 'CRM Software Planning', status: 'Done', dueDate: '', remarks: '' },
+  { activity: 'Testing/Bug Fixing', status: 'NA', dueDate: '', remarks: '' },
+  { activity: 'UI/UX Improvements', status: 'NA', dueDate: '', remarks: '' },
+  { activity: 'Client Revision Work', status: 'NA', dueDate: '', remarks: '' }
 ];
 
 // Default items for Development Task Report
@@ -85,7 +85,7 @@ const consolidateDeveloperReports = (reports) => {
     return {
       activity: group.activity,
       status: mainStatus,
-      remarks: remarksText
+      dueDate: '', remarks: remarksText
     };
   });
   if (mDailyTaskSummary.length === 0) {
@@ -494,6 +494,46 @@ const DeveloperReportPage = () => {
         const savedLog = report.dailyTaskSummary || [];
         setDailyTaskSummary(savedLog);
 
+        try {
+          fetchCompletedTasks(userId, dateStr).then(completedTasks => {
+            if (completedTasks && completedTasks.length > 0) {
+              const cleanTitle = (title) => {
+                if (!title) return '';
+                return title.replace(/\[[^\]]+\]/g, '').trim().toLowerCase();
+              };
+
+              const updatedLog = [...savedLog];
+              const addedTasks = [];
+
+              completedTasks.forEach(t => {
+                const cleanT = cleanTitle(t.title);
+                const matchIndex = updatedLog.findIndex(row => cleanTitle(row.activity || '') === cleanT);
+
+                if (matchIndex > -1) {
+                  // Update existing task details in the saved report
+                  updatedLog[matchIndex] = {
+                    ...updatedLog[matchIndex],
+                    activity: t.title,
+                    dueDate: t.dueDate || '',
+                    status: t.status || 'Done'
+                  };
+                } else {
+                  // Append new task
+                  addedTasks.push({
+                    activity: t.title,
+                    status: t.status || 'Done',
+                    dueDate: t.dueDate || '', remarks: 'Auto-fetched'
+                  });
+                }
+              });
+
+              setDailyTaskSummary([...updatedLog, ...addedTasks]);
+            }
+          });
+        } catch (e) {
+          console.error("Error merging additional tasks:", e);
+        }
+
         setDevelopmentTaskReport(report.developmentTaskReport || []);
         setResearchLearning(report.researchLearning || []);
         setPerformanceTracker(report.performanceTracker || {
@@ -515,12 +555,12 @@ const DeveloperReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', remarks: 'Auto-fetched' }));
-            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
-            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', dueDate: t.dueDate || '', remarks: 'Auto-fetched' }));
+            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
+            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
             setDailyTaskSummary(mappedTasks);
           } else {
-            setDailyTaskSummary(prev => [...prev, { activity: '', status: 'ongoing', remarks: '' }, { activity: '', status: 'ongoing', remarks: '' }]);
+            setDailyTaskSummary(prev => [...prev, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -534,12 +574,12 @@ const DeveloperReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', remarks: 'Auto-fetched' }));
-            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
-            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', dueDate: t.dueDate || '', remarks: 'Auto-fetched' }));
+            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
+            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
             setDailyTaskSummary(mappedTasks);
           } else {
-            setDailyTaskSummary(prev => [...prev, { activity: '', status: 'ongoing', remarks: '' }, { activity: '', status: 'ongoing', remarks: '' }]);
+            setDailyTaskSummary(prev => [...prev, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -1087,7 +1127,7 @@ const DeveloperReportPage = () => {
 
   // Helper row handlers for dynamic tables
   const addSummaryRow = () => {
-    setDailyTaskSummary([...dailyTaskSummary, { activity: '', status: 'Done', remarks: '' }]);
+    setDailyTaskSummary([...dailyTaskSummary, { activity: '', status: 'Done', dueDate: '', remarks: '' }]);
   };
   
   const removeSummaryRow = (index) => {
@@ -1122,27 +1162,7 @@ const DeveloperReportPage = () => {
       {/* LEFT PANEL: Date Select Sidebar */}
       <div className="w-full lg:w-72 shrink-0 bg-white/70 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-md rounded-3xl p-5 shadow-sm">
         
-        {isPrivileged && (
-          <div className="mb-6">
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-              Select Developer
-            </label>
-            <div className="relative">
-              <select
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              >
-                {developers.map(dev => (
-                  <option key={dev._id} value={dev._id}>
-                    {dev.name} ({dev.employeeId || 'No ID'})
-                  </option>
-                ))}
-              </select>
-              <User size={16} className="absolute right-3 top-3.5 text-slate-400 pointer-events-none" />
-            </div>
-          </div>
-        )}
+        
 
         <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-4 flex items-center gap-2">
           <Calendar size={14} className="text-indigo-500 dark:text-lime-400" />
@@ -1387,6 +1407,7 @@ const DeveloperReportPage = () => {
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
                       <th className="px-4 py-3">Activity</th>
+                      <th className="px-4 py-3">Due Date</th>
                       <th className="px-4 py-3 w-40">Status</th>
                       <th className="px-4 py-3">Remarks</th>
                       <th className="px-4 py-3 w-12 text-center">Action</th>
@@ -1406,6 +1427,18 @@ const DeveloperReportPage = () => {
                             }}
                             className="w-full bg-transparent border-none focus:outline-none focus:ring-0 focus:border-none p-0 text-sm"
                             placeholder="Enter activity name"
+                          />
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <input
+                            type="date"
+                            value={row.dueDate || ''}
+                            onChange={(e) => {
+                              const newArr = [...dailyTaskSummary];
+                              newArr[i].dueDate = e.target.value;
+                              setDailyTaskSummary(newArr);
+                            }}
+                            className="bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-300 w-full"
                           />
                         </td>
                         <td className="px-4 py-2.5">
@@ -1511,6 +1544,18 @@ const DeveloperReportPage = () => {
                         </td>
                         <td className="px-4 py-2.5">
                           <input
+                            type="date"
+                            value={row.dueDate || ''}
+                            onChange={(e) => {
+                              const newArr = [...dailyTaskSummary];
+                              newArr[i].dueDate = e.target.value;
+                              setDailyTaskSummary(newArr);
+                            }}
+                            className="bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-300 w-full"
+                          />
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <input
                             type="text"
                             value={row.status}
                             onChange={(e) => {
@@ -1573,6 +1618,7 @@ const DeveloperReportPage = () => {
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
                       <th className="px-4 py-3 w-72">Activity</th>
+                      <th className="px-4 py-3 w-72">Due Date</th>
                       <th className="px-4 py-3">Details</th>
                       <th className="px-4 py-3 w-12 text-center">Action</th>
                     </tr>
@@ -1591,6 +1637,18 @@ const DeveloperReportPage = () => {
                             }}
                             className="w-full bg-transparent border-none focus:outline-none p-0 text-sm font-semibold"
                             placeholder="Activity name"
+                          />
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <input
+                            type="date"
+                            value={row.dueDate || ''}
+                            onChange={(e) => {
+                              const newArr = [...dailyTaskSummary];
+                              newArr[i].dueDate = e.target.value;
+                              setDailyTaskSummary(newArr);
+                            }}
+                            className="bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-300 w-full"
                           />
                         </td>
                         <td className="px-4 py-2.5">
@@ -2046,7 +2104,7 @@ const DeveloperReportPage = () => {
                             <h4 className="text-sm font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-wide">Daily Task Summary</h4>
                             <button
                               type="button"
-                              onClick={() => setMonthlyDailyTaskSummary([...monthlyDailyTaskSummary, { activity: '', status: 'Done', remarks: '' }])}
+                              onClick={() => setMonthlyDailyTaskSummary([...monthlyDailyTaskSummary, { activity: '', status: 'Done', dueDate: '', remarks: '' }])}
                               className="flex items-center gap-1 text-[11px] font-bold text-indigo-600 dark:text-lime-400 hover:opacity-80"
                             >
                               <Plus size={14} /> Add Row
@@ -2057,6 +2115,7 @@ const DeveloperReportPage = () => {
                               <thead>
                                 <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
                                   <th className="px-4 py-3">Activity</th>
+                      <th className="px-4 py-3">Due Date</th>
                                   <th className="px-4 py-3 w-40">Status</th>
                                   <th className="px-4 py-3">Remarks</th>
                                   <th className="px-4 py-3 w-12 text-center">Action</th>
@@ -2176,6 +2235,18 @@ const DeveloperReportPage = () => {
                                         placeholder="Activity details"
                                       />
                                     </td>
+                        <td className="px-4 py-2.5">
+                          <input
+                            type="date"
+                            value={row.dueDate || ''}
+                            onChange={(e) => {
+                              const newArr = [...dailyTaskSummary];
+                              newArr[i].dueDate = e.target.value;
+                              setDailyTaskSummary(newArr);
+                            }}
+                            className="bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-300 w-full"
+                          />
+                        </td>
                                     <td className="px-4 py-2.5">
                                       <input
                                         type="text"
@@ -2237,6 +2308,7 @@ const DeveloperReportPage = () => {
                               <thead>
                                 <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
                                   <th className="px-4 py-3 w-72">Activity</th>
+                      <th className="px-4 py-3 w-72">Due Date</th>
                                   <th className="px-4 py-3">Details</th>
                                   <th className="px-4 py-3 w-12 text-center">Action</th>
                                 </tr>
@@ -2257,6 +2329,18 @@ const DeveloperReportPage = () => {
                                         placeholder="Activity"
                                       />
                                     </td>
+                        <td className="px-4 py-2.5">
+                          <input
+                            type="date"
+                            value={row.dueDate || ''}
+                            onChange={(e) => {
+                              const newArr = [...dailyTaskSummary];
+                              newArr[i].dueDate = e.target.value;
+                              setDailyTaskSummary(newArr);
+                            }}
+                            className="bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-300 w-full"
+                          />
+                        </td>
                                     <td className="px-4 py-2.5">
                                       <input
                                         type="text"

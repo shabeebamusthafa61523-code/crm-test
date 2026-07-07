@@ -14,12 +14,12 @@ const API_BASE = import.meta.env.VITE_API_URL;
 
 // Defaults from mockup
 const DEFAULT_ACCOUNTING_SUMMARY = [
-  { activity: 'Daily Entries Updated', status: 'Done', remarks: 'All entries completed' },
-  { activity: 'Cash Book Updated', status: 'Done', remarks: 'All entries completed' },
-  { activity: 'Bank Transactions Verified', status: 'No', remarks: 'No more entries added' },
-  { activity: 'Invoices Generated', status: 'No', remarks: 'No more entries added' },
-  { activity: 'Payment Follow-up Completed', status: 'No', remarks: 'No more entries added' },
-  { activity: 'Expense Records Updated', status: 'Done', remarks: 'All entries completed' }
+  { activity: 'Daily Entries Updated', status: 'Done', dueDate: '', remarks: 'All entries completed' },
+  { activity: 'Cash Book Updated', status: 'Done', dueDate: '', remarks: 'All entries completed' },
+  { activity: 'Bank Transactions Verified', status: 'No', dueDate: '', remarks: 'No more entries added' },
+  { activity: 'Invoices Generated', status: 'No', dueDate: '', remarks: 'No more entries added' },
+  { activity: 'Payment Follow-up Completed', status: 'No', dueDate: '', remarks: 'No more entries added' },
+  { activity: 'Expense Records Updated', status: 'Done', dueDate: '', remarks: 'All entries completed' }
 ];
 
 const DEFAULT_TRANSACTIONS = [
@@ -31,10 +31,10 @@ const DEFAULT_TRANSACTIONS = [
 ];
 
 const DEFAULT_PAYROLL_STATUS = [
-  { activity: 'Salary Processing', status: '', remarks: '' },
-  { activity: 'Freelancer Payments', status: '', remarks: '' },
-  { activity: 'Incentives', status: '', remarks: '' },
-  { activity: 'Reimbursements', status: '', remarks: '' }
+  { activity: 'Salary Processing', status: '', dueDate: '', remarks: '' },
+  { activity: 'Freelancer Payments', status: '', dueDate: '', remarks: '' },
+  { activity: 'Incentives', status: '', dueDate: '', remarks: '' },
+  { activity: 'Reimbursements', status: '', dueDate: '', remarks: '' }
 ];
 
 const DEFAULT_EXPENSES = [
@@ -46,11 +46,11 @@ const DEFAULT_EXPENSES = [
 ];
 
 const DEFAULT_COMPLIANCE = [
-  { activity: 'Receipts Uploaded', status: 'Done' },
-  { activity: 'Ledger Updated', status: 'No' },
-  { activity: 'Bank Statements Filed', status: 'No' },
-  { activity: 'Tax Docs Updated', status: 'No' },
-  { activity: 'Backup Completed', status: 'No' }
+  { activity: 'Receipts Uploaded', dueDate: '', status: 'Done' },
+  { activity: 'Ledger Updated', dueDate: '', status: 'No' },
+  { activity: 'Bank Statements Filed', dueDate: '', status: 'No' },
+  { activity: 'Tax Docs Updated', dueDate: '', status: 'No' },
+  { activity: 'Backup Completed', dueDate: '', status: 'No' }
 ];
 
 const DEFAULT_KPI = [
@@ -338,12 +338,12 @@ const AccountantReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', remarks: 'Auto-fetched' }));
-            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
-            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', dueDate: t.dueDate || '', remarks: 'Auto-fetched' }));
+            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
+            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
             setDailyAccountingSummary(mappedTasks);
           } else {
-            setDailyAccountingSummary(prev => [...prev, { activity: '', status: 'ongoing', remarks: '' }, { activity: '', status: 'ongoing', remarks: '' }]);
+            setDailyAccountingSummary(prev => [...prev, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -356,12 +356,12 @@ const AccountantReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', remarks: 'Auto-fetched' }));
-            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
-            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', dueDate: t.dueDate || '', remarks: 'Auto-fetched' }));
+            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
+            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
             setDailyAccountingSummary(mappedTasks);
           } else {
-            setDailyAccountingSummary(prev => [...prev, { activity: '', status: 'ongoing', remarks: '' }, { activity: '', status: 'ongoing', remarks: '' }]);
+            setDailyAccountingSummary(prev => [...prev, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -619,7 +619,7 @@ const AccountantReportPage = () => {
       const consolidatedSummary = Object.keys(summaryMap).map(act => ({
         activity: act,
         status: Array.from(new Set(summaryMap[act].statuses)).join('; '),
-        remarks: Array.from(new Set(summaryMap[act].remarks)).join('; ')
+        dueDate: '', remarks: Array.from(new Set(summaryMap[act].remarks)).join('; ')
       }));
       setMonthlyDailyAccountingSummary(consolidatedSummary);
       
@@ -696,7 +696,7 @@ const AccountantReportPage = () => {
       const consolidatedPayroll = Object.keys(payrollMap).map(act => ({
         activity: act,
         status: Array.from(new Set(payrollMap[act].statuses)).join('; '),
-        remarks: Array.from(new Set(payrollMap[act].remarks)).join('; ')
+        dueDate: '', remarks: Array.from(new Set(payrollMap[act].remarks)).join('; ')
       }));
       setMonthlyPayrollPaymentStatus(consolidatedPayroll);
       
@@ -749,7 +749,7 @@ const AccountantReportPage = () => {
       });
       const consolidatedCompliance = Object.keys(complianceMap).map(act => ({
         activity: act,
-        status: Array.from(new Set(complianceMap[act].statuses)).join('; ')
+        dueDate: '', status: Array.from(new Set(complianceMap[act].statuses)).join('; ')
       }));
       setMonthlyDocumentationCompliance(consolidatedCompliance);
       
@@ -1317,27 +1317,7 @@ const AccountantReportPage = () => {
     <div className="flex flex-col lg:flex-row gap-6 items-start">
       {/* LEFT PANEL: Date Select Sidebar */}
       <div className="w-full lg:w-72 shrink-0 bg-white/70 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-md rounded-3xl p-5 shadow-sm">
-        {isPrivileged && (
-          <div className="mb-6">
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-              Select Accountant Staff
-            </label>
-            <div className="relative">
-              <select
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
-              >
-                {accountantStaff.map(staff => (
-                  <option key={staff._id} value={staff._id}>
-                    {staff.name} ({staff.employeeId || 'No ID'})
-                  </option>
-                ))}
-              </select>
-              <User size={16} className="absolute right-3 top-3.5 text-slate-400 pointer-events-none" />
-            </div>
-          </div>
-        )}
+        
 
         <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-4 flex items-center gap-2">
           <Calendar size={14} className="text-indigo-500 dark:text-lime-400" />
@@ -1568,7 +1548,7 @@ const AccountantReportPage = () => {
                 </h2>
                 <button
                   type="button"
-                  onClick={() => setDailyAccountingSummary([...dailyAccountingSummary, { activity: '', status: 'ongoing', remarks: '' }])}
+                  onClick={() => setDailyAccountingSummary([...dailyAccountingSummary, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }])}
                   className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
                 >
                   <Plus size={14} /> Add Row
@@ -1579,6 +1559,7 @@ const AccountantReportPage = () => {
                   <thead className="bg-slate-50 dark:bg-slate-950">
                     <tr>
                       <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-1/3">Activity</th>
+                      <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-1/3">Due Date</th>
                       <th className="px-6 py-3 text-center text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-1/4">Status</th>
                       <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Remarks</th>
                       <th className="px-3 py-3 text-center w-12"></th>
@@ -1800,6 +1781,7 @@ const AccountantReportPage = () => {
                   <thead className="bg-slate-50 dark:bg-slate-950">
                     <tr>
                       <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-1/3">Activity</th>
+                      <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-1/3">Due Date</th>
                       <th className="px-6 py-3 text-center text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-1/4">Status</th>
                       <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Remarks</th>
                     </tr>
@@ -1900,6 +1882,7 @@ const AccountantReportPage = () => {
                   <thead className="bg-slate-50 dark:bg-slate-950">
                     <tr>
                       <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-2/3">Activity</th>
+                      <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-2/3">Due Date</th>
                       <th className="px-6 py-3 text-center text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Status</th>
                     </tr>
                   </thead>
@@ -2338,6 +2321,7 @@ const AccountantReportPage = () => {
                         <thead className="bg-slate-50 dark:bg-slate-950">
                           <tr>
                             <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 uppercase w-1/3">Activity</th>
+                      <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 uppercase w-1/3">Due Date</th>
                             <th className="px-4 py-2 text-center text-xs font-bold text-slate-400 w-1/4">Status Summary</th>
                             <th className="px-4 py-2 text-left text-xs font-bold text-slate-400">Remarks Summary</th>
                           </tr>
@@ -2481,6 +2465,7 @@ const AccountantReportPage = () => {
                           <thead className="bg-slate-50 dark:bg-slate-950">
                             <tr>
                               <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 w-1/3">Activity</th>
+                      <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 w-1/3">Due Date</th>
                               <th className="px-4 py-2 text-center text-xs font-bold text-slate-400 w-1/4">Status Summary</th>
                               <th className="px-4 py-2 text-left text-xs font-bold text-slate-400">Remarks Summary</th>
                             </tr>
@@ -2676,6 +2661,7 @@ const AccountantReportPage = () => {
                           <thead className="bg-slate-50 dark:bg-slate-950">
                             <tr>
                               <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 w-2/3">Activity</th>
+                      <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 w-2/3">Due Date</th>
                               <th className="px-4 py-2 text-center text-xs font-bold text-slate-400">Status Summary</th>
                             </tr>
                           </thead>

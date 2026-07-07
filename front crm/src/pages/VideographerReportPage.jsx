@@ -14,8 +14,12 @@ const API_BASE = import.meta.env.VITE_API_URL;
 
 // Default items for Task Log
 const DEFAULT_TASK_LOG = [
-  { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' },
-  { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' }
+
+  { taskProjectName: 'PASS THE BALL VIDEO EDITING', descriptionDetails: 'completed the editing entire pass the ball video fotage', startTime: '9.30am', endTime: '12.30pm', dueDate: '', status: 'Done', fileLink: 'kood brand shoots\\9-6-26\\clip\\final\\pass the ball' },
+  { taskProjectName: 'CALICUT SCRIPTED VIDEO CONTENT2', descriptionDetails: 'completed the editing entireCONTENT 2 of calicut ad video fotage', startTime: '1.30pm', endTime: '5.00pm', dueDate: '', status: 'Done', fileLink: 'kood brand shoots\\calicut shoot\\final\\calicut content 2' },
+  { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'N/A', fileLink: '' },
+  { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'N/A', fileLink: '' }
+
 ];
 
 // Default Key Numbers
@@ -284,6 +288,54 @@ const VideographerReportPage = () => {
         const savedLog = report.taskLog || [];
         setTaskLog(savedLog);
 
+        
+        // Auto-fetch and merge new/missing tasks or update existing ones
+        try {
+          fetchCompletedTasks(userId, dateStr).then(completedTasks => {
+            if (completedTasks && completedTasks.length > 0) {
+              const cleanTitle = (title) => {
+                if (!title) return '';
+                return title.replace(/\[[^\]]+\]/g, '').trim().toLowerCase();
+              };
+
+              const updatedLog = [...savedLog];
+              const addedTasks = [];
+
+              completedTasks.forEach(t => {
+                const cleanT = cleanTitle(t.title);
+                const matchIndex = updatedLog.findIndex(row => cleanTitle(row.taskProjectName || '') === cleanT);
+
+                if (matchIndex > -1) {
+                  // Update existing task details in the saved report
+                  updatedLog[matchIndex] = {
+                    ...updatedLog[matchIndex],
+                    taskProjectName: t.title,
+                  dueDate: t.dueDate || '',
+                    status: t.status === 'Done' ? 'Done' : 'Pending',
+                    startTime: t.startTime || updatedLog[matchIndex].startTime || '',
+                    endTime: t.endTime || updatedLog[matchIndex].endTime || ''
+                  };
+                } else {
+                  // Append new task
+                  addedTasks.push({
+                    taskProjectName: t.title,
+                    descriptionDetails: 'Auto-fetched',
+                    startTime: t.startTime || '',
+                    endTime: t.endTime || '',
+                    dueDate: t.dueDate || '', status: t.status === 'Done' ? 'Done' : 'Pending',
+                    fileLink: ''
+                  });
+                }
+              });
+
+              setTaskLog([...updatedLog, ...addedTasks]);
+            }
+          });
+        } catch (e) {
+          console.error("Error merging additional tasks:", e);
+        }
+
+
         setKeyNumbers(report.keyNumbers || DEFAULT_KEY_NUMBERS);
         setBlockers(report.blockers || []);
         setTomorrowTasks(report.tomorrowTasks || []);
@@ -294,12 +346,12 @@ const VideographerReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ taskProjectName: t.title, descriptionDetails: 'Auto-fetched', startTime: t.startTime || '', endTime: t.endTime || '', status: t.status === 'Done' ? 'Done' : 'Pending', fileLink: '' }));
-            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' });
-            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' });
+            const mappedTasks = completedTasks.map(t => ({ taskProjectName: t.title, descriptionDetails: 'Auto-fetched', startTime: t.startTime || '', endTime: t.endTime || '', dueDate: t.dueDate || '', status: t.status === 'Done' ? 'Done' : 'Pending', fileLink: '' }));
+            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' });
+            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' });
             setTaskLog(mappedTasks);
           } else {
-            setTaskLog(prev => [...prev, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' }, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' }]);
+            setTaskLog(prev => [...prev, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' }, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -312,12 +364,12 @@ const VideographerReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ taskProjectName: t.title, descriptionDetails: 'Auto-fetched', startTime: t.startTime || '', endTime: t.endTime || '', status: t.status === 'Done' ? 'Done' : 'Pending', fileLink: '' }));
-            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' });
-            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' });
+            const mappedTasks = completedTasks.map(t => ({ taskProjectName: t.title, descriptionDetails: 'Auto-fetched', startTime: t.startTime || '', endTime: t.endTime || '', dueDate: t.dueDate || '', status: t.status === 'Done' ? 'Done' : 'Pending', fileLink: '' }));
+            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' });
+            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' });
             setTaskLog(mappedTasks);
           } else {
-            setTaskLog(prev => [...prev, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' }, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' }]);
+            setTaskLog(prev => [...prev, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' }, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -477,7 +529,7 @@ const VideographerReportPage = () => {
     }
   };
   const addMonthlyTaskRow = () => {
-    setMonthlyTaskLog([...monthlyTaskLog, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'Done', fileLink: '' }]);
+    setMonthlyTaskLog([...monthlyTaskLog, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'Done', fileLink: '' }]);
   };
   const removeMonthlyTaskRow = (index) => {
     if (monthlyTaskLog.length > 1) {
@@ -562,7 +614,7 @@ const VideographerReportPage = () => {
                 descriptionDetails: task.descriptionDetails || '',
                 startTime: task.startTime || '',
                 endTime: task.endTime || '',
-                status: task.status || 'Done',
+                dueDate: '', status: task.status || 'Done',
                 fileLink: task.fileLink || ''
               });
             }
@@ -570,7 +622,7 @@ const VideographerReportPage = () => {
         }
       });
       if (mergedTasks.length === 0) {
-        mergedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'Done', fileLink: '' });
+        mergedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'Done', fileLink: '' });
       }
       setMonthlyTaskLog(mergedTasks);
 
@@ -976,7 +1028,7 @@ const VideographerReportPage = () => {
 
   // Helper row handlers for dynamic tables
   const addTaskRow = () => {
-    setTaskLog([...taskLog, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'Done', fileLink: '' }]);
+    setTaskLog([...taskLog, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'Done', fileLink: '' }]);
   };
   
   const removeTaskRow = (index) => {
@@ -1011,28 +1063,7 @@ const VideographerReportPage = () => {
       {/* LEFT PANEL: Date Select Sidebar */}
       <div className="w-full lg:w-72 shrink-0 bg-white/70 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-md rounded-3xl p-5 shadow-sm">
         
-        {(isPrivileged || videographers.length > 1) && (
-          <div className="mb-6">
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-              Select Videographer User
-            </label>
-            <div className="relative">
-              <select
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
-              >
-                <option value="">-- Select Videographer --</option>
-                {videographers.map(d => (
-                  <option key={d._id} value={d._id}>
-                    {d.name} ({d.employeeId || 'No ID'})
-                  </option>
-                ))}
-              </select>
-              <User size={16} className="absolute right-3 top-3.5 text-slate-400 pointer-events-none" />
-            </div>
-          </div>
-        )}
+        
 
         <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-4 flex items-center gap-2">
           <Calendar size={14} className="text-indigo-500 dark:text-lime-400" />
@@ -1266,6 +1297,7 @@ const VideographerReportPage = () => {
                   <thead>
                     <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
                       <th className="px-5 py-4 w-[25%]">Task / Project Name</th>
+                      <th className="px-5 py-4 w-[25%]">Due Date</th>
                       <th className="px-5 py-4 w-[35%]">Description / Details</th>
                       <th className="px-5 py-4 w-[10%] text-center">Start Time</th>
                       <th className="px-5 py-4 w-[10%] text-center">End Time</th>
@@ -2056,6 +2088,7 @@ const VideographerReportPage = () => {
                       <thead>
                         <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
                           <th className="px-5 py-4 w-[25%]">Task / Project Name</th>
+                      <th className="px-5 py-4 w-[25%]">Due Date</th>
                           <th className="px-5 py-4 w-[35%]">Description / Details</th>
                           <th className="px-5 py-4 w-[10%] text-center">Start Time</th>
                           <th className="px-5 py-4 w-[10%] text-center">End Time</th>

@@ -14,11 +14,11 @@ const API_BASE = import.meta.env.VITE_API_URL;
 
 // Default items for HR Shift Report
 const DEFAULT_DAILY_OPERATIONS = [
-  { activity: 'Staff Attendance Verified', status: 'Done', remarks: '' },
-  { activity: 'Admin Tasks Monitored', status: 'Done', remarks: '' },
-  { activity: 'Recruitment Follow-up', status: 'Done', remarks: '' },
-  { activity: 'Employee Support', status: 'Done', remarks: '' },
-  { activity: 'Reports Collected', status: 'Done', remarks: '' }
+  { activity: 'Staff Attendance Verified', status: 'Done', dueDate: '', remarks: '' },
+  { activity: 'Admin Tasks Monitored', status: 'Done', dueDate: '', remarks: '' },
+  { activity: 'Recruitment Follow-up', status: 'Done', dueDate: '', remarks: '' },
+  { activity: 'Employee Support', status: 'Done', dueDate: '', remarks: '' },
+  { activity: 'Reports Collected', status: 'Done', dueDate: '', remarks: '' }
 ];
 
 const DEFAULT_EMPLOYEE_MGMT = [
@@ -43,19 +43,19 @@ const DEFAULT_ATTENDANCE_LEAVE = [
 ];
 
 const DEFAULT_ADMIN_OPERATIONS = [
-  { activity: 'Office Maintenance', status: 'Completed / Pending', remarks: 'NA' },
-  { activity: 'Inventory Check', status: 'Completed / Pending', remarks: 'NA' },
-  { activity: 'Asset Management', status: 'Completed', remarks: '' },
-  { activity: 'Vendor Coordination', status: 'Completed / Pending', remarks: 'NA' },
-  { activity: 'Utility Monitoring', status: 'Completed / Pending', remarks: 'NA' }
+  { activity: 'Office Maintenance', status: 'Completed / Pending', dueDate: '', remarks: 'NA' },
+  { activity: 'Inventory Check', status: 'Completed / Pending', dueDate: '', remarks: 'NA' },
+  { activity: 'Asset Management', status: 'Completed', dueDate: '', remarks: '' },
+  { activity: 'Vendor Coordination', status: 'Completed / Pending', dueDate: '', remarks: 'NA' },
+  { activity: 'Utility Monitoring', status: 'Completed / Pending', dueDate: '', remarks: 'NA' }
 ];
 
 const DEFAULT_DOCUMENTATION = [
-  { activity: 'Employee Documents Updated', status: 'Yes' },
-  { activity: 'Contracts Verified', status: 'None' },
-  { activity: 'Payroll Coordination Done', status: 'yes' },
-  { activity: 'Compliance Checked', status: 'Yes' },
-  { activity: 'Reports Filed', status: 'yes' }
+  { activity: 'Employee Documents Updated', dueDate: '', status: 'Yes' },
+  { activity: 'Contracts Verified', dueDate: '', status: 'None' },
+  { activity: 'Payroll Coordination Done', dueDate: '', status: 'yes' },
+  { activity: 'Compliance Checked', dueDate: '', status: 'Yes' },
+  { activity: 'Reports Filed', dueDate: '', status: 'yes' }
 ];
 
 const DEFAULT_KPI_TRACKING = [
@@ -446,7 +446,7 @@ const HrReportPage = () => {
         return {
           activity: item.activity,
           status: statuses.length > 0 ? statuses.join('; ') : 'Done',
-          remarks: remarks.length > 0 ? remarks.join('; ') : 'NA'
+          dueDate: '', remarks: remarks.length > 0 ? remarks.join('; ') : 'NA'
         };
       });
 
@@ -457,7 +457,7 @@ const HrReportPage = () => {
         return {
           activity: item.activity,
           status: statuses.length > 0 ? statuses.join('; ') : 'Completed',
-          remarks: remarks.length > 0 ? remarks.join('; ') : 'NA'
+          dueDate: '', remarks: remarks.length > 0 ? remarks.join('; ') : 'NA'
         };
       });
 
@@ -466,7 +466,7 @@ const HrReportPage = () => {
         const statuses = Array.from(new Set(entry.statuses));
         return {
           activity: item.activity,
-          status: statuses.length > 0 ? statuses.join('; ') : 'Yes'
+          dueDate: '', status: statuses.length > 0 ? statuses.join('; ') : 'Yes'
         };
       });
 
@@ -980,12 +980,12 @@ const HrReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', remarks: 'Auto-fetched' }));
-            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
-            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', dueDate: t.dueDate || '', remarks: 'Auto-fetched' }));
+            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
+            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
             setDailyOperations(mappedTasks);
           } else {
-            setDailyOperations(prev => [...prev, { activity: '', status: 'ongoing', remarks: '' }, { activity: '', status: 'ongoing', remarks: '' }]);
+            setDailyOperations(prev => [...prev, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -998,12 +998,12 @@ const HrReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', remarks: 'Auto-fetched' }));
-            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
-            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', dueDate: t.dueDate || '', remarks: 'Auto-fetched' }));
+            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
+            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
             setDailyOperations(mappedTasks);
           } else {
-            setDailyOperations(prev => [...prev, { activity: '', status: 'ongoing', remarks: '' }, { activity: '', status: 'ongoing', remarks: '' }]);
+            setDailyOperations(prev => [...prev, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -1206,27 +1206,7 @@ const HrReportPage = () => {
     <div className="flex flex-col lg:flex-row gap-6 items-start">
       {/* LEFT PANEL: Date Select Sidebar */}
       <div className="w-full lg:w-72 shrink-0 bg-white/70 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-md rounded-3xl p-5 shadow-sm">
-        {isPrivileged && (
-          <div className="mb-6">
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-              Select HR Staff
-            </label>
-            <div className="relative">
-              <select
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              >
-                {hrStaff.map(hr => (
-                  <option key={hr._id} value={hr._id}>
-                    {hr.name} ({hr.employeeId || 'No ID'})
-                  </option>
-                ))}
-              </select>
-              <User size={16} className="absolute right-3 top-3.5 text-slate-400 pointer-events-none" />
-            </div>
-          </div>
-        )}
+        
 
         <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-4 flex items-center gap-2">
           <Calendar size={14} className="text-indigo-500 dark:text-lime-400" />
@@ -1457,7 +1437,7 @@ const HrReportPage = () => {
                 </h2>
                 <button
                   type="button"
-                  onClick={() => setDailyOperations([...dailyOperations, { activity: '', status: 'ongoing', remarks: '' }])}
+                  onClick={() => setDailyOperations([...dailyOperations, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }])}
                   className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
                 >
                   <Plus size={14} /> Add Row
@@ -1468,6 +1448,7 @@ const HrReportPage = () => {
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
                       <th className="px-4 py-3">Activity</th>
+                      <th className="px-4 py-3">Due Date</th>
                       <th className="px-4 py-3 w-40">Status</th>
                       <th className="px-4 py-3">Remarks</th>
                       <th className="px-4 py-3 w-12 text-center">Action</th>
@@ -1707,6 +1688,7 @@ const HrReportPage = () => {
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
                       <th className="px-4 py-3">Activity</th>
+                      <th className="px-4 py-3">Due Date</th>
                       <th className="px-4 py-3 w-48 font-semibold">Status</th>
                       <th className="px-4 py-3">Remarks</th>
                     </tr>
@@ -1757,6 +1739,7 @@ const HrReportPage = () => {
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
                       <th className="px-4 py-3">Activity</th>
+                      <th className="px-4 py-3">Due Date</th>
                       <th className="px-4 py-3 w-48">Status</th>
                     </tr>
                   </thead>
@@ -2251,6 +2234,7 @@ const HrReportPage = () => {
                                 <thead>
                                   <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
                                     <th className="px-4 py-3">Activity</th>
+                      <th className="px-4 py-3">Due Date</th>
                                     <th className="px-4 py-3 w-40">Status</th>
                                     <th className="px-4 py-3">Remarks</th>
                                   </tr>
@@ -2299,6 +2283,7 @@ const HrReportPage = () => {
                                 <thead>
                                   <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
                                     <th className="px-4 py-3">Activity</th>
+                      <th className="px-4 py-3">Due Date</th>
                                     <th className="px-4 py-3 w-40">Status</th>
                                     <th className="px-4 py-3">Remarks</th>
                                   </tr>
@@ -2459,6 +2444,7 @@ const HrReportPage = () => {
                                 <thead>
                                   <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
                                     <th className="px-4 py-3">Activity</th>
+                      <th className="px-4 py-3">Due Date</th>
                                     <th className="px-4 py-3 w-48">Status</th>
                                   </tr>
                                 </thead>

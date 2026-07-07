@@ -24,6 +24,7 @@ const hrReportSchema = new mongoose.Schema({
   dailyOperations: [
     {
       activity: { type: String },
+      dueDate: { type: String },
       status: { type: String },
       remarks: { type: String }
     }
@@ -39,7 +40,8 @@ const hrReportSchema = new mongoose.Schema({
   ],
   recruitmentReport: [
     {
-      activity: { type: String }, // e.g. Applications Received, Interviews Conducted
+      activity: { type: String },
+      dueDate: { type: String }, // e.g. Applications Received, Interviews Conducted
       countStatus: { type: String }
     }
   ],
@@ -52,6 +54,7 @@ const hrReportSchema = new mongoose.Schema({
   adminOperations: [
     {
       activity: { type: String },
+      dueDate: { type: String },
       status: { type: String },
       remarks: { type: String }
     }
@@ -59,6 +62,7 @@ const hrReportSchema = new mongoose.Schema({
   documentationCompliance: [
     {
       activity: { type: String },
+      dueDate: { type: String },
       status: { type: String } // e.g. Yes / No
     }
   ],

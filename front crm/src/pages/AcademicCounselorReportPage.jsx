@@ -14,27 +14,27 @@ const API_BASE = import.meta.env.VITE_API_URL;
 
 // Default items for Daily Course Counseling & Sales Activity
 const DEFAULT_SALES_ACTIVITY = [
-  { activity: 'New Leads Generated', count: '', digitalMktg: '', web: '', remarks: '' },
-  { activity: 'Total Calls Made', count: '', digitalMktg: '', web: '', remarks: '' },
-  { activity: 'Hot Leads', count: '', digitalMktg: '', web: '', remarks: '' },
-  { activity: 'Warm Leads', count: '', digitalMktg: '', web: '', remarks: '' },
-  { activity: 'Cold Leads', count: '', digitalMktg: '', web: '', remarks: '' },
-  { activity: 'Call back Leads', count: '', digitalMktg: '', web: '', remarks: '' },
-  { activity: 'RNT Leads (Ring Next Time)', count: '', digitalMktg: '', web: '', remarks: '' },
-  { activity: 'Switch Off Leads', count: '', digitalMktg: '', web: '', remarks: '' },
-  { activity: 'Wrong lead', count: '', digitalMktg: '', web: '', remarks: '' },
-  { activity: 'Follow-ups Completed', count: '', digitalMktg: '', web: '', remarks: '' },
-  { activity: 'Client/Student Meetings Fixed', count: '', digitalMktg: '', web: '', remarks: '' },
-  { activity: 'Admissions/Closings Done', count: '', digitalMktg: '', web: '', remarks: '' },
-  { activity: 'Pending Follow-ups', count: '', digitalMktg: '', web: '', remarks: '' }
+  { activity: 'New Leads Generated', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Total Calls Made', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Hot Leads', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Warm Leads', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Cold Leads', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Call back Leads', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'RNT Leads (Ring Next Time)', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Switch Off Leads', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Wrong lead', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Follow-ups Completed', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Client/Student Meetings Fixed', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Admissions/Closings Done', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Pending Follow-ups', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' }
 ];
 
 // Default items for Daily Operations Summary
 const DEFAULT_DAILY_OPERATIONS = [
-  { activity: 'Team Attendance Verified', status: 'Done', remarks: '' },
-  { activity: 'Daily Sales Targets Assigned', status: 'Pending', remarks: '' },
-  { activity: 'Lead Follow-up Reviewed', status: 'Done', remarks: '' },
-  { activity: 'Client Meetings Conducted', status: 'Done', remarks: '' }
+  { activity: 'Team Attendance Verified', status: 'Done', dueDate: '', remarks: '' },
+  { activity: 'Daily Sales Targets Assigned', status: 'Pending', dueDate: '', remarks: '' },
+  { activity: 'Lead Follow-up Reviewed', status: 'Done', dueDate: '', remarks: '' },
+  { activity: 'Client Meetings Conducted', status: 'Done', dueDate: '', remarks: '' }
 ];
 
 // Default items for Performance KPI
@@ -302,12 +302,12 @@ const AcademicCounselorReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ activity: t.title, count: '1', digitalMktg: '', web: '', remarks: 'Auto-fetched' }));
-            mappedTasks.push({ activity: '', count: '', digitalMktg: '', web: '', remarks: '' });
-            mappedTasks.push({ activity: '', count: '', digitalMktg: '', web: '', remarks: '' });
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, count: '1', digitalMktg: '', web: '', dueDate: t.dueDate || '', remarks: 'Auto-fetched' }));
+            mappedTasks.push({ activity: '', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' });
+            mappedTasks.push({ activity: '', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' });
             setDailyOperations(mappedTasks);
           } else {
-            setDailyOperations(prev => [...prev, { activity: '', count: '', digitalMktg: '', web: '', remarks: '' }, { activity: '', count: '', digitalMktg: '', web: '', remarks: '' }]);
+            setDailyOperations(prev => [...prev, { activity: '', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' }, { activity: '', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -320,12 +320,12 @@ const AcademicCounselorReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ activity: t.title, count: '1', digitalMktg: '', web: '', remarks: 'Auto-fetched' }));
-            mappedTasks.push({ activity: '', count: '', digitalMktg: '', web: '', remarks: '' });
-            mappedTasks.push({ activity: '', count: '', digitalMktg: '', web: '', remarks: '' });
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, count: '1', digitalMktg: '', web: '', dueDate: t.dueDate || '', remarks: 'Auto-fetched' }));
+            mappedTasks.push({ activity: '', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' });
+            mappedTasks.push({ activity: '', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' });
             setDailyOperations(mappedTasks);
           } else {
-            setDailyOperations(prev => [...prev, { activity: '', count: '', digitalMktg: '', web: '', remarks: '' }, { activity: '', count: '', digitalMktg: '', web: '', remarks: '' }]);
+            setDailyOperations(prev => [...prev, { activity: '', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' }, { activity: '', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -572,7 +572,7 @@ const AcademicCounselorReportPage = () => {
           count: totalCount || '',
           digitalMktg: totalDigitalMktg || '',
           web: totalWeb || '',
-          remarks: Array.from(new Set(remarksList)).join('; ')
+          dueDate: '', remarks: Array.from(new Set(remarksList)).join('; ')
         };
       });
       setMonthlySalesActivity(consolidatedSales);
@@ -621,7 +621,7 @@ const AcademicCounselorReportPage = () => {
         return {
           activity: item.activity,
           status: finalStatus,
-          remarks: Array.from(new Set(remarksList)).join('; ')
+          dueDate: '', remarks: Array.from(new Set(remarksList)).join('; ')
         };
       });
       setMonthlyDailyOperations(consolidatedOps);
@@ -898,28 +898,7 @@ const AcademicCounselorReportPage = () => {
       {/* LEFT PANEL: Date Select Sidebar */}
       <div className="w-full lg:w-72 shrink-0 bg-white/70 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-md rounded-3xl p-5 shadow-sm">
         
-        {(isPrivileged || counselors.length > 1) && (
-          <div className="mb-6">
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-              Select Counselor User
-            </label>
-            <div className="relative">
-              <select
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
-              >
-                <option value="">-- Select Counselor --</option>
-                {counselors.map(c => (
-                  <option key={c._id} value={c._id}>
-                    {c.name} ({c.employeeId || 'No ID'})
-                  </option>
-                ))}
-              </select>
-              <User size={16} className="absolute right-3 top-3.5 text-slate-400 pointer-events-none" />
-            </div>
-          </div>
-        )}
+        
 
         <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-4 flex items-center gap-2">
           <Calendar size={14} className="text-indigo-500 dark:text-lime-400" />
@@ -1144,6 +1123,7 @@ const AcademicCounselorReportPage = () => {
                   <thead>
                     <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
                       <th className="px-5 py-4 w-[35%]">Activity</th>
+                      <th className="px-5 py-4 w-[35%]">Due Date</th>
                       <th className="px-5 py-4 w-[15%] text-center">Count</th>
                       <th className="px-5 py-4 w-[15%] text-center">Digital Mktg</th>
                       <th className="px-5 py-4 w-[15%] text-center">Web</th>
@@ -1222,7 +1202,7 @@ const AcademicCounselorReportPage = () => {
                 </h2>
                 <button
                   type="button"
-                  onClick={() => setDailyOperations([...dailyOperations, { activity: '', count: '', digitalMktg: '', web: '', remarks: '' }])}
+                  onClick={() => setDailyOperations([...dailyOperations, { activity: '', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' }])}
                   className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
                 >
                   <Plus size={14} /> Add Row
@@ -1234,6 +1214,7 @@ const AcademicCounselorReportPage = () => {
                   <thead>
                     <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
                       <th className="px-5 py-4 w-[40%]">Activity</th>
+                      <th className="px-5 py-4 w-[40%]">Due Date</th>
                       <th className="px-5 py-4 w-[25%] text-center">Status</th>
                       <th className="px-5 py-4 w-[30%]">Remarks</th>
                       <th className="px-5 py-4 w-[5%] text-center"></th>
@@ -1803,6 +1784,7 @@ const AcademicCounselorReportPage = () => {
                           <thead>
                             <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
                               <th className="px-5 py-4 w-[35%]">Activity</th>
+                      <th className="px-5 py-4 w-[35%]">Due Date</th>
                               <th className="px-5 py-4 w-[15%] text-center">Count</th>
                               <th className="px-5 py-4 w-[15%] text-center">Digital Mktg</th>
                               <th className="px-5 py-4 w-[15%] text-center">Web</th>
@@ -1874,6 +1856,7 @@ const AcademicCounselorReportPage = () => {
                           <thead>
                             <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
                               <th className="px-5 py-4 w-[40%]">Activity</th>
+                      <th className="px-5 py-4 w-[40%]">Due Date</th>
                               <th className="px-5 py-4 w-[25%] text-center">Status</th>
                               <th className="px-5 py-4 w-[35%]">Remarks</th>
                             </tr>

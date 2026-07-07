@@ -217,21 +217,20 @@ export const generateReportPDFBuffer = (report, empName, designation) => {
       );
 
       if (summaryKey && Array.isArray(report[summaryKey]) && report[summaryKey].length > 0) {
-        const filledTasks = report[summaryKey].filter(t => (t.activity || t.task || '').trim() !== '');
 
-        if (filledTasks.length > 0) {
-          drawSectionHeader('2. Daily Task Summary');
-          
-          const headers = ['Activity', 'Status', 'Remarks'];
-          const columnWidths = [245, 100, 170]; // total 515
-          const rows = filledTasks.map(t => [
-            t.activity || t.task || '',
-            t.status || '',
-            t.remarks || t.remark || ''
-          ]);
+        drawSectionHeader('2. Daily Task Summary');
+        
+        const headers = ['Activity', 'Due Date', 'Status', 'Remarks'];
+        const columnWidths = [195, 70, 90, 160]; // total 515
+        const rows = report[summaryKey].map(t => [
+          t.activity || t.task || '',
+          t.dueDate || '',
+          t.status || '',
+          t.remarks || t.remark || ''
+        ]);
 
-          drawTable(headers, rows, columnWidths);
-        }
+        drawTable(headers, rows, columnWidths);
+
       }
 
       // 3. OTHER DYNAMIC SECTIONS

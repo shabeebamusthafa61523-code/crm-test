@@ -21,6 +21,7 @@ const graphicDesignerReportSchema = new mongoose.Schema({
   taskLog: [
     {
       taskProjectName: { type: String },
+      dueDate: { type: String },
       descriptionDetails: { type: String },
       startTime: { type: String },
       endTime: { type: String },
