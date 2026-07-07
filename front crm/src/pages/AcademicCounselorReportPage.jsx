@@ -405,16 +405,23 @@ const AcademicCounselorReportPage = () => {
   const handleSaveReport = async () => {
     try {
       setSaving(true);
+
+      const cleanSalesActivity = salesActivity.filter(t => (t.leadName || '').trim() !== '' || (t.contactNumber || '').trim() !== '' || (t.courseInterested || '').trim() !== '');
+      const cleanDailyOperations = dailyOperations.filter(t => (t.activity || '').trim() !== '');
+      const cleanReportsCollectedDone = reportsCollectedDone.filter(t => (t.reportName || '').trim() !== '');
+      const cleanIssuesFeedback = issuesFeedback.filter(t => (t.issue || '').trim() !== '');
+      const cleanFinalHandover = finalHandover.filter(t => (t.description || '').trim() !== '');
+
       const payload = {
         userId: selectedUserId,
         dateString: selectedDate,
         basicDetails,
-        salesActivity,
-        dailyOperations,
-        reportsCollectedDone,
+        salesActivity: cleanSalesActivity,
+        dailyOperations: cleanDailyOperations,
+        reportsCollectedDone: cleanReportsCollectedDone,
         performanceKpis,
-        issuesFeedback,
-        finalHandover,
+        issuesFeedback: cleanIssuesFeedback,
+        finalHandover: cleanFinalHandover,
         approval
       };
 

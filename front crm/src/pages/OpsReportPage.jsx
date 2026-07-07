@@ -1370,17 +1370,26 @@ const OpsReportPage = () => {
   const handleSaveReport = async () => {
     try {
       setSaving(true);
+
+      const cleanDailyOperations = dailyOperations.filter(t => (t.activity || '').trim() !== '');
+      const cleanSalesActivity = salesActivity.filter(t => (t.leadName || '').trim() !== '' || (t.contactNumber || '').trim() !== '' || (t.courseInterested || '').trim() !== '');
+      const cleanSalesPerformance = salesPerformance.filter(t => (t.telecallerName || '').trim() !== '' || (t.kpi || '').trim() !== '');
+      const cleanRevenueTracking = revenueTracking.filter(t => (t.particulars || '').trim() !== '' || (t.amount || '').trim() !== '');
+      const cleanAcademyStatus = academyStatus.filter(t => (t.particulars || '').trim() !== '');
+      const cleanIssuesEscalations = issuesEscalations.filter(t => (t.issue || '').trim() !== '');
+      const cleanHandover = handover.filter(t => (t.particulars || '').trim() !== '');
+
       const payload = {
         userId: selectedUserId,
         dateString: selectedDate,
         basicDetails,
-        dailyOperations,
-        salesActivity,
-        salesPerformance,
-        revenueTracking,
-        academyStatus,
-        issuesEscalations,
-        handover,
+        dailyOperations: cleanDailyOperations,
+        salesActivity: cleanSalesActivity,
+        salesPerformance: cleanSalesPerformance,
+        revenueTracking: cleanRevenueTracking,
+        academyStatus: cleanAcademyStatus,
+        issuesEscalations: cleanIssuesEscalations,
+        handover: cleanHandover,
         approval
       };
 
