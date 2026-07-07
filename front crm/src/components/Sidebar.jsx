@@ -14,7 +14,9 @@ import {
   TrendingUp,
   BarChart3,
   FileText,
-  Sparkles
+  Sparkles,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 const menuItems = [
@@ -185,7 +187,7 @@ const PortalTooltip = ({ children }) => {
 const Sidebar = () => {
   const location = useLocation();
   const activePath = location.pathname;
-  const [isHovered, setIsHovered] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
 
 
   const getVisibleMenuItems = () => {
@@ -245,8 +247,6 @@ const Sidebar = () => {
 
   return (
     <div
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
       className="fixed lg:left-0 lg:top-0 lg:bottom-0 lg:w-28 z-[100] flex items-center justify-start pointer-events-none max-lg:contents"
     >
       <motion.aside
@@ -260,11 +260,11 @@ const Sidebar = () => {
           
           flex items-center bg-white/80 dark:bg-slate-900/80 border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-3xl shadow-lg
           
-          /* Desktop Hover Slide Effect */
+          /* Desktop Slide Effect */
           lg:transition-all lg:duration-300 lg:ease-out
-          ${isHovered 
+          ${isOpen 
             ? 'lg:translate-x-0 lg:opacity-100 lg:scale-100 lg:shadow-2xl lg:shadow-slate-950/20' 
-            : 'lg:-translate-x-[75%] lg:opacity-20 lg:scale-95 lg:shadow-none'
+            : 'lg:-translate-x-[75%] lg:opacity-30 lg:scale-95'
           }
         `}
         initial={{ x: -100, opacity: 0 }}
@@ -301,6 +301,15 @@ const Sidebar = () => {
           }}
         />
       </div>
+
+      {/* Sidebar Toggle Arrow Button */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="hidden lg:flex absolute -right-3 top-1/2 -translate-y-1/2 z-50 items-center justify-center w-6 h-6 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/60 hover:border-indigo-500 dark:hover:border-lime-500 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-lime-400 rounded-full shadow-md transition-all shrink-0 cursor-pointer active:scale-95 hover:scale-105"
+      >
+        {isOpen ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
+      </button>
+
       </motion.aside>
     </div>
   );
