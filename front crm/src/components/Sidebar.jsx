@@ -247,12 +247,12 @@ const Sidebar = () => {
     <div
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="fixed lg:left-0 lg:top-0 lg:bottom-0 lg:w-28 z-50 flex items-center justify-start pointer-events-none max-lg:contents"
+      className="fixed lg:left-0 lg:top-0 lg:bottom-0 lg:w-28 z-[100] flex items-center justify-start pointer-events-none max-lg:contents"
     >
       <motion.aside
         className={`
           pointer-events-auto
-          mt-18 fixed z-50
+          mt-18 fixed z-[100]
           /* Mobile: Bottom Center Dock */
           bottom-6 left-1/2 -translate-x-1/2 flex-row py-3 px-6 gap-3 rounded-full max-w-[92vw]
           /* Desktop: Left Center Dock */
@@ -263,7 +263,7 @@ const Sidebar = () => {
           /* Desktop Hover Slide Effect */
           lg:transition-all lg:duration-300 lg:ease-out
           ${isHovered 
-            ? 'lg:translate-x-0 lg:opacity-100 lg:scale-100 lg:shadow-2xl' 
+            ? 'lg:translate-x-0 lg:opacity-100 lg:scale-100 lg:shadow-2xl lg:shadow-slate-950/20' 
             : 'lg:-translate-x-[75%] lg:opacity-20 lg:scale-95 lg:shadow-none'
           }
         `}
@@ -273,7 +273,6 @@ const Sidebar = () => {
       >
 
       <div className="flex lg:flex-col gap-3 lg:gap-4 overflow-x-auto lg:overflow-y-auto max-w-full lg:max-h-full scrollbar-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-0.5 px-0.5">
-
         {visibleMenuItems.map((item) => (
           <NavItem 
             key={item.path}
