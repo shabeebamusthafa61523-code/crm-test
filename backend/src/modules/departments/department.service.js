@@ -27,6 +27,7 @@ export const departmentService = {
 
     const departments = await Department.find(query)
       .populate('managerId', 'name designation_id email avatar employeeId')
+      .populate('teamLeadId', 'name designation_id email avatar employeeId')
       .sort({ name: 1 });
 
     return Promise.all(departments.map(async d => {
@@ -47,6 +48,15 @@ export const departmentService = {
         dept.managerId.lastName = parts.slice(1).join(' ') || '';
         dept.managerId.designation = dept.managerId.designation_id || 'Staff';
       }
+
+      if (dept.teamLeadId) {
+        const fullName = dept.teamLeadId.name || '';
+        const parts = fullName.trim().split(/\s+/);
+        dept.teamLeadId.firstName = parts[0] || '';
+        dept.teamLeadId.lastName = parts.slice(1).join(' ') || '';
+        dept.teamLeadId.designation = dept.teamLeadId.designation_id || 'Staff';
+      }
+
       return dept;
     }));
   },
@@ -56,7 +66,7 @@ export const departmentService = {
    * @param {String} id - Department ID
    */
   async getDepartmentById(id) {
-    const department = await Department.findById(id).populate('managerId');
+    const department = await Department.findById(id).populate('managerId').populate('teamLeadId');
     if (!department) return null;
 
     const deptObj = department.toObject();
@@ -72,6 +82,14 @@ export const departmentService = {
       deptObj.managerId.lastName = parts.slice(1).join(' ') || '';
       deptObj.managerId.designation = deptObj.managerId.designation_id || 'Staff';
     }
+
+    if (deptObj.teamLeadId) {
+      const fullName = deptObj.teamLeadId.name || '';
+      const parts = fullName.trim().split(/\s+/);
+      deptObj.teamLeadId.firstName = parts[0] || '';
+      deptObj.teamLeadId.lastName = parts.slice(1).join(' ') || '';
+      deptObj.teamLeadId.designation = deptObj.teamLeadId.designation_id || 'Staff';
+    }
     return deptObj;
   },
 
@@ -80,7 +98,7 @@ export const departmentService = {
    * @param {Object} data - Department data
    */
   async createDepartment(data) {
-    const { name, code, description, managerId, status } = data;
+    const { name, code, description, managerId, teamLeadId, status } = data;
     const upperCode = String(code).toUpperCase().trim();
     const cleanName = String(name).trim();
 
@@ -103,6 +121,7 @@ export const departmentService = {
       code: upperCode,
       description: description || '',
       managerId: managerId || null,
+      teamLeadId: teamLeadId || null,
       status: status !== undefined ? status : true
     });
 
@@ -114,7 +133,7 @@ export const departmentService = {
    * @param {Object} data - Department data to update
    */
   async updateDepartment(data) {
-    const { id, name, code, description, managerId, status } = data;
+    const { id, name, code, description, managerId, teamLeadId, status } = data;
     const upperCode = String(code).toUpperCase().trim();
     const cleanName = String(name).trim();
 
@@ -140,6 +159,7 @@ export const departmentService = {
         code: upperCode,
         description: description || '',
         managerId: managerId || null,
+        teamLeadId: teamLeadId || null,
         status: status !== undefined ? status : true
       },
       { new: true }
@@ -342,13 +362,26 @@ export const departmentService = {
       }
     }
 
+    let teamLeadName = 'Unassigned';
+    let teamLeadId = null;
+
+    if (department.teamLeadId) {
+      const teamLead = await User.findById(department.teamLeadId, 'name');
+      if (teamLead) {
+        teamLeadName = teamLead.name;
+        teamLeadId = teamLead._id;
+      }
+    }
+
     return {
       departmentId: department._id,
       departmentName: department.name,
       totalUsers,
       activeUsers,
       managerId,
-      managerName
+      managerName,
+      teamLeadId,
+      teamLeadName
     };
   }
 };
