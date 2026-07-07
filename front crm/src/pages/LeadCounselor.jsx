@@ -113,7 +113,7 @@ const [activePriority, setActivePriority] = useState('all');
   const [citySearchQuery, setCitySearchQuery] = useState('');
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const { showToast } = useToast();
 
   // Modals state
@@ -920,7 +920,27 @@ const [activePriority, setActivePriority] = useState('all');
                 </>
               )}
             </div>
-          </div>          {(activeTab !== 'all' || activePriority !== 'all' || staffFilter !== 'all' || cityFilter !== 'all' || (dateFrom && dateTo) || sortOrder !== 'desc') && (
+
+            {/* Page Size Selector */}
+            {filteredLeads.length > 10 && (
+              <select
+                value={itemsPerPage === 100000 ? 'all' : itemsPerPage}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setItemsPerPage(val === 'all' ? 100000 : parseInt(val, 10));
+                  setCurrentPage(1);
+                }}
+                className="px-3.5 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:border-indigo-400 hover:text-indigo-600 focus:outline-none shadow-sm cursor-pointer transition-all outline-none"
+              >
+                <option value={10}>10 per page</option>
+                <option value={20}>20 per page</option>
+                <option value={50}>50 per page</option>
+                <option value={100}>100 per page</option>
+                <option value="all">Show All</option>
+              </select>
+            )}
+          </div>
+          {(activeTab !== 'all' || activePriority !== 'all' || staffFilter !== 'all' || cityFilter !== 'all' || (dateFrom && dateTo) || sortOrder !== 'desc') && (
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Active:</span>
               {activeTab !== 'all' && (
@@ -1316,70 +1336,72 @@ const [activePriority, setActivePriority] = useState('all');
             </div>
             
             {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-4.5 bg-slate-50 dark:bg-slate-800/20 border-t border-slate-100 dark:border-slate-800">
+            {filteredLeads.length > 10 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4.5 bg-slate-50 dark:bg-slate-800/20 border-t border-slate-100 dark:border-slate-800">
                 <div className="text-xs text-slate-500">
                   Showing <span className="font-semibold text-slate-700 dark:text-slate-350">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-semibold text-slate-700 dark:text-slate-350">{Math.min(currentPage * itemsPerPage, filteredLeads.length)}</span> of <span className="font-semibold text-slate-700 dark:text-slate-350">{filteredLeads.length}</span> leads
                 </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                    className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:border-indigo-500/50 dark:hover:border-indigo-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer"
-                  >
-                    Previous
-                  </button>
-                  <div className="flex items-center gap-0.5">
-                    {/* First Page */}
-                    {currentPage > 2 && (
-                      <button
-                        onClick={() => setCurrentPage(1)}
-                        className="w-8 h-8 rounded-xl text-xs font-bold transition bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-indigo-500/50 cursor-pointer"
-                      >
-                        1
-                      </button>
-                    )}
-                    {currentPage > 3 && <span className="px-1.5 text-slate-400 text-xs">...</span>}
-                    
-                    {/* Dynamic Page Range */}
-                    {Array.from({ length: totalPages }).map((_, idx) => {
-                      const pageNum = idx + 1;
-                      if (pageNum >= currentPage - 1 && pageNum <= currentPage + 1) {
-                        return (
-                          <button
-                            key={pageNum}
-                            onClick={() => setCurrentPage(pageNum)}
-                            className={`w-8 h-8 rounded-xl text-xs font-bold transition cursor-pointer ${
-                              currentPage === pageNum
-                                ? 'bg-indigo-600 text-white'
-                                : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-indigo-500/50'
-                            }`}
-                          >
-                            {pageNum}
-                          </button>
-                        );
-                      }
-                      return null;
-                    })}
-                    
-                    {currentPage < totalPages - 2 && <span className="px-1.5 text-slate-400 text-xs">...</span>}
-                    {currentPage < totalPages - 1 && (
-                      <button
-                        onClick={() => setCurrentPage(totalPages)}
-                        className="w-8 h-8 rounded-xl text-xs font-bold transition bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-indigo-500/50 cursor-pointer"
-                      >
-                        {totalPages}
-                      </button>
-                    )}
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:border-indigo-500/50 dark:hover:border-indigo-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer"
+                    >
+                      Previous
+                    </button>
+                    <div className="flex items-center gap-0.5">
+                      {/* First Page */}
+                      {currentPage > 2 && (
+                        <button
+                          onClick={() => setCurrentPage(1)}
+                          className="w-8 h-8 rounded-xl text-xs font-bold transition bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-indigo-500/50 cursor-pointer"
+                        >
+                          1
+                        </button>
+                      )}
+                      {currentPage > 3 && <span className="px-1.5 text-slate-400 text-xs">...</span>}
+                      
+                      {/* Dynamic Page Range */}
+                      {Array.from({ length: totalPages }).map((_, idx) => {
+                        const pageNum = idx + 1;
+                        if (pageNum >= currentPage - 1 && pageNum <= currentPage + 1) {
+                          return (
+                            <button
+                              key={pageNum}
+                              onClick={() => setCurrentPage(pageNum)}
+                              className={`w-8 h-8 rounded-xl text-xs font-bold transition cursor-pointer ${
+                                currentPage === pageNum
+                                  ? 'bg-indigo-600 text-white'
+                                  : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-indigo-500/50'
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        }
+                        return null;
+                      })}
+                      
+                      {currentPage < totalPages - 2 && <span className="px-1.5 text-slate-400 text-xs">...</span>}
+                      {currentPage < totalPages - 1 && (
+                        <button
+                          onClick={() => setCurrentPage(totalPages)}
+                          className="w-8 h-8 rounded-xl text-xs font-bold transition bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-indigo-500/50 cursor-pointer"
+                        >
+                          {totalPages}
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:border-indigo-500/50 dark:hover:border-indigo-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer"
+                    >
+                      Next
+                    </button>
                   </div>
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages}
-                    className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:border-indigo-500/50 dark:hover:border-indigo-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer"
-                  >
-                    Next
-                  </button>
-                </div>
+                )}
               </div>
             )}
           </div>
