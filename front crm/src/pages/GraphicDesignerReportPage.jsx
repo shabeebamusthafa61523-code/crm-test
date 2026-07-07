@@ -14,10 +14,10 @@ const API_BASE = import.meta.env.VITE_API_URL;
 
 // Default items for Task Log
 const DEFAULT_TASK_LOG = [
-  { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'Done', fileLink: '' },
-  { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'N/A', fileLink: '' },
-  { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'N/A', fileLink: '' },
-  { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'N/A', fileLink: '' }
+  { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'Done', fileLink: '' },
+  { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'N/A', fileLink: '' },
+  { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'N/A', fileLink: '' },
+  { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'N/A', fileLink: '' }
 ];
 
 // Default Key Numbers
@@ -160,7 +160,7 @@ const GraphicDesignerReportPage = () => {
   };
 
   const addMonthlyTaskRow = () => {
-    setMonthlyTaskLog([...monthlyTaskLog, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'Done', fileLink: '' }]);
+    setMonthlyTaskLog([...monthlyTaskLog, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'Done', fileLink: '' }]);
   };
   
   const removeMonthlyTaskRow = (index) => {
@@ -349,6 +349,7 @@ const GraphicDesignerReportPage = () => {
                   updatedLog[matchIndex] = {
                     ...updatedLog[matchIndex],
                     taskProjectName: t.title,
+                  dueDate: t.dueDate || '',
                     status: t.status === 'Done' ? 'Done' : 'Pending',
                     startTime: t.startTime || updatedLog[matchIndex].startTime || '',
                     endTime: t.endTime || updatedLog[matchIndex].endTime || ''
@@ -360,7 +361,7 @@ const GraphicDesignerReportPage = () => {
                     descriptionDetails: 'Auto-fetched',
                     startTime: t.startTime || '',
                     endTime: t.endTime || '',
-                    status: t.status === 'Done' ? 'Done' : 'Pending',
+                    dueDate: t.dueDate || '', status: t.status === 'Done' ? 'Done' : 'Pending',
                     fileLink: ''
                   });
                 }
@@ -383,12 +384,12 @@ const GraphicDesignerReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ taskProjectName: t.title, descriptionDetails: 'Auto-fetched', startTime: t.startTime || '', endTime: t.endTime || '', status: t.status === 'Done' ? 'Done' : 'Pending', fileLink: '' }));
-            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' });
-            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' });
+            const mappedTasks = completedTasks.map(t => ({ taskProjectName: t.title, descriptionDetails: 'Auto-fetched', startTime: t.startTime || '', endTime: t.endTime || '', dueDate: t.dueDate || '', status: t.status === 'Done' ? 'Done' : 'Pending', fileLink: '' }));
+            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' });
+            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' });
             setTaskLog(mappedTasks);
           } else {
-            setTaskLog(prev => [...prev, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' }, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' }]);
+            setTaskLog(prev => [...prev, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' }, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -401,12 +402,12 @@ const GraphicDesignerReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ taskProjectName: t.title, descriptionDetails: 'Auto-fetched', startTime: t.startTime || '', endTime: t.endTime || '', status: t.status === 'Done' ? 'Done' : 'Pending', fileLink: '' }));
-            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' });
-            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' });
+            const mappedTasks = completedTasks.map(t => ({ taskProjectName: t.title, descriptionDetails: 'Auto-fetched', startTime: t.startTime || '', endTime: t.endTime || '', dueDate: t.dueDate || '', status: t.status === 'Done' ? 'Done' : 'Pending', fileLink: '' }));
+            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' });
+            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' });
             setTaskLog(mappedTasks);
           } else {
-            setTaskLog(prev => [...prev, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' }, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'ongoing', fileLink: '' }]);
+            setTaskLog(prev => [...prev, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' }, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -653,7 +654,7 @@ const GraphicDesignerReportPage = () => {
                 descriptionDetails: t.descriptionDetails || '',
                 startTime: t.startTime || '',
                 endTime: t.endTime || '',
-                status: t.status || 'Done',
+                dueDate: t.dueDate || '', status: t.status || 'Done',
                 fileLink: t.fileLink || ''
               });
             }
@@ -995,7 +996,7 @@ const GraphicDesignerReportPage = () => {
 
   // Helper row handlers for dynamic tables
   const addTaskRow = () => {
-    setTaskLog([...taskLog, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', status: 'Done', fileLink: '' }]);
+    setTaskLog([...taskLog, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'Done', fileLink: '' }]);
   };
   
   const removeTaskRow = (index) => {
@@ -1030,28 +1031,7 @@ const GraphicDesignerReportPage = () => {
       {/* LEFT PANEL: Date Select Sidebar */}
       <div className="w-full lg:w-72 shrink-0 bg-white/70 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-md rounded-3xl p-5 shadow-sm">
         
-        {(isPrivileged || designers.length > 1) && (
-          <div className="mb-6">
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-              Select Designer User
-            </label>
-            <div className="relative">
-              <select
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
-              >
-                <option value="">-- Select Designer --</option>
-                {designers.map(d => (
-                  <option key={d._id} value={d._id}>
-                    {d.name} ({d.employeeId || 'No ID'})
-                  </option>
-                ))}
-              </select>
-              <User size={16} className="absolute right-3 top-3.5 text-slate-400 pointer-events-none" />
-            </div>
-          </div>
-        )}
+        
 
         <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-4 flex items-center gap-2">
           <Calendar size={14} className="text-indigo-500 dark:text-lime-400" />
@@ -1265,6 +1245,7 @@ const GraphicDesignerReportPage = () => {
                   <thead>
                     <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
                       <th className="px-5 py-4 w-[25%]">Task / Project Name</th>
+                      <th className="px-5 py-4 w-[25%]">Due Date</th>
                       <th className="px-5 py-4 w-[35%]">Description / Details</th>
                       <th className="px-5 py-4 w-[10%] text-center">Start Time</th>
                       <th className="px-5 py-4 w-[10%] text-center">End Time</th>
@@ -1980,6 +1961,7 @@ const GraphicDesignerReportPage = () => {
                         <thead>
                           <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
                             <th className="px-5 py-4 w-[25%]">Task / Project Name</th>
+                      <th className="px-5 py-4 w-[25%]">Due Date</th>
                             <th className="px-5 py-4 w-[35%]">Description / Details</th>
                             <th className="px-5 py-4 w-[10%] text-center">Start Time</th>
                             <th className="px-5 py-4 w-[10%] text-center">End Time</th>

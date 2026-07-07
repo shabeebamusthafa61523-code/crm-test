@@ -85,6 +85,7 @@ export const fetchCompletedTasks = async (userId, dateStr) => {
 
       // Format due date in UTC (DD-MM-YYYY) to prevent timezone shifts
       let dueDateText = '';
+      let formattedDueDate = '';
       if (t.dueDate) {
         try {
           const d = new Date(t.dueDate);
@@ -92,6 +93,7 @@ export const fetchCompletedTasks = async (userId, dateStr) => {
           const month = String(d.getUTCMonth() + 1).padStart(2, '0');
           const year = d.getUTCFullYear();
           dueDateText = ` [Due: ${day}-${month}-${year}]`;
+          formattedDueDate = `${year}-${month}-${day}`; // YYYY-MM-DD for date inputs
         } catch (e) {}
       }
 
@@ -100,7 +102,8 @@ export const fetchCompletedTasks = async (userId, dateStr) => {
         status: statusText,
         startTime,
         endTime,
-        title: `${t.title} [${statusText.toUpperCase()}]${dueDateText}`
+        dueDate: formattedDueDate,
+        title: `${t.title} [${statusText.toUpperCase()}]`
       };
     });
   } catch (error) {

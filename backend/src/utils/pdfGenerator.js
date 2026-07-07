@@ -207,10 +207,11 @@ export const generateReportPDFBuffer = (report, empName, designation) => {
       if (summaryKey && Array.isArray(report[summaryKey]) && report[summaryKey].length > 0) {
         drawSectionHeader('2. Daily Task Summary');
         
-        const headers = ['Activity', 'Status', 'Remarks'];
-        const columnWidths = [245, 100, 170]; // total 515
+        const headers = ['Activity', 'Due Date', 'Status', 'Remarks'];
+        const columnWidths = [195, 70, 90, 160]; // total 515
         const rows = report[summaryKey].map(t => [
           t.activity || t.task || '',
+          t.dueDate || '',
           t.status || '',
           t.remarks || t.remark || ''
         ]);

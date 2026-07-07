@@ -14,11 +14,11 @@ const API_BASE = import.meta.env.VITE_API_URL;
 
 // Default items for Daily Task Summary
 const DEFAULT_TASK_SUMMARY = [
-  { activity: 'Website Development', status: 'Done', remarks: '' },
-  { activity: 'CRM Software', status: 'Done', remarks: '' },
-  { activity: 'Testing/Bug Fixing', status: 'Done', remarks: '' },
-  { activity: 'UI/UX Imprvments', status: 'NA', remarks: '' },
-  { activity: 'Client Revision Work', status: 'NA', remarks: '' }
+  { activity: 'Website Development', status: 'Done', dueDate: '', remarks: '' },
+  { activity: 'CRM Software', status: 'Done', dueDate: '', remarks: '' },
+  { activity: 'Testing/Bug Fixing', status: 'Done', dueDate: '', remarks: '' },
+  { activity: 'UI/UX Imprvments', status: 'NA', dueDate: '', remarks: '' },
+  { activity: 'Client Revision Work', status: 'NA', dueDate: '', remarks: '' }
 ];
 
 // Default items for Development Work Report
@@ -86,7 +86,7 @@ const HodRdReportPage = () => {
   
   const [dailyTaskSummary, setDailyTaskSummary] = useState(DEFAULT_TASK_SUMMARY);
   const [developmentWorkReport, setDevelopmentWorkReport] = useState(DEFAULT_DEV_REPORT);
-  const [rdInnovationReport, setRdInnovationReport] = useState([{ activity: '', details: '', status: '' }]);
+  const [rdInnovationReport, setRdInnovationReport] = useState([{ activity: '', details: '', dueDate: '', status: '' }]);
   const [kpiTracking, setKpiTracking] = useState(DEFAULT_KPI_TRACKING);
   const [issuesSupportRequired, setIssuesSupportRequired] = useState(DEFAULT_ISSUES);
   const [nextDayPlanning, setNextDayPlanning] = useState('');
@@ -305,12 +305,12 @@ const HodRdReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status === 'In Progress' ? 'ongoing' : (t.status || 'Done'), remarks: 'Auto-fetched' }));
-            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
-            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status === 'In Progress' ? 'ongoing' : (t.status || 'Done'), dueDate: t.dueDate || '', remarks: 'Auto-fetched' }));
+            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
+            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
             setDailyTaskSummary(mappedTasks);
           } else {
-            setDailyTaskSummary(prev => [...prev, { activity: '', status: 'ongoing', remarks: '' }, { activity: '', status: 'ongoing', remarks: '' }]);
+            setDailyTaskSummary(prev => [...prev, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -324,12 +324,12 @@ const HodRdReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status === 'In Progress' ? 'ongoing' : (t.status || 'Done'), remarks: 'Auto-fetched' }));
-            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
-            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status === 'In Progress' ? 'ongoing' : (t.status || 'Done'), dueDate: t.dueDate || '', remarks: 'Auto-fetched' }));
+            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
+            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
             setDailyTaskSummary(mappedTasks);
           } else {
-            setDailyTaskSummary(prev => [...prev, { activity: '', status: 'ongoing', remarks: '' }, { activity: '', status: 'ongoing', remarks: '' }]);
+            setDailyTaskSummary(prev => [...prev, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -402,7 +402,7 @@ const HodRdReportPage = () => {
 
     setDailyTaskSummary(DEFAULT_TASK_SUMMARY);
     setDevelopmentWorkReport(DEFAULT_DEV_REPORT);
-    setRdInnovationReport([{ activity: '', details: '', status: '' }]);
+    setRdInnovationReport([{ activity: '', details: '', dueDate: '', status: '' }]);
     setKpiTracking(DEFAULT_KPI_TRACKING);
     setIssuesSupportRequired(DEFAULT_ISSUES);
     setNextDayPlanning('CRM Continues');
@@ -502,7 +502,7 @@ const HodRdReportPage = () => {
 
   // Helper row handlers for dynamic monthly tables
   const addMonthlySummaryRow = () => {
-    setMonthlyDailyTaskSummary([...monthlyDailyTaskSummary, { activity: '', status: 'Done', remarks: '' }]);
+    setMonthlyDailyTaskSummary([...monthlyDailyTaskSummary, { activity: '', status: 'Done', dueDate: '', remarks: '' }]);
   };
   const removeMonthlySummaryRow = (index) => {
     if (monthlyDailyTaskSummary.length > 1) {
@@ -520,7 +520,7 @@ const HodRdReportPage = () => {
   };
 
   const addMonthlyInnovRow = () => {
-    setMonthlyRdInnovationReport([...monthlyRdInnovationReport, { activity: '', details: '', status: '' }]);
+    setMonthlyRdInnovationReport([...monthlyRdInnovationReport, { activity: '', details: '', dueDate: '', status: '' }]);
   };
   const removeMonthlyInnovRow = (index) => {
     if (monthlyRdInnovationReport.length > 1) {
@@ -603,7 +603,7 @@ const HodRdReportPage = () => {
         });
         setMonthlyDailyTaskSummary(DEFAULT_TASK_SUMMARY);
         setMonthlyDevelopmentWorkReport(DEFAULT_DEV_REPORT);
-        setMonthlyRdInnovationReport([{ activity: '', details: '', status: '' }]);
+        setMonthlyRdInnovationReport([{ activity: '', details: '', dueDate: '', status: '' }]);
         setMonthlyKpiTracking(DEFAULT_KPI_TRACKING);
         setMonthlyIssuesSupportRequired(DEFAULT_ISSUES);
         setMonthlyNextDayPlanning('');
@@ -643,7 +643,7 @@ const HodRdReportPage = () => {
           const key = (task.activity || '').trim();
           if (!key) return;
           if (!tasksMap[key]) {
-            tasksMap[key] = { activity: key, statuses: [], remarks: [] };
+            tasksMap[key] = { activity: key, statuses: [], dueDate: '', remarks: [] };
           }
           if (task.status) tasksMap[key].statuses.push(task.status);
           if (task.remarks) tasksMap[key].remarks.push(task.remarks);
@@ -656,7 +656,7 @@ const HodRdReportPage = () => {
         return {
           activity: group.activity,
           status,
-          remarks: uniqueRemarks.join('; ')
+          dueDate: '', remarks: uniqueRemarks.join('; ')
         };
       });
       setMonthlyDailyTaskSummary(consolidatedTasks.length > 0 ? consolidatedTasks : DEFAULT_TASK_SUMMARY);
@@ -715,10 +715,10 @@ const HodRdReportPage = () => {
         return {
           activity: group.activity,
           details: detailsStr,
-          status: uniqueStatuses.join('; ') || 'Done'
+          dueDate: '', status: uniqueStatuses.join('; ') || 'Done'
         };
       });
-      setMonthlyRdInnovationReport(consolidatedInnov.length > 0 ? consolidatedInnov : [{ activity: '', details: '', status: '' }]);
+      setMonthlyRdInnovationReport(consolidatedInnov.length > 0 ? consolidatedInnov : [{ activity: '', details: '', dueDate: '', status: '' }]);
 
       // Sum KPI Tracking (summing kpiTracking)
       const parseVal = (str) => {
@@ -1141,7 +1141,7 @@ const HodRdReportPage = () => {
 
   // Helper row handlers for dynamic tables
   const addSummaryRow = () => {
-    setDailyTaskSummary([...dailyTaskSummary, { activity: '', status: 'Done', remarks: '' }]);
+    setDailyTaskSummary([...dailyTaskSummary, { activity: '', status: 'Done', dueDate: '', remarks: '' }]);
   };
   
   const removeSummaryRow = (index) => {
@@ -1161,7 +1161,7 @@ const HodRdReportPage = () => {
   };
 
   const addInnovRow = () => {
-    setRdInnovationReport([...rdInnovationReport, { activity: '', details: '', status: '' }]);
+    setRdInnovationReport([...rdInnovationReport, { activity: '', details: '', dueDate: '', status: '' }]);
   };
 
   const removeInnovRow = (index) => {
@@ -1196,28 +1196,7 @@ const HodRdReportPage = () => {
       {/* LEFT PANEL: Date Select Sidebar */}
       <div className="w-full lg:w-72 shrink-0 bg-white/70 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-md rounded-3xl p-5 shadow-sm">
         
-        {isPrivileged && (
-          <div className="mb-6">
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-              Select HOD User
-            </label>
-            <div className="relative">
-              <select
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
-              >
-                <option value="">-- Select HOD --</option>
-                {hods.map(h => (
-                  <option key={h._id} value={h._id}>
-                    {h.name} ({h.employeeId || 'No ID'})
-                  </option>
-                ))}
-              </select>
-              <User size={16} className="absolute right-3 top-3.5 text-slate-400 pointer-events-none" />
-            </div>
-          </div>
-        )}
+        
 
         <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-4 flex items-center gap-2">
           <Calendar size={14} className="text-indigo-500 dark:text-lime-400" />
@@ -1461,6 +1440,7 @@ const HodRdReportPage = () => {
                   <thead>
                     <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
                       <th className="px-5 py-4 w-[40%]">Activity</th>
+                      <th className="px-5 py-4 w-[40%]">Due Date</th>
                       <th className="px-5 py-4 w-[20%] text-center">Status</th>
                       <th className="px-5 py-4 w-[35%]">Remarks</th>
                       <th className="px-5 py-4 w-[5%] text-center">Actions</th>
@@ -1652,6 +1632,7 @@ const HodRdReportPage = () => {
                   <thead>
                     <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
                       <th className="px-5 py-4 w-[30%]">Activity</th>
+                      <th className="px-5 py-4 w-[30%]">Due Date</th>
                       <th className="px-5 py-4 w-[50%]">Details</th>
                       <th className="px-5 py-4 w-[15%] text-center">Status</th>
                       <th className="px-5 py-4 w-[5%] text-center">Actions</th>
@@ -2231,6 +2212,7 @@ const HodRdReportPage = () => {
                         <thead>
                           <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase border-b border-slate-100 dark:border-slate-800">
                             <th className="px-5 py-4 w-[40%]">Activity</th>
+                      <th className="px-5 py-4 w-[40%]">Due Date</th>
                             <th className="px-5 py-4 w-[20%] text-center">Status</th>
                             <th className="px-5 py-4 w-[35%]">Remarks</th>
                             <th className="px-5 py-4 w-[5%] text-center">Action</th>
@@ -2395,6 +2377,7 @@ const HodRdReportPage = () => {
                         <thead>
                           <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase border-b border-slate-100 dark:border-slate-800">
                             <th className="px-5 py-4 w-[30%]">Activity</th>
+                      <th className="px-5 py-4 w-[30%]">Due Date</th>
                             <th className="px-5 py-4 w-[50%]">Details</th>
                             <th className="px-5 py-4 w-[15%] text-center">Status</th>
                             <th className="px-5 py-4 w-[5%] text-center">Action</th>

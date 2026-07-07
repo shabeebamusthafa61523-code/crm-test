@@ -14,30 +14,30 @@ const API_BASE = import.meta.env.VITE_API_URL;
 
 // Default data for Operations Manager Shift Report
 const DEFAULT_DAILY_OPERATIONS = [
-  { activity: 'Team Attendance Verified', status: 'Done', remarks: '' },
-  { activity: 'Daily Sales Targets Assigned', status: 'Done', remarks: '' },
-  { activity: 'Lead Follow-up Reviewed', status: 'Done', remarks: '' },
-  { activity: 'Client Meetings Conducted', status: 'NO', remarks: '' },
-  { activity: 'Academy Coordination Completed', status: 'NA', remarks: '' },
-  { activity: 'Reports Collected from Team', status: 'Done', remarks: '' }
+  { activity: 'Team Attendance Verified', status: 'Done', dueDate: '', remarks: '' },
+  { activity: 'Daily Sales Targets Assigned', status: 'Done', dueDate: '', remarks: '' },
+  { activity: 'Lead Follow-up Reviewed', status: 'Done', dueDate: '', remarks: '' },
+  { activity: 'Client Meetings Conducted', status: 'NO', dueDate: '', remarks: '' },
+  { activity: 'Academy Coordination Completed', status: 'NA', dueDate: '', remarks: '' },
+  { activity: 'Reports Collected from Team', status: 'Done', dueDate: '', remarks: '' }
 ];
 
 const DEFAULT_SALES_ACTIVITY = [
-  { activity: 'New Leads Generated from marketing team', count: '1 (Inbound)', digitalMktg: '', web: '', remarks: '' },
-  { activity: 'Qualified Lead', count: '0', digitalMktg: '', web: '', remarks: '' },
-  { activity: 'Total Calls Made', count: '41', digitalMktg: '', web: '', remarks: '' },
-  { activity: 'Total Follow up', count: '40', digitalMktg: '', web: '', remarks: '' },
-  { activity: 'Hot Leads', count: '1', digitalMktg: '', web: '1', remarks: '' },
-  { activity: 'Warm Leads', count: '0', digitalMktg: '', web: '', remarks: '' },
-  { activity: 'Cold Leads', count: '0', digitalMktg: '', web: '', remarks: '' },
-  { activity: 'Call back Leads', count: '2', digitalMktg: '', web: '', remarks: '' },
-  { activity: 'RNT Leads (Ring Next Time)', count: '23', digitalMktg: '', web: '', remarks: '' },
-  { activity: 'Switch Off Leads', count: '1', digitalMktg: '', web: '', remarks: '' },
-  { activity: 'Wrong leads', count: '14', digitalMktg: '', web: '', remarks: '' },
-  { activity: 'Total Pending Follow-ups', count: '0', digitalMktg: '', web: '', remarks: '' },
-  { activity: 'Total Pending Leads', count: '0', digitalMktg: '', web: '', remarks: '' },
-  { activity: 'Client/Student Meetings Fixed', count: '0', digitalMktg: '', web: '', remarks: '' },
-  { activity: 'Admissions/Closings Done', count: '0', digitalMktg: '', web: '', remarks: '' }
+  { activity: 'New Leads Generated from marketing team', count: '1 (Inbound)', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Qualified Lead', count: '0', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Total Calls Made', count: '41', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Total Follow up', count: '40', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Hot Leads', count: '1', digitalMktg: '', web: '1', dueDate: '', remarks: '' },
+  { activity: 'Warm Leads', count: '0', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Cold Leads', count: '0', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Call back Leads', count: '2', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'RNT Leads (Ring Next Time)', count: '23', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Switch Off Leads', count: '1', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Wrong leads', count: '14', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Total Pending Follow-ups', count: '0', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Total Pending Leads', count: '0', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Client/Student Meetings Fixed', count: '0', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Admissions/Closings Done', count: '0', digitalMktg: '', web: '', dueDate: '', remarks: '' }
 ];
 
 const DEFAULT_SALES_PERFORMANCE = [
@@ -55,10 +55,10 @@ const DEFAULT_REVENUE_TRACKING = [
 ];
 
 const DEFAULT_ACADEMY_STATUS = [
-  { activity: 'Classes Conducted', status: 'No', remarks: '' },
-  { activity: 'Mentor Coordination', status: 'No', remarks: '' },
-  { activity: 'Student Follow-up', status: 'No', remarks: '' },
-  { activity: 'Admissions Follow-up', status: 'No', remarks: '' }
+  { activity: 'Classes Conducted', status: 'No', dueDate: '', remarks: '' },
+  { activity: 'Mentor Coordination', status: 'No', dueDate: '', remarks: '' },
+  { activity: 'Student Follow-up', status: 'No', dueDate: '', remarks: '' },
+  { activity: 'Admissions Follow-up', status: 'No', dueDate: '', remarks: '' }
 ];
 
 const OpsReportPage = () => {
@@ -377,12 +377,12 @@ const OpsReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', remarks: 'Auto-fetched' }));
-            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
-            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', dueDate: t.dueDate || '', remarks: 'Auto-fetched' }));
+            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
+            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
             setDailyOperations(mappedTasks);
           } else {
-            setDailyOperations(prev => [...prev, { activity: '', status: 'ongoing', remarks: '' }, { activity: '', status: 'ongoing', remarks: '' }]);
+            setDailyOperations(prev => [...prev, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -395,12 +395,12 @@ const OpsReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', remarks: 'Auto-fetched' }));
-            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
-            mappedTasks.push({ activity: '', status: 'ongoing', remarks: '' });
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', dueDate: t.dueDate || '', remarks: 'Auto-fetched' }));
+            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
+            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
             setDailyOperations(mappedTasks);
           } else {
-            setDailyOperations(prev => [...prev, { activity: '', status: 'ongoing', remarks: '' }, { activity: '', status: 'ongoing', remarks: '' }]);
+            setDailyOperations(prev => [...prev, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -1465,27 +1465,7 @@ const OpsReportPage = () => {
     <div className="flex flex-col lg:flex-row gap-6 items-start">
       {/* LEFT PANEL: Date Select Sidebar */}
       <div className="w-full lg:w-72 shrink-0 bg-white/70 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-md rounded-3xl p-5 shadow-sm">
-        {isPrivileged && (
-          <div className="mb-6">
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-              Select Operations Staff
-            </label>
-            <div className="relative">
-              <select
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              >
-                {opsStaff.map(ops => (
-                  <option key={ops._id} value={ops._id}>
-                    {ops.name} ({ops.employeeId || 'No ID'})
-                  </option>
-                ))}
-              </select>
-              <User size={16} className="absolute right-3 top-3.5 text-slate-400 pointer-events-none" />
-            </div>
-          </div>
-        )}
+        
 
         <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-4 flex items-center gap-2">
           <Calendar size={14} className="text-indigo-500 dark:text-lime-400" />
@@ -1725,7 +1705,7 @@ const OpsReportPage = () => {
                 </h2>
                 <button
                   type="button"
-                  onClick={() => setDailyOperations([...dailyOperations, { activity: '', status: 'ongoing', remarks: '' }])}
+                  onClick={() => setDailyOperations([...dailyOperations, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }])}
                   className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
                 >
                   <Plus size={14} /> Add Row
@@ -1736,6 +1716,7 @@ const OpsReportPage = () => {
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
                       <th className="px-4 py-3">Activity</th>
+                      <th className="px-4 py-3">Due Date</th>
                       <th className="px-4 py-3 w-40">Status</th>
                       <th className="px-4 py-3">Remarks</th>
                       <th className="px-4 py-3 w-12 text-center">Action</th>
@@ -1813,6 +1794,7 @@ const OpsReportPage = () => {
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
                       <th className="px-4 py-3">Activity</th>
+                      <th className="px-4 py-3">Due Date</th>
                       <th className="px-4 py-3 w-32 text-center">Count</th>
                       <th className="px-4 py-3 w-32 text-center">Digital Mktg</th>
                       <th className="px-4 py-3 w-32 text-center">Web</th>
@@ -2002,6 +1984,7 @@ const OpsReportPage = () => {
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
                       <th className="px-4 py-3">Activity</th>
+                      <th className="px-4 py-3">Due Date</th>
                       <th className="px-4 py-3 w-40">Status</th>
                       <th className="px-4 py-3">Remarks</th>
                     </tr>
@@ -2329,6 +2312,7 @@ const OpsReportPage = () => {
                           <thead>
                             <tr className="bg-slate-50 dark:bg-slate-950/40 text-slate-400 text-[10px] font-bold uppercase border-b border-slate-100 dark:border-slate-800">
                               <th className="px-4 py-3">Activity</th>
+                      <th className="px-4 py-3">Due Date</th>
                               <th className="px-4 py-3 text-center w-24">Count</th>
                               <th className="px-4 py-3 text-center w-24">Digital Mktg</th>
                               <th className="px-4 py-3 text-center w-24">Web</th>
@@ -2478,6 +2462,7 @@ const OpsReportPage = () => {
                             <thead>
                               <tr className="bg-slate-50 dark:bg-slate-950/40 text-slate-400 text-[10px] font-bold uppercase border-b border-slate-100 dark:border-slate-800">
                                 <th className="px-4 py-3">Activity</th>
+                      <th className="px-4 py-3">Due Date</th>
                                 <th className="px-4 py-3 text-center w-28">Status</th>
                                 <th className="px-4 py-3">Remarks</th>
                               </tr>
@@ -2787,6 +2772,7 @@ const OpsReportPage = () => {
                           <thead>
                             <tr className="bg-slate-50 dark:bg-slate-950/40 text-slate-400 text-[10px] font-bold uppercase border-b border-slate-100 dark:border-slate-800">
                               <th className="px-4 py-3">Activity</th>
+                      <th className="px-4 py-3">Due Date</th>
                               <th className="px-4 py-3 text-center w-24">Count</th>
                               <th className="px-4 py-3 text-center w-24">Digital Mktg</th>
                               <th className="px-4 py-3 text-center w-24">Web</th>
@@ -2936,6 +2922,7 @@ const OpsReportPage = () => {
                             <thead>
                               <tr className="bg-slate-50 dark:bg-slate-950/40 text-slate-400 text-[10px] font-bold uppercase border-b border-slate-100 dark:border-slate-800">
                                 <th className="px-4 py-3">Activity</th>
+                      <th className="px-4 py-3">Due Date</th>
                                 <th className="px-4 py-3 text-center w-28">Status</th>
                                 <th className="px-4 py-3">Remarks</th>
                               </tr>

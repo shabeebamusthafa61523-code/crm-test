@@ -24,6 +24,7 @@ const opsReportSchema = new mongoose.Schema({
   dailyOperations: [
     {
       activity: { type: String },
+      dueDate: { type: String },
       status: { type: String },
       remarks: { type: String }
     }
@@ -31,6 +32,7 @@ const opsReportSchema = new mongoose.Schema({
   salesActivity: [
     {
       activity: { type: String },
+      dueDate: { type: String },
       count: { type: String },
       digitalMktg: { type: String },
       web: { type: String },
@@ -55,6 +57,7 @@ const opsReportSchema = new mongoose.Schema({
   academyStatus: [
     {
       activity: { type: String },
+      dueDate: { type: String },
       status: { type: String },
       remarks: { type: String }
     }
