@@ -191,17 +191,9 @@ const [activePriority, setActivePriority] = useState('all');
       const resJson = await res.json();
 
       if (resJson.success && Array.isArray(resJson.data)) {
-        const genuine = resJson.data.filter(l => {
-          const interest = (l.interestedService || '').trim().toUpperCase();
-          return ['HOT LEAD', 'WARM LEAD', 'COLD LEAD'].includes(interest);
-        });
-        setLeads(genuine);
+        setLeads(resJson.data);
       } else if (Array.isArray(resJson)) {
-        const genuine = resJson.filter(l => {
-          const interest = (l.interestedService || '').trim().toUpperCase();
-          return ['HOT LEAD', 'WARM LEAD', 'COLD LEAD'].includes(interest);
-        });
-        setLeads(genuine);
+        setLeads(resJson);
       } else {
         setLeads([]);
       }
@@ -282,6 +274,10 @@ const [activePriority, setActivePriority] = useState('all');
         setLeads(prevLeads => prevLeads.map(l => {
           const lId = l.id || l._id;
           if (lId === leadId) {
+            if (fieldName === 'assignedTo') {
+              const staffMember = staff.find(s => (s.id || s._id) === value);
+              return { ...l, assignedTo: staffMember || null };
+            }
             return { ...l, [fieldName]: value };
           }
           return l;
@@ -468,6 +464,7 @@ const [activePriority, setActivePriority] = useState('all');
       'City / Place': l.city || 'N/A',
       'Client Meeting Fixed': l.clientMeetingFixed || 'Pending',
       'Admission Status': l.admissionYesNo || 'Pending',
+      'Assigned To': l.assignedTo?.name || 'Unassigned',
       'Leads Received Date': l.leadsReceivedDate ? new Date(l.leadsReceivedDate).toLocaleDateString() : 'N/A',
       '1st Follow Up Date': l.followUpDate1 ? new Date(l.followUpDate1).toLocaleDateString() : 'N/A',
       '2nd Follow Up Date': l.followUpDate2 ? new Date(l.followUpDate2).toLocaleDateString() : 'N/A',
@@ -500,7 +497,7 @@ const [activePriority, setActivePriority] = useState('all');
   doc.setFont('helvetica', 'normal');
   doc.text(`Export Tab: ${activeTab.toUpperCase()} | Generated: ${new Date().toLocaleString()}`, 14, 21);
 
-  const headers = [['Lead Name', 'Phone', 'Source', 'Service', 'Leads Received', '1st Followup', '2nd Followup', '3rd Followup', '4th Followup', '5th Followup', 'Remarks', 'Meeting', 'Admission', 'Status']];
+  const headers = [['Lead Name', 'Phone', 'Source', 'Service', 'Leads Received', '1st Followup', '2nd Followup', '3rd Followup', '4th Followup', '5th Followup', 'Remarks', 'Meeting', 'Admission', 'Assigned To', 'Status']];
   const body = filteredLeads.map(l => [
     l.leadName || '',
     l.phone || '',
@@ -515,6 +512,7 @@ const [activePriority, setActivePriority] = useState('all');
     l.remarks || '',
     l.clientMeetingFixed || 'Pending',
     l.admissionYesNo || 'Pending',
+    l.assignedTo?.name || 'Unassigned',
     l.status || 'New'
   ]);
 
@@ -1007,6 +1005,7 @@ const [activePriority, setActivePriority] = useState('all');
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Remarks</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Client Meeting</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Admission</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Assign To</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Created</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400 text-right">Actions</th>
                   </tr>
@@ -1224,6 +1223,34 @@ const [activePriority, setActivePriority] = useState('all');
                             <option value="Pending">Pending</option>
                             <option value="Yes">Yes</option>
                             <option value="No">No</option>
+                          </select>
+                        </td>
+
+                        {/* Assign To (Sales & Growth Employees) */}
+                        <td className="px-6 py-4.5 text-xs">
+                          <select
+                            value={lead.assignedTo?._id || lead.assignedTo || ''}
+                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'assignedTo', e.target.value)}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                          >
+                            <option value="">Unassigned</option>
+                            {staff
+                              .filter(member => {
+                                let deptId = '';
+                                if (member.departmentId) {
+                                  if (typeof member.departmentId === 'object' && member.departmentId._id) {
+                                    deptId = String(member.departmentId._id);
+                                  } else {
+                                    deptId = String(member.departmentId);
+                                  }
+                                }
+                                return deptId === '6a27f394558c220a47fff02e';
+                              })
+                              .map(member => (
+                                <option key={member.id || member._id} value={member.id || member._id}>
+                                  {member.name}
+                                </option>
+                              ))}
                           </select>
                         </td>
 
