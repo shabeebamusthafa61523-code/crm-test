@@ -131,6 +131,10 @@ export const login = async (req, res) => {
       console.warn("Failed to set Redis session key during login:", redisError.message);
     }
 
+    const Department = (await import('../modules/departments/department.model.js')).default;
+    const isTeamLead = await Department.exists({ teamLeadId: user._id }) ? true : false;
+    const isDepartmentManager = await Department.exists({ managerId: user._id }) ? true : false;
+
     // 4. Return matching data structure required by your React components
     res.json({
       success: true, // Added to match standard response handlers
@@ -155,6 +159,8 @@ export const login = async (req, res) => {
         isActive: user.isActive ?? true,
         status: user.status || "active",
         joining_date: user.joining_date,
+        isTeamLead,
+        isDepartmentManager,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt
       }

@@ -11,6 +11,7 @@ export const CreateDepartmentModal = ({ isOpen, onClose, onSuccess }) => {
   const [code, setCode] = useState('');
   const [description, setDescription] = useState('');
   const [managerId, setManagerId] = useState('');
+  const [teamLeadId, setTeamLeadId] = useState('');
   const [status, setStatus] = useState(true);
 
   const [users, setUsers] = useState([]);
@@ -45,6 +46,7 @@ export const CreateDepartmentModal = ({ isOpen, onClose, onSuccess }) => {
       setCode('');
       setDescription('');
       setManagerId('');
+      setTeamLeadId('');
       setStatus(true);
       setErrors({});
       setGlobalError('');
@@ -63,6 +65,7 @@ export const CreateDepartmentModal = ({ isOpen, onClose, onSuccess }) => {
         code,
         description,
         managerId: managerId || null,
+        teamLeadId: teamLeadId || null,
         status
       });
       onSuccess('Department created successfully!');
@@ -196,6 +199,33 @@ export const CreateDepartmentModal = ({ isOpen, onClose, onSuccess }) => {
                 <select
                   value={managerId}
                   onChange={(e) => setManagerId(e.target.value)}
+                  disabled={loadingUsers}
+                  className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all appearance-none cursor-pointer"
+                >
+                  <option value="">Unassigned</option>
+                  {users.map((user) => (
+                    <option key={user._id} value={user._id}>
+                      {user.name} ({user.email})
+                    </option>
+                  ))}
+                </select>
+                {loadingUsers && (
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                    <Loader size={16} className="animate-spin text-slate-400" />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Team Lead selection dropdown */}
+            <div>
+              <label className="block text-xs font-bold text-slate-400 tracking-wide uppercase mb-2">
+                Department Team Lead
+              </label>
+              <div className="relative">
+                <select
+                  value={teamLeadId}
+                  onChange={(e) => setTeamLeadId(e.target.value)}
                   disabled={loadingUsers}
                   className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all appearance-none cursor-pointer"
                 >

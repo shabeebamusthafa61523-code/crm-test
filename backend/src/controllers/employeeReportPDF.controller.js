@@ -61,6 +61,54 @@ const uploadToCloudinary = (fileBuffer, userId, filenameKey) => {
   });
 };
 
+// Helper: Check if logged-in user is authorized to access a target user's reports
+const isAuthorizedToAccessUser = async (reqUser, targetUserId) => {
+  if (!reqUser) return false;
+  
+  const loggedInUserId = reqUser.id || reqUser._id;
+  const loggedInUserRole = String(reqUser.role || reqUser.role_id || '').toLowerCase().trim();
+  const isPrivileged = ['1', '2', 'hr', 'admin'].includes(loggedInUserRole);
+
+  // Privileged roles can see everything
+  if (isPrivileged) return true;
+
+  // Users can see their own reports
+  if (loggedInUserId && String(loggedInUserId) === String(targetUserId)) return true;
+
+  if (loggedInUserId) {
+    // Check if the logged-in user is a Team Lead or Manager of the target user's department
+    const Department = (await import('../modules/departments/department.model.js')).default;
+    const UserDepartment = (await import('../models/userDepartment.model.js')).default;
+
+    const ledDepartments = await Department.find({ 
+      $or: [
+        { teamLeadId: loggedInUserId },
+        { managerId: loggedInUserId }
+      ]
+    }).select('_id');
+
+    if (ledDepartments.length > 0) {
+      const ledDeptIds = ledDepartments.map(d => String(d._id));
+      const targetUser = await User.findById(targetUserId);
+      if (!targetUser) return false;
+
+      // Direct check
+      if (targetUser.departmentId && ledDeptIds.includes(String(targetUser.departmentId))) {
+        return true;
+      }
+
+      // UserDepartment mapping check
+      const userDeptMapping = await UserDepartment.findOne({
+        userId: targetUserId,
+        departmentId: { $in: ledDeptIds }
+      });
+      if (userDeptMapping) return true;
+    }
+  }
+
+  return false;
+};
+
 // Helper: Map report type slug to Mongoose model
 const getReportModel = (type) => {
   const normalized = String(type || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -102,6 +150,15 @@ export const employeeReportPDFController = {
         return res.status(400).json({
           success: false,
           message: 'userId and dateString are required query parameters'
+        });
+      }
+
+      // Check authorization
+      const isAuthorized = await isAuthorizedToAccessUser(req.user, userId);
+      if (!isAuthorized) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. You are not authorized to view this report.'
         });
       }
 
@@ -255,6 +312,15 @@ export const employeeReportPDFController = {
         });
       }
 
+      // Check authorization
+      const isAuthorized = await isAuthorizedToAccessUser(req.user, userId);
+      if (!isAuthorized) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. You are not authorized to view these reports.'
+        });
+      }
+
       // Determine sort order: descending (newest first) by default
       const sortOrder = sort === 'oldest' ? 1 : -1;
 
@@ -284,6 +350,15 @@ export const employeeReportPDFController = {
       const record = await EmployeeReports.findById(reportId);
       if (!record) {
         return res.status(404).json({ success: false, message: 'Report not found in database' });
+      }
+
+      // Check authorization
+      const isAuthorized = await isAuthorizedToAccessUser(req.user, record.employee_id);
+      if (!isAuthorized) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. You are not authorized to stream this report.'
+        });
       }
 
       if (!record.pdf_public_id && !record.pdf_url) {

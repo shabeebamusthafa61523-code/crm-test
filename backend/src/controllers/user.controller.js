@@ -56,13 +56,47 @@ export const userController = {
    */
   getUserList: async (req, res) => {
     try {
+      const loggedInUserId = req.user?.id || req.user?._id;
+      const loggedInUserRole = String(req.user?.role || req.user?.role_id || '').toLowerCase().trim();
+      
+      const isPrivileged = ['1', '2', 'hr', 'admin'].includes(loggedInUserRole);
+      
+      let queryFilter = {
+        isActive: true,
+        role: { $nin: ['student', 'Student'] },
+        role_id: { $nin: ['10', 10] }
+      };
+
+      if (!isPrivileged && loggedInUserId) {
+        // Check departments managed or led by this user
+        const Department = (await import('../modules/departments/department.model.js')).default;
+        const ledDepartments = await Department.find({ 
+          $or: [
+            { teamLeadId: loggedInUserId },
+            { managerId: loggedInUserId }
+          ]
+        }).select('_id');
+
+        if (ledDepartments.length > 0) {
+          const ledDeptIds = ledDepartments.map(d => d._id);
+          
+          // Find users belonging to these departments (either via direct departmentId or UserDepartment model)
+          const UserDepartment = (await import('../models/userDepartment.model.js')).default;
+          const userDepts = await UserDepartment.find({ departmentId: { $in: ledDeptIds } }).select('userId');
+          const userDeptUserIds = userDepts.map(ud => ud.userId).filter(Boolean);
+
+          queryFilter.$or = [
+            { departmentId: { $in: ledDeptIds } },
+            { _id: { $in: userDeptUserIds } }
+          ];
+        } else {
+          // If they aren't a team lead/manager, they should only see themselves
+          queryFilter._id = loggedInUserId;
+        }
+      }
 
       const users = await User.find(
-        { 
-          isActive: true,
-          role: { $nin: ['student', 'Student'] },
-          role_id: { $nin: ['10', 10] }
-        },
+        queryFilter,
         {
           password: 0,
           passwordHash: 0,
@@ -75,9 +109,7 @@ export const userController = {
       return res.status(200).json(users);
 
     } catch (error) {
-
       console.error(error);
-
       return res.status(500).json({
         message: 'Failed to fetch users'
       });
@@ -249,6 +281,10 @@ export const userController = {
 
       const isDeptActive = user.departmentId && user.departmentId.status !== false;
 
+      const Department = (await import('../modules/departments/department.model.js')).default;
+      const isTeamLead = await Department.exists({ teamLeadId: user._id }) ? true : false;
+      const isDepartmentManager = await Department.exists({ managerId: user._id }) ? true : false;
+
       return sendSuccess(res, {
         status: 200,
         message:
@@ -270,6 +306,8 @@ export const userController = {
           isActive: user.isActive,
           status: user.status || (user.isActive ? 'active' : 'inactive'),
           lastLogin: user.lastLogin,
+          isTeamLead,
+          isDepartmentManager,
           createdAt: user.createdAt,
           joining_date: user.joining_date,
           salary: user.salary,
