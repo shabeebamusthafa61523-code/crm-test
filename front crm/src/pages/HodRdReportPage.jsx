@@ -421,15 +421,22 @@ const HodRdReportPage = () => {
   const handleSaveReport = async () => {
     try {
       setSaving(true);
+
+      const cleanDailyTaskSummary = dailyTaskSummary.filter(t => (t.activity || '').trim() !== '');
+      const cleanDevelopmentWorkReport = developmentWorkReport.filter(t => (t.project || '').trim() !== '' || (t.activity || '').trim() !== '');
+      const cleanRdInnovationReport = rdInnovationReport.filter(t => (t.activity || '').trim() !== '' || (t.details || '').trim() !== '');
+      const cleanKpiTracking = kpiTracking.filter(t => (t.project || '').trim() !== '' || (t.kpi || '').trim() !== '');
+      const cleanIssuesSupportRequired = issuesSupportRequired.filter(t => (t.issue || '').trim() !== '');
+
       const payload = {
         userId: selectedUserId,
         dateString: selectedDate,
         basicDetails,
-        dailyTaskSummary,
-        developmentWorkReport,
-        rdInnovationReport,
-        kpiTracking,
-        issuesSupportRequired,
+        dailyTaskSummary: cleanDailyTaskSummary,
+        developmentWorkReport: cleanDevelopmentWorkReport,
+        rdInnovationReport: cleanRdInnovationReport,
+        kpiTracking: cleanKpiTracking,
+        issuesSupportRequired: cleanIssuesSupportRequired,
         nextDayPlanning,
         hodComments,
         approval

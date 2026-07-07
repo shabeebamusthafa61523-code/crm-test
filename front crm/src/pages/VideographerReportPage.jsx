@@ -14,15 +14,17 @@ const API_BASE = import.meta.env.VITE_API_URL;
 
 // Default items for Task Log
 const DEFAULT_TASK_LOG = [
+
   { taskProjectName: 'PASS THE BALL VIDEO EDITING', descriptionDetails: 'completed the editing entire pass the ball video fotage', startTime: '9.30am', endTime: '12.30pm', dueDate: '', status: 'Done', fileLink: 'kood brand shoots\\9-6-26\\clip\\final\\pass the ball' },
   { taskProjectName: 'CALICUT SCRIPTED VIDEO CONTENT2', descriptionDetails: 'completed the editing entireCONTENT 2 of calicut ad video fotage', startTime: '1.30pm', endTime: '5.00pm', dueDate: '', status: 'Done', fileLink: 'kood brand shoots\\calicut shoot\\final\\calicut content 2' },
   { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'N/A', fileLink: '' },
   { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'N/A', fileLink: '' }
+
 ];
 
 // Default Key Numbers
 const DEFAULT_KEY_NUMBERS = {
-  videosCompleted: { target: '2', todaysCount: '2', notes: 'the pass the ball script video sheduled to reshoot after completed the editing' },
+  videosCompleted: { target: '', todaysCount: '', notes: '' },
   revisionsDone: { target: '', todaysCount: '', notes: '' },
   clientDeliveries: { target: '', todaysCount: '', notes: '' }
 };
@@ -34,7 +36,7 @@ const DEFAULT_BLOCKERS = [
 
 // Default Tomorrow's Plan
 const DEFAULT_TOMORROW = [
-  { task: 'calicut add footages editing', details: '', notes: '' }
+  { task: '', details: '', notes: '' }
 ];
 
 const VideographerReportPage = () => {
@@ -285,6 +287,7 @@ const VideographerReportPage = () => {
 
         const savedLog = report.taskLog || [];
         setTaskLog(savedLog);
+
         
         // Auto-fetch and merge new/missing tasks or update existing ones
         try {
@@ -331,6 +334,7 @@ const VideographerReportPage = () => {
         } catch (e) {
           console.error("Error merging additional tasks:", e);
         }
+
 
         setKeyNumbers(report.keyNumbers || DEFAULT_KEY_NUMBERS);
         setBlockers(report.blockers || []);
@@ -455,13 +459,14 @@ const VideographerReportPage = () => {
     let na = 0;
     
     taskLog.forEach(t => {
+      if (!(t.taskProjectName || '').trim() && !(t.descriptionDetails || '').trim()) return;
       const s = String(t.status || '').toLowerCase().trim();
       if (s === 'done') done++;
       else if (s === 'pending' || s === 'ongoing' || s === 'onprogress') pending++;
       else if (s === 'na' || s === 'n/a') na++;
     });
 
-    return { done, pending, na, total: taskLog.length };
+    return { done, pending, na, total: done + pending + na };
   };
   const counts = getTaskSummaryCounts();
 
@@ -469,15 +474,20 @@ const VideographerReportPage = () => {
   const handleSaveReport = async () => {
     try {
       setSaving(true);
+
+      const cleanTaskLog = taskLog.filter(t => (t.taskProjectName || '').trim() !== '' || (t.descriptionDetails || '').trim() !== '');
+      const cleanBlockers = blockers.filter(b => (b.issue || '').trim() !== '' && (b.issue || '').toLowerCase() !== 'none');
+      const cleanTomorrowTasks = tomorrowTasks.filter(t => (t.task || '').trim() !== '' || (t.details || '').trim() !== '' || (t.notes || '').trim() !== '');
+
       const payload = {
-        userId: selectedUserId,
-        dateString: selectedDate,
-        basicDetails,
-        taskLog,
-        keyNumbers,
-        blockers,
-        tomorrowTasks,
-        approval
+         userId: selectedUserId,
+         dateString: selectedDate,
+         basicDetails,
+         taskLog: cleanTaskLog,
+         keyNumbers,
+         blockers: cleanBlockers.length > 0 ? cleanBlockers : [{ issue: 'None', details: '', priority: 'None' }],
+         tomorrowTasks: cleanTomorrowTasks,
+         approval
       };
 
       const res = await fetch(`${API_BASE}/v1/videographer-reports`, {

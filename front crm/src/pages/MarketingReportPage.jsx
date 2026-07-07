@@ -758,13 +758,17 @@ const MarketingReportPage = () => {
   const handleSaveReport = async () => {
     try {
       setSaving(true);
+
+      const cleanTaskSummary = taskSummary.filter(t => (t.task || '').trim() !== '' || (t.detailsNotes || '').trim() !== '');
+      const cleanBlockersTomorrowPlan = blockersTomorrowPlan.filter(b => (b.blockersToday || '').trim() !== '' || (b.tomorrowMainTask || '').trim() !== '');
+
       const payload = {
         userId: selectedUserId,
         dateString: selectedDate,
         basicDetails,
-        taskSummary,
+        taskSummary: cleanTaskSummary,
         keyNumbers,
-        blockersTomorrowPlan,
+        blockersTomorrowPlan: cleanBlockersTomorrowPlan,
         approval
       };
 

@@ -493,6 +493,7 @@ const DeveloperReportPage = () => {
 
         const savedLog = report.dailyTaskSummary || [];
         setDailyTaskSummary(savedLog);
+
         try {
           fetchCompletedTasks(userId, dateStr).then(completedTasks => {
             if (completedTasks && completedTasks.length > 0) {
@@ -532,6 +533,7 @@ const DeveloperReportPage = () => {
         } catch (e) {
           console.error("Error merging additional tasks:", e);
         }
+
         setDevelopmentTaskReport(report.developmentTaskReport || []);
         setResearchLearning(report.researchLearning || []);
         setPerformanceTracker(report.performanceTracker || {
@@ -677,13 +679,18 @@ const DeveloperReportPage = () => {
   const handleSaveReport = async () => {
     try {
       setSaving(true);
+
+      const cleanDailyTaskSummary = dailyTaskSummary.filter(t => (t.activity || '').trim() !== '');
+      const cleanDevelopmentTaskReport = developmentTaskReport.filter(t => (t.project || '').trim() !== '' || (t.activity || '').trim() !== '');
+      const cleanResearchLearning = researchLearning.filter(t => (t.activity || '').trim() !== '' || (t.details || '').trim() !== '');
+
       const payload = {
         userId: selectedUserId,
         dateString: selectedDate,
         basicDetails,
-        dailyTaskSummary,
-        developmentTaskReport,
-        researchLearning,
+        dailyTaskSummary: cleanDailyTaskSummary,
+        developmentTaskReport: cleanDevelopmentTaskReport,
+        researchLearning: cleanResearchLearning,
         performanceTracker,
         toolsUsed,
         challengesFaced,

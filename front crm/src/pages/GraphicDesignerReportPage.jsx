@@ -327,6 +327,7 @@ const GraphicDesignerReportPage = () => {
 
         const savedLog = report.taskLog || [];
         setTaskLog(savedLog);
+
         
         // Auto-fetch and merge new/missing tasks or update existing ones
         try {
@@ -373,6 +374,7 @@ const GraphicDesignerReportPage = () => {
         } catch (e) {
           console.error("Error merging additional tasks:", e);
         }
+
 
         setKeyNumbers(report.keyNumbers || DEFAULT_KEY_NUMBERS);
         setBlockers(report.blockers || []);
@@ -494,13 +496,14 @@ const GraphicDesignerReportPage = () => {
     let na = 0;
     
     taskLog.forEach(t => {
+      if (!(t.taskProjectName || '').trim() && !(t.descriptionDetails || '').trim()) return;
       const s = String(t.status || '').toLowerCase().trim();
       if (s === 'done') done++;
       else if (s === 'pending' || s === 'ongoing' || s === 'onprogress') pending++;
       else if (s === 'na' || s === 'n/a') na++;
     });
 
-    return { done, pending, na, total: taskLog.length };
+    return { done, pending, na, total: done + pending + na };
   };
   const counts = getTaskSummaryCounts();
 
@@ -508,15 +511,20 @@ const GraphicDesignerReportPage = () => {
   const handleSaveReport = async () => {
     try {
       setSaving(true);
+
+      const cleanTaskLog = taskLog.filter(t => (t.taskProjectName || '').trim() !== '' || (t.descriptionDetails || '').trim() !== '');
+      const cleanBlockers = blockers.filter(b => (b.issue || '').trim() !== '' && (b.issue || '').toLowerCase() !== 'none');
+      const cleanTomorrowTasks = tomorrowTasks.filter(t => (t.task || '').trim() !== '' || (t.details || '').trim() !== '' || (t.notes || '').trim() !== '');
+
       const payload = {
-        userId: selectedUserId,
-        dateString: selectedDate,
-        basicDetails,
-        taskLog,
-        keyNumbers,
-        blockers,
-        tomorrowTasks,
-        approval
+         userId: selectedUserId,
+         dateString: selectedDate,
+         basicDetails,
+         taskLog: cleanTaskLog,
+         keyNumbers,
+         blockers: cleanBlockers.length > 0 ? cleanBlockers : [{ issue: 'None', details: '', priority: 'None' }],
+         tomorrowTasks: cleanTomorrowTasks,
+         approval
       };
 
       const res = await fetch(`${API_BASE}/v1/graphic-designer-reports`, {

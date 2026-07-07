@@ -45,9 +45,9 @@ export const fetchCompletedTasks = async (userId, dateStr) => {
       };
 
       const dateMatches = matchesDate(t.date) || matchesDate(t.updatedAt) || matchesDate(t.createdAt) || matchesDate(t.dueDate);
-      const isActive = String(t.status || 'pending').toLowerCase() !== 'done';
+      const isCompleted = String(t.status || 'pending').toLowerCase() === 'done';
       
-      return dateMatches || isActive;
+      return isCompleted && dateMatches;
     });
 
     // Format task title and attributes timezone-safely for reports
