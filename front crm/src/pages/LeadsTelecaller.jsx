@@ -149,7 +149,7 @@ const [activePriority, setActivePriority] = useState('all');
   const hasAccess = useMemo(() => {
     if (!currentUser) return false;
     const roleId = String(currentUser.role_id || currentUser.roleId || currentUser.role || '').toLowerCase().trim();
-    if (roleId === '3') return true;
+    if (['1', '2', '3', 'hr', 'admin'].includes(roleId)) return true;
 
     let departmentId = '';
     if (currentUser.departmentId) {

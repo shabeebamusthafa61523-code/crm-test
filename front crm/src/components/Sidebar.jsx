@@ -64,14 +64,15 @@ const menuItems = [
     path: '/leads-telecaller',
     // allowedRoles: ['3'],
     // allowedDepartments: ['6a26a7d72a56a1f9c49da8a3', '6a27f394558c220a47fff02e'],
-    allowedDesignations: ['6a27939af292348deb7d0495']
+    allowedDesignations: ['6a27939af292348deb7d0495'],
+    allowedRoles: ['1', '2', 'hr', 'admin']
   },
   { 
     icon: TrendingUp, 
     label: 'Lead Counselor', 
     path: '/lead-counselor',
-    allowedDesignations: ['6a2f91472df21dc234018cab'], // allowedRoles: ['1', '2', 'hr', 'admin'],
-    // allowedDepartments: ['6a27f394558c220a47fff02e']
+    allowedDesignations: ['6a2f91472df21dc234018cab'],
+    // allowedRoles: ['1', '2', 'hr', 'admin']
   },
   {
     icon: BarChart3,
@@ -268,7 +269,7 @@ const Sidebar = () => {
           lg:transition-all lg:duration-300 lg:ease-out
           ${isOpen 
             ? 'lg:translate-x-0 lg:opacity-100 lg:scale-100 lg:shadow-2xl lg:shadow-slate-950/20' 
-            : 'lg:-translate-x-[75%] lg:opacity-30 lg:scale-95'
+            : 'lg:-translate-x-[75%] lg:opacity-30 lg:hover:opacity-100 lg:scale-95'
           }
         `}
         initial={{ x: -100, opacity: 0 }}
@@ -309,7 +310,7 @@ const Sidebar = () => {
       {/* Sidebar Toggle Arrow Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="hidden lg:flex absolute -right-3 top-1/2 -translate-y-1/2 z-50 items-center justify-center w-6 h-6 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/60 hover:border-indigo-500 dark:hover:border-lime-500 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-lime-400 rounded-full shadow-md transition-all shrink-0 cursor-pointer active:scale-95 hover:scale-105"
+        className="hidden lg:flex absolute -right-3 top-1/2 -translate-y-1/2 z-50 items-center justify-center w-6 h-6 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/60 hover:border-slate-400 dark:hover:border-slate-500 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-full shadow-md transition-all shrink-0 cursor-pointer active:scale-95 hover:scale-105"
       >
         {isOpen ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
       </button>
@@ -355,19 +356,19 @@ const NavItem = ({ icon, label, to, active, isLogout, onClick }) => {
       ref={itemRef}
       className="relative flex items-center justify-center shrink-0 group select-none"
     >
-      <motion.div
-        className={`relative p-3.5 rounded-2xl transition-all duration-500 flex items-center justify-center 
-          ${active 
-            ? 'text-white bg-indigo-600 shadow-xl shadow-indigo-500/40 ring-1 ring-indigo-200 dark:ring-indigo-950' 
-            : isLogout 
-              ? 'text-rose-500 hover:bg-rose-500/10'
-              : 'text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-lime-400 hover:bg-indigo-500/10 dark:hover:bg-lime-500/10'
-          }`}
-        whileHover={{ scale: 1.05, y: -2 }}
-        whileTap={{ scale: 0.95 }}
-      >
-        {icon}
-      </motion.div>
+     <motion.div
+  className={`relative p-3.5 rounded-2xl transition-all duration-500 flex items-center justify-center 
+    ${active 
+      ? 'text-white bg-indigo-600 shadow-xl shadow-indigo-500/40 ring-1 ring-indigo-200 dark:ring-indigo-950' 
+      : isLogout 
+        ? 'text-rose-500 group-hover:bg-rose-500/10'
+        : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200 group-hover:bg-slate-100 dark:group-hover:bg-slate-800/50'
+    }`}
+  whileHover={active ? {} : { scale: 1.05 }} // Disables the Framer Motion pop effect if active
+  whileTap={active ? {} : { scale: 0.95 }}   // Disables the Framer Motion click effect if active
+>
+  {icon}
+</motion.div>
       
       {/* Portalled Floating Label Badge to make sure it bypasses all overflow constraints */}
       <AnimatePresence>
