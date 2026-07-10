@@ -430,11 +430,9 @@ const AcademicCounselorReportPage = () => {
     try {
       setSaving(true);
 
-      const cleanSalesActivity = salesActivity.filter(t => (t.leadName || '').trim() !== '' || (t.contactNumber || '').trim() !== '' || (t.courseInterested || '').trim() !== '');
+      const cleanSalesActivity = salesActivity.filter(t => (t.activity || '').trim() !== '');
       const cleanDailyOperations = dailyOperations.filter(t => (t.activity || '').trim() !== '');
-      const cleanReportsCollectedDone = reportsCollectedDone.filter(t => (t.reportName || '').trim() !== '');
       const cleanIssuesFeedback = issuesFeedback.filter(t => (t.issue || '').trim() !== '');
-      const cleanFinalHandover = finalHandover.filter(t => (t.description || '').trim() !== '');
 
       const payload = {
         userId: selectedUserId,
@@ -442,10 +440,10 @@ const AcademicCounselorReportPage = () => {
         basicDetails,
         salesActivity: cleanSalesActivity,
         dailyOperations: cleanDailyOperations,
-        reportsCollectedDone: cleanReportsCollectedDone,
+        reportsCollectedDone,
         performanceKpis,
         issuesFeedback: cleanIssuesFeedback,
-        finalHandover: cleanFinalHandover,
+        finalHandover,
         approval
       };
 
