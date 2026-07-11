@@ -14,10 +14,8 @@ const API_BASE = import.meta.env.VITE_API_URL;
 
 // Default items for Task Log
 const DEFAULT_TASK_LOG = [
-  { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'Done', fileLink: '' },
-  { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'N/A', fileLink: '' },
-  { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'N/A', fileLink: '' },
-  { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'N/A', fileLink: '' }
+  { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: '', fileLink: '' },
+  { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: '', fileLink: '' }
 ];
 
 // Default Key Numbers
@@ -29,7 +27,7 @@ const DEFAULT_KEY_NUMBERS = {
 
 // Default Blockers
 const DEFAULT_BLOCKERS = [
-  { issue: 'Laptop complaint', details: 'Laptop got from the repairing shop late', priority: 'High' }
+  { issue: '', details: '', priority: '' }
 ];
 
 // Default Tomorrow's Plan
@@ -388,11 +386,7 @@ const GraphicDesignerReportPage = () => {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
             const mappedTasks = completedTasks.map(t => ({ taskProjectName: t.title, descriptionDetails: 'Auto-fetched', startTime: t.startTime || '', endTime: t.endTime || '', dueDate: t.dueDate || '', status: t.status === 'Done' ? 'Done' : 'Pending', fileLink: '' }));
-            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' });
-            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' });
             setTaskLog(mappedTasks);
-          } else {
-            setTaskLog(prev => [...prev, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' }, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -406,11 +400,7 @@ const GraphicDesignerReportPage = () => {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
             const mappedTasks = completedTasks.map(t => ({ taskProjectName: t.title, descriptionDetails: 'Auto-fetched', startTime: t.startTime || '', endTime: t.endTime || '', dueDate: t.dueDate || '', status: t.status === 'Done' ? 'Done' : 'Pending', fileLink: '' }));
-            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' });
-            mappedTasks.push({ taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' });
             setTaskLog(mappedTasks);
-          } else {
-            setTaskLog(prev => [...prev, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' }, { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'ongoing', fileLink: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -723,7 +713,7 @@ const GraphicDesignerReportPage = () => {
               mergedBlockers.push({
                 issue: b.issue || '',
                 details: b.details || '',
-                priority: b.priority || 'None'
+                priority: b.priority || ''
               });
             }
           });
@@ -1259,14 +1249,14 @@ const GraphicDesignerReportPage = () => {
                 <table className="w-full text-left border-collapse text-sm">
                   <thead>
                     <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
-                      <th className="px-5 py-4 w-[25%]">Task / Project Name</th>
-                      <th className="px-5 py-4 w-[25%]">Due Date</th>
-                      <th className="px-5 py-4 w-[35%]">Description / Details</th>
+                      <th className="px-5 py-4 w-[20%]">Task / Project Name</th>
+                      <th className="px-5 py-4 w-[12%]">Due Date</th>
+                      <th className="px-5 py-4 w-[25%]">Description / Details</th>
                       <th className="px-5 py-4 w-[10%] text-center">Start Time</th>
                       <th className="px-5 py-4 w-[10%] text-center">End Time</th>
                       <th className="px-5 py-4 w-[10%] text-center">Status</th>
-                      <th className="px-5 py-4 w-[15%]">Drive File Link</th>
-                      <th className="px-5 py-4 w-[5%] text-center"></th>
+                      <th className="px-5 py-4 w-[10%]">Drive File Link</th>
+                      <th className="px-5 py-4 w-[3%] text-center"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1282,6 +1272,19 @@ const GraphicDesignerReportPage = () => {
                               setTaskLog(updated);
                             }}
                             placeholder="Design Task..."
+                            className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                          />
+                        </td>
+                        <td className="px-5 py-3">
+                          <input
+                            type="text"
+                            value={item.dueDate}
+                            onChange={(e) => {
+                              const updated = [...taskLog];
+                              updated[index].dueDate = e.target.value;
+                              setTaskLog(updated);
+                            }}
+                            placeholder="DD/MM"
                             className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
                           />
                         </td>
@@ -1564,7 +1567,7 @@ const GraphicDesignerReportPage = () => {
                                 updated[index].issue = e.target.value;
                                 setBlockers(updated);
                               }}
-                              placeholder="Laptop complaint, etc."
+                              placeholder="issue, etc."
                               className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
                             />
                           </td>
@@ -1591,6 +1594,7 @@ const GraphicDesignerReportPage = () => {
                               }}
                               className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-xs focus:outline-none text-slate-700 dark:text-slate-200"
                             >
+                              <option value="">Select Priority</option>
                               <option value="None">None</option>
                               <option value="High">High</option>
                               <option value="Medium">Medium</option>
@@ -2270,7 +2274,7 @@ const GraphicDesignerReportPage = () => {
                                     updated[index].issue = e.target.value;
                                     setMonthlyBlockers(updated);
                                   }}
-                                  placeholder="Laptop complaint, etc."
+                                  placeholder="issue, etc."
                                   className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
                                 />
                               </td>

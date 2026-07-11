@@ -14,20 +14,20 @@ const API_BASE = import.meta.env.VITE_API_URL;
 
 // Defaults from mockup
 const DEFAULT_ACCOUNTING_SUMMARY = [
-  { activity: 'Daily Entries Updated', status: 'Done', dueDate: '', remarks: 'All entries completed' },
-  { activity: 'Cash Book Updated', status: 'Done', dueDate: '', remarks: 'All entries completed' },
-  { activity: 'Bank Transactions Verified', status: 'No', dueDate: '', remarks: 'No more entries added' },
-  { activity: 'Invoices Generated', status: 'No', dueDate: '', remarks: 'No more entries added' },
-  { activity: 'Payment Follow-up Completed', status: 'No', dueDate: '', remarks: 'No more entries added' },
-  { activity: 'Expense Records Updated', status: 'Done', dueDate: '', remarks: 'All entries completed' }
+  { activity: 'Daily Entries Updated', status: '', dueDate: '', remarks: '' },
+  { activity: 'Cash Book Updated', status: '', dueDate: '', remarks: '' },
+  { activity: 'Bank Transactions Verified', status: '', dueDate: '', remarks: '' },
+  { activity: 'Invoices Generated', status: '', dueDate: '', remarks: '' },
+  { activity: 'Payment Follow-up Completed', status: '', dueDate: '', remarks: '' },
+  { activity: 'Expense Records Updated', status: '', dueDate: '', remarks: '' }
 ];
 
 const DEFAULT_TRANSACTIONS = [
-  { transactionType: 'Cash', count: '1', amount: '4,000.00' },
-  { transactionType: 'UPI', count: '0', amount: '-' },
-  { transactionType: 'Bank Transfer', count: '0', amount: '-' },
-  { transactionType: 'Client Payments', count: '0', amount: '-' },
-  { transactionType: 'Vendor Payments', count: '0', amount: '-' }
+  { transactionType: 'Cash', count: '', amount: '' },
+  { transactionType: 'UPI', count: '', amount: '' },
+  { transactionType: 'Bank Transfer', count: '', amount: '' },
+  { transactionType: 'Client Payments', count: '', amount: '' },
+  { transactionType: 'Vendor Payments', count: '', amount: '' }
 ];
 
 const DEFAULT_PAYROLL_STATUS = [
@@ -38,7 +38,7 @@ const DEFAULT_PAYROLL_STATUS = [
 ];
 
 const DEFAULT_EXPENSES = [
-  { category: 'Office', amount: '4,000.00', remarks: 'ADVANCE SALARY' },
+  { category: 'Office', amount: '', remarks: '' },
   { category: 'Marketing', amount: '', remarks: '' },
   { category: 'Utilities', amount: '', remarks: '' },
   { category: 'Software', amount: '', remarks: '' },
@@ -46,11 +46,11 @@ const DEFAULT_EXPENSES = [
 ];
 
 const DEFAULT_COMPLIANCE = [
-  { activity: 'Receipts Uploaded', dueDate: '', status: 'Done' },
-  { activity: 'Ledger Updated', dueDate: '', status: 'No' },
-  { activity: 'Bank Statements Filed', dueDate: '', status: 'No' },
-  { activity: 'Tax Docs Updated', dueDate: '', status: 'No' },
-  { activity: 'Backup Completed', dueDate: '', status: 'No' }
+  { activity: 'Receipts Uploaded', dueDate: '', status: '' },
+  { activity: 'Ledger Updated', dueDate: '', status: '' },
+  { activity: 'Bank Statements Filed', dueDate: '', status: '' },
+  { activity: 'Tax Docs Updated', dueDate: '', status: '' },
+  { activity: 'Backup Completed', dueDate: '', status: '' }
 ];
 
 const DEFAULT_KPI = [
@@ -61,9 +61,9 @@ const DEFAULT_KPI = [
 ];
 
 const DEFAULT_HANDOVER = [
-  { item: 'Entries Updated', status: 'Done' },
-  { item: 'Reports Submitted', status: 'Done' },
-  { item: 'Files Uploaded', status: 'Done' },
+  { item: 'Entries Updated', status: '' },
+  { item: 'Reports Submitted', status: '' },
+  { item: 'Files Uploaded', status: '' },
   { item: 'Pending Payments Shared', status: '' }
 ];
 
@@ -374,11 +374,7 @@ const AccountantReportPage = () => {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
             const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', dueDate: t.dueDate || '', remarks: 'Auto-fetched' }));
-            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
-            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
             setDailyAccountingSummary(mappedTasks);
-          } else {
-            setDailyAccountingSummary(prev => [...prev, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -392,11 +388,7 @@ const AccountantReportPage = () => {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
             const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', dueDate: t.dueDate || '', remarks: 'Auto-fetched' }));
-            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
-            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
             setDailyAccountingSummary(mappedTasks);
-          } else {
-            setDailyAccountingSummary(prev => [...prev, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);

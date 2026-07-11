@@ -14,51 +14,51 @@ const API_BASE = import.meta.env.VITE_API_URL;
 
 // Default data for Operations Manager Shift Report
 const DEFAULT_DAILY_OPERATIONS = [
-  { activity: 'Team Attendance Verified', status: 'Done', dueDate: '', remarks: '' },
-  { activity: 'Daily Sales Targets Assigned', status: 'Done', dueDate: '', remarks: '' },
-  { activity: 'Lead Follow-up Reviewed', status: 'Done', dueDate: '', remarks: '' },
-  { activity: 'Client Meetings Conducted', status: 'NO', dueDate: '', remarks: '' },
-  { activity: 'Academy Coordination Completed', status: 'NA', dueDate: '', remarks: '' },
-  { activity: 'Reports Collected from Team', status: 'Done', dueDate: '', remarks: '' }
+  { activity: 'Team Attendance Verified', status: '', dueDate: '', remarks: '' },
+  { activity: 'Daily Sales Targets Assigned', status: '', dueDate: '', remarks: '' },
+  { activity: 'Lead Follow-up Reviewed', status: '', dueDate: '', remarks: '' },
+  { activity: 'Client Meetings Conducted', status: '', dueDate: '', remarks: '' },
+  { activity: 'Academy Coordination Completed', status: '', dueDate: '', remarks: '' },
+  { activity: 'Reports Collected from Team', status: '', dueDate: '', remarks: '' }
 ];
 
 const DEFAULT_SALES_ACTIVITY = [
-  { activity: 'New Leads Generated from marketing team', count: '1 (Inbound)', digitalMktg: '', web: '', dueDate: '', remarks: '' },
-  { activity: 'Qualified Lead', count: '0', digitalMktg: '', web: '', dueDate: '', remarks: '' },
-  { activity: 'Total Calls Made', count: '41', digitalMktg: '', web: '', dueDate: '', remarks: '' },
-  { activity: 'Total Follow up', count: '40', digitalMktg: '', web: '', dueDate: '', remarks: '' },
-  { activity: 'Hot Leads', count: '1', digitalMktg: '', web: '1', dueDate: '', remarks: '' },
-  { activity: 'Warm Leads', count: '0', digitalMktg: '', web: '', dueDate: '', remarks: '' },
-  { activity: 'Cold Leads', count: '0', digitalMktg: '', web: '', dueDate: '', remarks: '' },
-  { activity: 'Call back Leads', count: '2', digitalMktg: '', web: '', dueDate: '', remarks: '' },
-  { activity: 'RNT Leads (Ring Next Time)', count: '23', digitalMktg: '', web: '', dueDate: '', remarks: '' },
-  { activity: 'Switch Off Leads', count: '1', digitalMktg: '', web: '', dueDate: '', remarks: '' },
-  { activity: 'Wrong leads', count: '14', digitalMktg: '', web: '', dueDate: '', remarks: '' },
-  { activity: 'Total Pending Follow-ups', count: '0', digitalMktg: '', web: '', dueDate: '', remarks: '' },
-  { activity: 'Total Pending Leads', count: '0', digitalMktg: '', web: '', dueDate: '', remarks: '' },
-  { activity: 'Client/Student Meetings Fixed', count: '0', digitalMktg: '', web: '', dueDate: '', remarks: '' },
-  { activity: 'Admissions/Closings Done', count: '0', digitalMktg: '', web: '', dueDate: '', remarks: '' }
+  { activity: 'New Leads Generated from marketing team', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Qualified Lead', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Total Calls Made', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Total Follow up', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Hot Leads', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Warm Leads', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Cold Leads', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Call back Leads', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'RNT Leads (Ring Next Time)', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Switch Off Leads', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Wrong leads', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Total Pending Follow-ups', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Total Pending Leads', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Client/Student Meetings Fixed', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'Admissions/Closings Done', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' }
 ];
 
 const DEFAULT_SALES_PERFORMANCE = [
-  { staffName: 'Sales Executive', taskAssigned: 'Ms. Rajalakshmi KM', leads: '41', closings: '41', status: 'DONE' },
-  { staffName: 'Tele Caller', taskAssigned: 'NIL', leads: '', closings: '', status: '' },
-  { staffName: 'Freelance Exec.', taskAssigned: 'NIL', leads: '', closings: '', status: '' },
-  { staffName: 'Intern/Trainee', taskAssigned: 'NIL', leads: '', closings: '', status: '' }
+  { staffName: 'Sales Executive', taskAssigned: '', leads: '', closings: '', status: '' },
+  { staffName: 'Tele Caller', taskAssigned: '', leads: '', closings: '', status: '' },
+  { staffName: 'Freelance Exec.', taskAssigned: '', leads: '', closings: '', status: '' },
+  { staffName: 'Intern/Trainee', taskAssigned: '', leads: '', closings: '', status: '' }
 ];
 
 const DEFAULT_REVENUE_TRACKING = [
-  { category: 'Sales Revenue', amount: '₹00' },
-  { category: 'Academy Revenue', amount: '₹00' },
-  { category: 'Pending Payments', amount: '₹00' },
-  { category: 'Total Revenue', amount: '₹00' }
+  { category: 'Sales Revenue', amount: '' },
+  { category: 'Academy Revenue', amount: '' },
+  { category: 'Pending Payments', amount: '' },
+  { category: 'Total Revenue', amount: '' }
 ];
 
 const DEFAULT_ACADEMY_STATUS = [
-  { activity: 'Classes Conducted', status: 'No', dueDate: '', remarks: '' },
-  { activity: 'Mentor Coordination', status: 'No', dueDate: '', remarks: '' },
-  { activity: 'Student Follow-up', status: 'No', dueDate: '', remarks: '' },
-  { activity: 'Admissions Follow-up', status: 'No', dueDate: '', remarks: '' }
+  { activity: 'Classes Conducted', status: '', dueDate: '', remarks: '' },
+  { activity: 'Mentor Coordination', status: '', dueDate: '', remarks: '' },
+  { activity: 'Student Follow-up', status: '', dueDate: '', remarks: '' },
+  { activity: 'Admissions Follow-up', status: '', dueDate: '', remarks: '' }
 ];
 
 const OpsReportPage = () => {

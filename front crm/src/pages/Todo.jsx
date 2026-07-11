@@ -821,13 +821,33 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
           <div className="mt-12 flex gap-4">
             {canModify ? (
               <>
-                <button 
-                  onClick={handleDelete}
-                  disabled={isSaving || isDeleting}
-                  className="px-6 bg-red-500/10 border border-red-500/20 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all active:scale-95 disabled:opacity-50"
-                >
-                  {isDeleting ? <Loader2 className="animate-spin" size={18} /> : <Trash2 size={18} />}
-                </button>
+                {isDeleteConfirmOpen ? (
+                  <div className="flex items-center gap-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/50 px-4 py-2 rounded-2xl animate-in slide-in-from-left-2 fade-in duration-200">
+                    <span className="text-xs font-bold text-red-600 dark:text-red-400">Delete task?</span>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => setIsDeleteConfirmOpen(false)}
+                        className="px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        onClick={handleConfirmDelete}
+                        className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-xl shadow-md shadow-red-500/20 transition-colors"
+                      >
+                        Yes
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button 
+                    onClick={handleDelete}
+                    disabled={isSaving || isDeleting}
+                    className="px-6 bg-red-500/10 border border-red-500/20 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    {isDeleting ? <Loader2 className="animate-spin" size={18} /> : <Trash2 size={18} />}
+                  </button>
+                )}
                 <button 
                   onClick={isEditing ? handleUpdate : () => setIsEditing(true)} 
                   disabled={isSaving || isDeleting}
@@ -853,16 +873,6 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
           </div>
         </div>
 
-        <ConfirmModal
-          isOpen={isDeleteConfirmOpen}
-          onClose={() => setIsDeleteConfirmOpen(false)}
-          onConfirm={handleConfirmDelete}
-          title="Purge Asset"
-          message="Are you sure you want to permanently delete this task asset? This action cannot be undone."
-          confirmText="Yes, Purge"
-          cancelText="Cancel"
-          type="danger"
-        />
       </motion.div>
     </motion.div>
   );

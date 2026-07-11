@@ -14,12 +14,12 @@ const API_BASE = import.meta.env.VITE_API_URL;
 
 // Defaults from mockup
 const DEFAULT_TASK_SUMMARY = [
-  { task: 'Instagram post published', detailsNotes: 'Gangeee poster and software development reel', status: 'Done', dueDate: '', startDate: '', endDate: '', remarks: '' },
-  { task: 'Stories uploaded', detailsNotes: 'poll poster of world cup 2026 Grp E,F', status: 'Done', dueDate: '', startDate: '', endDate: '', remarks: '' },
-  { task: 'Client works', detailsNotes: 'ipas post about GST UPDATE 2026 , Bail & Anticipatory Bail', status: 'Done', dueDate: '', startDate: '', endDate: '', remarks: '' },
-  { task: '', detailsNotes: '', status: 'N/A', dueDate: '', startDate: '', endDate: '', remarks: '' },
-  { task: '', detailsNotes: '', status: 'N/A', dueDate: '', startDate: '', endDate: '', remarks: '' },
-  { task: '', detailsNotes: '', status: 'N/A', dueDate: '', startDate: '', endDate: '', remarks: '' }
+  { task: 'Instagram post published', detailsNotes: '', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' },
+  { task: 'Stories uploaded', detailsNotes: '', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' },
+  { task: 'Client works', detailsNotes: '', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' },
+  { task: '', detailsNotes: '', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' },
+  { task: '', detailsNotes: '', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' },
+  { task: '', detailsNotes: '', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' }
 ];
 
 const DEFAULT_KPI_TRACKING = [
@@ -27,8 +27,8 @@ const DEFAULT_KPI_TRACKING = [
   { kpi: 'Ad reach', target: '', achievedToday: '', notes: '' },
   { kpi: 'Ad spend (₹)', target: '', achievedToday: '', notes: '' },
   { kpi: 'Engagement rate (%)', target: '', achievedToday: '', notes: '' },
-  { kpi: 'Posts published', target: '', achievedToday: 'done', notes: '' },
-  { kpi: 'Videos delivered', target: '', achievedToday: 'done', notes: '' }
+  { kpi: 'Posts published', target: '', achievedToday: '', notes: '' },
+  { kpi: 'Videos delivered', target: '', achievedToday: '', notes: '' }
 ];
 
 const DEFAULT_BLOCKERS_PLAN = [

@@ -33,10 +33,10 @@ const DEFAULT_SALES_ACTIVITY = [
 
 // Default items for Daily Operations Summary
 const DEFAULT_DAILY_OPERATIONS = [
-  { activity: 'Team Attendance Verified', status: 'Done', dueDate: '', startDate: '', endDate: '', remarks: '' },
-  { activity: 'Daily Sales Targets Assigned', status: 'Pending', dueDate: '', startDate: '', endDate: '', remarks: '' },
-  { activity: 'Lead Follow-up Reviewed', status: 'Done', dueDate: '', startDate: '', endDate: '', remarks: '' },
-  { activity: 'Client Meetings Conducted', status: 'Done', dueDate: '', startDate: '', endDate: '', remarks: '' }
+  { activity: 'Team Attendance Verified', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' },
+  { activity: 'Daily Sales Targets Assigned', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' },
+  { activity: 'Lead Follow-up Reviewed', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' },
+  { activity: 'Client Meetings Conducted', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' }
 ];
 
 // Default items for Performance KPI
