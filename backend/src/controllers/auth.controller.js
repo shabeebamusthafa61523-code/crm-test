@@ -15,9 +15,11 @@ export const signup = async (req, res) => {
     } = req.body;
 
     // 1. Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const searchConditions = [{ email }];
+    if (phone) searchConditions.push({ phone });
+    const existingUser = await User.findOne({ $or: searchConditions });
     if (existingUser) {
-      return res.status(400).json({ detail: "A user profile with this email already exists." });
+      return res.status(400).json({ detail: "A user profile with this email or phone number already exists." });
     }
 
     // 2. Hash security password
