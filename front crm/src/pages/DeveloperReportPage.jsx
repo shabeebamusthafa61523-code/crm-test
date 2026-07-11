@@ -14,7 +14,7 @@ const API_BASE = import.meta.env.VITE_API_URL;
 
 // Default items for Daily Task Summary (matching the mockup)
 const DEFAULT_TASK_SUMMARY = [
-  { activity: '', status: '', dueDate: '', remarks: '' }
+  { activity: '', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' }
 ];
 
 // Default items for Development Task Report

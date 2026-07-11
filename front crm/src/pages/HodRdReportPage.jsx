@@ -23,21 +23,21 @@ const DEFAULT_TASK_SUMMARY = [
 
 // Default items for Development Work Report
 const DEFAULT_DEV_REPORT = [
-  { project: 'Ayurvedic website', activity: 'Changes in the ui and deployment', status: '', remark: '' },
-  { project: 'CRM', activity: 'Debuging', status: '', remark: '' }
+  { project: '', activity: '', status: '', remark: '' },
+  { project: '', activity: '', status: '', remark: '' }
 ];
 
 // Default items for KPI Tracking
 const DEFAULT_KPI_TRACKING = [
-  { project: 'Ayurvedic website', kpi: 'Changes in ui', target: '', achieved: '' },
-  { project: 'Ayurvedic website', kpi: 'Deployed in Domain and verified', target: '', achieved: '' },
-  { project: 'CRM', kpi: '-Debugging\n-updated todo\n-deployed in test', target: '', achieved: '' }
+  { project: '', kpi: ' ', target: '', achieved: '' },
+  { project: '', kpi: '', target: '', achieved: '' },
+  { project: '', kpi: '', target: '', achieved: '' }
 ];
 
 // Default items for Issues/Support Required
 const DEFAULT_ISSUES = [
-  { issue: 'HR / Admin Manager', priority: '', actionTaken: '' },
-  { issue: 'COO / Executive Director', priority: '', actionTaken: '' }
+  { issue: '', priority: '', actionTaken: '' },
+  { issue: '', priority: '', actionTaken: '' }
 ];
 
 const HodRdReportPage = () => {
@@ -306,9 +306,14 @@ const HodRdReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status === 'In Progress' ? 'ongoing' : (t.status || 'Done'), dueDate: t.dueDate || '', remarks: 'Auto-fetched' }));
-            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
-            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
+            const mappedTasks = completedTasks.map(t => ({
+              activity: t.title,
+              status: t.status === 'In Progress' ? 'ongoing' : (t.status || 'Done'),
+              dueDate: t.dueDate || '',
+              startDate: t.startDate || t.startTime || '',
+              endDate: t.endDate || t.endTime || '',
+              remarks: 'Auto-fetched'
+            }));
             setDailyTaskSummary(mappedTasks);
           } else {
             setDailyTaskSummary(prev => [...prev, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }]);
@@ -325,9 +330,14 @@ const HodRdReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status === 'In Progress' ? 'ongoing' : (t.status || 'Done'), dueDate: t.dueDate || '', remarks: 'Auto-fetched' }));
-            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
-            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
+            const mappedTasks = completedTasks.map(t => ({
+              activity: t.title,
+              status: t.status === 'In Progress' ? 'ongoing' : (t.status || 'Done'),
+              dueDate: t.dueDate || '',
+              startDate: t.startDate || t.startTime || '',
+              endDate: t.endDate || t.endTime || '',
+              remarks: 'Auto-fetched'
+            }));
             setDailyTaskSummary(mappedTasks);
           } else {
             setDailyTaskSummary(prev => [...prev, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }]);
@@ -406,7 +416,7 @@ const HodRdReportPage = () => {
     setRdInnovationReport([{ activity: '', details: '', dueDate: '', status: '' }]);
     setKpiTracking(DEFAULT_KPI_TRACKING);
     setIssuesSupportRequired(DEFAULT_ISSUES);
-    setNextDayPlanning('CRM Continues');
+    setNextDayPlanning('');
     setHodComments('');
     setApproval({
       hodName: 'HOD - R&D /Developer',
@@ -1453,10 +1463,12 @@ const HodRdReportPage = () => {
                 <table className="w-full text-left border-collapse text-sm">
                   <thead>
                     <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
-                      <th className="px-5 py-4 w-[40%]">Activity</th>
-                      <th className="px-5 py-4 w-[40%]">Due Date</th>
-                      <th className="px-5 py-4 w-[20%] text-center">Status</th>
-                      <th className="px-5 py-4 w-[35%]">Remarks</th>
+                      <th className="px-5 py-4 w-[25%]">Activity</th>
+                      <th className="px-5 py-4 w-[15%]">Due Date</th>
+                      <th className="px-5 py-4 w-[15%]">Start Date</th>
+                      <th className="px-5 py-4 w-[15%]">End Date</th>
+                      <th className="px-5 py-4 w-[15%] text-center">Status</th>
+                      <th className="px-5 py-4 w-[10%]">Remarks</th>
                       <th className="px-5 py-4 w-[5%] text-center">Actions</th>
                     </tr>
                   </thead>
@@ -1464,48 +1476,82 @@ const HodRdReportPage = () => {
                     {dailyTaskSummary.map((item, index) => (
                       <tr key={index} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5 transition-colors">
                         <td className="px-5 py-3">
-                          <input
-                            type="text"
-                            value={item.activity}
-                            onChange={(e) => {
-                              const updated = [...dailyTaskSummary];
-                              updated[index].activity = e.target.value;
-                              setDailyTaskSummary(updated);
-                            }}
-                            placeholder="Website Development, CRM Software, etc."
-                            className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
-                          />
-                        </td>
-                        <td className="px-5 py-3 text-center">
-                          <select
-                            value={item.status}
-                            onChange={(e) => {
-                              const updated = [...dailyTaskSummary];
-                              updated[index].status = e.target.value;
-                              setDailyTaskSummary(updated);
-                            }}
-                            className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-xs focus:outline-none text-slate-700 dark:text-slate-200"
-                          >
-                            <option value="Done">Done</option>
-                            <option value="ongoing">ongoing</option>
-                            <option value="onprogress">onprogress</option>
-                            <option value="Pending">Pending</option>
-                            <option value="NA">NA</option>
-                          </select>
-                        </td>
-                        <td className="px-5 py-3">
-                          <input
-                            type="text"
-                            value={item.remarks}
-                            onChange={(e) => {
-                              const updated = [...dailyTaskSummary];
-                              updated[index].remarks = e.target.value;
-                              setDailyTaskSummary(updated);
-                            }}
-                            placeholder="Add comment..."
-                            className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
-                          />
-                        </td>
+                            <input
+                              type="text"
+                              value={item.activity}
+                              onChange={(e) => {
+                                const updated = [...monthlyDailyTaskSummary];
+                                updated[idx].activity = e.target.value;
+                                setMonthlyDailyTaskSummary(updated);
+                              }}
+                              className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                            />
+                          </td>
+                          <td className="px-5 py-3">
+                            <input
+                              type="date"
+                              value={item.dueDate || ''}
+                              onChange={(e) => {
+                                const updated = [...monthlyDailyTaskSummary];
+                                updated[idx].dueDate = e.target.value;
+                                setMonthlyDailyTaskSummary(updated);
+                              }}
+                              className="bg-transparent border-none focus:outline-none text-sm text-slate-700 dark:text-slate-300 w-full"
+                            />
+                          </td>
+                          <td className="px-5 py-3">
+                            <input
+                              type="date"
+                              value={item.startDate || ''}
+                              onChange={(e) => {
+                                const updated = [...monthlyDailyTaskSummary];
+                                updated[idx].startDate = e.target.value;
+                                setMonthlyDailyTaskSummary(updated);
+                              }}
+                              className="bg-transparent border-none focus:outline-none text-sm text-slate-700 dark:text-slate-300 w-full"
+                            />
+                          </td>
+                          <td className="px-5 py-3">
+                            <input
+                              type="date"
+                              value={item.endDate || ''}
+                              onChange={(e) => {
+                                const updated = [...monthlyDailyTaskSummary];
+                                updated[idx].endDate = e.target.value;
+                                setMonthlyDailyTaskSummary(updated);
+                              }}
+                              className="bg-transparent border-none focus:outline-none text-sm text-slate-700 dark:text-slate-300 w-full"
+                            />
+                          </td>
+                          <td className="px-5 py-3 text-center">
+                            <select
+                              value={item.status}
+                              onChange={(e) => {
+                                const updated = [...monthlyDailyTaskSummary];
+                                updated[idx].status = e.target.value;
+                                setMonthlyDailyTaskSummary(updated);
+                              }}
+                              className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-xs focus:outline-none text-slate-700 dark:text-slate-200"
+                            >
+                              <option value="Done">Done</option>
+                              <option value="ongoing">ongoing</option>
+                              <option value="onprogress">onprogress</option>
+                              <option value="Pending">Pending</option>
+                              <option value="NA">NA</option>
+                            </select>
+                          </td>
+                          <td className="px-5 py-3">
+                            <input
+                              type="text"
+                              value={item.remarks}
+                              onChange={(e) => {
+                                const updated = [...monthlyDailyTaskSummary];
+                                updated[idx].remarks = e.target.value;
+                                setMonthlyDailyTaskSummary(updated);
+                              }}
+                              className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                            />
+                          </td>
                         <td className="px-5 py-3 text-center">
                           <button
                             type="button"
@@ -2218,10 +2264,12 @@ const HodRdReportPage = () => {
                       <table className="w-full text-left border-collapse text-sm">
                         <thead>
                           <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase border-b border-slate-100 dark:border-slate-800">
-                            <th className="px-5 py-4 w-[40%]">Activity</th>
-                      <th className="px-5 py-4 w-[40%]">Due Date</th>
-                            <th className="px-5 py-4 w-[20%] text-center">Status</th>
-                            <th className="px-5 py-4 w-[35%]">Remarks</th>
+                            <th className="px-5 py-4 w-[25%]">Activity</th>
+                            <th className="px-5 py-4 w-[15%]">Due Date</th>
+                            <th className="px-5 py-4 w-[15%]">Start Date</th>
+                            <th className="px-5 py-4 w-[15%]">End Date</th>
+                            <th className="px-5 py-4 w-[15%] text-center">Status</th>
+                            <th className="px-5 py-4 w-[10%]">Remarks</th>
                             <th className="px-5 py-4 w-[5%] text-center">Action</th>
                           </tr>
                         </thead>
