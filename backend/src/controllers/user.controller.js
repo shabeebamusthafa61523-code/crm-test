@@ -72,20 +72,50 @@ export const userController = {
       const isReportsPage = referer.includes('employee-reports');
 
       if (isReportsPage && !isPrivileged && loggedInUserId) {
-        // Check departments managed or led by this user
         const Department = (await import('../modules/departments/department.model.js')).default;
-        const ledDepartments = await Department.find({ managerId: loggedInUserId }).select('_id');
+        const UserDepartment = (await import('../models/userDepartment.model.js')).default;
+        
+        const currentUserObj = await User.findById(loggedInUserId).select('departmentId department designation');
+        const designationName = String(currentUserObj?.designation || '').toLowerCase();
+        let userDeptId = req.user?.departmentId || currentUserObj?.departmentId;
+        let userDeptName = currentUserObj?.department;
 
-        if (ledDepartments.length > 0) {
-          const ledDeptIds = ledDepartments.map(d => d._id);
-          
-          // Find users belonging to these departments (either via direct departmentId or UserDepartment model)
-          const UserDepartment = (await import('../models/userDepartment.model.js')).default;
-          const userDepts = await UserDepartment.find({ departmentId: { $in: ledDeptIds } }).select('userId');
+        const isRoleBasedTeamLead = (
+          loggedInUserRole.includes('manager') ||
+          loggedInUserRole.includes('lead') ||
+          loggedInUserRole.includes('hod') ||
+          designationName.includes('manager') ||
+          designationName.includes('lead') ||
+          designationName.includes('hod') ||
+          loggedInUserRole === '2'
+        );
+
+        const ledDepartments = await Department.find({ managerId: loggedInUserId }).select('_id name');
+        let deptIds = ledDepartments.map(d => d._id);
+        let deptNames = ledDepartments.map(d => d.name).filter(Boolean);
+
+        if (isRoleBasedTeamLead && deptIds.length === 0) {
+           if (userDeptId) {
+             deptIds.push(userDeptId);
+             try {
+               const fallbackDept = await Department.findById(userDeptId).select('name');
+               if (fallbackDept && fallbackDept.name) {
+                 deptNames.push(fallbackDept.name);
+               }
+             } catch (err) {}
+           }
+           if (userDeptName) {
+             deptNames.push(userDeptName);
+           }
+        }
+
+        if (deptIds.length > 0 || deptNames.length > 0) {
+          const userDepts = await UserDepartment.find({ departmentId: { $in: deptIds } }).select('userId');
           const userDeptUserIds = userDepts.map(ud => ud.userId).filter(Boolean);
 
           queryFilter.$or = [
-            { departmentId: { $in: ledDeptIds } },
+            { departmentId: { $in: deptIds } },
+            { department: { $in: deptNames, $ne: '' } },
             { _id: { $in: userDeptUserIds } }
           ];
         } else {

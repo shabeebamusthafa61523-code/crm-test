@@ -80,22 +80,60 @@ const isAuthorizedToAccessUser = async (reqUser, targetUserId) => {
     const Department = (await import('../modules/departments/department.model.js')).default;
     const UserDepartment = (await import('../models/userDepartment.model.js')).default;
 
-    const ledDepartments = await Department.find({ managerId: loggedInUserId }).select('_id');
+    const currentUserObj = await User.findById(loggedInUserId).select('departmentId department designation');
+    const designationName = String(currentUserObj?.designation || '').toLowerCase();
+    let userDeptId = reqUser.departmentId || currentUserObj?.departmentId;
+    let userDeptName = currentUserObj?.department;
 
-    if (ledDepartments.length > 0) {
-      const ledDeptIds = ledDepartments.map(d => String(d._id));
+    const isRoleBasedTeamLead = (
+      loggedInUserRole.includes('manager') ||
+      loggedInUserRole.includes('lead') ||
+      loggedInUserRole.includes('hod') ||
+      designationName.includes('manager') ||
+      designationName.includes('lead') ||
+      designationName.includes('hod') ||
+      loggedInUserRole === '2'
+    );
+
+    const ledDepartments = await Department.find({ managerId: loggedInUserId }).select('_id name');
+    let deptIds = ledDepartments.map(d => d._id);
+    let deptNames = ledDepartments.map(d => d.name).filter(Boolean);
+
+    if (isRoleBasedTeamLead && deptIds.length === 0) {
+       if (userDeptId) {
+         deptIds.push(userDeptId);
+         try {
+           const fallbackDept = await Department.findById(userDeptId).select('name');
+           if (fallbackDept && fallbackDept.name) {
+             deptNames.push(fallbackDept.name);
+           }
+         } catch (err) {}
+       }
+       if (userDeptName) {
+         deptNames.push(userDeptName);
+       }
+    }
+
+    if (deptIds.length > 0 || deptNames.length > 0) {
       const targetUser = await User.findById(targetUserId);
       if (!targetUser) return false;
 
-      // Direct check
-      if (targetUser.departmentId && ledDeptIds.includes(String(targetUser.departmentId))) {
+      const ledDeptIdsStr = deptIds.map(d => String(d));
+      
+      // Direct departmentId match
+      if (targetUser.departmentId && ledDeptIdsStr.includes(String(targetUser.departmentId))) {
+        return true;
+      }
+      
+      // Department string match
+      if (targetUser.department && deptNames.includes(targetUser.department)) {
         return true;
       }
 
       // UserDepartment mapping check
       const userDeptMapping = await UserDepartment.findOne({
         userId: targetUserId,
-        departmentId: { $in: ledDeptIds }
+        departmentId: { $in: deptIds }
       });
       if (userDeptMapping) return true;
     }
