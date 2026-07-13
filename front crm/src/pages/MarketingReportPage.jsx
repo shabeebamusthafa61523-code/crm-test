@@ -14,11 +14,6 @@ const API_BASE = import.meta.env.VITE_API_URL;
 
 // Defaults from mockup
 const DEFAULT_TASK_SUMMARY = [
-  { task: 'Instagram post published', detailsNotes: '', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' },
-  { task: 'Stories uploaded', detailsNotes: '', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' },
-  { task: 'Client works', detailsNotes: '', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' },
-  { task: '', detailsNotes: '', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' },
-  { task: '', detailsNotes: '', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' },
   { task: '', detailsNotes: '', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' }
 ];
 

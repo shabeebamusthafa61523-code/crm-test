@@ -19,7 +19,7 @@ const DEFAULT_TASK_SUMMARY = [
 
 // Default items for Development Task Report
 const DEFAULT_DEV_REPORT = [
-  { project: 'CRM', activity: '-Updated Dashboard\n-Debugging\n-Deployed', status: '', remark: '' }
+  { project: '', activity: '', status: '', remark: '' }
 ];
 
 const getMostFrequentValue = (countsObj, fallback) => {
