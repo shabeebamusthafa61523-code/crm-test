@@ -1,5 +1,6 @@
 // ── src/controllers/task.controller.js ──
 import Task from '../models/task.model.js';
+import User from '../models/user.model.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { v2 as cloudinary } from 'cloudinary';
 
@@ -136,14 +137,103 @@ export const createTask = async (req, res, next) => {
 };
 
 /**
- * 2. GET ALL TASKS (Admin only)
+ * 2. GET ALL TASKS (Role-based access)
  * GET /api/v1/tasks/all
  */
 export const getAllTasks = async (req, res, next) => {
   try {
+    const userId = req.user.id || req.user._id;
+    const roleName = String(req.user.role || '').toLowerCase();
+    const roleId = String(req.user.role_id || '');
+    
+    // 1. Check if Admin or HR
+    const isAdminOrHr = (
+      roleName === 'admin' ||
+      roleName === 'hr' ||
+      roleId === '1' ||
+      roleId === '10' ||
+      ['md', 'coo', 'executive_director'].includes(roleName)
+    );
 
+    let query = {};
+    if (isAdminOrHr) {
+      // Admin/HR see all tasks
+      query = {};
+    } else {
+      // Check if they manage any departments
+      const Department = (await import('../modules/departments/department.model.js')).default;
+      const ledDepartments = await Department.find({ managerId: userId }).select('_id name');
+      
+      let deptIds = ledDepartments.map(d => d._id);
+      let deptNames = ledDepartments.map(d => d.name);
+      
+      // Also check role/designation-based team leads
+      const currentUserObj = await User.findById(userId).select('departmentId department designation');
+      let userDeptId = req.user.departmentId || currentUserObj?.departmentId;
+      let userDeptName = currentUserObj?.department;
+      const designationName = String(currentUserObj?.designation || '').toLowerCase();
 
-    const tasks = await Task.find()
+      const isRoleBasedTeamLead = (
+        roleName.includes('manager') ||
+        roleName.includes('lead') ||
+        roleName.includes('hod') ||
+        designationName.includes('manager') ||
+        designationName.includes('lead') ||
+        designationName.includes('hod') ||
+        roleId === '2'
+      );
+
+      if (isRoleBasedTeamLead && deptIds.length === 0) {
+         // Use their own department as fallback
+         if (userDeptId) {
+           deptIds.push(userDeptId);
+           // Fetch the actual department name from DB just to be safe
+           try {
+             const fallbackDept = await Department.findById(userDeptId).select('name');
+             if (fallbackDept && fallbackDept.name) {
+               deptNames.push(fallbackDept.name);
+             }
+           } catch (err) {}
+         }
+         if (userDeptName) {
+           deptNames.push(userDeptName);
+         }
+      }
+
+      if (deptIds.length > 0 || deptNames.length > 0) {
+        // Find users in these departments
+        const UserDepartment = (await import('../models/userDepartment.model.js')).default;
+        const userDepts = await UserDepartment.find({ departmentId: { $in: deptIds } }).select('userId');
+        const userDeptUserIds = userDepts.map(ud => ud.userId).filter(Boolean);
+
+        const usersInDept = await User.find({
+          $or: [
+            { departmentId: { $in: deptIds } },
+            { department: { $in: deptNames, $ne: '' } }
+          ]
+        }).select('_id');
+        const directUserIds = usersInDept.map(u => u._id);
+
+        const allUserIds = [...new Set([...userDeptUserIds.map(String), ...directUserIds.map(String), String(userId)])];
+        
+        query = {
+          $or: [
+            { assigned_to: { $in: allUserIds } },
+            { created_by: userId }
+          ]
+        };
+      } else {
+        // Normal users see only works assigned to them
+        query = { 
+          $or: [
+            { assigned_to: userId },
+            { created_by: userId }
+          ]
+        };
+      }
+    }
+
+    const tasks = await Task.find(query)
       .populate('assigned_to', 'name email')
       .populate('created_by', 'name email')
       .select('-file_public_id')
@@ -163,9 +253,39 @@ export const getAllTasks = async (req, res, next) => {
  */
 export const getUserTasks = async (req, res, next) => {
   try {
-    const role = req.user.role || req.user.role_id;
-    if (role !== 'admin') {
-      throw new AppError('Access denied. Admin access only.', 403);
+    const roleName = String(req.user.role || '').toLowerCase();
+    const roleId = String(req.user.role_id || '');
+    
+    // Check if Admin, HR, or Team Lead
+    const isAdminOrHr = (
+      roleName === 'admin' ||
+      roleName === 'hr' ||
+      roleId === '1' ||
+      roleId === '10' ||
+      ['md', 'coo', 'executive_director'].includes(roleName)
+    );
+
+    const Department = (await import('../modules/departments/department.model.js')).default;
+    const userId = req.user.id || req.user._id;
+    const ledDepartments = await Department.find({ managerId: userId }).select('_id');
+    const isDbTeamLead = ledDepartments.length > 0;
+
+    const UserObj = (await import('../models/user.model.js')).default;
+    const currentUserObj = await UserObj.findById(userId).select('designation');
+    const designationName = String(currentUserObj?.designation || '').toLowerCase();
+
+    const isRoleBasedTeamLead = (
+      roleName.includes('manager') ||
+      roleName.includes('lead') ||
+      roleName.includes('hod') ||
+      designationName.includes('manager') ||
+      designationName.includes('lead') ||
+      designationName.includes('hod') ||
+      roleId === '2'
+    );
+
+    if (!isAdminOrHr && !isRoleBasedTeamLead && !isDbTeamLead) {
+      throw new AppError('Access denied. Insufficient permissions to view user tasks.', 403);
     }
 
     const { user_id } = req.query;
