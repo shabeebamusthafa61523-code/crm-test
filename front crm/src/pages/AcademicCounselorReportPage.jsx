@@ -9,6 +9,7 @@ import { useToast } from '../components/ToastProvider';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { fetchCompletedTasks } from '../utils/taskUtils';
+import SignatureUpload from '../components/SignatureUpload';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -1583,12 +1584,10 @@ const AcademicCounselorReportPage = () => {
                     </div>
                     <div>
                       <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Counselor Initials / Sign</label>
-                      <input
-                        type="text"
+                      <SignatureUpload
                         value={approval.counselorSignature || ''}
-                        onChange={(e) => setApproval({ ...approval, counselorSignature: e.target.value })}
-                        placeholder="Sign..."
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm text-slate-700 dark:text-slate-200"
+                        onChange={(val) => setApproval({ ...approval, counselorSignature: val })}
+                        placeholder="Upload signature"
                       />
                     </div>
                     <div>

@@ -9,6 +9,7 @@ import { useToast } from '../components/ToastProvider';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { fetchCompletedTasks, fetchDelegatedTasks } from '../utils/taskUtils';
+import SignatureUpload from '../components/SignatureUpload';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -1129,9 +1130,26 @@ const HodRdReportPage = () => {
         headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
         styles: { fontSize: 8, cellPadding: 3, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
         columnStyles: {
-          0: { width: 75, fontStyle: 'bold' },
-          1: { width: 55 },
-          2: { width: 52 }
+          0: { cellWidth: 80 },
+          1: { cellWidth: 62 },
+          2: { cellWidth: 40 }
+        },
+        didDrawCell: (data) => {
+          if (data.column.index === 1 && data.cell.section === 'body') {
+            const signatureVal = data.cell.raw;
+            if (signatureVal && String(signatureVal).startsWith('data:image/')) {
+              data.cell.text = '';
+              const x = data.cell.x + 2;
+              const y = data.cell.y + 2;
+              const w = data.cell.width - 4;
+              const h = data.cell.height - 4;
+              try {
+                doc.addImage(signatureVal, 'PNG', x, y, w, h);
+              } catch (e) {
+                console.error("Failed to add signature image to monthly PDF:", e);
+              }
+            }
+          }
         },
         margin: { left: 14, right: 14 }
       });
@@ -2004,12 +2022,10 @@ const HodRdReportPage = () => {
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Signature (Initials)</label>
-                    <input
-                      type="text"
+                    <SignatureUpload
                       value={approval.hodSignature || ''}
-                      onChange={(e) => setApproval({ ...approval, hodSignature: e.target.value })}
-                      placeholder="Type initials..."
-                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                      onChange={(val) => setApproval({ ...approval, hodSignature: val })}
+                      placeholder="Upload HOD signature"
                     />
                   </div>
                   <div>
@@ -2036,12 +2052,10 @@ const HodRdReportPage = () => {
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Signature (Initials)</label>
-                    <input
-                      type="text"
+                    <SignatureUpload
                       value={approval.managerSignature || ''}
-                      onChange={(e) => setApproval({ ...approval, managerSignature: e.target.value })}
-                      placeholder="Type initials..."
-                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                      onChange={(val) => setApproval({ ...approval, managerSignature: val })}
+                      placeholder="Upload manager signature"
                     />
                   </div>
                   <div>
@@ -2697,10 +2711,8 @@ const HodRdReportPage = () => {
                       </div>
                       <div>
                         <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Signature</label>
-                        <input
-                          type="text"
+                        <SignatureUpload
                           value={monthlyApproval.hodSignature || ''}
-                          onChange={(e) => setMonthlyApproval({ ...monthlyApproval, hodSignature: e.target.value })}
                           className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         />
                       </div>
@@ -2728,11 +2740,10 @@ const HodRdReportPage = () => {
                       </div>
                       <div>
                         <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Signature</label>
-                        <input
-                          type="text"
+                        <SignatureUpload
                           value={monthlyApproval.managerSignature || ''}
-                          onChange={(e) => setMonthlyApproval({ ...monthlyApproval, managerSignature: e.target.value })}
-                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          onChange={(val) => setMonthlyApproval({ ...monthlyApproval, managerSignature: val })}
+                          placeholder="Upload manager signature"
                         />
                       </div>
                       <div>

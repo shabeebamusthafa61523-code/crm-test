@@ -114,8 +114,13 @@ app.use((err, req, res, next) => {
     });
   }
 
-  res.status(err.status || 500).json({
+  const statusCode = (typeof err.statusCode === 'number' && err.statusCode >= 100 && err.statusCode < 600)
+    ? err.statusCode
+    : ((typeof err.status === 'number' && err.status >= 100 && err.status < 600) ? err.status : 500);
+
+  res.status(statusCode).json({
     success: false,
+    error: err.message || 'Internal Server Error Fallback',
     message: err.message || 'Internal Server Error Fallback'
   });
 });

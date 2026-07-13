@@ -87,29 +87,43 @@ export const generateReportPDFBuffer = (report, empName, designation) => {
         const rowHeight = 20;
 
         data.forEach(([key, val]) => {
-          checkPageOverflow(rowHeight + 4);
+          const isSignatureImage = String(key).toLowerCase().includes('signature') && String(val || '').startsWith('data:image/');
+          const currentRowHeight = isSignatureImage ? 40 : rowHeight;
+
+          checkPageOverflow(currentRowHeight + 4);
           const currentY = doc.y;
 
           // Key cell background
-          doc.rect(startX, currentY, keyWidth, rowHeight).fill('#f8fafc');
+          doc.rect(startX, currentY, keyWidth, currentRowHeight).fill('#f8fafc');
           
           // Val cell background
-          doc.rect(startX + keyWidth, currentY, valWidth, rowHeight).fill('#ffffff');
+          doc.rect(startX + keyWidth, currentY, valWidth, currentRowHeight).fill('#ffffff');
 
           // Borders
           doc.strokeColor('#e2e8f0').lineWidth(0.5)
-             .rect(startX, currentY, keyWidth, rowHeight).stroke()
-             .rect(startX + keyWidth, currentY, valWidth, rowHeight).stroke();
+             .rect(startX, currentY, keyWidth, currentRowHeight).stroke()
+             .rect(startX + keyWidth, currentY, valWidth, currentRowHeight).stroke();
 
           // Key text
           doc.fillColor(labelColor).font('Helvetica-Bold').fontSize(8)
-             .text(String(key), startX + 8, currentY + 6, { width: keyWidth - 16, align: 'left', lineBreak: false });
+             .text(String(key), startX + 8, currentY + (currentRowHeight / 2) - 4, { width: keyWidth - 16, align: 'left', lineBreak: false });
 
-          // Val text
-          doc.fillColor(textColor).font('Helvetica').fontSize(8)
-             .text(String(val || ''), startX + keyWidth + 8, currentY + 6, { width: valWidth - 16, align: 'left', lineBreak: false });
+          if (isSignatureImage) {
+            try {
+              const base64Data = val.replace(/^data:image\/\w+;base64,/, "");
+              const imgBuffer = Buffer.from(base64Data, 'base64');
+              doc.image(imgBuffer, startX + keyWidth + 8, currentY + 4, { height: currentRowHeight - 8 });
+            } catch (err) {
+              doc.fillColor(textColor).font('Helvetica').fontSize(8)
+                 .text('[Invalid Signature Image]', startX + keyWidth + 8, currentY + (currentRowHeight / 2) - 4, { width: valWidth - 16, align: 'left', lineBreak: false });
+            }
+          } else {
+            // Val text
+            doc.fillColor(textColor).font('Helvetica').fontSize(8)
+               .text(String(val || ''), startX + keyWidth + 8, currentY + (currentRowHeight / 2) - 4, { width: valWidth - 16, align: 'left', lineBreak: false });
+          }
 
-          doc.y = currentY + rowHeight;
+          doc.y = currentY + currentRowHeight;
         });
 
         doc.y += 10;
