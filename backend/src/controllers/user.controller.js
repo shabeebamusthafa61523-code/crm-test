@@ -373,13 +373,13 @@ export const userController = {
         identityNumber
       } = req.body;
 
+      const searchConditions = [{ email }];
+      if (phone) searchConditions.push({ phone });
+      if (employeeId) searchConditions.push({ employeeId });
+
       const existingUser =
         await User.findOne({
-          $or: [
-            { email },
-            { phone },
-            { employeeId }
-          ]
+          $or: searchConditions
         });
 
       if (existingUser) {
@@ -551,6 +551,14 @@ export const userController = {
           throw new AppError('Conflict: Email address is already registered by another account.', 409);
         }
         updateFields.email = email;
+      }
+
+      if (phone && phone !== existingUser.phone) {
+        const phoneTaken = await User.findOne({ phone, _id: { $ne: id } });
+        if (phoneTaken) {
+          throw new AppError('Conflict: Phone number is already registered to another account.', 409);
+        }
+        updateFields.phone = phone;
       }
 
       if (employeeId && employeeId !== existingUser.employeeId) {

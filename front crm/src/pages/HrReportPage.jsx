@@ -194,6 +194,56 @@ const HrReportPage = () => {
   const [monthlyNextDayActionPlan, setMonthlyNextDayActionPlan] = useState('');
   const [monthlyHrAdminComments, setMonthlyHrAdminComments] = useState('');
 
+  const [isWeeklyModalOpen, setIsWeeklyModalOpen] = useState(false);
+
+  // Auto-open weekly modal from URL parameters
+  useEffect(() => {
+    if (selectedUserId) {
+      const queryParams = new URLSearchParams(window.location.search);
+      const savedUser = localStorage.getItem('user');
+      let isUserPrivileged = false;
+      if (savedUser) {
+        try {
+          const userObj = JSON.parse(savedUser);
+          const role = String(userObj.role_id || userObj.role || '').toLowerCase().trim();
+          isUserPrivileged = ['1', '2', 'hr', 'admin'].includes(role);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      
+      if (isUserPrivileged) {
+        if (queryParams.get('generateWeekly') === 'true') {
+          setIsWeeklyModalOpen(true);
+        }
+      }
+    }
+  }, [selectedUserId]);
+  const [weeklyStartDate, setWeeklyStartDate] = useState(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+  const [weeklyEndDate, setWeeklyEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isWeeklyLoading, setIsWeeklyLoading] = useState(false);
+  const [weeklyActiveTab, setWeeklyActiveTab] = useState("recruitment");
+  const [weeklyBasicDetails, setWeeklyBasicDetails] = useState({
+    dateRange: '',
+    employeeName: '',
+    employeeId: '',
+    department: '',
+    designation: '',
+    reportingTo: '',
+    preparedTime: ''
+  });
+  const [weeklyDailyOperations, setWeeklyDailyOperations] = useState([]);
+  const [weeklyEmployeeManagement, setWeeklyEmployeeManagement] = useState([]);
+  const [weeklyRecruitmentReport, setWeeklyRecruitmentReport] = useState([]);
+  const [weeklyAttendanceLeave, setWeeklyAttendanceLeave] = useState([]);
+  const [weeklyAdminOperations, setWeeklyAdminOperations] = useState([]);
+  const [weeklyDocumentationCompliance, setWeeklyDocumentationCompliance] = useState([]);
+  const [weeklyKpiTracking, setWeeklyKpiTracking] = useState([]);
+  const [weeklyIssuesEscalations, setWeeklyIssuesEscalations] = useState([]);
+  const [weeklyFinalShiftHandover, setWeeklyFinalShiftHandover] = useState([]);
+  const [weeklyNextDayActionPlan, setWeeklyNextDayActionPlan] = useState('');
+  const [weeklyHrAdminComments, setWeeklyHrAdminComments] = useState('');
+
   // Get Auth Headers Helper
   const getAuthHeaders = useCallback(() => {
     const rawToken = localStorage.getItem('token');
@@ -538,6 +588,340 @@ const HrReportPage = () => {
     }
   };
 
+  const handleFetchWeeklyData = async () => {
+    if (!selectedUserId) {
+      showToast("Please select a user first.", "error");
+      return;
+    }
+    setIsWeeklyLoading(true);
+    try {
+      const start = new Date(weeklyStartDate);
+      const end = new Date(weeklyEndDate);
+      const dates = [];
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        dates.push(d.toISOString().split('T')[0]);
+      }
+
+      const promises = dates.map(dateStr => 
+        fetch(`${API_BASE}/v1/hr-reports/by-date?userId=${selectedUserId}&dateString=${dateStr}`, {
+          headers: getAuthHeaders()
+        }).then(res => res.json())
+      );
+
+      const results = await Promise.all(promises);
+      const validReports = results
+        .filter(res => res.success && res.data)
+        .map(res => res.data);
+
+      if (validReports.length === 0) {
+        showToast("No daily reports found in the selected date range.", "warning");
+        setIsWeeklyLoading(false);
+        return;
+      }
+
+      const consolidatedRecruitment = JSON.parse(JSON.stringify(DEFAULT_RECRUITMENT));
+      const consolidatedAttendance = JSON.parse(JSON.stringify(DEFAULT_ATTENDANCE_LEAVE));
+      const consolidatedDailyOps = JSON.parse(JSON.stringify(DEFAULT_DAILY_OPERATIONS));
+      const consolidatedAdminOps = JSON.parse(JSON.stringify(DEFAULT_ADMIN_OPERATIONS));
+      const consolidatedCompliance = JSON.parse(JSON.stringify(DEFAULT_DOCUMENTATION));
+      const consolidatedKPI = JSON.parse(JSON.stringify(DEFAULT_KPI_TRACKING));
+      const consolidatedHandover = JSON.parse(JSON.stringify(DEFAULT_HANDOVER));
+
+      consolidatedDailyOps.forEach(row => { row.remarks = ''; row.status = ''; });
+      consolidatedAdminOps.forEach(row => { row.remarks = ''; row.status = ''; });
+      consolidatedCompliance.forEach(row => { row.status = ''; });
+      consolidatedKPI.forEach(row => { row.status = ''; });
+      consolidatedHandover.forEach(row => { row.status = ''; });
+
+      let combinedEmployeeMgmt = [];
+      let combinedIssues = [];
+      let combinedActionPlans = [];
+      let combinedComments = [];
+
+      const recruitMap = {};
+      consolidatedRecruitment.forEach(item => {
+        recruitMap[item.activity] = {
+          isNumeric: !['Pending Hiring'].includes(item.activity),
+          sum: 0,
+          textList: []
+        };
+      });
+
+      const attendanceMap = {};
+      consolidatedAttendance.forEach(item => {
+        attendanceMap[item.category] = {
+          sum: 0
+        };
+      });
+
+      const dailyOpsMap = {};
+      consolidatedDailyOps.forEach(item => {
+        dailyOpsMap[item.activity] = {
+          statuses: [],
+          remarks: []
+        };
+      });
+
+      const adminOpsMap = {};
+      consolidatedAdminOps.forEach(item => {
+        adminOpsMap[item.activity] = {
+          statuses: [],
+          remarks: []
+        };
+      });
+
+      const complianceMap = {};
+      consolidatedCompliance.forEach(item => {
+        complianceMap[item.activity] = {
+          statuses: []
+        };
+      });
+
+      const kpiMap = {};
+      consolidatedKPI.forEach(item => {
+        kpiMap[item.kpi] = {
+          statuses: []
+        };
+      });
+
+      const handoverMap = {};
+      consolidatedHandover.forEach(item => {
+        handoverMap[item.item] = {
+          statuses: []
+        };
+      });
+
+      validReports.forEach(report => {
+        if (Array.isArray(report.recruitmentReport)) {
+          report.recruitmentReport.forEach(item => {
+            const act = item.activity;
+            if (recruitMap[act]) {
+              if (recruitMap[act].isNumeric) {
+                const val = parseFloat(String(item.countStatus || '0').replace(/[^0-9.-]/g, ''));
+                if (!isNaN(val)) {
+                  recruitMap[act].sum += val;
+                }
+              } else {
+                if (item.countStatus && item.countStatus !== 'None' && item.countStatus !== 'NA') {
+                  recruitMap[act].textList.push(item.countStatus);
+                }
+              }
+            }
+          });
+        }
+
+        if (Array.isArray(report.attendanceLeave)) {
+          report.attendanceLeave.forEach(item => {
+            const cat = item.category;
+            if (attendanceMap[cat]) {
+              const val = parseFloat(String(item.count || '0').replace(/[^0-9.-]/g, ''));
+              if (!isNaN(val)) {
+                attendanceMap[cat].sum += val;
+              }
+            }
+          });
+        }
+
+        if (Array.isArray(report.dailyOperations)) {
+          report.dailyOperations.forEach(item => {
+            const act = item.activity;
+            if (dailyOpsMap[act]) {
+              if (item.status && item.status !== 'Done') {
+                dailyOpsMap[act].statuses.push(item.status);
+              }
+              if (item.remarks && item.remarks !== 'NA' && item.remarks !== '') {
+                dailyOpsMap[act].remarks.push(item.remarks);
+              }
+            }
+          });
+        }
+
+        if (Array.isArray(report.adminOperations)) {
+          report.adminOperations.forEach(item => {
+            const act = item.activity;
+            if (adminOpsMap[act]) {
+              if (item.status) {
+                adminOpsMap[act].statuses.push(item.status);
+              }
+              if (item.remarks && item.remarks !== 'NA' && item.remarks !== '') {
+                adminOpsMap[act].remarks.push(item.remarks);
+              }
+            }
+          });
+        }
+
+        if (Array.isArray(report.documentationCompliance)) {
+          report.documentationCompliance.forEach(item => {
+            const act = item.activity;
+            if (complianceMap[act]) {
+              if (item.status) complianceMap[act].statuses.push(item.status);
+            }
+          });
+        }
+
+        if (Array.isArray(report.kpiTracking)) {
+          report.kpiTracking.forEach(item => {
+            const kpi = item.kpi;
+            if (kpiMap[kpi]) {
+              if (item.status) kpiMap[kpi].statuses.push(item.status);
+            }
+          });
+        }
+
+        if (Array.isArray(report.finalShiftHandover)) {
+          report.finalShiftHandover.forEach(item => {
+            const hit = item.item;
+            if (handoverMap[hit]) {
+              if (item.status) handoverMap[hit].statuses.push(item.status);
+            }
+          });
+        }
+
+        if (Array.isArray(report.employeeManagement)) {
+          report.employeeManagement.forEach(emp => {
+            if (emp.employeeName && emp.employeeName !== 'NA' && emp.employeeName !== '') {
+              combinedEmployeeMgmt.push({ ...emp });
+            }
+          });
+        }
+
+        if (Array.isArray(report.issuesEscalations)) {
+          report.issuesEscalations.forEach(iss => {
+            if (iss.issue && iss.issue !== 'NA' && iss.issue !== '') {
+              combinedIssues.push({ ...iss });
+            }
+          });
+        }
+
+        if (report.nextDayActionPlan && report.nextDayActionPlan !== "1.\n\n2.\n\n3.") {
+          combinedActionPlans.push(report.nextDayActionPlan);
+        }
+
+        if (report.hrAdminComments) {
+          combinedComments.push(report.hrAdminComments);
+        }
+      });
+
+      const finalRecruitment = consolidatedRecruitment.map(item => {
+        const entry = recruitMap[item.activity];
+        let val = '';
+        if (entry.isNumeric) {
+          val = String(entry.sum);
+        } else {
+          val = entry.textList.length > 0 ? Array.from(new Set(entry.textList)).join('; ') : 'None';
+        }
+        return {
+          activity: item.activity,
+          countStatus: val
+        };
+      });
+
+      const finalAttendance = consolidatedAttendance.map(item => {
+        const entry = attendanceMap[item.category];
+        return {
+          category: item.category,
+          count: String(entry.sum)
+        };
+      });
+
+      const finalDailyOps = consolidatedDailyOps.map(item => {
+        const entry = dailyOpsMap[item.activity];
+        const statuses = Array.from(new Set(entry.statuses));
+        const remarks = Array.from(new Set(entry.remarks));
+        return {
+          activity: item.activity,
+          status: statuses.length > 0 ? statuses.join('; ') : 'Done',
+          dueDate: '', remarks: remarks.length > 0 ? remarks.join('; ') : 'NA'
+        };
+      });
+
+      const finalAdminOps = consolidatedAdminOps.map(item => {
+        const entry = adminOpsMap[item.activity];
+        const statuses = Array.from(new Set(entry.statuses));
+        const remarks = Array.from(new Set(entry.remarks));
+        return {
+          activity: item.activity,
+          status: statuses.length > 0 ? statuses.join('; ') : 'Completed',
+          dueDate: '', remarks: remarks.length > 0 ? remarks.join('; ') : 'NA'
+        };
+      });
+
+      const finalCompliance = consolidatedCompliance.map(item => {
+        const entry = complianceMap[item.activity];
+        const statuses = Array.from(new Set(entry.statuses));
+        return {
+          activity: item.activity,
+          dueDate: '', status: statuses.length > 0 ? statuses.join('; ') : 'Yes'
+        };
+      });
+
+      const finalKPI = consolidatedKPI.map(item => {
+        const entry = kpiMap[item.kpi];
+        const statuses = Array.from(new Set(entry.statuses));
+        return {
+          kpi: item.kpi,
+          status: statuses.length > 0 ? statuses.join('; ') : 'Yes'
+        };
+      });
+
+      const finalHandover = consolidatedHandover.map(item => {
+        const entry = handoverMap[item.item];
+        const statuses = Array.from(new Set(entry.statuses));
+        return {
+          item: item.item,
+          status: statuses.length > 0 ? statuses.join('; ') : 'Yes'
+        };
+      });
+
+      if (combinedEmployeeMgmt.length === 0) {
+        combinedEmployeeMgmt = [
+          { employeeName: 'NA', department: '', attendance: 'Present / Absent', taskStatus: 'Completed / Pending', remarks: '' }
+        ];
+      }
+      if (combinedIssues.length === 0) {
+        combinedIssues = [
+          { issue: 'NA', priority: 'High / Medium / Low', actionTaken: '__________' }
+        ];
+      }
+
+      const userDetail = isPrivileged && hrStaff.length > 0 
+        ? (hrStaff.find(u => (u._id || u.id) === selectedUserId) || currentUser) 
+        : currentUser;
+
+      const formattedStart = new Date(weeklyStartDate).toLocaleDateString('en-GB').replace(/\//g, '-');
+      const formattedEnd = new Date(weeklyEndDate).toLocaleDateString('en-GB').replace(/\//g, '-');
+
+      setWeeklyBasicDetails({
+        dateRange: `${formattedStart} to ${formattedEnd}`,
+        employeeName: userDetail.name || '',
+        employeeId: userDetail.employeeId || '',
+        department: 'HR / Admin',
+        designation: userDetail.designationName || userDetail.designation || 'HR / Admin Manager',
+        reportingTo: userDetail.reportingManager || 'COO / Executive Director',
+        preparedTime: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+      });
+
+      setWeeklyRecruitmentReport(finalRecruitment);
+      setWeeklyAttendanceLeave(finalAttendance);
+      setWeeklyDailyOperations(finalDailyOps);
+      setWeeklyAdminOperations(finalAdminOps);
+      setWeeklyEmployeeManagement(combinedEmployeeMgmt);
+      setWeeklyDocumentationCompliance(finalCompliance);
+      setWeeklyKpiTracking(finalKPI);
+      setWeeklyIssuesEscalations(combinedIssues);
+      setWeeklyFinalShiftHandover(finalHandover);
+      setWeeklyNextDayActionPlan(combinedActionPlans.length > 0 ? combinedActionPlans.join('\n\n') : '1.\n\n2.\n\n3.');
+      setWeeklyHrAdminComments(combinedComments.length > 0 ? combinedComments.join('\n\n') : '');
+
+      showToast(`Consolidated ${validReports.length} daily report(s) successfully!`, "success");
+    } catch (error) {
+      console.error("Error consolidating data:", error);
+      showToast("Error consolidating data. Please try again.", "error");
+    } finally {
+      setIsWeeklyLoading(false);
+    }
+  };
+
   const handleDownloadMonthlyPDF = async () => {
     try {
       const logoImg = new Image();
@@ -845,6 +1229,316 @@ const HrReportPage = () => {
     } catch (e) {
       console.error(e);
       showToast("Failed to generate Monthly PDF.", "error");
+    }
+  };
+
+  const handleDownloadWeeklyPDF = async () => {
+    try {
+      const logoImg = new Image();
+      logoImg.src = '/logo3.png';
+      await new Promise((resolve) => {
+        logoImg.onload = resolve;
+        logoImg.onerror = resolve;
+      });
+
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true
+      });
+
+      let currentY = 15;
+
+      const drawSectionHeader = (title) => {
+        doc.setFillColor(60, 35, 117);
+        doc.rect(14, currentY, 182, 7, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.setTextColor(255, 255, 255);
+        doc.text(title.toUpperCase(), 17, currentY + 5);
+        currentY += 7;
+      };
+
+      const drawHeader = () => {
+        if (logoImg.complete && logoImg.naturalWidth > 0) {
+          doc.addImage(logoImg, 'PNG', 14, 10, 32, 12);
+        } else {
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(22);
+          doc.setTextColor(132, 204, 22);
+          doc.text("KOD.", 14, 21);
+          
+          doc.setTextColor(60, 35, 117);
+          doc.text("brand", 34, 21);
+        }
+
+        doc.setFontSize(14);
+        doc.setTextColor(60, 35, 117);
+        doc.text("MONTHLY CONSOLIDATED HR REPORT", 110, 16);
+        
+        doc.setFontSize(7.5);
+        doc.setTextColor(0, 0, 0);
+        doc.text("HR / ADMIN MANAGER", 155, 22);
+      };
+
+      // ================= PAGE 1 =================
+      drawHeader();
+      currentY = 27;
+
+      drawSectionHeader("1. BASIC DETAILS");
+      const basicDetailsRows = [
+        ["Date Range", weeklyBasicDetails.dateRange || ''],
+        ["Employee Name:", weeklyBasicDetails.employeeName || ''],
+        ["Employee ID", weeklyBasicDetails.employeeId || ''],
+        ["Department", weeklyBasicDetails.department || ''],
+        ["Designation", weeklyBasicDetails.designation || ''],
+        ["Reporting To", weeklyBasicDetails.reportingTo || ''],
+        ["Prepared Time", weeklyBasicDetails.preparedTime || '']
+      ];
+
+      autoTable(doc, {
+        body: basicDetailsRows,
+        startY: currentY,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 45 },
+          1: { width: 137 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("2. DAILY OPERATIONS SUMMARY (CONSOLIDATED)");
+      const opsHeaders = [["Activity", "Status", "Remarks"]];
+      const opsRows = weeklyDailyOperations.map(o => [o.activity || '', o.status || '', o.remarks || '']);
+
+      autoTable(doc, {
+        head: opsHeaders,
+        body: opsRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 70 },
+          1: { width: 35, halign: 'center' },
+          2: { width: 77 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("3. EMPLOYEE MANAGEMENT REPORT (CONSOLIDATED)");
+      const empHeaders = [["Employee Name", "Department", "Attendance", "Task Status", "Remarks"]];
+      const empRows = weeklyEmployeeManagement.map(e => [e.employeeName || '', e.department || '', e.attendance || '', e.taskStatus || '', e.remarks || '']);
+
+      autoTable(doc, {
+        head: empHeaders,
+        body: empRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 40 },
+          1: { width: 35 },
+          2: { width: 35, halign: 'center' },
+          3: { width: 35, halign: 'center' },
+          4: { width: 37 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("4. RECRUITMENT REPORT (CONSOLIDATED)");
+      const recruitHeaders = [["Recruitment Activity", "Count / Status"]];
+      const recruitRows = weeklyRecruitmentReport.map(r => [r.activity || '', r.countStatus || '']);
+
+      autoTable(doc, {
+        head: recruitHeaders,
+        body: recruitRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 110 },
+          1: { width: 72, halign: 'center' }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      // ================= PAGE 2 =================
+      doc.addPage();
+      currentY = 15;
+      drawHeader();
+      currentY = 27;
+
+      drawSectionHeader("5. ATTENDANCE & LEAVE REPORT (CONSOLIDATED)");
+      const leaveHeaders = [["Category", "Count"]];
+      const leaveRows = weeklyAttendanceLeave.map(l => [l.category || '', l.count || '']);
+
+      autoTable(doc, {
+        head: leaveHeaders,
+        body: leaveRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2.2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 110 },
+          1: { width: 72, halign: 'center' }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("6. ADMIN OPERATIONS REPORT (CONSOLIDATED)");
+      const adminOpsHeaders = [["Activity", "Status", "Remarks"]];
+      const adminOpsRows = weeklyAdminOperations.map(a => [a.activity || '', a.status || '', a.remarks || '']);
+
+      autoTable(doc, {
+        head: adminOpsHeaders,
+        body: adminOpsRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 70 },
+          1: { width: 35, halign: 'center' },
+          2: { width: 77 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("7. DOCUMENTATION & COMPLIANCE (CONSOLIDATED)");
+      const complianceHeaders = [["Activity", "Status"]];
+      const complianceRows = weeklyDocumentationCompliance.map(d => [d.activity || '', d.status || '']);
+
+      autoTable(doc, {
+        head: complianceHeaders,
+        body: complianceRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2.2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 110 },
+          1: { width: 72, halign: 'center' }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("8. KPI TRACKING (CONSOLIDATED)");
+      const kpiHeaders = [["KPI", "Status"]];
+      const kpiRows = weeklyKpiTracking.map(k => [k.kpi || '', k.status || '']);
+
+      autoTable(doc, {
+        head: kpiHeaders,
+        body: kpiRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2.2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 110 },
+          1: { width: 72, halign: 'center' }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("9. ISSUES / ESCALATIONS (CONSOLIDATED)");
+      const issueHeaders = [["Issue", "Priority", "Action Taken"]];
+      const issueRows = weeklyIssuesEscalations.map(i => [i.issue || '', i.priority || '', i.actionTaken || '']);
+
+      autoTable(doc, {
+        head: issueHeaders,
+        body: issueRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 60 },
+          1: { width: 45, halign: 'center' },
+          2: { width: 77 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("10. NEXT DAY ACTION PLAN (CONSOLIDATED)");
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(0, 0, 0);
+      const planLines = doc.splitTextToSize(weeklyNextDayActionPlan || '', 178);
+      doc.text(planLines, 16, currentY + 5);
+      const planBoxHeight = Math.max(16, planLines.length * 4.2 + 6);
+      doc.setDrawColor(180, 180, 180);
+      doc.rect(14, currentY, 182, planBoxHeight);
+
+      // ================= PAGE 3 =================
+      doc.addPage();
+      currentY = 15;
+      drawHeader();
+      currentY = 27;
+
+      drawSectionHeader("11. FINAL SHIFT HANDOVER (CONSOLIDATED)");
+      const handoverHeaders = [["Handover Item", "Status"]];
+      const handoverRows = weeklyFinalShiftHandover.map(h => [h.item || '', h.status || '']);
+
+      autoTable(doc, {
+        head: handoverHeaders,
+        body: handoverRows,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2.5, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { width: 110 },
+          1: { width: 72, halign: 'center' }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("12. HR / ADMIN COMMENTS (CONSOLIDATED)");
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(0, 0, 0);
+      const commentsLines = doc.splitTextToSize(weeklyHrAdminComments || '', 178);
+      doc.text(commentsLines, 16, currentY + 5);
+      const commentsBoxHeight = Math.max(16, commentsLines.length * 4.2 + 6);
+      doc.setDrawColor(180, 180, 180);
+      doc.rect(14, currentY, 182, commentsBoxHeight);
+      const pdfBlob = doc.output('blob');
+      const filename = `HR_Weekly_Consolidated_Report_${weeklyBasicDetails.employeeName || 'HR'}_${weeklyStartDate}_to_${weeklyEndDate}.pdf`;
+      try {
+        await uploadCompiledPDFReport(selectedUserId, `${weeklyStartDate}_to_${weeklyEndDate}`, pdfBlob, filename, 'hr', 'weekly');
+        console.log("Weekly PDF saved successfully");
+      } catch (uploadErr) {
+        console.error("Failed to upload weekly PDF:", uploadErr);
+      }
+      doc.save(filename);
+      showToast("Weekly PDF report downloaded successfully!", "success");
+    } catch (e) {
+      console.error(e);
+      showToast("Failed to generate Weekly PDF.", "error");
     }
   };
 
@@ -1292,6 +1986,14 @@ const HrReportPage = () => {
 
               <div className="flex items-center gap-3">
                 <button
+                  type="button"
+                  onClick={() => setIsWeeklyModalOpen(true)}
+                  className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-semibold text-sm transition-all"
+                >
+                  <Calendar size={16} />
+                  Weekly Report
+                </button>
+              <button
                   type="button"
                   onClick={() => setIsMonthlyModalOpen(true)}
                   className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-semibold text-sm transition-all"
@@ -2024,6 +2726,14 @@ const HrReportPage = () => {
             <div className="flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800 pt-5">
               <button
                 type="button"
+                onClick={() => setIsWeeklyModalOpen(true)}
+                className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-semibold text-sm transition-all"
+              >
+                <Calendar size={16} />
+                Weekly Report
+              </button>
+              <button
+                type="button"
                 onClick={() => setIsMonthlyModalOpen(true)}
                 className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-semibold text-sm transition-all"
               >
@@ -2691,6 +3401,643 @@ const HrReportPage = () => {
                   >
                     <Download size={16} />
                     Download Monthly PDF
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {isWeeklyModalOpen && (
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex justify-center items-start pt-10 px-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: -20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -20 }}
+              className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-5xl shadow-2xl border border-slate-200 dark:border-slate-850 overflow-hidden mb-10 text-slate-700 dark:text-slate-200"
+            >
+              {/* Modal Header */}
+              <div className="px-6 py-5 border-b border-slate-150 dark:border-slate-850 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Calendar className="text-indigo-600 dark:text-indigo-400" size={20} />
+                    Weekly Report Consolidation
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Consolidate, edit, and download HR operations reports for a specific date range.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsWeeklyModalOpen(false)}
+                  className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 dark:text-slate-500 transition-colors"
+                >
+                  <span className="sr-only">Close</span>
+                  &times;
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6 space-y-6">
+                {/* Date Selection Bar */}
+                <div className="flex flex-wrap items-end gap-4 bg-slate-50 dark:bg-slate-950/40 p-4 rounded-2xl border border-slate-100 dark:border-slate-850">
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      value={weeklyStartDate}
+                      onChange={(e) => setWeeklyStartDate(e.target.value)}
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">
+                      End Date
+                    </label>
+                    <input
+                      type="date"
+                      value={weeklyEndDate}
+                      onChange={(e) => setWeeklyEndDate(e.target.value)}
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleFetchWeeklyData}
+                    disabled={isWeeklyLoading}
+                    className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold text-sm rounded-xl transition-all shadow-md flex items-center gap-2"
+                  >
+                    {isWeeklyLoading ? (
+                      <Loader2 className="animate-spin" size={16} />
+                    ) : (
+                      <CheckCircle size={16} />
+                    )}
+                    Fetch & Consolidate
+                  </button>
+                </div>
+
+                {weeklyBasicDetails.dateRange ? (
+                  <div className="space-y-6">
+                    {/* Interactive Section Tabs */}
+                    <div className="flex flex-wrap gap-1 border-b border-slate-100 dark:border-slate-850 pb-px">
+                      {[
+                        { id: 'recruitment', label: 'Recruitment' },
+                        { id: 'attendance', label: 'Attendance & Leave' },
+                        { id: 'operations', label: 'Daily & Admin Ops' },
+                        { id: 'employees', label: 'Employee Mgmt' },
+                        { id: 'compliance', label: 'Compliance & KPIs' },
+                        { id: 'issues', label: 'Issues & Plans' },
+                      ].map((tab) => (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setWeeklyActiveTab(tab.id)}
+                          className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${
+                            weeklyActiveTab === tab.id
+                              ? 'border-indigo-600 text-indigo-600 dark:border-lime-400 dark:text-lime-400'
+                              : 'border-transparent text-slate-450 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                          }`}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Tab Panels */}
+                    <div className="min-h-[350px]">
+                      {/* 1. RECRUITMENT */}
+                      {weeklyActiveTab === 'recruitment' && (
+                        <div className="space-y-4">
+                          <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                            Recruitment Report
+                          </h4>
+                          <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                            <table className="w-full text-left border-collapse text-sm">
+                              <thead>
+                                <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                                  <th className="px-4 py-3">Recruitment Activity</th>
+                                  <th className="px-4 py-3 w-48">Count / Status</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                                {weeklyRecruitmentReport.map((row, i) => (
+                                  <tr key={i}>
+                                    <td className="px-4 py-3 font-semibold text-xs text-slate-500">{row.activity}</td>
+                                    <td className="px-4 py-3">
+                                      <input
+                                        type="text"
+                                        value={row.countStatus}
+                                        onChange={(e) => {
+                                          const newArr = [...weeklyRecruitmentReport];
+                                          newArr[i].countStatus = e.target.value;
+                                          setWeeklyRecruitmentReport(newArr);
+                                        }}
+                                        className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                      />
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 2. ATTENDANCE & LEAVE */}
+                      {weeklyActiveTab === 'attendance' && (
+                        <div className="space-y-4">
+                          <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                            Attendance & Leave Report
+                          </h4>
+                          <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                            <table className="w-full text-left border-collapse text-sm">
+                              <thead>
+                                <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                                  <th className="px-4 py-3">Category</th>
+                                  <th className="px-4 py-3 w-48">Count</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                                {weeklyAttendanceLeave.map((row, i) => (
+                                  <tr key={i}>
+                                    <td className="px-4 py-3 font-semibold text-xs text-slate-500">{row.category}</td>
+                                    <td className="px-4 py-3">
+                                      <input
+                                        type="text"
+                                        value={row.count}
+                                        onChange={(e) => {
+                                          const newArr = [...weeklyAttendanceLeave];
+                                          newArr[i].count = e.target.value;
+                                          setWeeklyAttendanceLeave(newArr);
+                                        }}
+                                        className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                      />
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 3. DAILY & ADMIN OPS */}
+                      {weeklyActiveTab === 'operations' && (
+                        <div className="space-y-6">
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                              Daily Operations Summary
+                            </h4>
+                            <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                              <table className="w-full text-left border-collapse text-sm">
+                                <thead>
+                                  <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                                    <th className="px-4 py-3">Activity</th>
+                      <th className="px-4 py-3">Due Date</th>
+                                    <th className="px-4 py-3 w-40">Status</th>
+                                    <th className="px-4 py-3">Remarks</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                                  {weeklyDailyOperations.map((row, i) => (
+                                    <tr key={i}>
+                                      <td className="px-4 py-3 font-semibold text-xs text-slate-500">{row.activity}</td>
+                                      <td className="px-4 py-3">
+                                        <input
+                                          type="text"
+                                          value={row.status}
+                                          onChange={(e) => {
+                                            const newArr = [...weeklyDailyOperations];
+                                            newArr[i].status = e.target.value;
+                                            setWeeklyDailyOperations(newArr);
+                                          }}
+                                          className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                        />
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        <input
+                                          type="text"
+                                          value={row.remarks}
+                                          onChange={(e) => {
+                                            const newArr = [...weeklyDailyOperations];
+                                            newArr[i].remarks = e.target.value;
+                                            setWeeklyDailyOperations(newArr);
+                                          }}
+                                          className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                        />
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                              Admin Operations Report
+                            </h4>
+                            <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                              <table className="w-full text-left border-collapse text-sm">
+                                <thead>
+                                  <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                                    <th className="px-4 py-3">Activity</th>
+                      <th className="px-4 py-3">Due Date</th>
+                                    <th className="px-4 py-3 w-40">Status</th>
+                                    <th className="px-4 py-3">Remarks</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                                  {weeklyAdminOperations.map((row, i) => (
+                                    <tr key={i}>
+                                      <td className="px-4 py-3 font-semibold text-xs text-slate-500">{row.activity}</td>
+                                      <td className="px-4 py-3">
+                                        <input
+                                          type="text"
+                                          value={row.status}
+                                          onChange={(e) => {
+                                            const newArr = [...weeklyAdminOperations];
+                                            newArr[i].status = e.target.value;
+                                            setWeeklyAdminOperations(newArr);
+                                          }}
+                                          className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                        />
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        <input
+                                          type="text"
+                                          value={row.remarks}
+                                          onChange={(e) => {
+                                            const newArr = [...weeklyAdminOperations];
+                                            newArr[i].remarks = e.target.value;
+                                            setWeeklyAdminOperations(newArr);
+                                          }}
+                                          className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                        />
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 4. EMPLOYEE MGMT */}
+                      {weeklyActiveTab === 'employees' && (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                              Employee Management Report
+                            </h4>
+                            <button
+                              type="button"
+                              onClick={() => setWeeklyEmployeeManagement([...weeklyEmployeeManagement, { employeeName: '', department: '', attendance: '', taskStatus: '', remarks: '' }])}
+                              className="flex items-center gap-1 text-xs text-indigo-600 dark:text-lime-400 font-bold hover:underline"
+                            >
+                              <Plus size={14} /> Add Row
+                            </button>
+                          </div>
+                          <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                            <table className="w-full text-left border-collapse text-sm">
+                              <thead>
+                                <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                                  <th className="px-4 py-3">Employee Name</th>
+                                  <th className="px-4 py-3">Department</th>
+                                  <th className="px-4 py-3 w-40">Attendance</th>
+                                  <th className="px-4 py-3 w-44">Task Status</th>
+                                  <th className="px-4 py-3">Remarks</th>
+                                  <th className="px-4 py-3 w-10"></th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                                {weeklyEmployeeManagement.map((row, i) => (
+                                  <tr key={i}>
+                                    <td className="px-4 py-2">
+                                      <input
+                                        type="text"
+                                        value={row.employeeName}
+                                        onChange={(e) => {
+                                          const newArr = [...weeklyEmployeeManagement];
+                                          newArr[i].employeeName = e.target.value;
+                                          setWeeklyEmployeeManagement(newArr);
+                                        }}
+                                        className="w-full bg-transparent border-none focus:outline-none p-0 text-sm font-semibold text-slate-700 dark:text-slate-200"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-2">
+                                      <input
+                                        type="text"
+                                        value={row.department}
+                                        onChange={(e) => {
+                                          const newArr = [...weeklyEmployeeManagement];
+                                          newArr[i].department = e.target.value;
+                                          setWeeklyEmployeeManagement(newArr);
+                                        }}
+                                        className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-2">
+                                      <input
+                                        type="text"
+                                        value={row.attendance}
+                                        onChange={(e) => {
+                                          const newArr = [...weeklyEmployeeManagement];
+                                          newArr[i].attendance = e.target.value;
+                                          setWeeklyEmployeeManagement(newArr);
+                                        }}
+                                        className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-2">
+                                      <input
+                                        type="text"
+                                        value={row.taskStatus}
+                                        onChange={(e) => {
+                                          const newArr = [...weeklyEmployeeManagement];
+                                          newArr[i].taskStatus = e.target.value;
+                                          setWeeklyEmployeeManagement(newArr);
+                                        }}
+                                        className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-2">
+                                      <input
+                                        type="text"
+                                        value={row.remarks}
+                                        onChange={(e) => {
+                                          const newArr = [...weeklyEmployeeManagement];
+                                          newArr[i].remarks = e.target.value;
+                                          setWeeklyEmployeeManagement(newArr);
+                                        }}
+                                        className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => setWeeklyEmployeeManagement(weeklyEmployeeManagement.filter((_, idx) => idx !== i))}
+                                        className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg"
+                                      >
+                                        <Trash2 size={14} />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 5. COMPLIANCE & KPIS */}
+                      {weeklyActiveTab === 'compliance' && (
+                        <div className="space-y-6">
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                              Documentation & Compliance
+                            </h4>
+                            <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                              <table className="w-full text-left border-collapse text-sm">
+                                <thead>
+                                  <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                                    <th className="px-4 py-3">Activity</th>
+                      <th className="px-4 py-3">Due Date</th>
+                                    <th className="px-4 py-3 w-48">Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                                  {weeklyDocumentationCompliance.map((row, i) => (
+                                    <tr key={i}>
+                                      <td className="px-4 py-3 font-semibold text-xs text-slate-500">{row.activity}</td>
+                                      <td className="px-4 py-3">
+                                        <input
+                                          type="text"
+                                          value={row.status}
+                                          onChange={(e) => {
+                                            const newArr = [...weeklyDocumentationCompliance];
+                                            newArr[i].status = e.target.value;
+                                            setWeeklyDocumentationCompliance(newArr);
+                                          }}
+                                          className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                        />
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                              KPI Tracking
+                            </h4>
+                            <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                              <table className="w-full text-left border-collapse text-sm">
+                                <thead>
+                                  <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                                    <th className="px-4 py-3">KPI</th>
+                                    <th className="px-4 py-3 w-48">Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                                  {weeklyKpiTracking.map((row, i) => (
+                                    <tr key={i}>
+                                      <td className="px-4 py-3 font-semibold text-xs text-slate-500">{row.kpi}</td>
+                                      <td className="px-4 py-3">
+                                        <input
+                                          type="text"
+                                          value={row.status}
+                                          onChange={(e) => {
+                                            const newArr = [...weeklyKpiTracking];
+                                            newArr[i].status = e.target.value;
+                                            setWeeklyKpiTracking(newArr);
+                                          }}
+                                          className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                        />
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                              Final Shift Handover
+                            </h4>
+                            <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                              <table className="w-full text-left border-collapse text-sm">
+                                <thead>
+                                  <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                                    <th className="px-4 py-3">Handover Item</th>
+                                    <th className="px-4 py-3 w-48">Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                                  {weeklyFinalShiftHandover.map((row, i) => (
+                                    <tr key={i}>
+                                      <td className="px-4 py-3 font-semibold text-xs text-slate-500">{row.item}</td>
+                                      <td className="px-4 py-3">
+                                        <input
+                                          type="text"
+                                          value={row.status}
+                                          onChange={(e) => {
+                                            const newArr = [...weeklyFinalShiftHandover];
+                                            newArr[i].status = e.target.value;
+                                            setWeeklyFinalShiftHandover(newArr);
+                                          }}
+                                          className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                        />
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 6. ISSUES & PLANS */}
+                      {weeklyActiveTab === 'issues' && (
+                        <div className="space-y-6">
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                Issues / Escalations
+                              </h4>
+                              <button
+                                type="button"
+                                onClick={() => setWeeklyIssuesEscalations([...weeklyIssuesEscalations, { issue: '', priority: 'High / Medium / Low', actionTaken: '' }])}
+                                className="flex items-center gap-1 text-xs text-indigo-600 dark:text-lime-400 font-bold hover:underline"
+                              >
+                                <Plus size={14} /> Add Issue
+                              </button>
+                            </div>
+                            <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                              <table className="w-full text-left border-collapse text-sm">
+                                <thead>
+                                  <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                                    <th className="px-4 py-3">Issue</th>
+                                    <th className="px-4 py-3 w-44">Priority</th>
+                                    <th className="px-4 py-3">Action Taken</th>
+                                    <th className="px-4 py-3 w-10"></th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                                  {weeklyIssuesEscalations.map((row, i) => (
+                                    <tr key={i}>
+                                      <td className="px-4 py-2">
+                                        <input
+                                          type="text"
+                                          value={row.issue}
+                                          onChange={(e) => {
+                                            const newArr = [...weeklyIssuesEscalations];
+                                            newArr[i].issue = e.target.value;
+                                            setWeeklyIssuesEscalations(newArr);
+                                          }}
+                                          className="w-full bg-transparent border-none focus:outline-none p-0 text-sm font-semibold text-slate-700 dark:text-slate-200"
+                                        />
+                                      </td>
+                                      <td className="px-4 py-2">
+                                        <select
+                                          value={row.priority}
+                                          onChange={(e) => {
+                                            const newArr = [...weeklyIssuesEscalations];
+                                            newArr[i].priority = e.target.value;
+                                            setWeeklyIssuesEscalations(newArr);
+                                          }}
+                                          className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-2 py-1.5 text-xs focus:outline-none text-slate-700 dark:text-slate-200"
+                                        >
+                                          <option value="High / Medium / Low">High / Medium / Low</option>
+                                          <option value="High">High</option>
+                                          <option value="Medium">Medium</option>
+                                          <option value="Low">Low</option>
+                                        </select>
+                                      </td>
+                                      <td className="px-4 py-2">
+                                        <input
+                                          type="text"
+                                          value={row.actionTaken}
+                                          onChange={(e) => {
+                                            const newArr = [...weeklyIssuesEscalations];
+                                            newArr[i].actionTaken = e.target.value;
+                                            setWeeklyIssuesEscalations(newArr);
+                                          }}
+                                          className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                        />
+                                      </td>
+                                      <td className="px-4 py-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => setWeeklyIssuesEscalations(weeklyIssuesEscalations.filter((_, idx) => idx !== i))}
+                                          className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg"
+                                        >
+                                          <Trash2 size={14} />
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                              Next Day Action Plan (Consolidated)
+                            </h4>
+                            <textarea
+                              value={weeklyNextDayActionPlan}
+                              onChange={(e) => setWeeklyNextDayActionPlan(e.target.value)}
+                              className="w-full bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-850 rounded-2xl p-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 min-h-[120px] text-slate-700 dark:text-slate-200"
+                            />
+                          </div>
+
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                              HR / Admin Comments (Consolidated)
+                            </h4>
+                            <textarea
+                              value={weeklyHrAdminComments}
+                              onChange={(e) => setWeeklyHrAdminComments(e.target.value)}
+                              className="w-full bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-850 rounded-2xl p-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 min-h-[120px] text-slate-700 dark:text-slate-200"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-slate-450 dark:text-slate-500 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                    Select a date range and click "Fetch & Consolidate" to begin editing.
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-6 py-4 bg-slate-50 dark:bg-slate-950/40 border-t border-slate-150 dark:border-slate-850 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsWeeklyModalOpen(false)}
+                  className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-350 font-semibold text-sm hover:bg-slate-100 dark:hover:bg-slate-900 transition-all"
+                >
+                  Cancel
+                </button>
+                {weeklyBasicDetails.dateRange && (
+                  <button
+                    type="button"
+                    onClick={handleDownloadWeeklyPDF}
+                    className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-all shadow-md shadow-indigo-600/10"
+                  >
+                    <Download size={16} />
+                    Download Weekly PDF
                   </button>
                 )}
               </div>
