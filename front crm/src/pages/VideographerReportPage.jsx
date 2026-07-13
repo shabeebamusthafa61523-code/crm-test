@@ -14,7 +14,7 @@ const API_BASE = import.meta.env.VITE_API_URL;
 
 // Default items for Task Log
 const DEFAULT_TASK_LOG = [
-  { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: 'Pending', fileLink: '' }
+  { taskProjectName: '', descriptionDetails: '', startTime: '', endTime: '', dueDate: '', status: '', fileLink: '' }
 ];
 
 // Default Key Numbers
@@ -26,7 +26,7 @@ const DEFAULT_KEY_NUMBERS = {
 
 // Default Blockers
 const DEFAULT_BLOCKERS = [
-  { issue: 'None', details: '', priority: 'None' }
+  { issue: 'None', details: '', priority: '' }
 ];
 
 // Default Tomorrow's Plan

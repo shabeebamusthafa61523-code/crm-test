@@ -14,12 +14,12 @@ const API_BASE = import.meta.env.VITE_API_URL;
 
 // Default items for Daily Task Summary (matching the mockup)
 const DEFAULT_TASK_SUMMARY = [
-  { activity: '', status: 'Pending', dueDate: '', remarks: '' }
+  { activity: '', status: '', dueDate: '', remarks: '' }
 ];
 
 // Default items for Development Task Report
 const DEFAULT_DEV_REPORT = [
-  { project: 'CRM', activity: '-Updated Dashboard\n-Debugging\n-Deployed', status: 'ongoing', remark: '' }
+  { project: 'CRM', activity: '-Updated Dashboard\n-Debugging\n-Deployed', status: '', remark: '' }
 ];
 
 const getMostFrequentValue = (countsObj, fallback) => {

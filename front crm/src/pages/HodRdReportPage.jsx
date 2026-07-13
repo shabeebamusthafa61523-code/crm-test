@@ -14,24 +14,24 @@ const API_BASE = import.meta.env.VITE_API_URL;
 
 // Default items for Daily Task Summary
 const DEFAULT_TASK_SUMMARY = [
-  { activity: 'Website Development', status: 'Done', dueDate: '', remarks: '' },
-  { activity: 'CRM Software', status: 'Done', dueDate: '', remarks: '' },
-  { activity: 'Testing/Bug Fixing', status: 'Done', dueDate: '', remarks: '' },
-  { activity: 'UI/UX Imprvments', status: 'NA', dueDate: '', remarks: '' },
-  { activity: 'Client Revision Work', status: 'NA', dueDate: '', remarks: '' }
+  { activity: 'Website Development', status: '', dueDate: '', remarks: '' },
+  { activity: 'CRM Software', status: '', dueDate: '', remarks: '' },
+  { activity: 'Testing/Bug Fixing', status: '', dueDate: '', remarks: '' },
+  { activity: 'UI/UX Imprvments', status: '', dueDate: '', remarks: '' },
+  { activity: 'Client Revision Work', status: '', dueDate: '', remarks: '' }
 ];
 
 // Default items for Development Work Report
 const DEFAULT_DEV_REPORT = [
-  { project: 'Ayurvedic website', activity: 'Changes in the ui and deployment', status: 'Done', remark: 'Client verified' },
-  { project: 'CRM', activity: 'Debuging', status: 'onprogress', remark: '' }
+  { project: 'Ayurvedic website', activity: 'Changes in the ui and deployment', status: '', remark: '' },
+  { project: 'CRM', activity: 'Debuging', status: '', remark: '' }
 ];
 
 // Default items for KPI Tracking
 const DEFAULT_KPI_TRACKING = [
-  { project: 'Ayurvedic website', kpi: 'Changes in ui', target: 'Complete', achieved: 'Done' },
-  { project: 'Ayurvedic website', kpi: 'Deployed in Domain and verified', target: 'Complete', achieved: 'Done' },
-  { project: 'CRM', kpi: '-Debugging\n-updated todo\n-deployed in test', target: 'Excelimport', achieved: 'Done' }
+  { project: 'Ayurvedic website', kpi: 'Changes in ui', target: '', achieved: '' },
+  { project: 'Ayurvedic website', kpi: 'Deployed in Domain and verified', target: '', achieved: '' },
+  { project: 'CRM', kpi: '-Debugging\n-updated todo\n-deployed in test', target: '', achieved: '' }
 ];
 
 // Default items for Issues/Support Required

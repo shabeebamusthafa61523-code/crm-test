@@ -14,67 +14,67 @@ const API_BASE = import.meta.env.VITE_API_URL;
 
 // Default items for HR Shift Report
 const DEFAULT_DAILY_OPERATIONS = [
-  { activity: 'Staff Attendance Verified', status: 'Done', dueDate: '', remarks: '' },
-  { activity: 'Admin Tasks Monitored', status: 'Done', dueDate: '', remarks: '' },
-  { activity: 'Recruitment Follow-up', status: 'Done', dueDate: '', remarks: '' },
-  { activity: 'Employee Support', status: 'Done', dueDate: '', remarks: '' },
-  { activity: 'Reports Collected', status: 'Done', dueDate: '', remarks: '' }
+  { activity: 'Staff Attendance Verified', status: '', dueDate: '', remarks: '' },
+  { activity: 'Admin Tasks Monitored', status: '', dueDate: '', remarks: '' },
+  { activity: 'Recruitment Follow-up', status: '', dueDate: '', remarks: '' },
+  { activity: 'Employee Support', status: '', dueDate: '', remarks: '' },
+  { activity: 'Reports Collected', status: '', dueDate: '', remarks: '' }
 ];
 
 const DEFAULT_EMPLOYEE_MGMT = [
-  { employeeName: 'NA', department: '', attendance: 'Present / Absent', taskStatus: 'Completed / Pending', remarks: '' },
-  { employeeName: 'NA', department: '', attendance: 'Present / Absent', taskStatus: 'Completed / Pending', remarks: '' }
+  { employeeName: 'NA', department: '', attendance: '', taskStatus: '', remarks: '' },
+  { employeeName: 'NA', department: '', attendance: '', taskStatus: '', remarks: '' }
 ];
 
 const DEFAULT_RECRUITMENT = [
-  { activity: 'Applications Received:', countStatus: '0' },
-  { activity: 'Interviews Conducted:', countStatus: '0' },
-  { activity: 'Candidates Shortlisted:', countStatus: '0' },
-  { activity: 'New Joining', countStatus: '0' },
-  { activity: 'Pending Hiring', countStatus: 'None' }
+  { activity: 'Applications Received:', countStatus: '' },
+  { activity: 'Interviews Conducted:', countStatus: '' },
+  { activity: 'Candidates Shortlisted:', countStatus: '' },
+  { activity: 'New Joining', countStatus: '' },
+  { activity: 'Pending Hiring', countStatus: '' }
 ];
 
 const DEFAULT_ATTENDANCE_LEAVE = [
-  { category: 'Present Employees', count: '07' },
-  { category: 'Absent Employees', count: '05' },
-  { category: 'Leave Requests', count: '02' },
-  { category: 'Approved Leaves', count: '02' },
-  { category: 'Late Attendance Cases', count: '0' }
+  { category: 'Present Employees', count: '' },
+  { category: 'Absent Employees', count: '' },
+  { category: 'Leave Requests', count: '' },
+  { category: 'Approved Leaves', count: '' },
+  { category: 'Late Attendance Cases', count: '' }
 ];
 
 const DEFAULT_ADMIN_OPERATIONS = [
-  { activity: 'Office Maintenance', status: 'Completed / Pending', dueDate: '', remarks: 'NA' },
-  { activity: 'Inventory Check', status: 'Completed / Pending', dueDate: '', remarks: 'NA' },
-  { activity: 'Asset Management', status: 'Completed', dueDate: '', remarks: '' },
-  { activity: 'Vendor Coordination', status: 'Completed / Pending', dueDate: '', remarks: 'NA' },
-  { activity: 'Utility Monitoring', status: 'Completed / Pending', dueDate: '', remarks: 'NA' }
+  { activity: 'Office Maintenance', status: '', dueDate: '', remarks: '' },
+  { activity: 'Inventory Check', status: '', dueDate: '', remarks: '' },
+  { activity: 'Asset Management', status: '', dueDate: '', remarks: '' },
+  { activity: 'Vendor Coordination', status: '', dueDate: '', remarks: '' },
+  { activity: 'Utility Monitoring', status: '', dueDate: '', remarks: '' }
 ];
 
 const DEFAULT_DOCUMENTATION = [
-  { activity: 'Employee Documents Updated', dueDate: '', status: 'Yes' },
-  { activity: 'Contracts Verified', dueDate: '', status: 'None' },
-  { activity: 'Payroll Coordination Done', dueDate: '', status: 'yes' },
-  { activity: 'Compliance Checked', dueDate: '', status: 'Yes' },
-  { activity: 'Reports Filed', dueDate: '', status: 'yes' }
+  { activity: 'Employee Documents Updated', dueDate: '', status: '' },
+  { activity: 'Contracts Verified', dueDate: '', status: '' },
+  { activity: 'Payroll Coordination Done', dueDate: '', status: '' },
+  { activity: 'Compliance Checked', dueDate: '', status: '' },
+  { activity: 'Reports Filed', dueDate: '', status: '' }
 ];
 
 const DEFAULT_KPI_TRACKING = [
-  { kpi: 'Attendance Compliance', status: 'Yes' },
-  { kpi: 'Recruitment Tasks', status: 'Yes' },
-  { kpi: 'Admin Tasks Completed', status: 'NA' },
-  { kpi: 'Employee Support Requests Closed', status: 'Nil' }
+  { kpi: 'Attendance Compliance', status: '' },
+  { kpi: 'Recruitment Tasks', status: '' },
+  { kpi: 'Admin Tasks Completed', status: '' },
+  { kpi: 'Employee Support Requests Closed', status: '' }
 ];
 
 const DEFAULT_ISSUES = [
-  { issue: 'NA', priority: 'High / Medium / Low', actionTaken: '__________' },
-  { issue: 'NA', priority: 'High / Medium / Low', actionTaken: '__________' }
+  { issue: 'NA', priority: '', actionTaken: '' },
+  { issue: 'NA', priority: '', actionTaken: '' }
 ];
 
 const DEFAULT_HANDOVER = [
-  { item: 'Pending Tasks Shared', status: 'No' },
-  { item: 'Reports Submitted', status: 'Yes' },
-  { item: 'Documents Updated', status: 'Yes' },
-  { item: 'Management Updated', status: 'Yes' }
+  { item: 'Pending Tasks Shared', status: '' },
+  { item: 'Reports Submitted', status: '' },
+  { item: 'Documents Updated', status: '' },
+  { item: 'Management Updated', status: '' }
 ];
 
 const HrReportPage = () => {
