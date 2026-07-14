@@ -325,19 +325,19 @@ const pagedUsers = filteredUsers.slice((currentPage - 1) * ITEMS_PER_PAGE, curre
                         {/* Profile & Name */}
                         <td className="py-4.5 px-6">
                           <div className="flex items-center gap-4">
-                            <div className="relative">
+                            <div className="relative shrink-0">
                               {user.avatar || user.profile_image ? (
                                 <img 
                                   src={user.avatar || user.profile_image} 
                                   alt={user.name} 
                                   className="w-11 h-11 rounded-full object-cover border border-slate-200 dark:border-slate-800 shadow-sm"
                                   onError={(e) => {
-                                    e.target.src = '';
-                                    e.target.className = 'hidden';
+                                    e.target.onerror = null;
+                                    e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=6366f1&color=fff`;
                                   }}
                                 />
                               ) : (
-                                <div className="w-11 h-11 rounded-full bg-white-500/10 border border-indigo-500/20 text-indigo-500 flex items-center justify-center shadow-sm">
+                                <div className="w-11 h-11 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 flex items-center justify-center shadow-sm">
                                   <User size={18} />
                                 </div>
                               )}
@@ -897,7 +897,7 @@ const CreateModal = ({ onClose, refresh, getAuthHeaders, designations, onDesigna
       await refresh();
       onClose();
     } else {
-      showToast(data.message || 'Failed to onboard employee.', 'error');
+      showToast(data.message || data.error || 'Failed to onboard employee.', 'error');
     }
   } catch (e) {
     console.error(e);
@@ -1167,7 +1167,7 @@ const EditModal = ({ user, onClose, refresh, getAuthHeaders, designations, onDes
         await refresh();
         onClose();
       } else {
-        showToast(data.message || 'Synchronization failed.', 'error');
+        showToast(data.message || data.error || 'Synchronization failed.', 'error');
       }
     } catch (e) {
       console.error(e);
@@ -1396,6 +1396,10 @@ const ViewModal = ({ user, getDesignationName, getDepartmentName, onClose }) => 
                   src={user.avatar || user.profile_image} 
                   alt={user.name} 
                   className="w-24 h-24 rounded-2xl object-cover border-4 border-white dark:border-slate-900 shadow-lg"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=6366f1&color=fff`;
+                  }}
                 />
               ) : (
                 <div className="w-24 h-24 rounded-2xl bg-indigo-500/10 border-4 border-white dark:border-slate-900 text-indigo-500 flex items-center justify-center shadow-lg">

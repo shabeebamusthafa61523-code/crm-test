@@ -52,6 +52,7 @@ const Dashboard = () => {
   const [taskCurrentPage, setTaskCurrentPage] = useState(1);
   const [activeAnalyticsDept, setActiveAnalyticsDept] = useState("all");
   const [userPerformanceSort, setUserPerformanceSort] = useState("completion");
+  const [globalDepartment, setGlobalDepartment] = useState("all");
 
   const navigate = useNavigate();
 
@@ -108,15 +109,16 @@ const Dashboard = () => {
       const todayStr = getISTDate();
 
       if (privilegedMode) {
+        const deptParam = globalDepartment !== 'all' ? `?department=${encodeURIComponent(globalDepartment)}` : '';
         // Fetch Admin specific stats in parallel
         const [taskRes, userRes, summaryRes, funnelRes, sourceRes, staffRes, followupRes] = await Promise.all([
           fetch(`${API_BASE}/tasks/all`, { headers: getAuthHeaders() }),
           fetch(`${API_BASE}/v1/users`, { headers: getAuthHeaders() }),
-          fetch(`${API_BASE}/v1/analytics/summary`, { headers: getAuthHeaders() }),
-          fetch(`${API_BASE}/v1/analytics/conversion-rate`, { headers: getAuthHeaders() }),
-          fetch(`${API_BASE}/v1/analytics/source-performance`, { headers: getAuthHeaders() }),
-          fetch(`${API_BASE}/v1/analytics/staff-performance`, { headers: getAuthHeaders() }),
-          fetch(`${API_BASE}/v1/analytics/followup-metrics`, { headers: getAuthHeaders() })
+          fetch(`${API_BASE}/v1/analytics/summary${deptParam}`, { headers: getAuthHeaders() }),
+          fetch(`${API_BASE}/v1/analytics/conversion-rate${deptParam}`, { headers: getAuthHeaders() }),
+          fetch(`${API_BASE}/v1/analytics/source-performance${deptParam}`, { headers: getAuthHeaders() }),
+          fetch(`${API_BASE}/v1/analytics/staff-performance${deptParam}`, { headers: getAuthHeaders() }),
+          fetch(`${API_BASE}/v1/analytics/followup-metrics${deptParam}`, { headers: getAuthHeaders() })
         ]);
 
         // TASKS
@@ -205,7 +207,7 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [getAuthHeaders]);
+  }, [getAuthHeaders, globalDepartment]);
 
   const handleSync = () => {
     if (user?.user_id) {
@@ -241,6 +243,12 @@ const Dashboard = () => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, [fetchData]);
+
+  useEffect(() => {
+    if (user?.user_id) {
+      fetchData(user.user_id, isAdmin);
+    }
+  }, [globalDepartment, user?.user_id, isAdmin, fetchData]);
 
   // Reset pagination on filter or search changes
   useEffect(() => {
@@ -278,9 +286,29 @@ const Dashboard = () => {
     return found ? found.name : `Operator ID: ${String(assignedTo).slice(0, 8)}`;
   };
 
+  const uniqueDepartments = useMemo(() => {
+    const depts = new Set();
+    allUsers.forEach(u => {
+      const deptName = u.departmentId?.name || u.department;
+      if (deptName) depts.add(deptName);
+    });
+    return Array.from(depts).sort();
+  }, [allUsers]);
+
+  const getOperatorDept = useCallback((assignedTo) => {
+    if (!assignedTo) return "";
+    const userId = (typeof assignedTo === "object") ? (assignedTo.id || assignedTo._id) : assignedTo;
+    const found = allUsers.find(u => String(u.id || u._id) === String(userId));
+    return found ? (found.departmentId?.name || found.department || "") : "";
+  }, [allUsers]);
+
   // Filtered operators list
   const filteredUsers = useMemo(() => {
     return allUsers.filter(u => {
+      if (globalDepartment !== "all") {
+        const deptName = u.departmentId?.name || u.department || "";
+        if (deptName.toLowerCase() !== globalDepartment.toLowerCase()) return false;
+      }
       const search = userSearch.toLowerCase().trim();
       if (!search) return true;
       return (
@@ -290,11 +318,15 @@ const Dashboard = () => {
         String(u.role || "").toLowerCase().includes(search)
       );
     });
-  }, [allUsers, userSearch]);
+  }, [allUsers, userSearch, globalDepartment]);
 
   // Filtered administrative tasks list
   const filteredTasks = useMemo(() => {
     return tasks.filter(t => {
+      if (globalDepartment !== "all") {
+        const dept = getOperatorDept(t.assigned_to);
+        if (dept.toLowerCase() !== globalDepartment.toLowerCase()) return false;
+      }
       const search = taskSearch.toLowerCase().trim();
       const statusMatch = taskFilter === "all" || String(t.status || "").toLowerCase() === taskFilter.toLowerCase();
       
@@ -304,7 +336,7 @@ const Dashboard = () => {
 
       return statusMatch && searchMatch;
     });
-  }, [tasks, taskSearch, taskFilter, allUsers]);
+  }, [tasks, taskSearch, taskFilter, allUsers, globalDepartment, getOperatorDept]);
 
   // System Task Monitor Pagination calculations
   const tasksPerPage = 5;
@@ -992,9 +1024,20 @@ const Dashboard = () => {
   // RENDER ADMIN VIEW
   // ----------------------------------------------------
   const renderAdminView = () => {
-    const activeStaffCount = allUsers.filter(u => u.isActive !== false).length;
-    const doneTasksCount = tasks.filter(t => String(t.status).toLowerCase() === "done").length;
-    const totalTasksCount = tasks.length;
+    const filteredUsersCount = allUsers.filter(u => {
+      if (globalDepartment === "all") return true;
+      const deptName = u.departmentId?.name || u.department || "";
+      return deptName.toLowerCase() === globalDepartment.toLowerCase();
+    });
+    const activeStaffCount = filteredUsersCount.filter(u => u.isActive !== false).length;
+
+    const tasksForDept = tasks.filter(t => {
+      if (globalDepartment === "all") return true;
+      const dept = getOperatorDept(t.assigned_to);
+      return dept.toLowerCase() === globalDepartment.toLowerCase();
+    });
+    const doneTasksCount = tasksForDept.filter(t => String(t.status).toLowerCase() === "done").length;
+    const totalTasksCount = tasksForDept.length;
     const taskCompletionRate = totalTasksCount ? Math.round((doneTasksCount / totalTasksCount) * 100) : 0;
 
     const stats = adminStats || {};
@@ -1029,6 +1072,33 @@ const Dashboard = () => {
   {currentTime.toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short" })}
 </div>
           </div>
+        </div>
+
+        {/* DEPARTMENT GLOBAL FILTER PILLS */}
+        <div className="flex items-center gap-2.5 overflow-x-auto pb-3.5 scrollbar-none border-b border-slate-100 dark:border-slate-800/80">
+          <button
+            onClick={() => setGlobalDepartment("all")}
+            className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
+              globalDepartment === "all"
+                ? "bg-indigo-650 text-white shadow-md shadow-indigo-600/20"
+                : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-350 dark:hover:border-slate-700"
+            }`}
+          >
+            All Departments
+          </button>
+          {uniqueDepartments.map(dept => (
+            <button
+              key={dept}
+              onClick={() => setGlobalDepartment(dept)}
+              className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
+                globalDepartment.toLowerCase() === dept.toLowerCase()
+                  ? "bg-indigo-650 text-white shadow-md shadow-indigo-600/20"
+                  : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-350 dark:hover:border-slate-700"
+              }`}
+            >
+              {dept}
+            </button>
+          ))}
         </div>
 
         {/* METRICS GRID */}
@@ -1068,7 +1138,7 @@ const Dashboard = () => {
             color="text-lime-600 dark:text-lime-400"
             borderColor="bg-lime-500"
             bgColor="bg-lime-50 dark:bg-lime-950/20"
-            subtext={`${allUsers.length} Operators Enrolled`}
+            subtext={`${filteredUsersCount.length} Operators Enrolled`}
           />
           <StatCard
             label="Tasks Completed"
