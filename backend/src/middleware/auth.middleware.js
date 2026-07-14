@@ -133,8 +133,8 @@ export const restrictToDepartment = (departmentId) => {
 
     userDeptId = String(userDeptId || '').trim();
 
-    // Bypass for HR/ADMIN department
-    if (userDeptId === '6a3caed51194353cbc8a3686') {
+    // Bypass for HR/ADMIN & Non-Operational departments
+    if (userDeptId === '6a3caed51194353cbc8a3686' || userDeptId === '6a55c7e8b613a280003481d8') {
       return next();
     }
 
