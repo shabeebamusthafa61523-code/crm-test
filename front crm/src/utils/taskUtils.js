@@ -46,7 +46,9 @@ export const fetchCompletedTasks = async (userId, dateStr) => {
 
       const dateMatches = matchesDate(t.date) || matchesDate(t.updatedAt) || matchesDate(t.createdAt) || matchesDate(t.dueDate);
       
-      return dateMatches;
+      const isPendingOrInProgress = ['pending', 'current'].includes(String(t.status).toLowerCase());
+      
+      return dateMatches || isPendingOrInProgress;
     });
 
     // Format task title and attributes timezone-safely for reports
@@ -109,6 +111,64 @@ export const fetchCompletedTasks = async (userId, dateStr) => {
     });
   } catch (error) {
     console.error("Error fetching tasks for report:", error);
+    return [];
+  }
+};
+
+export const fetchDelegatedTasks = async (userId, dateStr) => {
+  if (!userId || !dateStr) return [];
+  const API_BASE = import.meta.env.VITE_API_URL;
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${API_BASE}/tasks/all`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) return [];
+    
+    const data = await res.json();
+    const tasks = Array.isArray(data) ? data : (data.tasks || data.data || []);
+    
+    const delegatedTasks = tasks.filter(t => {
+      const assignedUser = t.assigned_to?._id || t.assigned_to?.id || t.assigned_to || t.assignedTo?._id || t.assignedTo?.id || t.assignedTo;
+      const createdUser = t.created_by?._id || t.created_by?.id || t.created_by || t.user_id;
+
+      if (String(createdUser) !== String(userId)) return false;
+      if (String(assignedUser) === String(userId)) return false; 
+      
+      return true;
+    });
+
+    return delegatedTasks.map(t => {
+      const statusMap = {
+        pending: 'Pending',
+        current: 'In Progress',
+        preview: 'Preview',
+        done: 'Done'
+      };
+      const statusText = statusMap[String(t.status).toLowerCase()] || 'Pending';
+      
+      const assignedName = t.assigned_to?.name || t.assigned_to?.username || t.assigned_to?.employeeName || t.assignedTo?.name || t.assignedTo?.username || 'Staff';
+
+      let formattedDueDate = '';
+      if (t.dueDate) {
+        try {
+          const d = new Date(t.dueDate);
+          const day = String(d.getUTCDate()).padStart(2, '0');
+          const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+          const year = d.getUTCFullYear();
+          formattedDueDate = `${year}-${month}-${day}`;
+        } catch (e) {}
+      }
+
+      return {
+        project: assignedName,
+        kpi: t.title,
+        target: formattedDueDate,
+        achieved: statusText
+      };
+    });
+  } catch (error) {
+    console.error('Error fetching delegated tasks for report:', error);
     return [];
   }
 };

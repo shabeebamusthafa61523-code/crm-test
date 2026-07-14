@@ -8,17 +8,13 @@ import {
 import { useToast } from '../components/ToastProvider';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { fetchCompletedTasks } from '../utils/taskUtils';
+import { fetchCompletedTasks, fetchDelegatedTasks } from '../utils/taskUtils';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
 // Default items for Daily Task Summary
 const DEFAULT_TASK_SUMMARY = [
-  { activity: 'Website Development', status: '', dueDate: '', remarks: '' },
-  { activity: 'CRM Software', status: '', dueDate: '', remarks: '' },
-  { activity: 'Testing/Bug Fixing', status: '', dueDate: '', remarks: '' },
-  { activity: 'UI/UX Imprvments', status: '', dueDate: '', remarks: '' },
-  { activity: 'Client Revision Work', status: '', dueDate: '', remarks: '' }
+  { activity: '', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' }
 ];
 
 // Default items for Development Work Report
@@ -315,11 +311,18 @@ const HodRdReportPage = () => {
               remarks: 'Auto-fetched'
             }));
             setDailyTaskSummary(mappedTasks);
-          } else {
-            setDailyTaskSummary(prev => [...prev, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
+        }
+        
+        try {
+          const delegatedTasks = await fetchDelegatedTasks(userId, dateStr);
+          if (delegatedTasks && delegatedTasks.length > 0) {
+            setKpiTracking(delegatedTasks);
+          }
+        } catch(e) {
+          console.error("Error auto-fetching delegated tasks:", e);
         }
 
       }
@@ -339,11 +342,18 @@ const HodRdReportPage = () => {
               remarks: 'Auto-fetched'
             }));
             setDailyTaskSummary(mappedTasks);
-          } else {
-            setDailyTaskSummary(prev => [...prev, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
+        }
+        
+        try {
+          const delegatedTasks = await fetchDelegatedTasks(userId, dateStr);
+          if (delegatedTasks && delegatedTasks.length > 0) {
+            setKpiTracking(delegatedTasks);
+          }
+        } catch(e) {
+          console.error("Error auto-fetching delegated tasks:", e);
         }
 
     } finally {
@@ -520,7 +530,7 @@ const HodRdReportPage = () => {
 
   // Helper row handlers for dynamic monthly tables
   const addMonthlySummaryRow = () => {
-    setMonthlyDailyTaskSummary([...monthlyDailyTaskSummary, { activity: '', status: 'Done', dueDate: '', remarks: '' }]);
+    setMonthlyDailyTaskSummary([...monthlyDailyTaskSummary, { activity: '', status: 'Done', dueDate: '', startDate: '', endDate: '', remarks: '' }]);
   };
   const removeMonthlySummaryRow = (index) => {
     if (monthlyDailyTaskSummary.length > 1) {
@@ -1159,7 +1169,7 @@ const HodRdReportPage = () => {
 
   // Helper row handlers for dynamic tables
   const addSummaryRow = () => {
-    setDailyTaskSummary([...dailyTaskSummary, { activity: '', status: 'Done', dueDate: '', remarks: '' }]);
+    setDailyTaskSummary([...dailyTaskSummary, { activity: '', status: 'Done', dueDate: '', startDate: '', endDate: '', remarks: '' }]);
   };
   
   const removeSummaryRow = (index) => {
@@ -1480,9 +1490,9 @@ const HodRdReportPage = () => {
                               type="text"
                               value={item.activity}
                               onChange={(e) => {
-                                const updated = [...monthlyDailyTaskSummary];
-                                updated[idx].activity = e.target.value;
-                                setMonthlyDailyTaskSummary(updated);
+                                const updated = [...dailyTaskSummary];
+                                updated[index].activity = e.target.value;
+                                setDailyTaskSummary(updated);
                               }}
                               className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
                             />
@@ -1492,9 +1502,9 @@ const HodRdReportPage = () => {
                               type="date"
                               value={item.dueDate || ''}
                               onChange={(e) => {
-                                const updated = [...monthlyDailyTaskSummary];
-                                updated[idx].dueDate = e.target.value;
-                                setMonthlyDailyTaskSummary(updated);
+                                const updated = [...dailyTaskSummary];
+                                updated[index].dueDate = e.target.value;
+                                setDailyTaskSummary(updated);
                               }}
                               className="bg-transparent border-none focus:outline-none text-sm text-slate-700 dark:text-slate-300 w-full"
                             />
@@ -1504,9 +1514,9 @@ const HodRdReportPage = () => {
                               type="date"
                               value={item.startDate || ''}
                               onChange={(e) => {
-                                const updated = [...monthlyDailyTaskSummary];
-                                updated[idx].startDate = e.target.value;
-                                setMonthlyDailyTaskSummary(updated);
+                                const updated = [...dailyTaskSummary];
+                                updated[index].startDate = e.target.value;
+                                setDailyTaskSummary(updated);
                               }}
                               className="bg-transparent border-none focus:outline-none text-sm text-slate-700 dark:text-slate-300 w-full"
                             />
@@ -1516,9 +1526,9 @@ const HodRdReportPage = () => {
                               type="date"
                               value={item.endDate || ''}
                               onChange={(e) => {
-                                const updated = [...monthlyDailyTaskSummary];
-                                updated[idx].endDate = e.target.value;
-                                setMonthlyDailyTaskSummary(updated);
+                                const updated = [...dailyTaskSummary];
+                                updated[index].endDate = e.target.value;
+                                setDailyTaskSummary(updated);
                               }}
                               className="bg-transparent border-none focus:outline-none text-sm text-slate-700 dark:text-slate-300 w-full"
                             />
@@ -1527,9 +1537,9 @@ const HodRdReportPage = () => {
                             <select
                               value={item.status}
                               onChange={(e) => {
-                                const updated = [...monthlyDailyTaskSummary];
-                                updated[idx].status = e.target.value;
-                                setMonthlyDailyTaskSummary(updated);
+                                const updated = [...dailyTaskSummary];
+                                updated[index].status = e.target.value;
+                                setDailyTaskSummary(updated);
                               }}
                               className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-xs focus:outline-none text-slate-700 dark:text-slate-200"
                             >
@@ -1545,9 +1555,9 @@ const HodRdReportPage = () => {
                               type="text"
                               value={item.remarks}
                               onChange={(e) => {
-                                const updated = [...monthlyDailyTaskSummary];
-                                updated[idx].remarks = e.target.value;
-                                setMonthlyDailyTaskSummary(updated);
+                                const updated = [...dailyTaskSummary];
+                                updated[index].remarks = e.target.value;
+                                setDailyTaskSummary(updated);
                               }}
                               className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
                             />
@@ -1777,10 +1787,10 @@ const HodRdReportPage = () => {
                 <table className="w-full text-left border-collapse text-sm">
                   <thead>
                     <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
-                      <th className="px-5 py-4 w-[20%]">Project</th>
-                      <th className="px-5 py-4 w-[40%]">KPI</th>
-                      <th className="px-5 py-4 w-[20%]">TARGET</th>
-                      <th className="px-5 py-4 w-[15%] text-center">ACHIEVED</th>
+                      <th className="px-5 py-4 w-[20%]">Assigned To</th>
+                      <th className="px-5 py-4 w-[40%]">Task</th>
+                      <th className="px-5 py-4 w-[20%]">Due Date</th>
+                      <th className="px-5 py-4 w-[15%] text-center">Status</th>
                       <th className="px-5 py-4 w-[5%] text-center">Actions</th>
                     </tr>
                   </thead>
@@ -1815,29 +1825,31 @@ const HodRdReportPage = () => {
                         </td>
                         <td className="px-5 py-3">
                           <input
-                            type="text"
+                            type="date"
                             value={item.target}
                             onChange={(e) => {
                               const updated = [...kpiTracking];
                               updated[index].target = e.target.value;
                               setKpiTracking(updated);
                             }}
-                            placeholder="Complete / Excelimport"
-                            className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                            className="w-full bg-transparent border-none focus:outline-none text-sm text-slate-700 dark:text-slate-200"
                           />
                         </td>
                         <td className="px-5 py-3 text-center">
-                          <input
-                            type="text"
+                          <select
                             value={item.achieved}
                             onChange={(e) => {
                               const updated = [...kpiTracking];
                               updated[index].achieved = e.target.value;
                               setKpiTracking(updated);
                             }}
-                            placeholder="Done"
-                            className="w-full bg-transparent border-none text-center focus:outline-none text-slate-700 dark:text-slate-200"
-                          />
+                            className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-xs focus:outline-none text-slate-700 dark:text-slate-200"
+                          >
+                            <option value="Pending">Pending</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Preview">Preview</option>
+                            <option value="Done">Done</option>
+                          </select>
                         </td>
                         <td className="px-5 py-3 text-center">
                           <button
@@ -2503,10 +2515,10 @@ const HodRdReportPage = () => {
                       <table className="w-full text-left border-collapse text-sm">
                         <thead>
                           <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase border-b border-slate-100 dark:border-slate-800">
-                            <th className="px-5 py-4 w-[20%]">Project</th>
-                            <th className="px-5 py-4 w-[40%]">KPI</th>
-                            <th className="px-5 py-4 w-[20%]">TARGET</th>
-                            <th className="px-5 py-4 w-[15%] text-center">ACHIEVED</th>
+                            <th className="px-5 py-4 w-[20%]">Assigned To</th>
+                            <th className="px-5 py-4 w-[40%]">Task</th>
+                            <th className="px-5 py-4 w-[20%]">Due Date</th>
+                            <th className="px-5 py-4 w-[15%] text-center">Status</th>
                             <th className="px-5 py-4 w-[5%] text-center">Action</th>
                           </tr>
                         </thead>
