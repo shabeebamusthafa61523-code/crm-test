@@ -333,9 +333,6 @@ export const generateReportPDFBuffer = (report, empName, designation) => {
           sectionIndex++;
         } else if (val && typeof val === 'object' && !Array.isArray(val)) {
           // Single nested tracking object (e.g. performanceTracker)
-          const title = key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ');
-          drawSectionHeader(`${sectionIndex}. ${title}`);
-          
           const fields = [];
           Object.entries(val).forEach(([k, v]) => {
             if (k !== '_id' && k !== 'id') {
@@ -347,25 +344,32 @@ export const generateReportPDFBuffer = (report, empName, designation) => {
                   .map(([sk, sv]) => `${sk.replace(/([A-Z])/g, ' $1').trim()}: ${sv}`)
                   .join(' | ');
               }
-              fields.push([label, displayVal]);
+              if (displayVal !== undefined && displayVal !== null && String(displayVal).trim() !== '') {
+                fields.push([label, displayVal]);
+              }
             }
           });
 
-          drawKeyValueTable(fields);
-          sectionIndex++;
+          if (fields.length > 0) {
+            const title = key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ');
+            drawSectionHeader(`${sectionIndex}. ${title}`);
+            drawKeyValueTable(fields);
+            sectionIndex++;
+          }
         }
       }
 
       // 4. APPROVAL SIGNATURES
       if (report.approval) {
-        drawSectionHeader('Approvals & Handover');
-        
-        const app = report.approval;
-        const approvalDetails = Object.entries(app)
-          .filter(([k]) => k !== '_id' && k !== 'id' && app[k])
+        const appObj = report.approval.toObject ? report.approval.toObject() : report.approval;
+        const approvalDetails = Object.entries(appObj)
+          .filter(([k, v]) => k !== '_id' && k !== 'id' && v !== null && v !== undefined && String(v).trim() !== '')
           .map(([k, v]) => [k.replace(/([A-Z])/g, ' $1').replace(/_/g, ' '), v]);
         
-        drawKeyValueTable(approvalDetails);
+        if (approvalDetails.length > 0) {
+          drawSectionHeader('Approvals & Handover');
+          drawKeyValueTable(approvalDetails);
+        }
       }
 
       // --- PAGE FOOTER FUNCTION ---
@@ -376,7 +380,7 @@ export const generateReportPDFBuffer = (report, empName, designation) => {
         doc.text(
           `Page ${i + 1} of ${pages.count}  |  KOD.brand Command Center © ${new Date().getFullYear()}`,
           40,
-          805,
+          790,
           { align: 'center', width: 515 }
         );
       }
