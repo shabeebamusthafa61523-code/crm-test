@@ -494,30 +494,29 @@ const EmployeeReports = () => {
               )}
             </button>
 
-            {/* Global Viewport Filter Modal */}
+            {/* Global Viewport Filter Dropdown */}
             <AnimatePresence>
               {isFiltersOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-sm">
-                  {/* Backdrop Click Closer */}
-                  <div className="absolute inset-0" onClick={() => setIsFiltersOpen(false)} />
+                <>
+                  {/* Invisible Backdrop Click Closer */}
+                  <div className="fixed inset-0 z-40 bg-transparent cursor-default" onClick={() => setIsFiltersOpen(false)} />
                   
                   <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                    initial={{ opacity: 0, scale: 0.95, y: 5 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl space-y-5 relative z-10"
+                    exit={{ opacity: 0, scale: 0.95, y: 5 }}
+                    className="absolute right-0 top-full mt-2 z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 w-72 shadow-xl space-y-4"
                   >
-                    {/* Modal Header */}
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                    {/* Header */}
+                    <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800">
                       <div>
                         <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">Filter &amp; Sort</h3>
-                        <p className="text-[10px] text-slate-400 mt-0.5">Refine report results and roster order</p>
                       </div>
                       <button
                         onClick={() => setIsFiltersOpen(false)}
-                        className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-slate-650 dark:hover:text-slate-350 transition-colors"
+                        className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-slate-650 dark:hover:text-slate-350 transition-colors"
                       >
-                        <X size={15} />
+                        <X size={13} />
                       </button>
                     </div>
 
@@ -528,7 +527,7 @@ const EmployeeReports = () => {
                         <select
                           value={selectedDepartment}
                           onChange={(e) => setSelectedDepartment(e.target.value)}
-                          className="w-full appearance-none bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl pl-4 pr-10 py-2.5 text-xs font-semibold text-slate-705 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                          className="w-full appearance-none bg-slate-55 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl pl-4 pr-10 py-2 text-xs font-semibold text-slate-705 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
                         >
                           <option value="all">All Departments</option>
                           {uniqueDepartments.map(dept => (
@@ -546,7 +545,7 @@ const EmployeeReports = () => {
                         <select
                           value={selectedDesignation}
                           onChange={(e) => setSelectedDesignation(e.target.value)}
-                          className="w-full appearance-none bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl pl-4 pr-10 py-2.5 text-xs font-semibold text-slate-705 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                          className="w-full appearance-none bg-slate-55 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl pl-4 pr-10 py-2 text-xs font-semibold text-slate-705 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
                         >
                           <option value="all">All Designations</option>
                           {uniqueDesignations.map(desig => (
@@ -565,7 +564,7 @@ const EmployeeReports = () => {
                           <select
                             value={selectedPeriod}
                             onChange={(e) => setSelectedPeriod(e.target.value)}
-                            className="w-full appearance-none bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl pl-4 pr-10 py-2.5 text-xs font-semibold text-slate-705 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                            className="w-full appearance-none bg-slate-55 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl pl-4 pr-10 py-2 text-xs font-semibold text-slate-705 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
                           >
                             <option value="all">All Periods</option>
                             {!isNonOperational && <option value="daily">Daily Only</option>}
@@ -584,7 +583,7 @@ const EmployeeReports = () => {
                         <select
                           value={globalSort}
                           onChange={(e) => setGlobalSort(e.target.value)}
-                          className="w-full appearance-none bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl pl-4 pr-10 py-2.5 text-xs font-semibold text-slate-705 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                          className="w-full appearance-none bg-slate-55 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl pl-4 pr-10 py-2 text-xs font-semibold text-slate-705 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
                         >
                           <option value="newest">Newest Reports</option>
                           <option value="oldest">Oldest Reports</option>
@@ -608,19 +607,19 @@ const EmployeeReports = () => {
                           setGlobalSort('newest');
                           setIsFiltersOpen(false);
                         }}
-                        className="flex-1 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-205 bg-slate-150 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-all cursor-pointer"
+                        className="flex-1 py-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-205 bg-slate-150 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-all cursor-pointer"
                       >
-                        Reset All
+                        Reset
                       </button>
                       <button
                         onClick={() => setIsFiltersOpen(false)}
-                        className="flex-1 py-2.5 text-xs font-bold uppercase tracking-wider bg-indigo-650 hover:bg-indigo-700 text-white rounded-xl transition-all shadow-md shadow-indigo-650/10 cursor-pointer"
+                        className="flex-1 py-2 text-xs font-bold uppercase tracking-wider bg-indigo-650 hover:bg-indigo-700 text-white rounded-xl transition-all shadow-md shadow-indigo-650/10 cursor-pointer"
                       >
                         Apply
                       </button>
                     </div>
                   </motion.div>
-                </div>
+                </>
               )}
             </AnimatePresence>
           </div>
