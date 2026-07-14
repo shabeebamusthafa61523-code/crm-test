@@ -104,7 +104,7 @@ const Navbar = () => {
               <img
                 src="/logo3.png"
                 alt="StaffHQ Logo"
-                className="relative w-32 md:w-40 h-auto object-contain transition-transform group-hover:scale-105"
+                className="relative w-26 md:w-32 h-auto object-contain transition-transform group-hover:scale-105"
               />
             </div>
           </motion.div>

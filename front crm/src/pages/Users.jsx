@@ -35,6 +35,7 @@ const Users = () => {
   const [designations, setDesignations] = useState([]);
   const [departments, setDepartments] = useState([]);
   const { showToast } = useToast();
+  const [imgErrors, setImgErrors] = useState({});
 
   const getAuthHeaders = useCallback(() => {
     const rawToken = localStorage.getItem('token');
@@ -326,18 +327,17 @@ const pagedUsers = filteredUsers.slice((currentPage - 1) * ITEMS_PER_PAGE, curre
                         <td className="py-4.5 px-6">
                           <div className="flex items-center gap-4">
                             <div className="relative shrink-0">
-                              {user.avatar || user.profile_image ? (
+                              {(user.avatar || user.profile_image) && !imgErrors[user._id || user.id] ? (
                                 <img 
                                   src={user.avatar || user.profile_image} 
                                   alt={user.name} 
                                   className="w-11 h-11 rounded-full object-cover border border-slate-200 dark:border-slate-800 shadow-sm"
-                                  onError={(e) => {
-                                    e.target.onerror = null;
-                                    e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=6366f1&color=fff`;
+                                  onError={() => {
+                                    setImgErrors(prev => ({ ...prev, [user._id || user.id]: true }));
                                   }}
                                 />
                               ) : (
-                                <div className="w-11 h-11 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 flex items-center justify-center shadow-sm">
+                                <div className="w-11 h-11 rounded-full bg-white-500/10 border border-indigo-500/20 text-indigo-500 flex items-center justify-center shadow-sm">
                                   <User size={18} />
                                 </div>
                               )}
@@ -1391,14 +1391,13 @@ const ViewModal = ({ user, getDesignationName, getDepartmentName, onClose }) => 
         <div className="px-8 pb-8 relative">
           <div className="-mt-16 mb-4 flex items-end justify-between">
             <div className="relative">
-              {user.avatar || user.profile_image ? (
+              {(user.avatar || user.profile_image) && !imgErrors[user._id || user.id] ? (
                 <img 
                   src={user.avatar || user.profile_image} 
                   alt={user.name} 
                   className="w-24 h-24 rounded-2xl object-cover border-4 border-white dark:border-slate-900 shadow-lg"
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=6366f1&color=fff`;
+                  onError={() => {
+                    setImgErrors(prev => ({ ...prev, [user._id || user.id]: true }));
                   }}
                 />
               ) : (

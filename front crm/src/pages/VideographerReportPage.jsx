@@ -3,7 +3,7 @@ import { uploadCompiledPDFReport } from '../services/departmentService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, Calendar, Plus, Trash2, Save, Download, 
-  CheckCircle, HelpCircle, Loader2, User, ChevronLeft, ChevronRight, Pencil
+  CheckCircle, HelpCircle, Loader2, User, ChevronLeft, ChevronRight, Pencil, X, Maximize2
 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
 import { jsPDF } from 'jspdf';
@@ -136,6 +136,7 @@ const VideographerReportPage = () => {
   });
   
   const [taskLog, setTaskLog] = useState(DEFAULT_TASK_LOG);
+  const [selectedActivityText, setSelectedActivityText] = useState(null);
   const [keyNumbers, setKeyNumbers] = useState(DEFAULT_KEY_NUMBERS);
   const [blockers, setBlockers] = useState(DEFAULT_BLOCKERS);
   const [tomorrowTasks, setTomorrowTasks] = useState(DEFAULT_TOMORROW);
@@ -1332,9 +1333,9 @@ const VideographerReportPage = () => {
                 <table className="w-full text-left border-collapse text-sm">
                   <thead>
                     <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
-                      <th className="px-5 py-4 w-[25%]">Task / Project Name</th>
+                      <th className="px-5 py-4 w-[35%]">Task / Project Name</th>
                       <th className="px-5 py-4 w-[25%]">Due Date</th>
-                      <th className="px-5 py-4 w-[35%]">Description / Details</th>
+                      <th className="px-5 py-4 w-[45%]">Description / Details</th>
                       <th className="px-5 py-4 w-[10%] text-center">Start Time</th>
                       <th className="px-5 py-4 w-[10%] text-center">End Time</th>
                       <th className="px-5 py-4 w-[10%] text-center">Status</th>
@@ -2113,9 +2114,9 @@ const VideographerReportPage = () => {
                     <table className="w-full text-left border-collapse text-sm">
                       <thead>
                         <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
-                          <th className="px-5 py-4 w-[25%]">Task / Project Name</th>
+                          <th className="px-5 py-4 w-[35%]">Task / Project Name</th>
                       <th className="px-5 py-4 w-[25%]">Due Date</th>
-                          <th className="px-5 py-4 w-[35%]">Description / Details</th>
+                          <th className="px-5 py-4 w-[45%]">Description / Details</th>
                           <th className="px-5 py-4 w-[10%] text-center">Start Time</th>
                           <th className="px-5 py-4 w-[10%] text-center">End Time</th>
                           <th className="px-5 py-4 w-[10%] text-center">Status</th>
@@ -2543,6 +2544,34 @@ const VideographerReportPage = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Activity Detail Modal */}
+      {selectedActivityText && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md p-6 shadow-2xl border border-slate-100 dark:border-slate-800 relative">
+            <button
+              type="button"
+              onClick={() => setSelectedActivityText(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition p-1"
+            >
+              <X size={18} />
+            </button>
+            <h3 className="text-lg font-black text-slate-900 dark:text-slate-100 mb-4">Activity Details</h3>
+            <div className="text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl max-h-[60vh] overflow-y-auto whitespace-pre-wrap break-words font-medium leading-relaxed">
+              {selectedActivityText}
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedActivityText(null)}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-indigo-600/20"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

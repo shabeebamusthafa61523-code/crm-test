@@ -3,7 +3,7 @@ import { uploadCompiledPDFReport } from '../services/departmentService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, Calendar, Plus, Trash2, Save, Download, 
-  CheckCircle, HelpCircle, Loader2, User, ChevronLeft, ChevronRight, Pencil, X
+  CheckCircle, HelpCircle, Loader2, User, ChevronLeft, ChevronRight, Pencil, X, Maximize2
 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
 import { jsPDF } from 'jspdf';
@@ -280,6 +280,7 @@ const DeveloperReportPage = () => {
   });
   
   const [dailyTaskSummary, setDailyTaskSummary] = useState(DEFAULT_TASK_SUMMARY);
+  const [selectedActivityText, setSelectedActivityText] = useState(null);
   const [developmentTaskReport, setDevelopmentTaskReport] = useState(DEFAULT_DEV_REPORT);
   const [researchLearning, setResearchLearning] = useState([{ activity: '', details: '' }]);
   const [performanceTracker, setPerformanceTracker] = useState({
@@ -1445,7 +1446,7 @@ const DeveloperReportPage = () => {
                 <table className="w-full text-left border-collapse text-sm">
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
-                      <th className="px-4 py-3">Activity</th>
+                      <th className="px-4 py-3 w-[35%] min-w-[280px]">Activity</th>
                       <th className="px-4 py-3">Due Date</th>
                       <th className="px-4 py-3">Start Date</th>
                       <th className="px-4 py-3">End Date</th>
@@ -1457,18 +1458,30 @@ const DeveloperReportPage = () => {
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
                     {dailyTaskSummary.map((row, i) => (
                       <tr key={i} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/10">
-                        <td className="px-4 py-2.5">
-                          <input
-                            type="text"
-                            value={row.activity}
-                            onChange={(e) => {
-                              const newArr = [...dailyTaskSummary];
-                              newArr[i].activity = e.target.value;
-                              setDailyTaskSummary(newArr);
-                            }}
-                            className="w-full bg-transparent border-none focus:outline-none focus:ring-0 focus:border-none p-0 text-sm"
-                            placeholder="Enter activity name"
-                          />
+                        <td className="px-4 py-2.5 relative group">
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              value={row.activity}
+                              onChange={(e) => {
+                                const newArr = [...dailyTaskSummary];
+                                newArr[i].activity = e.target.value;
+                                setDailyTaskSummary(newArr);
+                              }}
+                              className="w-full bg-transparent border-none focus:outline-none focus:ring-0 focus:border-none p-0 text-sm"
+                              placeholder="Enter activity name"
+                            />
+                            {row.activity && (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedActivityText(row.activity)}
+                                className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 dark:hover:text-lime-400 transition-all p-0.5"
+                                title="View full text"
+                              >
+                                <Maximize2 size={13} />
+                              </button>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-2.5">
                           <input
@@ -1573,7 +1586,7 @@ const DeveloperReportPage = () => {
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
                       <th className="px-4 py-3 w-48">Project</th>
-                      <th className="px-4 py-3">Development Activity</th>
+                      <th className="px-4 py-3 w-[35%] min-w-[280px]">Development Activity</th>
                       <th className="px-4 py-3 w-40">Status</th>
                       <th className="px-4 py-3 w-48">Remark</th>
                       <th className="px-4 py-3 w-12 text-center">Action</th>
@@ -1691,18 +1704,30 @@ const DeveloperReportPage = () => {
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
                     {researchLearning.map((row, i) => (
                       <tr key={i} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/10">
-                        <td className="px-4 py-2.5">
-                          <input
-                            type="text"
-                            value={row.activity}
-                            onChange={(e) => {
-                              const newArr = [...researchLearning];
-                              newArr[i].activity = e.target.value;
-                              setResearchLearning(newArr);
-                            }}
-                            className="w-full bg-transparent border-none focus:outline-none p-0 text-sm font-semibold"
-                            placeholder="Activity name"
-                          />
+                        <td className="px-4 py-2.5 relative group">
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              value={row.activity}
+                              onChange={(e) => {
+                                const newArr = [...researchLearning];
+                                newArr[i].activity = e.target.value;
+                                setResearchLearning(newArr);
+                              }}
+                              className="w-full bg-transparent border-none focus:outline-none p-0 text-sm font-semibold"
+                              placeholder="Activity name"
+                            />
+                            {row.activity && (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedActivityText(row.activity)}
+                                className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 dark:hover:text-lime-400 transition-all p-0.5"
+                                title="View full text"
+                              >
+                                <Maximize2 size={13} />
+                              </button>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-2.5">
                           <input
@@ -2168,7 +2193,7 @@ const DeveloperReportPage = () => {
                             <table className="w-full text-left border-collapse text-sm">
                               <thead>
                                 <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
-                                  <th className="px-4 py-3">Activity</th>
+                                  <th className="px-4 py-3 w-[35%] min-w-[280px]">Activity</th>
                                   <th className="px-4 py-3">Due Date</th>
                                   <th className="px-4 py-3">Start Time</th>
                                   <th className="px-4 py-3">End Time</th>
@@ -2180,18 +2205,30 @@ const DeveloperReportPage = () => {
                               <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
                                 {monthlyDailyTaskSummary.map((row, i) => (
                                   <tr key={i} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/10">
-                                    <td className="px-4 py-2.5">
-                                      <input
-                                        type="text"
-                                        value={row.activity}
-                                        onChange={(e) => {
-                                          const newArr = [...monthlyDailyTaskSummary];
-                                          newArr[i].activity = e.target.value;
-                                          setMonthlyDailyTaskSummary(newArr);
-                                        }}
-                                        className="w-full bg-transparent border-none focus:outline-none p-0 text-sm"
-                                        placeholder="Activity"
-                                      />
+                                    <td className="px-4 py-2.5 relative group">
+                                      <div className="flex items-center gap-1.5">
+                                        <input
+                                          type="text"
+                                          value={row.activity}
+                                          onChange={(e) => {
+                                            const newArr = [...monthlyDailyTaskSummary];
+                                            newArr[i].activity = e.target.value;
+                                            setMonthlyDailyTaskSummary(newArr);
+                                          }}
+                                          className="w-full bg-transparent border-none focus:outline-none p-0 text-sm"
+                                          placeholder="Activity"
+                                        />
+                                        {row.activity && (
+                                          <button
+                                            type="button"
+                                            onClick={() => setSelectedActivityText(row.activity)}
+                                            className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 dark:hover:text-lime-400 transition-all p-0.5"
+                                            title="View full text"
+                                          >
+                                            <Maximize2 size={13} />
+                                          </button>
+                                        )}
+                                      </div>
                                     </td>
                                     <td className="px-4 py-2.5">
                                       <input
@@ -2293,7 +2330,7 @@ const DeveloperReportPage = () => {
                               <thead>
                                 <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
                                   <th className="px-4 py-3 w-48">Project</th>
-                                  <th className="px-4 py-3">Development Activity</th>
+                                  <th className="px-4 py-3 w-[35%] min-w-[280px]">Development Activity</th>
                                   <th className="px-4 py-3 w-40">Status</th>
                                   <th className="px-4 py-3 w-48">Remark</th>
                                   <th className="px-4 py-3 w-12 text-center">Action</th>
@@ -2408,18 +2445,30 @@ const DeveloperReportPage = () => {
                               <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
                                 {monthlyResearchLearning.map((row, i) => (
                                   <tr key={i} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/10">
-                                    <td className="px-4 py-2.5">
-                                      <input
-                                        type="text"
-                                        value={row.activity}
-                                        onChange={(e) => {
-                                          const newArr = [...monthlyResearchLearning];
-                                          newArr[i].activity = e.target.value;
-                                          setMonthlyResearchLearning(newArr);
-                                        }}
-                                        className="w-full bg-transparent border-none focus:outline-none p-0 text-sm font-semibold"
-                                        placeholder="Activity"
-                                      />
+                                    <td className="px-4 py-2.5 relative group">
+                                      <div className="flex items-center gap-1.5">
+                                        <input
+                                          type="text"
+                                          value={row.activity}
+                                          onChange={(e) => {
+                                            const newArr = [...monthlyResearchLearning];
+                                            newArr[i].activity = e.target.value;
+                                            setMonthlyResearchLearning(newArr);
+                                          }}
+                                          className="w-full bg-transparent border-none focus:outline-none p-0 text-sm font-semibold"
+                                          placeholder="Activity"
+                                        />
+                                        {row.activity && (
+                                          <button
+                                            type="button"
+                                            onClick={() => setSelectedActivityText(row.activity)}
+                                            className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 dark:hover:text-lime-400 transition-all p-0.5"
+                                            title="View full text"
+                                          >
+                                            <Maximize2 size={13} />
+                                          </button>
+                                        )}
+                                      </div>
                                     </td>
                         <td className="px-4 py-2.5">
                           <input
@@ -2681,6 +2730,33 @@ const DeveloperReportPage = () => {
         )}
       </AnimatePresence>
 
+      {/* Activity Detail Modal */}
+      {selectedActivityText && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md p-6 shadow-2xl border border-slate-100 dark:border-slate-800 relative">
+            <button
+              type="button"
+              onClick={() => setSelectedActivityText(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition p-1"
+            >
+              <X size={18} />
+            </button>
+            <h3 className="text-lg font-black text-slate-900 dark:text-slate-100 mb-4">Activity Details</h3>
+            <div className="text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl max-h-[60vh] overflow-y-auto whitespace-pre-wrap break-words font-medium leading-relaxed">
+              {selectedActivityText}
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedActivityText(null)}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-indigo-600/20"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

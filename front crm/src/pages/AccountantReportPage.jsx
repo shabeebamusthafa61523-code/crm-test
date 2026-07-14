@@ -2337,7 +2337,7 @@ const AccountantReportPage = () => {
                 <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800 text-sm">
                   <thead className="bg-slate-50 dark:bg-slate-950">
                     <tr>
-                      <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Activity</th>
+                      <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-[35%] min-w-[280px]">Activity</th>
                       <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-36">Due Date</th>
                       <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-36">Start Date</th>
                       <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-36">End Date</th>
@@ -2601,7 +2601,7 @@ const AccountantReportPage = () => {
                 <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800 text-sm">
                   <thead className="bg-slate-50 dark:bg-slate-950">
                     <tr>
-                      <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-1/3">Activity</th>
+                      <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-[35%] min-w-[280px]">Activity</th>
                       <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-1/3">Due Date</th>
                       <th className="px-6 py-3 text-center text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-1/4">Status</th>
                       <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Remarks</th>
@@ -3138,7 +3138,7 @@ const AccountantReportPage = () => {
                       <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800 text-sm">
                         <thead className="bg-slate-50 dark:bg-slate-950">
                           <tr>
-                            <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 uppercase w-1/3">Activity</th>
+                            <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 uppercase w-[35%] min-w-[280px]">Activity</th>
                       <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 uppercase w-1/3">Due Date</th>
                             <th className="px-4 py-2 text-center text-xs font-bold text-slate-400 w-1/4">Status Summary</th>
                             <th className="px-4 py-2 text-left text-xs font-bold text-slate-400">Remarks Summary</th>
@@ -3282,7 +3282,7 @@ const AccountantReportPage = () => {
                         <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800 text-sm">
                           <thead className="bg-slate-50 dark:bg-slate-950">
                             <tr>
-                              <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 w-1/3">Activity</th>
+                              <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 w-[35%] min-w-[280px]">Activity</th>
                       <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 w-1/3">Due Date</th>
                               <th className="px-4 py-2 text-center text-xs font-bold text-slate-400 w-1/4">Status Summary</th>
                               <th className="px-4 py-2 text-left text-xs font-bold text-slate-400">Remarks Summary</th>
@@ -3786,7 +3786,7 @@ const AccountantReportPage = () => {
                       <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800 text-sm">
                         <thead className="bg-slate-50 dark:bg-slate-950">
                           <tr>
-                            <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 uppercase w-1/3">Activity</th>
+                            <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 uppercase w-[35%] min-w-[280px]">Activity</th>
                       <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 uppercase w-1/3">Due Date</th>
                             <th className="px-4 py-2 text-center text-xs font-bold text-slate-400 w-1/4">Status Summary</th>
                             <th className="px-4 py-2 text-left text-xs font-bold text-slate-400">Remarks Summary</th>
@@ -3930,7 +3930,7 @@ const AccountantReportPage = () => {
                         <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800 text-sm">
                           <thead className="bg-slate-50 dark:bg-slate-950">
                             <tr>
-                              <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 w-1/3">Activity</th>
+                              <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 w-[35%] min-w-[280px]">Activity</th>
                       <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 w-1/3">Due Date</th>
                               <th className="px-4 py-2 text-center text-xs font-bold text-slate-400 w-1/4">Status Summary</th>
                               <th className="px-4 py-2 text-left text-xs font-bold text-slate-400">Remarks Summary</th>
