@@ -177,6 +177,7 @@ const menuItems = [
   { icon: Users, label: 'Student Attendance', path: '/student-attendance', allowedRoles: ['1', '2', 'hr', 'admin'], allowedDepartments: ['6a3caed51194353cbc8a3686'] },
   { icon: Building, label: 'Departments', path: '/departments', allowedRoles: ['1', '2', 'hr', 'admin'], allowedDepartments: ['6a3caed51194353cbc8a3686'] },
   { icon: Users, label: 'Employee Reports', path: '/employee-reports', allowedRoles: [ 'hr', 'admin'], allowedDepartments: ['6a3caed51194353cbc8a3686'] },
+  { icon: Users, label: 'Team Reports', path: '/team-reports', isTeamLeadOnly: true },
 ];
 
 
@@ -201,6 +202,12 @@ const Sidebar = () => {
       const userObj = JSON.parse(savedUser);
       const currentUserRole = String(userObj.role_id || userObj.roleId || userObj.role || '').toLowerCase().trim();
       
+      const deptName = userObj.department || userObj.departmentId?.name || '';
+      const isNonOperational = String(deptName).toLowerCase().trim() === 'non-operational';
+      if (isNonOperational) {
+        return menuItems.filter(item => item.label === 'Employee Reports');
+      }
+
       let currentUserDept = '';
       if (userObj.departmentId) {
         if (typeof userObj.departmentId === 'object' && userObj.departmentId._id) {
@@ -225,9 +232,9 @@ const Sidebar = () => {
         if (item.excludeRoles && item.excludeRoles.includes(currentUserRole)) {
           return false;
         }
-        // Allow department team leads to see Employee Reports page
-        if (item.label === 'Employee Reports' && userObj.isTeamLead) {
-          return true;
+        // Show Team Reports page only for department team leads
+        if (item.isTeamLeadOnly) {
+          return !!userObj.isTeamLead;
         }
         if (!item.allowedRoles && !item.allowedDepartments && !item.allowedDesignations) return true;
         const roleMatch = item.allowedRoles && item.allowedRoles.includes(currentUserRole);
