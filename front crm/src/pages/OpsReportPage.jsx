@@ -3,7 +3,7 @@ import { uploadCompiledPDFReport } from '../services/departmentService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, Calendar, Plus, Trash2, Save, Download, 
-  CheckCircle, HelpCircle, Loader2, User, ChevronLeft, ChevronRight, Pencil
+  CheckCircle, HelpCircle, Loader2, User, ChevronLeft, ChevronRight, Pencil, X, Maximize2
 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
 import { jsPDF } from 'jspdf';
@@ -213,6 +213,7 @@ const OpsReportPage = () => {
   });
 
   const [dailyOperations, setDailyOperations] = useState(DEFAULT_DAILY_OPERATIONS);
+  const [selectedActivityText, setSelectedActivityText] = useState(null);
   const [salesActivity, setSalesActivity] = useState(DEFAULT_SALES_ACTIVITY);
   const [salesPerformance, setSalesPerformance] = useState(DEFAULT_SALES_PERFORMANCE);
   const [revenueTracking, setRevenueTracking] = useState(DEFAULT_REVENUE_TRACKING);
@@ -1754,7 +1755,7 @@ const OpsReportPage = () => {
                 <table className="w-full text-left border-collapse text-sm">
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
-                      <th className="px-4 py-3">Activity</th>
+                      <th className="px-4 py-3 w-[35%] min-w-[280px]">Activity</th>
                       <th className="px-4 py-3 w-36">Due Date</th>
                       <th className="px-4 py-3 w-44">Start Date</th>
                       <th className="px-4 py-3 w-44">End Date</th>
@@ -1766,18 +1767,30 @@ const OpsReportPage = () => {
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
                     {dailyOperations.map((row, i) => (
                       <tr key={i}>
-                        <td className="px-4 py-2.5">
-                          <input
-                            type="text"
-                            value={row.activity || ''}
-                            onChange={(e) => {
-                              const newArr = [...dailyOperations];
-                              newArr[i].activity = e.target.value;
-                              setDailyOperations(newArr);
-                            }}
-                            className="w-full bg-transparent border-none focus:outline-none p-0 text-sm font-semibold text-slate-700 dark:text-slate-300"
-                            placeholder="Activity name"
-                          />
+                        <td className="px-4 py-2.5 relative group">
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              value={row.activity || ''}
+                              onChange={(e) => {
+                                const newArr = [...dailyOperations];
+                                newArr[i].activity = e.target.value;
+                                setDailyOperations(newArr);
+                              }}
+                              className="w-full bg-transparent border-none focus:outline-none p-0 text-sm font-semibold text-slate-700 dark:text-slate-300"
+                              placeholder="Activity name"
+                            />
+                            {row.activity && (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedActivityText(row.activity)}
+                                className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 dark:hover:text-lime-400 transition-all p-0.5"
+                                title="View full text"
+                              >
+                                <Maximize2 size={13} />
+                              </button>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-2.5">
                           <input
@@ -1873,7 +1886,7 @@ const OpsReportPage = () => {
                 <table className="w-full text-left border-collapse text-sm">
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
-                      <th className="px-4 py-3">Activity</th>
+                      <th className="px-4 py-3 w-[35%] min-w-[280px]">Activity</th>
                       <th className="px-4 py-3 w-32 text-center">Count</th>
                       <th className="px-4 py-3 w-32 text-center">Digital Mktg</th>
                       <th className="px-4 py-3 w-32 text-center">Web</th>
@@ -1883,7 +1896,7 @@ const OpsReportPage = () => {
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
                     {salesActivity.map((row, i) => (
                       <tr key={i}>
-                        <td className="px-4 py-2.5 font-semibold text-xs text-slate-500">{row.activity}</td>
+                        <td className="px-4 py-2.5 font-semibold text-xs text-slate-500 cursor-pointer hover:text-indigo-600 dark:hover:text-lime-400 transition-colors" onClick={() => setSelectedActivityText(row.activity)}>{row.activity}</td>
                         <td className="px-4 py-2.5">
                           <input
                             type="text"
@@ -2062,7 +2075,7 @@ const OpsReportPage = () => {
                 <table className="w-full text-left border-collapse text-sm">
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
-                      <th className="px-4 py-3">Activity</th>
+                      <th className="px-4 py-3 w-[35%] min-w-[280px]">Activity</th>
                       <th className="px-4 py-3">Due Date</th>
                       <th className="px-4 py-3 w-40">Status</th>
                       <th className="px-4 py-3">Remarks</th>
@@ -2071,7 +2084,7 @@ const OpsReportPage = () => {
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
                     {academyStatus.map((row, i) => (
                       <tr key={i}>
-                        <td className="px-4 py-2.5 font-semibold text-xs text-slate-500">{row.activity}</td>
+                        <td className="px-4 py-2.5 font-semibold text-xs text-slate-500 cursor-pointer hover:text-indigo-600 dark:hover:text-lime-400 transition-colors" onClick={() => setSelectedActivityText(row.activity)}>{row.activity}</td>
                         <td className="px-4 py-2.5">
                           <input
                             type="text"
@@ -2379,7 +2392,7 @@ const OpsReportPage = () => {
                         <table className="w-full text-left border-collapse text-sm">
                           <thead>
                             <tr className="bg-slate-50 dark:bg-slate-950/40 text-slate-400 text-[10px] font-bold uppercase border-b border-slate-100 dark:border-slate-800">
-                              <th className="px-4 py-3">Activity</th>
+                              <th className="px-4 py-3 w-[35%] min-w-[280px]">Activity</th>
                       <th className="px-4 py-3">Due Date</th>
                               <th className="px-4 py-3 text-center w-24">Count</th>
                               <th className="px-4 py-3 text-center w-24">Digital Mktg</th>
@@ -2529,7 +2542,7 @@ const OpsReportPage = () => {
                           <table className="w-full text-left border-collapse text-sm">
                             <thead>
                               <tr className="bg-slate-50 dark:bg-slate-950/40 text-slate-400 text-[10px] font-bold uppercase border-b border-slate-100 dark:border-slate-800">
-                                <th className="px-4 py-3">Activity</th>
+                                <th className="px-4 py-3 w-[35%] min-w-[280px]">Activity</th>
                       <th className="px-4 py-3">Due Date</th>
                                 <th className="px-4 py-3 text-center w-28">Status</th>
                                 <th className="px-4 py-3">Remarks</th>
@@ -2839,7 +2852,7 @@ const OpsReportPage = () => {
                         <table className="w-full text-left border-collapse text-sm">
                           <thead>
                             <tr className="bg-slate-50 dark:bg-slate-950/40 text-slate-400 text-[10px] font-bold uppercase border-b border-slate-100 dark:border-slate-800">
-                              <th className="px-4 py-3">Activity</th>
+                              <th className="px-4 py-3 w-[35%] min-w-[280px]">Activity</th>
                       <th className="px-4 py-3">Due Date</th>
                               <th className="px-4 py-3 text-center w-24">Count</th>
                               <th className="px-4 py-3 text-center w-24">Digital Mktg</th>
@@ -2989,7 +3002,7 @@ const OpsReportPage = () => {
                           <table className="w-full text-left border-collapse text-sm">
                             <thead>
                               <tr className="bg-slate-50 dark:bg-slate-950/40 text-slate-400 text-[10px] font-bold uppercase border-b border-slate-100 dark:border-slate-800">
-                                <th className="px-4 py-3">Activity</th>
+                                <th className="px-4 py-3 w-[35%] min-w-[280px]">Activity</th>
                       <th className="px-4 py-3">Due Date</th>
                                 <th className="px-4 py-3 text-center w-28">Status</th>
                                 <th className="px-4 py-3">Remarks</th>
@@ -3197,6 +3210,34 @@ const OpsReportPage = () => {
         </AnimatePresence>
 
       </div>
+
+      {/* Activity Detail Modal */}
+      {selectedActivityText && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md p-6 shadow-2xl border border-slate-100 dark:border-slate-800 relative">
+            <button
+              type="button"
+              onClick={() => setSelectedActivityText(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition p-1"
+            >
+              <X size={18} />
+            </button>
+            <h3 className="text-lg font-black text-slate-900 dark:text-slate-100 mb-4">Activity Details</h3>
+            <div className="text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl max-h-[60vh] overflow-y-auto whitespace-pre-wrap break-words font-medium leading-relaxed">
+              {selectedActivityText}
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedActivityText(null)}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-indigo-600/20"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

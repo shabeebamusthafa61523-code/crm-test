@@ -9,6 +9,7 @@ import {
   Activity, 
   ChevronRight, 
   Loader2,
+  LayoutDashboard,
   Users,
   TrendingUp,
   Building,
@@ -1768,8 +1769,25 @@ const Dashboard = () => {
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0b0c10] flex items-center justify-center transition-colors duration-500">
-      <Loader2 className="text-indigo-500 animate-spin" size={40} />
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 transition-colors duration-500">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9 }} 
+        animate={{ opacity: 1, scale: 1 }}
+        className="flex flex-col items-center gap-5"
+      >
+        <div className="relative">
+          <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl">
+            <LayoutDashboard size={40} className="text-indigo-500" />
+          </div>
+          <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-lime-400 border-2 border-white dark:border-slate-950 animate-bounce" />
+        </div>
+        <div className="flex items-center gap-2">
+          <Loader2 size={16} className="text-indigo-400 animate-spin" />
+          <p className="text-[11px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-widest">
+            Loading Admin Dashboard
+          </p>
+        </div>
+      </motion.div>
     </div>
   );
 

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users, Activity, UserCheck, UserMinus, BarChart3,
-  TrendingUp, Clock, CheckCircle2, AlertCircle, Layout, RefreshCw, Eye, PieChart
+  TrendingUp, Clock, CheckCircle2, AlertCircle, Layout, RefreshCw, Eye, PieChart,
+  Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -358,7 +359,10 @@ export default function HrDashboard() {
             
             <div className="space-y-5">
               {loading ? (
-                <div className="flex items-center justify-center h-48 text-slate-400 text-sm">Loading metrics...</div>
+                <div className="flex flex-col items-center justify-center h-48 gap-2 text-slate-400 text-sm">
+                  <Loader2 size={24} className="animate-spin text-indigo-500" />
+                  <span>Loading metrics...</span>
+                </div>
               ) : performanceStats.length === 0 ? (
                 <div className="flex items-center justify-center h-48 text-slate-400 text-sm">No task data available</div>
               ) : (
@@ -418,7 +422,10 @@ export default function HrDashboard() {
               </h2>
               
               {loading ? (
-                 <div className="text-center text-slate-400 py-12 text-sm">Loading...</div>
+                <div className="flex flex-col items-center justify-center py-12 gap-2 text-slate-400 text-sm">
+                  <Loader2 size={24} className="animate-spin text-indigo-500" />
+                  <span>Loading...</span>
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center mt-2">
                   <DoughnutChart data={companyWorkloadData} />
@@ -452,7 +459,10 @@ export default function HrDashboard() {
               </h2>
               <div className="flex-1 overflow-y-auto pr-2 space-y-2 custom-scrollbar">
                 {loading ? (
-                  <div className="text-center text-slate-400 py-4 text-sm">Loading...</div>
+                  <div className="flex flex-col items-center justify-center py-4 gap-2 text-slate-400 text-sm">
+                    <Loader2 size={16} className="animate-spin text-indigo-500" />
+                    <span>Loading...</span>
+                  </div>
                 ) : userStats.online.length === 0 ? (
                   <div className="text-center text-slate-400 py-4 text-sm">No one checked in yet</div>
                 ) : (
@@ -492,7 +502,10 @@ export default function HrDashboard() {
               </h2>
               <div className="flex-1 overflow-y-auto pr-2 space-y-2 custom-scrollbar">
                 {loading ? (
-                  <div className="text-center text-slate-400 py-4 text-sm">Loading...</div>
+                  <div className="flex flex-col items-center justify-center py-4 gap-2 text-slate-400 text-sm">
+                    <Loader2 size={16} className="animate-spin text-indigo-500" />
+                    <span>Loading...</span>
+                  </div>
                 ) : userStats.offline.length === 0 ? (
                   <div className="text-center text-slate-400 py-4 text-sm">Everyone is checked in!</div>
                 ) : (

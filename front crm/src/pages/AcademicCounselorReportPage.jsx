@@ -1259,7 +1259,7 @@ const AcademicCounselorReportPage = () => {
                 <table className="w-full text-left border-collapse text-sm">
                   <thead>
                     <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
-                      <th className="px-5 py-4">Activity</th>
+                      <th className="px-5 py-4 w-[35%] min-w-[280px]">Activity</th>
                       <th className="px-5 py-4 w-36">Due Date</th>
                       <th className="px-5 py-4 w-44">Start Date</th>
                       <th className="px-5 py-4 w-44">End Date</th>
@@ -1933,7 +1933,7 @@ const AcademicCounselorReportPage = () => {
                         <table className="w-full text-left border-collapse text-sm">
                           <thead>
                             <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
-                              <th className="px-5 py-4">Activity</th>
+                              <th className="px-5 py-4 w-[35%] min-w-[280px]">Activity</th>
                               <th className="px-5 py-4 w-36">Due Date</th>
                               <th className="px-5 py-4 w-44">Start Date</th>
                               <th className="px-5 py-4 w-44">End Date</th>
