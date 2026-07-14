@@ -67,7 +67,15 @@ const isAuthorizedToAccessUser = async (reqUser, targetUserId) => {
   
   const loggedInUserId = reqUser.id || reqUser._id;
   const loggedInUserRole = String(reqUser.role || reqUser.role_id || '').toLowerCase().trim();
-  const isPrivileged = ['1', '2', 'hr', 'admin'].includes(loggedInUserRole);
+  
+  let isNonOperational = false;
+  if (loggedInUserId) {
+    const currentUserObj = await User.findById(loggedInUserId).populate('departmentId', 'name');
+    const deptName = currentUserObj?.departmentId?.name || currentUserObj?.department || '';
+    isNonOperational = String(deptName).toLowerCase().trim() === 'non-operational';
+  }
+
+  const isPrivileged = ['1', '2', 'hr', 'admin'].includes(loggedInUserRole) || isNonOperational;
 
   // Privileged roles can see everything
   if (isPrivileged) return true;

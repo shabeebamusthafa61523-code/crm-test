@@ -148,6 +148,14 @@ export const login = async (req, res) => {
     const Department = (await import('../modules/departments/department.model.js')).default;
     const isTeamLead = await Department.exists({ managerId: user._id }) ? true : false;
 
+    let departmentName = user.department || '';
+    if (user.departmentId) {
+      const deptObj = await Department.findById(user.departmentId).select('name');
+      if (deptObj && deptObj.name) {
+        departmentName = deptObj.name;
+      }
+    }
+
     // 4. Return matching data structure required by your React components
     res.json({
       success: true, // Added to match standard response handlers
@@ -166,6 +174,7 @@ export const login = async (req, res) => {
         reportingManager: user.reportingManager || null,
         salary: user.salary ?? 0,
         profile_image: user.profile_image || null,
+        department: departmentName,
         departmentId: user.departmentId || null,
         employeeId: user.employeeId || null,
         avatar: user.avatar || null,
