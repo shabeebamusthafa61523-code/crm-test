@@ -17,9 +17,21 @@ export const signup = async (req, res) => {
     // 1. Check if user already exists
     const searchConditions = [{ email }];
     if (phone) searchConditions.push({ phone });
-    const existingUser = await User.findOne({ $or: searchConditions });
-    if (existingUser) {
-      return res.status(400).json({ detail: "A user profile with this email or phone number already exists." });
+    const existingUsers = await User.find({ $or: searchConditions });
+    if (existingUsers.length > 0) {
+      const conflicts = [];
+      const hasEmail = existingUsers.some(u => u.email === email);
+      const hasPhone = phone && existingUsers.some(u => u.phone === phone);
+      if (hasEmail) conflicts.push('Email');
+      if (hasPhone) conflicts.push('Phone number');
+
+      let msgPart = '';
+      if (conflicts.length === 1) {
+        msgPart = `${conflicts[0]} is`;
+      } else {
+        msgPart = `${conflicts[0]} and ${conflicts[1]} are`;
+      }
+      return res.status(400).json({ detail: `Conflict: ${msgPart} already registered.` });
     }
 
     // 2. Hash security password

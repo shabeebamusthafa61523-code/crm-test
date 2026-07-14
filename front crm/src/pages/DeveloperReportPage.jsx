@@ -9,6 +9,7 @@ import { useToast } from '../components/ToastProvider';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { fetchCompletedTasks } from '../utils/taskUtils';
+import SignatureUpload from '../components/SignatureUpload';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -1058,9 +1059,26 @@ const DeveloperReportPage = () => {
         headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
         styles: { fontSize: 8, cellPadding: 3, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
         columnStyles: {
-          0: { width: 75, fontStyle: 'bold' },
-          1: { width: 55 },
-          2: { width: 52 }
+          0: { cellWidth: 80 },
+          1: { cellWidth: 62 },
+          2: { cellWidth: 40 }
+        },
+        didDrawCell: (data) => {
+          if (data.column.index === 1 && data.cell.section === 'body') {
+            const signatureVal = data.cell.raw;
+            if (signatureVal && String(signatureVal).startsWith('data:image/')) {
+              data.cell.text = '';
+              const x = data.cell.x + 2;
+              const y = data.cell.y + 2;
+              const w = data.cell.width - 4;
+              const h = data.cell.height - 4;
+              try {
+                doc.addImage(signatureVal, 'PNG', x, y, w, h);
+              } catch (e) {
+                console.error("Failed to add signature image to monthly PDF:", e);
+              }
+            }
+          }
         },
         margin: { left: 14, right: 14 }
       });
@@ -1877,12 +1895,10 @@ const DeveloperReportPage = () => {
                   </div>
                   <div>
                     <label className="block text-xs mb-1">Signature</label>
-                    <input
-                      type="text"
+                    <SignatureUpload
                       value={approval.internSignature || ''}
-                      onChange={(e) => setApproval({ ...approval, internSignature: e.target.value })}
-                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                      placeholder="Type signature"
+                      onChange={(val) => setApproval({ ...approval, internSignature: val })}
+                      placeholder="Upload intern signature"
                     />
                   </div>
                   <div>
@@ -1909,12 +1925,10 @@ const DeveloperReportPage = () => {
                   </div>
                   <div>
                     <label className="block text-xs mb-1">Signature</label>
-                    <input
-                      type="text"
+                    <SignatureUpload
                       value={approval.hodSignature || ''}
-                      onChange={(e) => setApproval({ ...approval, hodSignature: e.target.value })}
-                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                      placeholder="HOD signature"
+                      onChange={(val) => setApproval({ ...approval, hodSignature: val })}
+                      placeholder="Upload HOD signature"
                     />
                   </div>
                   <div>
@@ -2573,12 +2587,10 @@ const DeveloperReportPage = () => {
                             </div>
                             <div>
                               <label className="block text-xs mb-1">Signature</label>
-                              <input
-                                type="text"
+                              <SignatureUpload
                                 value={monthlyApproval.internSignature || ''}
-                                onChange={(e) => setMonthlyApproval({ ...monthlyApproval, internSignature: e.target.value })}
-                                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none"
-                                placeholder="Type signature"
+                                onChange={(val) => setMonthlyApproval({ ...monthlyApproval, internSignature: val })}
+                                placeholder="Upload intern signature"
                               />
                             </div>
                             <div>
@@ -2605,12 +2617,10 @@ const DeveloperReportPage = () => {
                             </div>
                             <div>
                               <label className="block text-xs mb-1">Signature</label>
-                              <input
-                                type="text"
+                              <SignatureUpload
                                 value={monthlyApproval.hodSignature || ''}
-                                onChange={(e) => setMonthlyApproval({ ...monthlyApproval, hodSignature: e.target.value })}
-                                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none"
-                                placeholder="HOD signature"
+                                onChange={(val) => setMonthlyApproval({ ...monthlyApproval, hodSignature: val })}
+                                placeholder="Upload HOD signature"
                               />
                             </div>
                             <div>

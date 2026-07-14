@@ -377,16 +377,31 @@ export const userController = {
       if (phone) searchConditions.push({ phone });
       if (employeeId) searchConditions.push({ employeeId });
 
-      const existingUser =
-        await User.findOne({
-          $or: searchConditions
-        });
+      const existingUsers = await User.find({
+        $or: searchConditions
+      });
 
-      if (existingUser) {
-        throw new AppError(
-          'Conflict: Email, Phone, or Employee ID already registered.',
-          409
-        );
+      if (existingUsers.length > 0) {
+        const conflicts = [];
+        const hasEmail = existingUsers.some(u => u.email === email);
+        const hasPhone = phone && existingUsers.some(u => u.phone === phone);
+        const hasEmpId = employeeId && existingUsers.some(u => u.employeeId === employeeId);
+
+        if (hasEmail) conflicts.push('Email');
+        if (hasPhone) conflicts.push('Phone number');
+        if (hasEmpId) conflicts.push('Employee ID');
+
+        let msgPart = '';
+        if (conflicts.length === 1) {
+          msgPart = `${conflicts[0]} is`;
+        } else if (conflicts.length === 2) {
+          msgPart = `${conflicts[0]} and ${conflicts[1]} are`;
+        } else {
+          msgPart = `${conflicts[0]}, ${conflicts[1]} and ${conflicts[2]} are`;
+        }
+        const message = `Conflict: ${msgPart} already registered.`;
+
+        throw new AppError(message, 409);
       }
 
       const tempPass =

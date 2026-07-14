@@ -49,6 +49,7 @@ const Dashboard = () => {
   const [userSearch, setUserSearch] = useState("");
   const [taskFilter, setTaskFilter] = useState("all");
   const [taskSearch, setTaskSearch] = useState("");
+  const [taskCurrentPage, setTaskCurrentPage] = useState(1);
   const [activeAnalyticsDept, setActiveAnalyticsDept] = useState("all");
   const [userPerformanceSort, setUserPerformanceSort] = useState("completion");
 
@@ -241,6 +242,11 @@ const Dashboard = () => {
     return () => clearInterval(timer);
   }, [fetchData]);
 
+  // Reset pagination on filter or search changes
+  useEffect(() => {
+    setTaskCurrentPage(1);
+  }, [taskSearch, taskFilter]);
+
   // Operator specific filtered tasks
   const myTasks = useMemo(() => {
     if (!user?.user_id) return [];
@@ -299,6 +305,33 @@ const Dashboard = () => {
       return statusMatch && searchMatch;
     });
   }, [tasks, taskSearch, taskFilter, allUsers]);
+
+  // System Task Monitor Pagination calculations
+  const tasksPerPage = 5;
+  const totalTaskPages = Math.ceil(filteredTasks.length / tasksPerPage);
+
+  const paginatedTasks = useMemo(() => {
+    const activePage = Math.min(taskCurrentPage, totalTaskPages || 1);
+    const start = (activePage - 1) * tasksPerPage;
+    return filteredTasks.slice(start, start + tasksPerPage);
+  }, [filteredTasks, taskCurrentPage, totalTaskPages]);
+
+  const taskPaginationItems = useMemo(() => {
+    const pages = [];
+    for (let i = 1; i <= totalTaskPages; i++) {
+      if (i === 1 || i === totalTaskPages || (i >= taskCurrentPage - 1 && i <= taskCurrentPage + 1)) {
+        pages.push(i);
+      }
+    }
+    const rendered = [];
+    for (let i = 0; i < pages.length; i++) {
+      if (i > 0 && pages[i] - pages[i - 1] > 1) {
+        rendered.push({ type: 'ellipsis' });
+      }
+      rendered.push({ type: 'page', value: pages[i] });
+    }
+    return rendered;
+  }, [totalTaskPages, taskCurrentPage]);
 
   // Dynamic department list from allUsers
   const departmentsList = useMemo(() => {
@@ -1456,7 +1489,7 @@ const Dashboard = () => {
                 </p>
               </div>
             ) : (
-              filteredTasks.slice(0, 5).map((task) => {
+              paginatedTasks.map((task) => {
                 const isDone = String(task.status).toLowerCase() === "done";
                 return (
                   <div
@@ -1486,8 +1519,8 @@ const Dashboard = () => {
                     <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0">
                       <span className={`text-[9px] font-black px-3 py-1 rounded-lg uppercase tracking-tight ${
                         isDone
-                          ? "text-emerald-500 bg-emerald-500/5 border border-emerald-500/10"
-                          : "text-amber-500 bg-amber-500/5 border border-amber-500/10"
+                          ? "text-emerald-550 bg-emerald-550/5 border border-emerald-550/10"
+                          : "text-amber-550 bg-amber-550/5 border border-amber-550/10"
                       }`}>
                         {task.status || "Pending"}
                       </span>
@@ -1498,7 +1531,57 @@ const Dashboard = () => {
             )}
           </div>
 
-          {filteredTasks.length > 5 && (
+          {/* Pagination Controls */}
+          {totalTaskPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t border-slate-100 dark:border-slate-800/50">
+              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                Showing <span className="text-slate-800 dark:text-slate-300">{(Math.min(taskCurrentPage, totalTaskPages || 1) - 1) * tasksPerPage + 1}</span> to{" "}
+                <span className="text-slate-800 dark:text-slate-300">
+                  {Math.min(Math.min(taskCurrentPage, totalTaskPages || 1) * tasksPerPage, filteredTasks.length)}
+                </span>{" "}
+                of <span className="text-slate-800 dark:text-slate-300">{filteredTasks.length}</span> tasks
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setTaskCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={Math.min(taskCurrentPage, totalTaskPages || 1) === 1}
+                  className="px-3 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-400 hover:border-indigo-500/50 dark:hover:border-indigo-500/50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-slate-200 dark:disabled:hover:border-slate-800 transition cursor-pointer"
+                >
+                  Prev
+                </button>
+                <div className="flex items-center gap-1">
+                  {taskPaginationItems.map((item, idx) => {
+                    if (item.type === 'ellipsis') {
+                      return <span key={`ellipsis-${idx}`} className="px-1 text-slate-400 text-[10px] font-bold">...</span>;
+                    }
+                    const activePage = Math.min(taskCurrentPage, totalTaskPages || 1);
+                    return (
+                      <button
+                        key={`page-${item.value}`}
+                        onClick={() => setTaskCurrentPage(item.value)}
+                        className={`w-8 h-8 rounded-xl text-[10px] font-black uppercase tracking-wider transition cursor-pointer ${
+                          activePage === item.value
+                            ? "bg-indigo-600 text-white shadow-sm shadow-indigo-500/20"
+                            : "bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-indigo-500/50"
+                        }`}
+                      >
+                        {item.value}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={() => setTaskCurrentPage(prev => Math.min(prev + 1, totalTaskPages))}
+                  disabled={Math.min(taskCurrentPage, totalTaskPages || 1) === totalTaskPages}
+                  className="px-3 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-400 hover:border-indigo-500/50 dark:hover:border-indigo-500/50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-slate-200 dark:disabled:hover:border-slate-800 transition cursor-pointer"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+
+          {tasks.length > 0 && (
             <button
               onClick={() => navigate("/todo")}
               className="mt-4 text-center w-full py-3 bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-950 border border-slate-150 dark:border-slate-850 rounded-2xl text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-wider transition-all"
