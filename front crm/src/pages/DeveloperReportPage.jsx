@@ -1028,7 +1028,7 @@ const DeveloperReportPage = () => {
       currentY += planBoxHeight + 4;
 
       // 9. INTERN / STUDENT REMARKS
-      drawSectionHeader("9. INTERN / STUDENT REMARKS");
+      drawSectionHeader("9. REMARKS");
       const remarksLines = doc.splitTextToSize(mRemarks || '', 178);
       doc.text(remarksLines, 16, currentY + 5);
       const remarksBoxHeight = Math.max(12, remarksLines.length * 4.2 + 5);
@@ -1040,7 +1040,7 @@ const DeveloperReportPage = () => {
       const approvalHeaders = [["Name", "Signature", "Date"]];
       const approvalRows = [
         [
-          `Intern / Student: ${mApproval.internName || ''}`,
+          `Developer: ${mApproval.internName || ''}`,
           mApproval.internSignature || '',
           mApproval.internDate || ''
         ],
@@ -1865,7 +1865,7 @@ const DeveloperReportPage = () => {
             <div className="space-y-3">
               <h2 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
                 <span className="flex items-center justify-center w-5 h-5 rounded bg-indigo-100 dark:bg-lime-950/50 text-[10px]">8</span>
-                Intern / Student Remarks
+                 Remarks
               </h2>
               <textarea
                 value={internRemarks}
@@ -1883,7 +1883,7 @@ const DeveloperReportPage = () => {
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50/50 dark:bg-slate-950/20 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
                 <div className="space-y-3">
-                  <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Intern / Student</h4>
+                  <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Developer</h4>
                   <div>
                     <label className="block text-xs mb-1">Name</label>
                     <input
@@ -2561,7 +2561,7 @@ const DeveloperReportPage = () => {
                             />
                           </div>
                           <div className="space-y-2">
-                            <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Intern / Student Remarks</label>
+                            <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider"> Remarks</label>
                             <textarea
                               value={monthlyInternRemarks}
                               onChange={(e) => setMonthlyInternRemarks(e.target.value)}
@@ -2575,7 +2575,7 @@ const DeveloperReportPage = () => {
                       {monthlyActiveTab === 'approval' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50/50 dark:bg-slate-950/20 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
                           <div className="space-y-3">
-                            <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Intern / Student</h4>
+                            <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Developer</h4>
                             <div>
                               <label className="block text-xs mb-1">Name</label>
                               <input

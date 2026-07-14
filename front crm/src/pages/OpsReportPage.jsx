@@ -9,6 +9,7 @@ import { useToast } from '../components/ToastProvider';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { fetchCompletedTasks } from '../utils/taskUtils';
+import SignatureUpload from '../components/SignatureUpload';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -2204,12 +2205,10 @@ const OpsReportPage = () => {
                   </div>
                   <div>
                     <label className="block text-xs mb-1">Signature</label>
-                    <input
-                      type="text"
+                    <SignatureUpload
                       value={approval.opsSignature || ''}
-                      onChange={(e) => setApproval({ ...approval, opsSignature: e.target.value })}
-                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none"
-                      placeholder="Type signature"
+                      onChange={(val) => setApproval({ ...approval, opsSignature: val })}
+                      placeholder="Upload ops signature"
                     />
                   </div>
                   <div>
@@ -2236,12 +2235,10 @@ const OpsReportPage = () => {
                   </div>
                   <div>
                     <label className="block text-xs mb-1">Signature</label>
-                    <input
-                      type="text"
+                    <SignatureUpload
                       value={approval.directorSignature || ''}
-                      onChange={(e) => setApproval({ ...approval, directorSignature: e.target.value })}
-                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none"
-                      placeholder="Director signature"
+                      onChange={(val) => setApproval({ ...approval, directorSignature: val })}
+                      placeholder="Upload director signature"
                     />
                   </div>
                   <div>

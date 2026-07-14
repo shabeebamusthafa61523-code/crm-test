@@ -9,6 +9,7 @@ import { useToast } from '../components/ToastProvider';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { fetchCompletedTasks } from '../utils/taskUtils';
+import SignatureUpload from '../components/SignatureUpload';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -953,6 +954,30 @@ const VideographerReportPage = () => {
           2: { width: 60 },
           3: { width: 35, halign: 'center' }
         },
+        didDrawCell: (data) => {
+          if (data.column.index === 0 && data.cell.section === 'body') {
+            const rawVal = String(data.cell.raw || '');
+            if (rawVal.includes('(data:image/')) {
+              const parts = rawVal.split(' (');
+              const nameText = parts[0];
+              const signatureBase64 = parts[1] ? parts[1].slice(0, -1) : '';
+              if (signatureBase64.startsWith('data:image/')) {
+                data.cell.text = '';
+                const x = data.cell.x + 2;
+                const y = data.cell.y + 2;
+                doc.text(nameText, x, y + 2);
+                const imgY = y + 8;
+                const w = data.cell.width - 4;
+                const h = data.cell.height - 12;
+                try {
+                  doc.addImage(signatureBase64, 'PNG', x, imgY, w, h);
+                } catch (e) {
+                  console.error("Failed to add signature image to monthly PDF:", e);
+                }
+              }
+            }
+          }
+        },
         margin: { left: 14, right: 14 }
       });
 
@@ -1766,13 +1791,11 @@ const VideographerReportPage = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Videographer Signature (Initials)</label>
-                  <input
-                    type="text"
+                  <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Videographer Signature</label>
+                  <SignatureUpload
                     value={approval.videographerSignature || ''}
-                    onChange={(e) => setApproval({ ...approval, videographerSignature: e.target.value })}
-                    placeholder="Signature..."
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none text-slate-700 dark:text-slate-200"
+                    onChange={(val) => setApproval({ ...approval, videographerSignature: val })}
+                    placeholder="Upload videographer signature"
                   />
                 </div>
                 <div>
@@ -2034,11 +2057,10 @@ const VideographerReportPage = () => {
                     </div>
                     <div>
                       <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Videographer Signature</label>
-                      <input
-                        type="text"
+                      <SignatureUpload
                         value={monthlyApproval.videographerSignature || ''}
-                        onChange={(e) => setMonthlyApproval({ ...monthlyApproval, videographerSignature: e.target.value })}
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        onChange={(val) => setMonthlyApproval({ ...monthlyApproval, videographerSignature: val })}
+                        placeholder="Upload videographer signature"
                       />
                     </div>
                     <div>

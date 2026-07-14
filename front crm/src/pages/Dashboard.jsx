@@ -1080,7 +1080,7 @@ const Dashboard = () => {
             onClick={() => setGlobalDepartment("all")}
             className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
               globalDepartment === "all"
-                ? "bg-indigo-650 text-white shadow-md shadow-indigo-600/20"
+                ? "bg-indigo-700 text-white shadow-md shadow-indigo-600/20"
                 : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-350 dark:hover:border-slate-700"
             }`}
           >
@@ -1092,7 +1092,7 @@ const Dashboard = () => {
               onClick={() => setGlobalDepartment(dept)}
               className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
                 globalDepartment.toLowerCase() === dept.toLowerCase()
-                  ? "bg-indigo-650 text-white shadow-md shadow-indigo-600/20"
+                  ? "bg-indigo-700 text-white shadow-md shadow-indigo-800/20"
                   : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-350 dark:hover:border-slate-700"
               }`}
             >

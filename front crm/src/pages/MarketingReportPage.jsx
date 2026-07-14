@@ -9,6 +9,7 @@ import { useToast } from '../components/ToastProvider';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { fetchCompletedTasks } from '../utils/taskUtils';
+import SignatureUpload from '../components/SignatureUpload';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -79,9 +80,11 @@ const MarketingReportPage = () => {
   const [blockersTomorrowPlan, setBlockersTomorrowPlan] = useState(DEFAULT_BLOCKERS_PLAN);
   
   const [approval, setApproval] = useState({
+    staffName: '',
     staffSignature: '',
     submittedAt: '',
-    leaderApproval: 'CMO / Team Leader Approval',
+    leaderName: '',
+    leaderApproval: '',
     approvedOn: ''
   });
 
@@ -765,9 +768,11 @@ const MarketingReportPage = () => {
     setKeyNumbers(DEFAULT_KPI_TRACKING);
     setBlockersTomorrowPlan(DEFAULT_BLOCKERS_PLAN);
     setApproval({
-      staffSignature: userDetail.name || '',
+      staffName: userDetail.name || '',
+      staffSignature: '',
       submittedAt: timeStr,
-      leaderApproval: 'CMO / Team Leader Approval',
+      leaderName: '',
+      leaderApproval: '',
       approvedOn: ''
     });
   };
@@ -1388,12 +1393,20 @@ const MarketingReportPage = () => {
                     Staff Verification
                   </h4>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Staff Signature / Name</label>
+                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Staff Name</label>
                     <input
                       type="text"
+                      value={approval.staffName || ''}
+                      onChange={(e) => setApproval({ ...approval, staffName: e.target.value })}
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none text-slate-700 dark:text-slate-200"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Staff Signature</label>
+                    <SignatureUpload
                       value={approval.staffSignature || ''}
-                      onChange={(e) => setApproval({ ...approval, staffSignature: e.target.value })}
-                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none"
+                      onChange={(val) => setApproval({ ...approval, staffSignature: val })}
+                      placeholder="Upload staff signature"
                     />
                   </div>
                   <div>
@@ -1402,7 +1415,7 @@ const MarketingReportPage = () => {
                       type="text"
                       value={approval.submittedAt || ''}
                       onChange={(e) => setApproval({ ...approval, submittedAt: e.target.value })}
-                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none"
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none text-slate-700 dark:text-slate-200"
                     />
                   </div>
                 </div>
@@ -1412,14 +1425,20 @@ const MarketingReportPage = () => {
                     Team Leader Approval
                   </h4>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Team Leader Approval Signature</label>
+                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Team Leader Name</label>
                     <input
                       type="text"
+                      value={approval.leaderName || ''}
+                      onChange={(e) => setApproval({ ...approval, leaderName: e.target.value })}
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none text-slate-700 dark:text-slate-200"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Team Leader Approval Signature</label>
+                    <SignatureUpload
                       value={approval.leaderApproval || ''}
-                      onChange={(e) => setApproval({ ...approval, leaderApproval: e.target.value })}
-                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none"
-                      disabled={!isPrivileged}
-                      placeholder={!isPrivileged ? "Restricted to Team Leader/CMO" : "Leader Approval"}
+                      onChange={(val) => setApproval({ ...approval, leaderApproval: val })}
+                      placeholder="Upload leader signature"
                     />
                   </div>
                   <div>
