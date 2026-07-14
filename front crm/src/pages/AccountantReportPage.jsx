@@ -9,6 +9,7 @@ import { useToast } from '../components/ToastProvider';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { fetchCompletedTasks } from '../utils/taskUtils';
+import SignatureUpload from '../components/SignatureUpload';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -2880,12 +2881,11 @@ const AccountantReportPage = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Signature Initials</label>
-                    <input
-                      type="text"
+                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Signature</label>
+                    <SignatureUpload
                       value={approval.accountantSignature || ''}
-                      onChange={(e) => setApproval({ ...approval, accountantSignature: e.target.value })}
-                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none"
+                      onChange={(val) => setApproval({ ...approval, accountantSignature: val })}
+                      placeholder="Upload accountant signature"
                     />
                   </div>
                   <div>
@@ -2913,14 +2913,11 @@ const AccountantReportPage = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Signature Initials</label>
-                    <input
-                      type="text"
+                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Signature</label>
+                    <SignatureUpload
                       value={approval.managerSignature || ''}
-                      onChange={(e) => setApproval({ ...approval, managerSignature: e.target.value })}
-                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none"
-                      disabled={!isPrivileged}
-                      placeholder={!isPrivileged ? "Restricted to Managers" : "Signature"}
+                      onChange={(val) => setApproval({ ...approval, managerSignature: val })}
+                      placeholder="Upload manager signature"
                     />
                   </div>
                   <div>
