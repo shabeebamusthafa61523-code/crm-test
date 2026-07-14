@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 
 const menuItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', allowedRoles: ['1', '2', 'admin' ],   //allowedDepartments: ['6a3caed51194353cbc8a3686'] 
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', allowedRoles: ['1', '2', 'admin' ],  allowedDepartments: ['6a55c7e8b613a280003481d8'] 
  },
 
   {
@@ -205,7 +205,7 @@ const Sidebar = () => {
       const deptName = userObj.department || userObj.departmentId?.name || '';
       const isNonOperational = String(deptName).toLowerCase().trim() === 'non-operational';
       if (isNonOperational) {
-        return menuItems.filter(item => item.label === 'Employee Reports');
+        return menuItems.filter(item => item.label === 'Employee Reports' || item.label === 'Dashboard');
       }
 
       let currentUserDept = '';

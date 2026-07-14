@@ -50,7 +50,6 @@ const Dashboard = () => {
   const [taskFilter, setTaskFilter] = useState("all");
   const [taskSearch, setTaskSearch] = useState("");
   const [taskCurrentPage, setTaskCurrentPage] = useState(1);
-  const [activeAnalyticsDept, setActiveAnalyticsDept] = useState("all");
   const [userPerformanceSort, setUserPerformanceSort] = useState("completion");
   const [globalDepartment, setGlobalDepartment] = useState("all");
 
@@ -234,15 +233,15 @@ const Dashboard = () => {
           currentUserDept = String(parsedUser.departmentId).trim();
         }
       }
-      const privileged = ['1', '2', 'hr', 'admin'].includes(currentUserRole) || currentUserDept === '6a3caed51194353cbc8a3686';
+      const privileged = ['1', '2', 'hr', 'admin'].includes(currentUserRole) || 
+                         currentUserDept === '6a3caed51194353cbc8a3686' || 
+                         currentUserDept === '6a55c7e8b613a280003481d8';
       setIsAdmin(privileged);
-
-      fetchData(storedUserId, privileged);
     }
 
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
-  }, [fetchData]);
+  }, []);
 
   useEffect(() => {
     if (user?.user_id) {
@@ -440,8 +439,11 @@ const Dashboard = () => {
     });
 
     // Filter by active department selection
-    if (activeAnalyticsDept !== "all") {
-      list = list.filter(u => String(u.department || "").toLowerCase().trim() === activeAnalyticsDept.toLowerCase().trim());
+    if (globalDepartment !== "all") {
+      list = list.filter(u => {
+        const deptName = u.departmentId?.name || u.department || "";
+        return deptName.toLowerCase().trim() === globalDepartment.toLowerCase().trim();
+      });
     }
 
     // Sort by selected criteria
@@ -454,7 +456,7 @@ const Dashboard = () => {
     }
 
     return list;
-  }, [allUsers, tasks, activeAnalyticsDept, userPerformanceSort]);
+  }, [allUsers, tasks, globalDepartment, userPerformanceSort]);
 
   // SVG Bar Chart Generator for User Todo Performance (Premium Edition)
   const renderUserTodoPerformanceChart = () => {
@@ -510,7 +512,7 @@ const Dashboard = () => {
               const barWidth = (user.completionRate / 100) * chartWidth;
 
               return (
-                <g key={user.name || idx} className="group/row cursor-pointer transition-all duration-300 hover:opacity-90">
+                <g key={user.id || user._id || `user-perf-${idx}`} className="group/row cursor-pointer transition-all duration-300 hover:opacity-90">
                   {/* User Name */}
                   <text
                     x={paddingLeft - 12}
@@ -720,7 +722,7 @@ const Dashboard = () => {
               const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
 
               return (
-                <g key={user.name}>
+                <g key={`trend-line-${user.name || uIdx}`}>
                   <defs>
                     <filter id={`glow-${uIdx}`} x="-10%" y="-20%" width="120%" height="150%">
                       <feDropShadow dx="0" dy="1.5" stdDeviation="2.5" floodColor={userColor} floodOpacity="0.25" />
@@ -770,7 +772,7 @@ const Dashboard = () => {
         {/* Legend */}
         <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-4 justify-center border-t border-slate-50 dark:border-slate-850 pt-3">
           {usersTrend.map((user, idx) => (
-            <div key={user.name} className="flex items-center gap-1.5 text-[9px] font-bold text-slate-600 dark:text-slate-400">
+            <div key={`legend-${user.name || idx}`} className="flex items-center gap-1.5 text-[9px] font-bold text-slate-600 dark:text-slate-400">
               <span className="w-2.5 h-1.5 rounded-full" style={{ backgroundColor: lineColors[idx % lineColors.length] }} />
               <span>{user.name}</span>
             </div>
@@ -839,7 +841,7 @@ const Dashboard = () => {
               const barWidth = (rate / 100) * chartWidth;
 
               return (
-                <g key={staff.name || idx} className="group/row">
+                <g key={staff.id || staff._id || `staff-perf-${idx}`} className="group/row">
                   {/* Operator Name */}
                   <text
                     x={paddingLeft - 10}
@@ -1042,6 +1044,12 @@ const Dashboard = () => {
 
     const stats = adminStats || {};
     const funnelList = funnelData?.funnel || [];
+    const normalizedDept = String(globalDepartment || '').toLowerCase().replace(/\s+/g, '');
+    const showLeadsArea = normalizedDept === "all" || 
+                          normalizedDept.includes("marketing") || 
+                          normalizedDept.includes("sales&growth") || 
+                          normalizedDept.includes("salesandgrowth") || 
+                          normalizedDept.includes("sales");
 
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10 pb-24 pt-4 max-w-7xl mx-auto px-4">
@@ -1056,7 +1064,7 @@ const Dashboard = () => {
               </p>
             </div>
             <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100 italic uppercase tracking-tighter">
-              Admin <span className="text-indigo-650 dark:text-indigo-400">Dashboard</span>
+               <span className="text-indigo-650 dark:text-indigo-400">Dashboard</span>
             </h1>
           </div>
 
@@ -1102,35 +1110,39 @@ const Dashboard = () => {
         </div>
 
         {/* METRICS GRID */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
-          <StatCard
-            label="Leads Pipeline"
-            value={stats.totalLeads?.value || 0}
-            icon={TrendingUp}
-            color="text-indigo-600 dark:text-indigo-400"
-            borderColor="bg-indigo-600 dark:bg-indigo-500"
-            bgColor="bg-indigo-50 dark:bg-indigo-950/20"
-            trend={stats.totalLeads?.trend}
-            subtext="Total Registered Leads"
-          />
-          <StatCard
-            label="Admission Ok"
-            value={stats.admissionsConfirmed?.value || 0}
-            icon={CheckCircle}
-            color="text-teal-600 dark:text-teal-400"
-            borderColor="bg-teal-500"
-            bgColor="bg-teal-50 dark:bg-teal-950/20"
-            subtext="Ok to Take Admission"
-          />
-          <StatCard
-            label="Conversion Rate"
-            value={`${stats.convertedLeads?.rate || 0}%`}
-            icon={Activity}
-            color="text-emerald-600 dark:text-emerald-400"
-            borderColor="bg-emerald-500"
-            bgColor="bg-emerald-50 dark:bg-emerald-950/20"
-            subtext={`${stats.convertedLeads?.value || 0} Converted Leads`}
-          />
+        <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 ${showLeadsArea ? 'lg:grid-cols-5' : 'lg:grid-cols-2'} gap-5`}>
+          {showLeadsArea && (
+            <>
+              <StatCard
+                label="Leads Pipeline"
+                value={stats.totalLeads?.value || 0}
+                icon={TrendingUp}
+                color="text-indigo-600 dark:text-indigo-400"
+                borderColor="bg-indigo-600 dark:bg-indigo-500"
+                bgColor="bg-indigo-50 dark:bg-indigo-950/20"
+                trend={stats.totalLeads?.trend}
+                subtext="Total Registered Leads"
+              />
+              <StatCard
+                label="Admission Ok"
+                value={stats.admissionsConfirmed?.value || 0}
+                icon={CheckCircle}
+                color="text-teal-600 dark:text-teal-400"
+                borderColor="bg-teal-500"
+                bgColor="bg-teal-50 dark:bg-teal-950/20"
+                subtext="Ok to Take Admission"
+              />
+              <StatCard
+                label="Conversion Rate"
+                value={`${stats.convertedLeads?.rate || 0}%`}
+                icon={Activity}
+                color="text-emerald-600 dark:text-emerald-400"
+                borderColor="bg-emerald-500"
+                bgColor="bg-emerald-50 dark:bg-emerald-950/20"
+                subtext={`${stats.convertedLeads?.value || 0} Converted Leads`}
+              />
+            </>
+          )}
           <StatCard
             label="Active Staff"
             value={activeStaffCount}
@@ -1166,21 +1178,6 @@ const Dashboard = () => {
               </div>
               
               <div className="flex items-center gap-3 flex-wrap">
-                {/* Department Dropdown Selector */}
-                <div className="flex items-center gap-2">
-                  <span className="text-[9px] font-black uppercase text-slate-450 dark:text-slate-500">Department:</span>
-                  <select
-                    value={activeAnalyticsDept}
-                    onChange={(e) => setActiveAnalyticsDept(e.target.value)}
-                    className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider text-slate-750 dark:text-slate-350 focus:outline-none cursor-pointer hover:border-indigo-500/50 transition-colors"
-                  >
-                    <option value="all">All Departments</option>
-                    {departmentsList.map(dept => (
-                      <option key={dept} value={dept}>{dept}</option>
-                    ))}
-                  </select>
-                </div>
-
                 {/* Sort Users Selector */}
                 <div className="flex items-center gap-2">
                   <span className="text-[9px] font-black uppercase text-slate-455 dark:text-slate-500">Sort Users:</span>
@@ -1223,142 +1220,144 @@ const Dashboard = () => {
         </div>
 
         {/* CHARTS SECTION 2 - LEADS FUNNEL, MARKETING SOURCES, AND OPERATOR PERFORMANCE */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* LEAD PIPELINE FUNNEL CHART */}
-          <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm flex flex-col justify-between">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h2 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-                  Leads Funnel
-                </h2>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
-                  Lead stage distribution summary
-                </p>
+        {showLeadsArea && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* LEAD PIPELINE FUNNEL CHART */}
+            <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm flex flex-col justify-between">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                    Leads Funnel
+                  </h2>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+                    Lead stage distribution summary
+                  </p>
+                </div>
+                <span className="text-[9px] font-black uppercase text-indigo-500 bg-indigo-500/5 border border-indigo-500/10 px-2.5 py-0.5 rounded">
+                  Funnel Stages
+                </span>
               </div>
-              <span className="text-[9px] font-black uppercase text-indigo-500 bg-indigo-500/5 border border-indigo-500/10 px-2.5 py-0.5 rounded">
-                Funnel Stages
-              </span>
-            </div>
 
-            {funnelList && funnelList.length > 0 ? (
-              <div className="space-y-4">
-                {funnelList.map((item, index) => {
-                  const colors = {
-                    'New': 'from-blue-500 to-indigo-500 bg-blue-500',
-                    'Contacted': 'from-indigo-500 to-violet-500 bg-indigo-500',
-                    'Follow Up': 'from-violet-500 to-purple-500 bg-violet-500',
-                    'Interested': 'from-amber-500 to-orange-500 bg-amber-500',
-                    'Converted': 'from-emerald-500 to-lime-500 bg-emerald-500',
-                    'Lost': 'from-rose-500 to-red-500 bg-rose-500'
-                  };
-                  const barColor = colors[item.stage] || 'from-slate-400 to-slate-500 bg-slate-400';
+              {funnelList && funnelList.length > 0 ? (
+                <div className="space-y-4">
+                  {funnelList.map((item, index) => {
+                    const colors = {
+                      'New': 'from-blue-500 to-indigo-500 bg-blue-500',
+                      'Contacted': 'from-indigo-500 to-violet-500 bg-indigo-500',
+                      'Follow Up': 'from-violet-500 to-purple-500 bg-violet-500',
+                      'Interested': 'from-amber-500 to-orange-500 bg-amber-500',
+                      'Converted': 'from-emerald-500 to-lime-500 bg-emerald-500',
+                      'Lost': 'from-rose-500 to-red-500 bg-rose-500'
+                    };
+                    const barColor = colors[item.stage] || 'from-slate-400 to-slate-500 bg-slate-400';
 
-                  return (
-                    <div key={item.stage} className="space-y-1">
-                      <div className="flex justify-between text-[11px] font-bold text-slate-700 dark:text-slate-350">
-                        <span className="flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                          {item.stage}
-                        </span>
-                        <span>{item.count} ({item.percentage}%)</span>
-                      </div>
-                      <div className="h-2.5 bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${item.percentage}%` }}
-                          transition={{ duration: 0.8, delay: index * 0.05 }}
-                          className={`h-full rounded-full bg-gradient-to-r ${barColor}`}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="flex flex-col justify-center items-center py-12 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50 dark:bg-slate-950/40 h-full">
-                <BarChart2 className="mx-auto text-slate-350 dark:text-slate-655 mb-2" size={24} />
-                <p className="text-[10px] font-bold text-slate-550 dark:text-slate-450 uppercase tracking-widest">
-                  No Funnel Data Registered
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* LEAD SOURCE ATTRIBUTION */}
-          <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm flex flex-col">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h3 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-                  Lead Sources Attribution
-                </h3>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
-                  Marketing channels comparison metrics
-                </p>
-              </div>
-              <span className="text-[9px] font-black text-lime-500 bg-lime-500/5 px-2 py-0.5 border border-lime-500/10 rounded uppercase">
-                Channels
-              </span>
-            </div>
-
-            {sourcePerformance && sourcePerformance.length > 0 ? (
-              <div className="space-y-4 flex-1 flex flex-col justify-center">
-                {sourcePerformance.slice(0, 5).map((src, i) => {
-                  const totalLeadsCount = Math.max(...sourcePerformance.map(s => s.totalLeads), 1);
-                  const widthPercent = Math.round((src.totalLeads / totalLeadsCount) * 100);
-
-                  return (
-                    <div key={src.source || i} className="space-y-1">
-                      <div className="flex justify-between items-baseline text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                        <span className="uppercase text-[10px] tracking-wide">{src.source || "Unknown Source"}</span>
-                        <div className="flex gap-3 text-slate-500 dark:text-slate-400">
-                          <span>{src.totalLeads} Leads</span>
-                          <span className="text-indigo-500 font-black">{src.conversionRate}% Conv.</span>
+                    return (
+                      <div key={item.stage} className="space-y-1">
+                        <div className="flex justify-between text-[11px] font-bold text-slate-700 dark:text-slate-355">
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                            {item.stage}
+                          </span>
+                          <span>{item.count} ({item.percentage}%)</span>
+                        </div>
+                        <div className="h-2.5 bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${item.percentage}%` }}
+                            transition={{ duration: 0.8, delay: index * 0.05 }}
+                            className={`h-full rounded-full bg-gradient-to-r ${barColor}`}
+                          />
                         </div>
                       </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col justify-center items-center py-12 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50 dark:bg-slate-950/40 h-full">
+                  <BarChart2 className="mx-auto text-slate-350 dark:text-slate-655 mb-2" size={24} />
+                  <p className="text-[10px] font-bold text-slate-550 dark:text-slate-450 uppercase tracking-widest">
+                    No Funnel Data Registered
+                  </p>
+                </div>
+              )}
+            </div>
 
-                      <div className="relative h-2 bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${widthPercent}%` }}
-                          transition={{ duration: 0.8, delay: i * 0.06 }}
-                          className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-indigo-650"
-                        />
+            {/* LEAD SOURCE ATTRIBUTION */}
+            <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm flex flex-col">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                    Lead Sources Attribution
+                  </h3>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+                    Marketing channels comparison metrics
+                  </p>
+                </div>
+                <span className="text-[9px] font-black text-lime-500 bg-lime-500/5 px-2 py-0.5 border border-lime-500/10 rounded uppercase">
+                  Channels
+                </span>
+              </div>
+
+              {sourcePerformance && sourcePerformance.length > 0 ? (
+                <div className="space-y-4 flex-1 flex flex-col justify-center">
+                  {sourcePerformance.slice(0, 5).map((src, i) => {
+                    const totalLeadsCount = Math.max(...sourcePerformance.map(s => s.totalLeads), 1);
+                    const widthPercent = Math.round((src.totalLeads / totalLeadsCount) * 100);
+
+                    return (
+                      <div key={src.source || i} className="space-y-1">
+                        <div className="flex justify-between items-baseline text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                          <span className="uppercase text-[10px] tracking-wide">{src.source || "Unknown Source"}</span>
+                          <div className="flex gap-3 text-slate-500 dark:text-slate-400">
+                            <span>{src.totalLeads} Leads</span>
+                            <span className="text-indigo-500 font-black">{src.conversionRate}% Conv.</span>
+                          </div>
+                        </div>
+
+                        <div className="relative h-2 bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${widthPercent}%` }}
+                            transition={{ duration: 0.8, delay: i * 0.06 }}
+                            className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-indigo-650"
+                          />
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="flex flex-col justify-center items-center py-12 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50 dark:bg-slate-950/40 h-full">
-                <TrendingUp className="mx-auto text-slate-350 dark:text-slate-650 mb-2" size={24} />
-                <p className="text-[10px] font-bold text-slate-550 dark:text-slate-450 uppercase tracking-widest">
-                  No Lead Sources Registered
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* OPERATOR CONVERSION LEADERBOARD */}
-          <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm flex flex-col justify-between">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h3 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-                  Operator Conversion Analytics
-                </h3>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
-                  Lead conversion rate comparison leaderboard
-                </p>
-              </div>
-              <span className="text-[9px] font-black text-indigo-500 bg-indigo-500/5 px-2 py-0.5 border border-indigo-500/10 rounded uppercase">
-                Leaderboard
-              </span>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col justify-center items-center py-12 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50 dark:bg-slate-950/40 h-full">
+                  <TrendingUp className="mx-auto text-slate-350 dark:text-slate-650 mb-2" size={24} />
+                  <p className="text-[10px] font-bold text-slate-550 dark:text-slate-450 uppercase tracking-widest">
+                    No Lead Sources Registered
+                  </p>
+                </div>
+              )}
             </div>
 
-            <div className="flex-1 min-h-[200px]">
-              {renderStaffPerformanceChart()}
+            {/* OPERATOR CONVERSION LEADERBOARD */}
+            <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm flex flex-col justify-between">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                    Operator Conversion Analytics
+                  </h3>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+                    Lead conversion rate comparison leaderboard
+                  </p>
+                </div>
+                <span className="text-[9px] font-black text-indigo-500 bg-indigo-500/5 px-2 py-0.5 border border-indigo-500/10 rounded uppercase">
+                  Leaderboard
+                </span>
+              </div>
+
+              <div className="flex-1 min-h-[200px]">
+                {renderStaffPerformanceChart()}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* MIDDLE SECTION - QUICK ACTIONS & OPERATORS */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -1367,19 +1366,21 @@ const Dashboard = () => {
             <h2 className="text-xs font-black text-slate-800 dark:text-slate-255 uppercase tracking-wider mb-6">
               Console Navigation
             </h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className={`grid ${showLeadsArea ? 'grid-cols-2' : 'grid-cols-1 sm:grid-cols-3'} gap-4`}>
               <ActionCard
                 title="Users Hub"
                 desc="Enrolled staff list"
                 icon={Users}
                 onClick={() => navigate("/users")}
               />
-              <ActionCard
-                title="Leads Hub"
-                desc="Directories index"
-                icon={TrendingUp}
-                onClick={() => navigate("/leads")}
-              />
+              {showLeadsArea && (
+                <ActionCard
+                  title="Leads Hub"
+                  desc="Directories index"
+                  icon={TrendingUp}
+                  onClick={() => navigate("/leads")}
+                />
+              )}
               <ActionCard
                 title="Departments"
                 desc="Corporate hierarchy"
