@@ -1350,6 +1350,9 @@ const EditModal = ({ user, onClose, refresh, getAuthHeaders, designations, onDes
 
 // --- VIEW DOSSIER MODAL ---
 const ViewModal = ({ user, getDesignationName, getDepartmentName, onClose }) => {
+  // Local state to track image loading errors for this single view instance
+  const [imgError, setImgError] = useState(false);
+
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, []);
@@ -1391,14 +1394,12 @@ const ViewModal = ({ user, getDesignationName, getDepartmentName, onClose }) => 
         <div className="px-8 pb-8 relative">
           <div className="-mt-16 mb-4 flex items-end justify-between">
             <div className="relative">
-              {(user.avatar || user.profile_image) && !imgErrors[user._id || user.id] ? (
+              {(user.avatar || user.profile_image) && !imgError ? (
                 <img 
                   src={user.avatar || user.profile_image} 
                   alt={user.name} 
                   className="w-24 h-24 rounded-2xl object-cover border-4 border-white dark:border-slate-900 shadow-lg"
-                  onError={() => {
-                    setImgErrors(prev => ({ ...prev, [user._id || user.id]: true }));
-                  }}
+                  onError={() => setImgError(true)}
                 />
               ) : (
                 <div className="w-24 h-24 rounded-2xl bg-indigo-500/10 border-4 border-white dark:border-slate-900 text-indigo-500 flex items-center justify-center shadow-lg">
@@ -1484,7 +1485,7 @@ const ViewModal = ({ user, getDesignationName, getDepartmentName, onClose }) => 
               )}
             </div>
 
-            {/* --- NEW: Dynamic Account Credentials Section --- */}
+            {/* Account Credentials Section */}
             <div className="mt-4 pt-4 border-t border-dashed border-slate-200 dark:border-slate-800/80">
               <div className="flex items-center justify-between p-4 bg-indigo-500/5 dark:bg-lime-500/5 border border-indigo-500/10 dark:border-lime-500/10 rounded-xl">
                 <div className="space-y-0.5">
@@ -1506,5 +1507,6 @@ const ViewModal = ({ user, getDesignationName, getDepartmentName, onClose }) => 
       </motion.div>
     </motion.div>
   );
+
 };
 export default Users;
