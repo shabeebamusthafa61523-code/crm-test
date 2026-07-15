@@ -423,7 +423,7 @@ const StudentAttendance = () => {
                           className={`py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 cursor-pointer ${
                             isPresent 
                             ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/10' 
-                            : 'bg-slate-50 dark:bg-slate-950 text-emerald-600 border border-slate-100 dark:border-slate-850 hover:bg-emerald-500 hover:text-white hover:border-emerald-500'
+                            : 'bg-slate-50 dark:bg-slate-950 text-emerald-600 border border-slate-100 dark:border-slate-850 hover:bg-emerald-500 hover:text-green hover:border-emerald-500'
                           }`}
                         >
                           <CheckCircle2 size={14} /> {isPresent ? 'Saved' : 'Present'}
@@ -433,7 +433,7 @@ const StudentAttendance = () => {
                           className={`py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 cursor-pointer ${
                             isAbsent 
                             ? 'bg-red-600 text-white shadow-lg shadow-red-600/10' 
-                            : 'bg-slate-50 dark:bg-slate-950 text-red-600 border border-slate-100 dark:border-slate-850 hover:bg-red-500 hover:text-white hover:border-red-500'
+                            : 'bg-slate-50 dark:bg-slate-950 text-red-600 border border-slate-100 dark:border-slate-850 hover:bg-red-500 hover:text-red hover:border-red-500'
                           }`}
                         >
                           <XCircle size={14} /> {isAbsent ? 'Saved' : 'Absent'}
