@@ -1420,7 +1420,7 @@ const ViewModal = ({ user, getDesignationName, getDepartmentName, onClose }) => 
               <p className="text-xs font-semibold text-indigo-500 dark:text-indigo-400 mt-1 uppercase tracking-widest">{getDesignationName(user)}</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-6 bg-slate-50 dark:bg-slate-950/40 p-5 rounded-2xl border border-slate-100 dark:border-slate-800/40">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-slate-50 dark:bg-slate-950/40 p-5 rounded-2xl border border-slate-100 dark:border-slate-800/40">
               <div className="space-y-1">
                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Employee ID</span>
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{user.employeeId || 'N/A'}</span>
