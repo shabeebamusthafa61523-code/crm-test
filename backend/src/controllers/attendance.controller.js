@@ -3,6 +3,7 @@
 // ===============================
 
 import Attendance from '../models/attendance.model.js';
+import { recordAudit } from '../middleware/audit.middleware.js';
 
 const getISTDate = () => {
   return new Intl.DateTimeFormat('en-CA', {
@@ -128,6 +129,13 @@ export const checkIn = async (req, res) => {
         }
       );
 
+    await recordAudit(req, {
+      action: 'CHECK_IN',
+      entity: 'Attendance',
+      entityId: record._id,
+      newValue: record.toJSON()
+    });
+
     return res.status(201).json(
       serializeAttendance(record)
     );
@@ -186,6 +194,7 @@ export const checkOut = async (req, res) => {
         now
       );
 
+    const oldValue = record.toJSON();
     record.check_out_time = now;
     record.working_hours =
       metrics.working_hours;
@@ -193,6 +202,14 @@ export const checkOut = async (req, res) => {
       metrics.overtime;
 
     await record.save();
+
+    await recordAudit(req, {
+      action: 'CHECK_OUT',
+      entity: 'Attendance',
+      entityId: record._id,
+      oldValue,
+      newValue: record.toJSON()
+    });
 
     return res.status(200).json(
       serializeAttendance(record)

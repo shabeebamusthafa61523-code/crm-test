@@ -2,6 +2,7 @@
 import Task from '../models/task.model.js';
 import User from '../models/user.model.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { recordAudit } from '../middleware/audit.middleware.js';
 import { v2 as cloudinary } from 'cloudinary';
 
 // Configure Cloudinary using project environment variables
@@ -117,6 +118,13 @@ export const createTask = async (req, res, next) => {
     });
 
     await task.save();
+
+    await recordAudit(req, {
+      action: 'CREATE',
+      entity: 'Task',
+      entityId: task._id,
+      newValue: task.toJSON()
+    });
 
     const populatedTask = await Task.findById(task._id)
       .populate('assigned_to', 'name email')
@@ -349,7 +357,15 @@ export const deleteTask = async (req, res, next) => {
       await deleteFromCloudinary(task.file_public_id);
     }
 
+    const oldValue = task.toJSON();
     await task.deleteOne();
+
+    await recordAudit(req, {
+      action: 'DELETE',
+      entity: 'Task',
+      entityId: task_id,
+      oldValue
+    });
 
     return res.status(200).json({
       success: true,
@@ -376,8 +392,17 @@ export const updateTaskStatus = async (req, res, next) => {
 
 
 
+    const oldValue = task.toJSON();
     task.status = status;
     await task.save();
+
+    await recordAudit(req, {
+      action: 'UPDATE',
+      entity: 'Task',
+      entityId: task_id,
+      oldValue,
+      newValue: task.toJSON()
+    });
 
     const populatedTask = await Task.findById(task._id)
       .populate('assigned_to', 'name email')
@@ -413,6 +438,7 @@ export const updateTask = async (req, res, next) => {
     }
 
 
+    const oldValue = task.toJSON();
     if (title !== undefined) task.title = title.trim();
     if (description !== undefined) task.description = description;
     if (assigned_to !== undefined) task.assigned_to = assigned_to;
@@ -434,6 +460,14 @@ export const updateTask = async (req, res, next) => {
     }
 
     await task.save();
+
+    await recordAudit(req, {
+      action: 'UPDATE',
+      entity: 'Task',
+      entityId: task_id,
+      oldValue,
+      newValue: task.toJSON()
+    });
 
     const populatedTask = await Task.findById(task._id)
       .populate('assigned_to', 'name email')

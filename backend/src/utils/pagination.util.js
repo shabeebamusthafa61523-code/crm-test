@@ -1,5 +1,5 @@
 /**
- * Parse standard request query parameters into pagination parameters for Prisma
+ * Parse standard request query parameters into pagination parameters
  */
 export const getPaginationParams = (query) => {
   const page = Math.max(1, parseInt(query.page || '1'));

@@ -3,6 +3,7 @@
 import { departmentService } from './department.service.js';
 import { sendSuccess } from '../../utils/response.helper.js';
 import { validationResult } from 'express-validator';
+import { recordAudit } from '../../middleware/audit.middleware.js';
 
 export const departmentController = {
   /**
@@ -50,6 +51,14 @@ export const departmentController = {
       }
 
       const newDept = await departmentService.createDepartment(req.body);
+
+      await recordAudit(req, {
+        action: 'CREATE',
+        entity: 'Department',
+        entityId: newDept._id,
+        newValue: newDept
+      });
+
       return sendSuccess(res, 'Department created', newDept, 201);
     } catch (error) {
       next(error);
@@ -69,12 +78,24 @@ export const departmentController = {
         throw error;
       }
 
+      const DepartmentModel = (await import('./department.model.js')).default;
+      const oldDept = await DepartmentModel.findById(req.body.id);
+
       const updatedDept = await departmentService.updateDepartment(req.body);
       if (!updatedDept) {
         const error = new Error('Department not found');
         error.statusCode = 404;
         throw error;
       }
+
+      await recordAudit(req, {
+        action: 'UPDATE',
+        entity: 'Department',
+        entityId: updatedDept._id,
+        oldValue: oldDept,
+        newValue: updatedDept
+      });
+
       return sendSuccess(res, 'Department updated', updatedDept, 200);
     } catch (error) {
       next(error);
@@ -87,12 +108,23 @@ export const departmentController = {
   async delete(req, res, next) {
     try {
       const { id } = req.params;
+      const DepartmentModel = (await import('./department.model.js')).default;
+      const oldDept = await DepartmentModel.findById(id);
+
       const deleted = await departmentService.deleteDepartment(id);
       if (!deleted) {
         const error = new Error('Department not found');
         error.statusCode = 404;
         throw error;
       }
+
+      await recordAudit(req, {
+        action: 'DELETE',
+        entity: 'Department',
+        entityId: id,
+        oldValue: oldDept
+      });
+
       return sendSuccess(res, 'Department deleted', null, 200);
     } catch (error) {
       next(error);
@@ -106,12 +138,24 @@ export const departmentController = {
     try {
       const { id } = req.params;
       const { managerId } = req.body;
+      const DepartmentModel = (await import('./department.model.js')).default;
+      const oldDept = await DepartmentModel.findById(id);
+
       const updated = await departmentService.assignManager(id, managerId);
       if (!updated) {
         const error = new Error('Department not found');
         error.statusCode = 404;
         throw error;
       }
+
+      await recordAudit(req, {
+        action: 'UPDATE',
+        entity: 'Department',
+        entityId: id,
+        oldValue: oldDept,
+        newValue: updated
+      });
+
       return sendSuccess(res, 'Manager assigned', updated, 200);
     } catch (error) {
       next(error);
@@ -152,6 +196,14 @@ export const departmentController = {
         roleInDepartment,
         isPrimary
       });
+
+      await recordAudit(req, {
+        action: 'UPDATE',
+        entity: 'Department',
+        entityId: id,
+        newValue: { action: 'ADD_USER', userId }
+      });
+
       return sendSuccess(res, 'User added to department successfully', data, 201);
     } catch (error) {
       next(error);
@@ -165,6 +217,14 @@ export const departmentController = {
     try {
       const { id, userId } = req.params;
       await departmentService.removeUserFromDepartment(id, userId);
+
+      await recordAudit(req, {
+        action: 'UPDATE',
+        entity: 'Department',
+        entityId: id,
+        newValue: { action: 'REMOVE_USER', userId }
+      });
+
       return sendSuccess(res, 'User removed from department successfully', null, 200);
     } catch (error) {
       next(error);
@@ -186,12 +246,24 @@ export const departmentController = {
         throw error;
       }
 
+      const DepartmentModel = (await import('./department.model.js')).default;
+      const oldDept = await DepartmentModel.findById(id);
+
       const updated = await departmentService.updateDepartmentStatus(id, status);
       if (!updated) {
         const error = new Error('Department not found');
         error.statusCode = 404;
         throw error;
       }
+
+      await recordAudit(req, {
+        action: 'UPDATE',
+        entity: 'Department',
+        entityId: id,
+        oldValue: oldDept,
+        newValue: updated
+      });
+
       return sendSuccess(res, 'Status updated', updated, 200);
     } catch (error) {
       next(error);

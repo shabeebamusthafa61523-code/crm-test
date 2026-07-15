@@ -1,4 +1,5 @@
-// import prisma from '../config/db.js';
+import mongoose from 'mongoose';
+import AuditLog from '../models/auditLog.model.js';
 import logger from '../utils/logger.util.js';
 
 /**
@@ -23,18 +24,16 @@ export const recordAudit = async (req, {
     const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || null;
     const userAgent = req.headers['user-agent'] || null;
 
-    // 1. Save directly to Database using Prisma
-    const auditRecord = await prisma.auditLog.create({
-      data: {
-        userId,
-        action,
-        entity,
-        entityId,
-        oldValue: oldValue ? JSON.parse(JSON.stringify(oldValue)) : null,
-        newValue: newValue ? JSON.parse(JSON.stringify(newValue)) : null,
-        ipAddress,
-        userAgent
-      }
+    // 1. Save directly to Database using Mongoose
+    const auditRecord = await AuditLog.create({
+      userId: userId && mongoose.Types.ObjectId.isValid(String(userId)) ? String(userId) : null,
+      action,
+      entity,
+      entityId: entityId ? String(entityId) : null,
+      oldValue: oldValue ? JSON.parse(JSON.stringify(oldValue)) : null,
+      newValue: newValue ? JSON.parse(JSON.stringify(newValue)) : null,
+      ipAddress,
+      userAgent
     });
 
     // 2. Stream to daily rotating Winston audit log file

@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import redis from '../config/redis.js';
 import mongoose from 'mongoose';
+import { recordAudit } from '../middleware/audit.middleware.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key';
 
@@ -145,6 +146,15 @@ export const login = async (req, res) => {
       console.warn("Failed to set Redis session key during login:", redisError.message);
     }
 
+    // Record login audit log
+    req.user = { id: user._id };
+    await recordAudit(req, {
+      action: 'LOGIN',
+      entity: 'User',
+      entityId: user._id,
+      newValue: { email: user.email }
+    });
+
     const Department = (await import('../modules/departments/department.model.js')).default;
     const isTeamLead = await Department.exists({ managerId: user._id }) ? true : false;
 
@@ -265,5 +275,20 @@ export const resetForgotPassword = async (req, res) => {
     return res.status(200).json({ success: true, message: "Password updated successfully." });
   } catch (error) {
     res.status(500).json({ success: false, detail: error.message });
+  }
+};
+
+export const logout = async (req, res, next) => {
+  try {
+    if (req.user) {
+      await recordAudit(req, {
+        action: 'LOGOUT',
+        entity: 'User',
+        entityId: req.user.id || req.user._id
+      });
+    }
+    return res.status(200).json({ success: true, message: "Logout successful" });
+  } catch (error) {
+    next(error);
   }
 };
