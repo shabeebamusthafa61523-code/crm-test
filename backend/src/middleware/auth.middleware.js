@@ -7,7 +7,7 @@ import redis from '../config/redis.js';
 /**
  * Standard Token Verification Middleware for Departments Module
  */
-export const verifyToken = (req, res, next) => {
+export const verifyToken = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -20,7 +20,28 @@ export const verifyToken = (req, res, next) => {
     }
 
     const token = authHeader.split(' ')[1];
+
+    // Check if token has been blacklisted
+    try {
+      const isRevoked = await redis.get(`revoked_token:${token}`);
+      if (isRevoked) {
+        return sendError(res, 'Token has been revoked. Please log in again.', 401);
+      }
+    } catch (redisError) {
+      console.warn("Redis check failed in verifyToken:", redisError.message);
+    }
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_key');
+
+    // Check all-device revocation
+    try {
+      const revokedAt = await redis.get(`user_revoked_at:${decoded.id}`);
+      if (revokedAt && decoded.iat < parseInt(revokedAt)) {
+        return sendError(res, 'Session revoked from all devices. Please log in again.', 401);
+      }
+    } catch (redisError) {
+      console.warn("Redis check failed in verifyToken:", redisError.message);
+    }
     
     req.user = decoded;
     next();
@@ -197,12 +218,36 @@ const protectRoute = async (req, res, next) => {
 
     console.log("TOKEN:", token);
 
+    // Check if token has been blacklisted
+    try {
+      const isRevoked = await redis.get(`revoked_token:${token}`);
+      if (isRevoked) {
+        return res.status(401).json({
+          detail: "Token has been revoked. Please log in again."
+        });
+      }
+    } catch (redisError) {
+      console.warn("Redis check failed in protectRoute:", redisError.message);
+    }
+
     const decoded = jwt.verify(
       token,
       process.env.JWT_SECRET
     );
 
     console.log("DECODED:", decoded);
+
+    // Check all-device revocation
+    try {
+      const revokedAt = await redis.get(`user_revoked_at:${decoded.id}`);
+      if (revokedAt && decoded.iat < parseInt(revokedAt)) {
+        return res.status(401).json({
+          detail: "Session revoked from all devices. Please log in again."
+        });
+      }
+    } catch (redisError) {
+      console.warn("Redis check failed in protectRoute:", redisError.message);
+    }
 
     req.user = decoded;
 

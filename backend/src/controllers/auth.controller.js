@@ -280,13 +280,51 @@ export const resetForgotPassword = async (req, res) => {
 
 export const logout = async (req, res, next) => {
   try {
-    if (req.user) {
+    const userId = req.user?.id || req.user?._id;
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (token) {
+      // 1. Blacklist current JWT token in Redis for 7 days
+      try {
+        await redis.set(`revoked_token:${token}`, 'REVOKED', 'EX', 7 * 24 * 60 * 60);
+      } catch (redisError) {
+        console.warn("Failed to blacklist token in Redis:", redisError.message);
+      }
+    }
+
+    if (userId) {
+      const allDevices = req.body?.allDevices === true || req.query?.allDevices === 'true';
+      
+      if (allDevices) {
+        // 2. Invalidate sessions on ALL devices
+        try {
+          await redis.set(`user_revoked_at:${userId}`, Math.floor(Date.now() / 1000));
+          await redis.del(`session:active:${userId}`);
+          
+          const authService = (await import('../services/auth.service.js')).authService;
+          await authService.revokeAllSessions(String(userId));
+        } catch (redisError) {
+          console.warn("Failed to revoke all sessions in Redis:", redisError.message);
+        }
+        
+        console.log(`🧹 Logged out user ${userId} from all devices.`);
+      } else {
+        // 3. Single device logout (just delete inactivity session key)
+        try {
+          await redis.del(`session:active:${userId}`);
+        } catch (redisError) {
+          console.warn("Failed to delete active session key in Redis:", redisError.message);
+        }
+      }
+
       await recordAudit(req, {
         action: 'LOGOUT',
         entity: 'User',
-        entityId: req.user.id || req.user._id
+        entityId: userId
       });
     }
+
     return res.status(200).json({ success: true, message: "Logout successful" });
   } catch (error) {
     next(error);
