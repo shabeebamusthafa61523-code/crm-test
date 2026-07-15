@@ -151,30 +151,13 @@ const [activePriority, setActivePriority] = useState('all');
     const roleId = String(currentUser.role_id || currentUser.roleId || currentUser.role || '').toLowerCase().trim();
     if (['1', '2', '3', 'hr', 'admin'].includes(roleId)) return true;
 
-    let departmentId = '';
-    if (currentUser.departmentId) {
-      if (typeof currentUser.departmentId === 'object' && currentUser.departmentId._id) {
-        departmentId = String(currentUser.departmentId._id).trim();
-      } else {
-        departmentId = String(currentUser.departmentId).trim();
-      }
-    }
-    
-    let designationId = '';
-    if (currentUser.designationId) {
-      if (typeof currentUser.designationId === 'object' && currentUser.designationId._id) {
-        designationId = String(currentUser.designationId._id).trim();
-      } else {
-        designationId = String(currentUser.designationId).trim();
-      }
-    } else if (currentUser.designation_id) {
-      designationId = String(currentUser.designation_id).trim();
-    }
+    const deptCode = String(currentUser.departmentCode || currentUser.departmentId?.code || '').toUpperCase().trim();
+    const allowedDeptCodes = ['MKT', 'ACD'];
 
-    const allowedDepts = ['6a26a7d72a56a1f9c49da8a3', '6a27f394558c220a47fff02e'];
-    const allowedDesigs = ['6a27939af292348deb7d0495'];
+    const desigName = String(currentUser.designation || currentUser.designationId?.name || '').toLowerCase().trim();
+    const isCounselor = desigName.includes('counselor');
 
-    return allowedDepts.includes(departmentId) || allowedDesigs.includes(designationId);
+    return allowedDeptCodes.includes(deptCode) || isCounselor;
   }, [currentUser]);
 
   const getAuthHeaders = useCallback(() => {

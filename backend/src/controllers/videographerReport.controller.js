@@ -1,5 +1,6 @@
 import VideographerReport from '../models/videographerReport.model.js';
 import User from '../models/user.model.js';
+import { getDesignationIdByName } from '../utils/lookup.util.js';
 
 /**
  * 1. GET REPORT BY DATE
@@ -32,7 +33,8 @@ export const getReportByDate = async (req, res, next) => {
       console.error('Failed to fetch current user designation:', err);
     }
 
-    const isVideographer = userDesignationId === '6a2f912c2df21dc234018caa';
+    const videoDesigId = await getDesignationIdByName('Videographer');
+    const isVideographer = userDesignationId === String(videoDesigId || '');
 
     // If userId is provided, verify permissions
     if (targetUserId) {
@@ -99,7 +101,8 @@ export const saveReport = async (req, res, next) => {
       console.error('Failed to fetch current user designation:', err);
     }
 
-    const isVideographer = userDesignationId === '6a2f912c2df21dc234018caa';
+    const videoDesigId = await getDesignationIdByName('Videographer');
+    const isVideographer = userDesignationId === String(videoDesigId || '');
 
     // If targetUserId is provided, check if client has rights to save on behalf of that user
     if (targetUserId) {
@@ -147,11 +150,12 @@ export const saveReport = async (req, res, next) => {
  */
 export const getVideographersList = async (req, res, next) => {
   try {
+    const videoDesigId = await getDesignationIdByName('Videographer');
     // Query users belonging to the Videographer Designation
     const videographers = await User.find({
       $or: [
-        { designationId: '6a2f912c2df21dc234018caa' },
-        { designation_id: '6a2f912c2df21dc234018caa' }
+        { designationId: videoDesigId },
+        { designation_id: videoDesigId }
       ]
     }, '_id name employeeId email designation')
       .sort({ name: 1 })

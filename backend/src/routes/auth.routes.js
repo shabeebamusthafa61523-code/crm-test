@@ -28,8 +28,9 @@ router.put(
   validateBody(userStatusBodySchema),
   async (req, res, next) => {
     try {
-      const role = req.user.role || req.user.role_id;
-      if (role !== 'admin') {
+      const role = String(req.user.role || req.user.role_id || '').toLowerCase().trim();
+      const isAllowed = role === 'admin' || role === 'superadmin' || role === 'super admin' || role === '2';
+      if (!isAllowed) {
         throw new AppError('Access denied. Admin access only.', 403);
       }
 

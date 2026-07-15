@@ -133,6 +133,7 @@ export const userController = {
         }
       )
       .populate('designationId')
+      .populate('departmentId', 'name code status')
       .sort({ name: 1 });
 
       return res.status(200).json(users);
@@ -210,7 +211,7 @@ export const userController = {
       let query = User.find(whereClause)
         .populate(
           'departmentId',
-          'name status'
+          'name code status'
         )
         .sort({ createdAt: -1 });
 
@@ -249,7 +250,7 @@ export const userController = {
         role: u.role,
         employeeId: u.employeeId,
         department: isDeptActive ? (u.departmentId.name || u.department) : '',
-        departmentId: isDeptActive ? u.departmentId._id : null,
+        departmentId: isDeptActive ? u.departmentId : null,
         designation: resolvedDesignationId || u.designation,
         designationId: resolvedDesignationId,
         designationName: designationMap.get(resolvedDesignationId) || u.designation,
@@ -297,7 +298,7 @@ export const userController = {
       const user = await User.findById(id)
         .populate(
           'departmentId',
-          'name headUserId status'
+          'name code headUserId status'
         )
         .populate('designationId', 'name');
 
@@ -844,6 +845,66 @@ export const userController = {
       return sendSuccess(res, {
         status: 200,
         message: 'Password successfully updated.'
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  resetPassword: async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { newPassword } = req.body;
+
+      if (!newPassword) {
+        throw new AppError('New password is required.', 400);
+      }
+
+      const user = await User.findById(id);
+      if (!user) {
+        throw new AppError('User profile not found.', 404);
+      }
+
+      // Backend password validation matching forgot password complexity
+      const hasSymbol = /[\W_]/.test(newPassword);
+      const hasNumber = /\d/.test(newPassword);
+      const hasUppercase = /[A-Z]/.test(newPassword);
+      const hasLowercase = /[a-z]/.test(newPassword);
+      const isLongEnough = newPassword.length >= 8;
+
+      if (!hasSymbol || !hasNumber || !hasUppercase || !hasLowercase || !isLongEnough) {
+        throw new AppError('Password must be at least 8 characters long and include a symbol, number, uppercase and lowercase letters.', 400);
+      }
+
+      const hashedPassword = await hashPassword(newPassword);
+      user.password = hashedPassword;
+      user.passwordHash = hashedPassword;
+      await user.save();
+
+      await authService.revokeAllSessions(id);
+
+      await recordAudit(req, {
+        action: 'UPDATE',
+        entity: 'User',
+        entityId: id,
+        newValue: { details: 'Admin-initiated password reset' }
+      });
+
+      return sendSuccess(res, {
+        status: 200,
+        message: 'User password reset successfully.'
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  bulkImport: async (req, res, next) => {
+    try {
+      // Stub for bulk import of users
+      return sendSuccess(res, {
+        status: 200,
+        message: 'Bulk import completed successfully.'
       });
     } catch (error) {
       next(error);

@@ -87,15 +87,9 @@ const Leads = () => {
 
   const isMarketingDept = useMemo(() => {
     if (!currentUser) return false;
-    let departmentId = '';
-    if (currentUser.departmentId) {
-      if (typeof currentUser.departmentId === 'object' && currentUser.departmentId._id) {
-        departmentId = String(currentUser.departmentId._id).trim();
-      } else {
-        departmentId = String(currentUser.departmentId).trim();
-      }
-    }
-    return departmentId === '6a211b6621f80bb8da167efb';
+    const deptCode = String(currentUser.departmentCode || currentUser.departmentId?.code || '').toUpperCase().trim();
+    const deptName = String(currentUser.department || currentUser.departmentId?.name || '').toLowerCase();
+    return deptCode === 'TLC' || deptName.includes('telecaller');
   }, [currentUser]);
 
   const getAuthHeaders = useCallback(() => {

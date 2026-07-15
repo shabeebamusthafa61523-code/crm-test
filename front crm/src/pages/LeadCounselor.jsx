@@ -151,15 +151,9 @@ const [activePriority, setActivePriority] = useState('all');
     const roleId = String(currentUser.role_id || currentUser.roleId || currentUser.role || '').toLowerCase().trim();
     if (roleId === '3') return true;
 
-    let departmentId = '';
-    if (currentUser.departmentId) {
-      if (typeof currentUser.departmentId === 'object' && currentUser.departmentId._id) {
-        departmentId = String(currentUser.departmentId._id).trim();
-      } else {
-        departmentId = String(currentUser.departmentId).trim();
-      }
-    }
-    return departmentId === '6a27f394558c220a47fff02e';
+    const deptCode = String(currentUser.departmentCode || currentUser.departmentId?.code || '').toUpperCase().trim();
+    const deptName = String(currentUser.department || currentUser.departmentId?.name || '').toLowerCase();
+    return deptCode === 'ACD' || deptName.includes('academic') || deptName.includes('counseling') || deptName.includes('counselor');
   }, [currentUser]);
 
   const getAuthHeaders = useCallback(() => {
@@ -1256,15 +1250,9 @@ const [activePriority, setActivePriority] = useState('all');
                             <option value="">Unassigned</option>
                             {staff
                               .filter(member => {
-                                let deptId = '';
-                                if (member.departmentId) {
-                                  if (typeof member.departmentId === 'object' && member.departmentId._id) {
-                                    deptId = String(member.departmentId._id);
-                                  } else {
-                                    deptId = String(member.departmentId);
-                                  }
-                                }
-                                return deptId === '6a27f394558c220a47fff02e';
+                                const memberDeptCode = String(member.departmentCode || member.departmentId?.code || '').toUpperCase().trim();
+                                const memberDeptName = String(member.department || member.departmentId?.name || '').toLowerCase();
+                                return memberDeptCode === 'ACD' || memberDeptName.includes('academic') || memberDeptName.includes('counseling') || memberDeptName.includes('counselor');
                               })
                               .map(member => (
                                 <option key={member.id || member._id} value={member.id || member._id}>

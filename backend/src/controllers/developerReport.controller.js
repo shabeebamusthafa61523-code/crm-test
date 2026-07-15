@@ -1,5 +1,6 @@
 import DeveloperReport from '../models/developerReport.model.js';
 import User from '../models/user.model.js';
+import { getDesignationIdsByNamePattern } from '../utils/lookup.util.js';
 
 /**
  * 1. GET REPORT BY DATE
@@ -135,11 +136,12 @@ export const getDevelopersList = async (req, res, next) => {
       });
     }
 
+    const devDesigIds = await getDesignationIdsByNamePattern(/developer/i);
     // Query users belonging to the Developer Designation
     const developers = await User.find({
       $or: [
-        { designationId: '6a1e8e2d01a0dae8b2f3b18c' },
-        { designation_id: '6a1e8e2d01a0dae8b2f3b18c' }
+        { designationId: { $in: devDesigIds } },
+        { designation_id: { $in: devDesigIds } }
       ]
     }, '_id name employeeId email designation')
       .sort({ name: 1 })

@@ -107,7 +107,7 @@ export const restrictToRoles = (allowedRoles = []) => {
   };
 };
 
-export const restrictToDepartment = (departmentId) => {
+export const restrictToDepartment = (deptCodeOrId) => {
   return async (req, res, next) => {
     // Administrative roles (1, 2, hr, admin) can bypass department checks
     const role = String(req.user?.role || req.user?.role_id || '').toLowerCase().trim();
@@ -133,15 +133,34 @@ export const restrictToDepartment = (departmentId) => {
 
     userDeptId = String(userDeptId || '').trim();
 
-    // Bypass for HR/ADMIN department
-    if (userDeptId === '6a3caed51194353cbc8a3686') {
-      return next();
+    const Department = (await import('../modules/departments/department.model.js')).default;
+
+    // Bypass for HR/ADMIN department (code: 'HR')
+    try {
+      const hrDept = await Department.findOne({ code: 'HR' });
+      if (hrDept && userDeptId === String(hrDept._id)) {
+        return next();
+      }
+    } catch (err) {
+      console.error("Failed to fetch HR department for bypass check:", err);
     }
 
-    if (userDeptId !== String(departmentId).trim()) {
+    // Resolve the target department ID from deptCodeOrId (could be a code or ObjectID)
+    let targetDeptId = String(deptCodeOrId).trim();
+    if (targetDeptId.length !== 24) {
+      try {
+        const targetDept = await Department.findOne({ code: targetDeptId.toUpperCase() });
+        targetDeptId = targetDept ? String(targetDept._id) : '';
+      } catch (err) {
+        console.error("Failed to resolve department code:", err);
+        targetDeptId = '';
+      }
+    }
+
+    if (userDeptId !== targetDeptId) {
       return res.status(403).json({
         success: false,
-        message: 'Access denied. Exclusive to the marketing department.'
+        message: 'Access denied. Exclusive to the authorized department.'
       });
     }
 

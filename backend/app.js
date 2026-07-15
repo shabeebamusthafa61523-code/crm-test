@@ -137,7 +137,13 @@ mongoose.connect(MONGO_URI)
         const defaultDesignations = [
           "HR Manager",
           "Graphic Designer",
-          "Digital Marketer",
+          "Marketing Specialist",
+          "MERN Stack Developer",
+          "Academic Counselor",
+          "Videographer",
+          "Ops Manager",
+          "Accountant",
+          "HOD R&D",
           "React Developer",
           "Node Developer",
           "Flutter Developer",
@@ -159,7 +165,11 @@ mongoose.connect(MONGO_URI)
           { name: "HR & Admin", code: "HR" },
           { name: "Marketing", code: "MKT" },
           { name: "Development", code: "DEV" },
-          { name: "Designing", code: "DSN" }
+          { name: "Designing", code: "DSN" },
+          { name: "Telecaller", code: "TLC" },
+          { name: "Academic", code: "ACD" },
+          { name: "Ops", code: "OPS" },
+          { name: "R&D", code: "RD" }
         ];
         await Department.insertMany(defaultDepartments.map(d => ({ 
           name: d.name, 

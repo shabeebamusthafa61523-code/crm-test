@@ -130,10 +130,10 @@ const Register = () => {
       } catch (err) {
         console.error("Failed to fetch departments:", err);
         const fallback = [
-          { id: "6a3caed51194353cbc8a3686", name: "HR & Admin" },
-          { id: "6a26a7d72a56a1f9c49da8a3", name: "Marketing" },
-          { id: "6a3caeb31194353cbc8a3683", name: "Development" },
-          { id: "6a3caec01194353cbc8a3684", name: "Designing" }
+          { id: "1", name: "HR & Admin" },
+          { id: "2", name: "Marketing" },
+          { id: "3", name: "Development" },
+          { id: "4", name: "Designing" }
         ];
         setDepartments(fallback);
         setFormData(prev => ({

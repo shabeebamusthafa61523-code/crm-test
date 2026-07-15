@@ -1,5 +1,6 @@
 import MarketingReport from '../models/marketingReport.model.js';
 import User from '../models/user.model.js';
+import { getDesignationIdByName } from '../utils/lookup.util.js';
 
 /**
  * 1. GET MARKETING REPORT BY DATE
@@ -130,11 +131,12 @@ export const getMarketingStaffList = async (req, res, next) => {
       });
     }
 
+    const marketingDesigId = await getDesignationIdByName('Marketing Specialist');
     // Query users belonging to the Digital Marketer Designation
     const staff = await User.find({
       $or: [
-        { designationId: '6a2f909d2df21dc234018ca8' },
-        { designation_id: '6a2f909d2df21dc234018ca8' }
+        { designationId: marketingDesigId },
+        { designation_id: marketingDesigId }
       ]
     }, '_id name employeeId email designation')
       .sort({ name: 1 })

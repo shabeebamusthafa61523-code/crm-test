@@ -1,5 +1,6 @@
 import GraphicDesignerReport from '../models/graphicDesignerReport.model.js';
 import User from '../models/user.model.js';
+import { getDesignationIdByName } from '../utils/lookup.util.js';
 
 /**
  * 1. GET REPORT BY DATE
@@ -32,7 +33,8 @@ export const getReportByDate = async (req, res, next) => {
       console.error('Failed to fetch current user designation:', err);
     }
 
-    const isGraphicDesigner = userDesignationId === '6a1e8e6e01a0dae8b2f3b18d';
+    const gdDesigId = await getDesignationIdByName('Graphic Designer');
+    const isGraphicDesigner = userDesignationId === String(gdDesigId || '');
 
     // If userId is provided, verify permissions
     if (targetUserId) {
@@ -99,7 +101,8 @@ export const saveReport = async (req, res, next) => {
       console.error('Failed to fetch current user designation:', err);
     }
 
-    const isGraphicDesigner = userDesignationId === '6a1e8e6e01a0dae8b2f3b18d';
+    const gdDesigId = await getDesignationIdByName('Graphic Designer');
+    const isGraphicDesigner = userDesignationId === String(gdDesigId || '');
 
     // If targetUserId is provided, check if client has rights to save on behalf of that user
     if (targetUserId) {
@@ -147,11 +150,12 @@ export const saveReport = async (req, res, next) => {
  */
 export const getDesignersList = async (req, res, next) => {
   try {
+    const gdDesigId = await getDesignationIdByName('Graphic Designer');
     // Query users belonging to the Graphic Designer Designation
     const designers = await User.find({
       $or: [
-        { designationId: '6a1e8e6e01a0dae8b2f3b18d' },
-        { designation_id: '6a1e8e6e01a0dae8b2f3b18d' }
+        { designationId: gdDesigId },
+        { designation_id: gdDesigId }
       ]
     }, '_id name employeeId email designation')
       .sort({ name: 1 })

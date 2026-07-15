@@ -33,7 +33,16 @@ const authorizeLeadsAccess = async (req, res, next) => {
 
   userDeptId = String(userDeptId || '').trim();
 
-  const allowedDepartments = ['6a211b6621f80bb8da167efb', '6a26a7d72a56a1f9c49da8a3'];
+  // Dynamically resolve department IDs for TLC (Telecaller) and MKT (Marketing)
+  let allowedDepartments = [];
+  try {
+    const Department = (await import('../modules/departments/department.model.js')).default;
+    const depts = await Department.find({ code: { $in: ['TLC', 'MKT'] } }).select('_id');
+    allowedDepartments = depts.map(d => String(d._id));
+  } catch (err) {
+    console.error("Failed to query allowed departments dynamically:", err);
+  }
+
   const allowedRoles = ['3', '1', '2', 'hr', 'admin'];
 
   const hasDeptAccess = allowedDepartments.includes(userDeptId);

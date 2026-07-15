@@ -36,6 +36,8 @@ const requireRole = (allowedRoles) => {
 
 router.use(checkAuth);
 
+const adminOrSuperAdmin = requireRole(['admin', 'superadmin', 'super admin', '2']);
+
 // ==========================================
 // USER ROUTES
 // ==========================================
@@ -71,11 +73,13 @@ router.get(
 // CREATE USER
 router.post(
   '/create',
+  adminOrSuperAdmin,
   upload.single('profileImage'),
   userController.createUser
 );
 router.post(
   '/',
+  adminOrSuperAdmin,
   upload.single('profileImage'),
   userController.createUser
 );
@@ -83,21 +87,25 @@ router.post(
 // UPDATE USER
 router.put(
   '/update/:id',
+  adminOrSuperAdmin,
   upload.single('profileImage'),
   userController.updateUser
 );
 router.post(
   '/update/:id',
+  adminOrSuperAdmin,
   upload.single('profileImage'),
   userController.updateUser
 );
 router.put(
   '/:id',
+  adminOrSuperAdmin,
   upload.single('profileImage'),
   userController.updateUser
 );
 router.put(
   '/update',
+  adminOrSuperAdmin,
   upload.single('profileImage'),
   (req, res, next) => {
     req.params.id = req.body.id || req.body._id;
@@ -107,6 +115,7 @@ router.put(
 );
 router.post(
   '/update',
+  adminOrSuperAdmin,
   upload.single('profileImage'),
   (req, res, next) => {
     req.params.id = req.body.id || req.body._id;
@@ -118,30 +127,36 @@ router.post(
 // CHANGE ROLE
 router.patch(
   '/:id/role',
+  adminOrSuperAdmin,
   userController.changeUserRole
 );
 
 // DEACTIVATE USER
 router.patch(
   '/:id/deactivate',
+  adminOrSuperAdmin,
   userController.deactivateUser
 );
 
 // DELETE USER
 router.delete(
   '/delete/:id',
+  adminOrSuperAdmin,
   userController.deleteUser
 );
 router.post(
   '/delete/:id',
+  adminOrSuperAdmin,
   userController.deleteUser
 );
 router.delete(
   '/:id',
+  adminOrSuperAdmin,
   userController.deleteUser
 );
 router.delete(
   '/delete',
+  adminOrSuperAdmin,
   (req, res, next) => {
     req.params.id = req.body.id || req.body._id;
     next();
@@ -150,11 +165,26 @@ router.delete(
 );
 router.post(
   '/delete',
+  adminOrSuperAdmin,
   (req, res, next) => {
     req.params.id = req.body.id || req.body._id;
     next();
   },
   userController.deleteUser
+);
+
+// BULK IMPORT
+router.post(
+  '/import',
+  adminOrSuperAdmin,
+  userController.bulkImport
+);
+
+// RESET PASSWORD (admin initiated)
+router.post(
+  '/:id/reset-password',
+  adminOrSuperAdmin,
+  userController.resetPassword
 );
 
 export default router;
