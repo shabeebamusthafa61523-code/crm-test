@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { userController } from '../controllers/user.controller.js';
 import checkAuth, { requireRole } from '../middleware/auth.middleware.js';
-import upload from '../middleware/upload.middleware.js';
+import upload, { validateUploadedFile } from '../middleware/upload.middleware.js';
 
 const router = Router();
 
@@ -56,12 +56,14 @@ router.post(
   '/create',
   adminOrSuperAdmin,
   upload.single('profileImage'),
+  validateUploadedFile,
   userController.createUser
 );
 router.post(
   '/',
   adminOrSuperAdmin,
   upload.single('profileImage'),
+  validateUploadedFile,
   userController.createUser
 );
 
@@ -70,24 +72,28 @@ router.put(
   '/update/:id',
   adminOrSuperAdmin,
   upload.single('profileImage'),
+  validateUploadedFile,
   userController.updateUser
 );
 router.post(
   '/update/:id',
   adminOrSuperAdmin,
   upload.single('profileImage'),
+  validateUploadedFile,
   userController.updateUser
 );
 router.put(
   '/:id',
   adminOrSuperAdmin,
   upload.single('profileImage'),
+  validateUploadedFile,
   userController.updateUser
 );
 router.put(
   '/update',
   adminOrSuperAdmin,
   upload.single('profileImage'),
+  validateUploadedFile,
   (req, res, next) => {
     req.params.id = req.body.id || req.body._id;
     next();
@@ -98,6 +104,7 @@ router.post(
   '/update',
   adminOrSuperAdmin,
   upload.single('profileImage'),
+  validateUploadedFile,
   (req, res, next) => {
     req.params.id = req.body.id || req.body._id;
     next();

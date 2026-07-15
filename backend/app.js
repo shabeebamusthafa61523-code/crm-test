@@ -16,6 +16,7 @@ import apiRoutes from './src/routes/api.js';
 import aiRoutes from './src/routes/ai.routes.js';
 import Designation from './src/models/designation.model.js';
 import Department from './src/modules/departments/department.model.js';
+import schedulerService from './src/services/scheduler.service.js';
 
 dotenv.config();
 const app = express();
@@ -131,6 +132,11 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/student_at
 mongoose.connect(MONGO_URI)
   .then(async () => {
     console.log(' ✅ Successfully connected to MongoDB.');
+    try {
+      schedulerService.start();
+    } catch (schedErr) {
+      console.error(' ❌ Failed to start SchedulerService:', schedErr.message);
+    }
     try {
       const count = await Designation.countDocuments();
       if (count === 0) {

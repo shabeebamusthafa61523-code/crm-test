@@ -14,10 +14,23 @@ export const sendEmail = async (to, subject, body) => {
   return { success: true };
 };
 
+export const sendBulk = async (userIds, channels, content) => {
+  console.log(`[Notification Service] sendBulk to ${userIds.length} users via ${channels.join(', ')}: ${content.title}`);
+  return { success: true };
+};
+
+export const dispatchMultiChannel = async (params) => {
+  console.log(`[Notification Service] dispatchMultiChannel to User ${params.userId} via ${params.channels.join(', ')}: ${params.title}`);
+  return { success: true };
+};
+
 // Create a default export object containing the functions to satisfy both import styles
 const notificationService = {
   sendNotification,
-  sendEmail
+  sendEmail,
+  sendBulk,
+  dispatchMultiChannel
 };
 
+export { notificationService };
 export default notificationService;
