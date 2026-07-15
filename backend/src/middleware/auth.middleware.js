@@ -37,21 +37,25 @@ export const verifyToken = (req, res, next) => {
 export const requireRole = (allowedRoles = []) => {
   return (req, res, next) => {
     // Collect possible role identifiers from req.user
-    const roleId = String(req.user?.role_id || '');
-    const roleName = String(req.user?.role || '');
+    const roleId = String(req.user?.role_id || '').toLowerCase().trim();
+    const roleName = String(req.user?.role || '').toLowerCase().trim();
 
     // Map of roles for broad compatibility
-    // Allows admin access if allowedRoles contains 'admin' and user is admin/1/MD/COO/EXECUTIVE_DIRECTOR
     const isAllowed = allowedRoles.some(allowed => {
-      const target = allowed.toLowerCase();
+      const target = allowed.toLowerCase().trim();
       
+      // Exact checks (e.g. custom role strings or IDs)
+      if (roleName === target || roleId === target) {
+        return true;
+      }
+
       // Admin checks
       if (target === 'admin') {
         return (
-          roleName.toLowerCase() === 'admin' ||
-          roleId === '1' ||
-          roleId === '10' ||
-          roleName === '10' ||
+          roleName === 'admin' ||
+          roleName === 'superadmin' ||
+          roleName === 'super admin' ||
+          roleId === '2' ||
           roleName.toUpperCase() === 'MD' ||
           roleName.toUpperCase() === 'COO' ||
           roleName.toUpperCase() === 'EXECUTIVE_DIRECTOR'
@@ -61,17 +65,16 @@ export const requireRole = (allowedRoles = []) => {
       // Manager checks
       if (target === 'manager') {
         return (
-          roleName.toLowerCase() === 'manager' ||
+          roleName === 'manager' ||
+          roleName === 'admin' ||
+          roleName === 'superadmin' ||
+          roleName === 'super admin' ||
           roleId === '2' ||
           roleName.toUpperCase() === 'DEPARTMENT_MANAGER'
         );
       }
 
-      // Exact checks (e.g. custom role strings or IDs)
-      return (
-        roleName.toLowerCase() === target ||
-        roleId === target
-      );
+      return false;
     });
 
     if (!isAllowed) {

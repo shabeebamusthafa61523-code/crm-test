@@ -20,6 +20,139 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
+const MENU_ITEMS = [
+  { icon: 'LayoutDashboard', label: 'Dashboard', path: '/dashboard', allowedRoles: ['1', '2', 'admin'] },
+  {
+    icon: 'LayoutDashboard',
+    label: 'HR Dashboard',
+    path: '/hr-dashboard',
+    allowedDesignationKeywords: ['hr manager', 'hr'],
+  },
+  {
+    icon: 'BarChart3',
+    label: 'Lead Dashboard',
+    path: '/lead-dashboard',
+    allowedDepartmentCodes: ['MKT', 'ACD', 'OPS'],
+    allowedDesignationKeywords: ['counselor']
+  },
+  {
+    icon: 'BarChart3',
+    label: 'Marketing Dashboard',
+    path: '/marketing-dashboard',
+    allowedDepartmentCodes: ['TLC']
+  },
+  { 
+    icon: 'Users', 
+    label: 'Users', 
+    path: '/users', 
+    allowedRoles: ['1', '2', 'hr', 'admin'],
+    allowedDepartmentCodes: ['HR']
+  },
+  { 
+    icon: 'TrendingUp', 
+    label: 'Leads Directory', 
+    path: '/leads',
+    allowedDepartmentCodes: ['TLC']
+  },
+  { 
+    icon: 'TrendingUp', 
+    label: 'Telecaller Leads', 
+    path: '/leads-telecaller',
+    allowedDesignationKeywords: ['counselor'],
+    allowedRoles: ['1', '2', 'hr', 'admin']
+  },
+  { 
+    icon: 'TrendingUp', 
+    label: 'Lead Counselor', 
+    path: '/lead-counselor',
+    allowedDesignationKeywords: ['ops manager', 'ops'],
+  },
+  {
+    icon: 'BarChart3',
+    label: 'Dev Dashboard',
+    path: '/developer-dashboard',
+    allowedDepartmentCodes: ['RD'],
+  },
+  {
+    icon: 'BarChart3',
+    label: 'GD Dashboard',
+    path: '/graphic-designer-dashboard',
+    allowedDesignationKeywords: ['graphic designer', 'graphic'],
+  },
+  {
+    icon: 'FileText',
+    label: 'Developer Report',
+    path: '/developer-report',
+    allowedDesignationKeywords: ['developer', 'mern stack developer'],
+  },
+  {
+    icon: 'FileText',
+    label: 'HOD R&D Report',
+    path: '/hod-rd-report',
+    allowedDesignationKeywords: ['hod r&d', 'hod', 'r&d', 'rd'],
+  },
+  {
+    icon: 'FileText',
+    label: 'Graphic Designer Report',
+    path: '/graphic-designer-report',
+    allowedDesignationKeywords: ['graphic designer', 'graphic'],
+  },
+  {
+    icon: 'FileText',
+    label: 'Academic Counselor Report',
+    path: '/academic-counselor-report',
+    allowedDesignationKeywords: ['academic counselor', 'counselor'],
+  },
+  {
+    icon: 'LayoutDashboard',
+    label: 'Video Dashboard',
+    path: '/videographer-dashboard',
+    allowedDesignationKeywords: ['videographer', 'video'],
+  },
+  {
+    icon: 'FileText',
+    label: 'Videographer Report',
+    path: '/videographer-report',
+    allowedDesignationKeywords: ['videographer', 'video'],
+  },
+  {
+    icon: 'FileText',
+    label: 'HR Shift Report',
+    path: '/hr-report',
+    allowedDesignationKeywords: ['hr manager', 'hr'],
+  },
+  {
+    icon: 'Sparkles',
+    label: 'AI Reports',
+    path: '/ai-report',
+    allowedDesignationKeywords: ['hr manager', 'hr'],
+    allowedRoles: ['1', '2', 'admin']
+  },
+  {
+    icon: 'FileText',
+    label: 'Ops Shift Report',
+    path: '/ops-report',
+    allowedDesignationKeywords: ['ops manager', 'ops'],
+  },
+  {
+    icon: 'FileText',
+    label: 'Accountant Shift Report',
+    path: '/accountant-report',
+    allowedDesignationKeywords: ['accountant'],
+  },
+  {
+    icon: 'FileText',
+    label: 'Marketing Shift Report',
+    path: '/marketing-report',
+    allowedDesignationKeywords: ['marketing specialist', 'marketing'],
+  },
+  { icon: 'UserCheck', label: 'Attendance', path: '/attendance', excludeRoles: ['1', '2', 'hr', 'admin'] },
+  { icon: 'ListCheck', label: 'Task Assign', path: '/todo' },
+  { icon: 'Users', label: 'Student Attendance', path: '/student-attendance', allowedRoles: ['1', '2', 'hr', 'admin'], allowedDepartmentCodes: ['HR'] },
+  { icon: 'Building', label: 'Departments', path: '/departments', allowedRoles: ['1', '2', 'hr', 'admin'], allowedDepartmentCodes: ['HR'] },
+  { icon: 'Users', label: 'Employee Reports', path: '/employee-reports', allowedRoles: ['1', '2', 'hr', 'admin'], allowedDepartmentCodes: ['HR'] }
+];
+
 const uploadToCloudinary = (fileBuffer) => {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
@@ -905,6 +1038,60 @@ export const userController = {
       return sendSuccess(res, {
         status: 200,
         message: 'Bulk import completed successfully.'
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  getSidebarMenu: async (req, res, next) => {
+    try {
+      const userObj = await User.findById(req.user.id)
+        .populate('departmentId')
+        .populate('designationId');
+
+      if (!userObj) {
+        throw new AppError('User not found.', 404);
+      }
+
+      const currentUserRole = String(userObj.role_id || userObj.role || '').toLowerCase().trim();
+      const currentUserDeptCode = userObj.departmentId?.code 
+        ? String(userObj.departmentId.code).toUpperCase().trim() 
+        : '';
+      const currentUserDesignationName = userObj.designationId?.name 
+        ? String(userObj.designationId.name).toLowerCase().trim() 
+        : '';
+
+      const visibleItems = MENU_ITEMS.filter(item => {
+        if (item.excludeRoles && item.excludeRoles.includes(currentUserRole)) {
+          return false;
+        }
+        
+        // Allow department team leads to see Employee Reports page
+        if (item.label === 'Employee Reports' && userObj.isTeamLead) {
+          return true;
+        }
+
+        if (!item.allowedRoles && !item.allowedDepartmentCodes && !item.allowedDesignationKeywords) {
+          return true;
+        }
+
+        const roleMatch = item.allowedRoles && item.allowedRoles.includes(currentUserRole);
+        const deptMatch = item.allowedDepartmentCodes && currentUserDeptCode && item.allowedDepartmentCodes.includes(currentUserDeptCode);
+        const designationMatch = item.allowedDesignationKeywords && currentUserDesignationName && 
+          item.allowedDesignationKeywords.some(keyword => currentUserDesignationName.includes(keyword));
+
+        const matches = [];
+        if (item.allowedRoles) matches.push(roleMatch);
+        if (item.allowedDepartmentCodes) matches.push(deptMatch);
+        if (item.allowedDesignationKeywords) matches.push(designationMatch);
+
+        return matches.some(m => m === true);
+      });
+
+      return sendSuccess(res, {
+        status: 200,
+        data: visibleItems
       });
     } catch (error) {
       next(error);
