@@ -2351,7 +2351,7 @@ const OpsReportPage = () => {
                   {weeklyActiveTab === "range" && (
                     <div className="space-y-4 max-w-md mx-auto py-8">
                       <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">Select weekly report duration</h4>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Start Date</label>
                           <input
@@ -2811,7 +2811,7 @@ const OpsReportPage = () => {
                   {monthlyActiveTab === "range" && (
                     <div className="space-y-4 max-w-md mx-auto py-8">
                       <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">Select monthly report duration</h4>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Start Date</label>
                           <input

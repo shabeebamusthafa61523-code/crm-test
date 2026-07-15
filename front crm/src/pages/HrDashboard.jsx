@@ -603,12 +603,12 @@ export default function HrDashboard() {
                     <div className="space-y-8">
                       {/* Attendance Card */}
                       {todayRecord ? (
-                        <div className="p-5 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 grid grid-cols-3 gap-4">
+                        <div className="p-5 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 grid grid-cols-1 sm:grid-cols-3 gap-4">
                           <div className="space-y-1">
                             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Checked In</span>
                             <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{formatTime(todayRecord.check_in_time)}</span>
                           </div>
-                          <div className="space-y-1 border-x border-slate-200/50 dark:border-slate-800/50 px-4">
+                          <div className="space-y-1 sm:border-x border-slate-200/50 dark:border-slate-800/50 sm:px-4 max-sm:border-y max-sm:py-3 px-0">
                             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Checked Out</span>
                             <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
                               {todayRecord.check_out_time ? formatTime(todayRecord.check_out_time) : (
@@ -618,7 +618,7 @@ export default function HrDashboard() {
                               )}
                             </span>
                           </div>
-                          <div className="space-y-1 pl-2">
+                          <div className="space-y-1 sm:pl-2">
                             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Work Hours</span>
                             <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{getWorkHours(todayRecord)}</span>
                           </div>

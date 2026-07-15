@@ -1748,7 +1748,7 @@ const AcademicCounselorReportPage = () => {
               <div className="p-6 overflow-y-auto max-h-[60vh]">
                 {monthlyActiveTab === 'range' && (
                   <div className="space-y-6 max-w-xl mx-auto py-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
                           Start Date

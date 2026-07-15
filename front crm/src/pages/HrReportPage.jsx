@@ -2006,7 +2006,7 @@ const HrReportPage = () => {
                 </p>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
                   onClick={() => setIsWeeklyModalOpen(true)}
@@ -2787,7 +2787,7 @@ const HrReportPage = () => {
             </div>
 
             {/* Footer buttons */}
-            <div className="flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800 pt-5">
+            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800 pt-5">
               <button
                 type="button"
                 onClick={() => setIsWeeklyModalOpen(true)}

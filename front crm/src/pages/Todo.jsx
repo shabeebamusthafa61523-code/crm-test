@@ -415,7 +415,7 @@ const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) 
             </div>
             <div className="space-y-2 md:col-span-2">
               <label className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.2em] ml-2">assign to</label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <select
                   required
                   className="appearance-none bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 p-5 rounded-2xl text-gray-900 dark:text-gray-200 text-[11px] font-bold outline-none"

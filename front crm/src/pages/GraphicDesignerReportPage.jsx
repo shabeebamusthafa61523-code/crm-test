@@ -1874,7 +1874,7 @@ const GraphicDesignerReportPage = () => {
               <div className="p-6 max-h-[60vh] overflow-y-auto bg-white dark:bg-slate-900">
                 {monthlyActiveTab === 'range' && (
                   <div className="space-y-6 max-w-xl mx-auto py-6">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
                           Start Date
