@@ -5,6 +5,7 @@ import { hashPassword, comparePassword } from '../utils/bcrypt.util.js';
 import { authService } from '../services/auth.service.js';
 import { recordAudit } from '../middleware/audit.middleware.js';
 import notificationService from '../services/notification.service.js';
+import { socketService } from '../services/socket.service.js';
 import { sendSuccess } from '../utils/response.util.js';
 import {
   getPaginationParams,
@@ -557,29 +558,70 @@ export const userController = {
 
       const selectedDesignation = await findDesignationById(designation);
 
-      const newUser =
-        await User.create({
-          name,
-          email,
-          phone,
-          role: role || 'employee',
-          role_id: role === 'admin' ? '1' : (role === 'manager' ? '2' : '3'),
-          department,
-          departmentId,
-          designation: selectedDesignation?.name || '',
-          designationId: selectedDesignation?._id,
-          reportingManager,
-          status: status || 'active',
-          employeeId,
-          avatar: fileUrl,
-          profile_image: fileUrl,
-          passwordHash,
-          joining_date: joining_date ? new Date(joining_date) : new Date(),
-          salary: parseFloat(salary) || 0,
-          address: address || '',
-          identityType: identityType || 'aadhaar',
-          identityNumber: identityNumber || ''
-        });
+      // --- Fix: Correct role_id mapping aligned with system roleMap ---
+      // hr→1, admin→2, manager→3, employee→4, digital_marketer→5, student→10
+      const roleIdMap = {
+        hr: '1',
+        admin: '2',
+        manager: '3',
+        employee: '4',
+        team_leader: '4',
+        staff: '4',
+        intern: '4',
+        digital_marketer: '5',
+        student: '10'
+      };
+      const resolvedRole = (role || 'employee').toLowerCase();
+      const resolvedRoleId = roleIdMap[resolvedRole] || '4';
+
+      // --- Fix: Properly resolve and validate departmentId as ObjectId ---
+      let resolvedDeptId = null;
+      let resolvedDeptName = department || '';
+      const rawDeptId = departmentId;
+      if (rawDeptId && mongoose.Types.ObjectId.isValid(String(rawDeptId))) {
+        resolvedDeptId = new mongoose.Types.ObjectId(String(rawDeptId));
+        if (!resolvedDeptName) {
+          try {
+            const Department = (await import('../modules/departments/department.model.js')).default;
+            const deptDoc = await Department.findById(resolvedDeptId).select('name');
+            if (deptDoc) resolvedDeptName = deptDoc.name;
+          } catch (err) {
+            console.warn('Could not resolve department name:', err.message);
+          }
+        }
+      }
+
+      // --- Fix: Resolve reportingManager as ObjectId if valid ---
+      let resolvedManagerId = null;
+      if (reportingManager && mongoose.Types.ObjectId.isValid(String(reportingManager))) {
+        resolvedManagerId = new mongoose.Types.ObjectId(String(reportingManager));
+      }
+
+      const newUser = await User.create({
+        name,
+        email,
+        phone,
+        role: resolvedRole,
+        role_id: resolvedRoleId,
+        department: resolvedDeptName,
+        departmentId: resolvedDeptId,
+        designation: selectedDesignation?.name || '',
+        designationId: selectedDesignation?._id || null,
+        reportingManager: resolvedManagerId,
+        status: status || 'active',
+        isActive: (status || 'active') === 'active',
+        employeeId,
+        avatar: fileUrl,
+        profile_image: fileUrl,
+        password: passwordHash,
+        passwordHash,
+        joining_date: joining_date ? new Date(joining_date) : new Date(),
+        salary: parseFloat(salary) || 0,
+        address: address || '',
+        identityType: identityType || 'aadhaar',
+        identityNumber: identityNumber || '',
+        lastLogin: null
+      });
 
       await recordAudit(req, {
         action: 'CREATE',
@@ -588,34 +630,72 @@ export const userController = {
         newValue: {
           name,
           email,
-          role,
+          role: resolvedRole,
+          role_id: resolvedRoleId,
           employeeId,
-          department,
+          department: resolvedDeptName,
+          departmentId: resolvedDeptId,
           designation: selectedDesignation?.name || '',
           designationId: selectedDesignation?._id
         }
       });
 
+      // --- Fix: sendEmail with proper 3-arg signature + HTML welcome body ---
+      const welcomeHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+          <div style="background: linear-gradient(135deg, #1a1a2e, #16213e); padding: 32px; text-align: center;">
+            <h1 style="color: #00d4ff; margin: 0; font-size: 24px;">🎉 Welcome to the Team!</h1>
+          </div>
+          <div style="padding: 32px; background: #ffffff;">
+            <p style="font-size: 16px; color: #333;">Hi <strong>${newUser.name}</strong>,</p>
+            <p style="color: #555;">Your CRM account has been created successfully. Here are your login details:</p>
+            <div style="background: #f4f7ff; border-left: 4px solid #00d4ff; padding: 16px; border-radius: 4px; margin: 20px 0;">
+              <p style="margin: 4px 0;"><strong>Email:</strong> ${newUser.email}</p>
+              <p style="margin: 4px 0;"><strong>Temporary Password:</strong> <code style="background:#e8f4fd;padding:2px 6px;border-radius:3px;">${tempPass}</code></p>
+              <p style="margin: 4px 0;"><strong>Role:</strong> ${resolvedRole.toUpperCase()}</p>
+              ${resolvedDeptName ? `<p style="margin: 4px 0;"><strong>Department:</strong> ${resolvedDeptName}</p>` : ''}
+            </div>
+            <p style="color: #e74c3c; font-size: 13px;">⚠️ Please change your password after your first login for security.</p>
+          </div>
+        </div>
+      `;
       try {
         await notificationService.sendEmail(
           newUser.email,
-          '🎉 Welcome to the Team!',
-          'Your Command Center Account is Ready',
-          `Welcome ${newUser.name}! Temp Password: ${tempPass}`
+          '🎉 Welcome to the Team — Your Account is Ready',
+          welcomeHtml
         );
       } catch (err) {
         console.error('Failed to send welcome email:', err.message);
       }
 
+      // --- Fix: Broadcast new employee creation to admin dashboard via socket ---
+      try {
+        socketService.emitNewEmployee({
+          userId: String(newUser._id),
+          name: newUser.name,
+          email: newUser.email,
+          role: resolvedRole,
+          role_id: resolvedRoleId,
+          department: resolvedDeptName,
+          departmentId: resolvedDeptId,
+          joinedAt: new Date()
+        });
+      } catch (socketErr) {
+        console.warn('Socket broadcast skipped:', socketErr.message);
+      }
+
       return sendSuccess(res, {
         status: 201,
-        message:
-          'New employee account registered.',
+        message: 'New employee account registered successfully.',
         data: {
           id: newUser._id,
           name: newUser.name,
           email: newUser.email,
           role: newUser.role,
+          role_id: newUser.role_id,
+          departmentId: newUser.departmentId,
+          department: newUser.department,
           employeeId: newUser.employeeId,
           status: newUser.status
         }

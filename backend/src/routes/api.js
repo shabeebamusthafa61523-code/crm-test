@@ -1,5 +1,6 @@
 import express from 'express';
 import checkAuth from '../middleware/auth.middleware.js';
+import { requireRole } from '../middleware/auth.middleware.js';
 import * as attendanceController from '../controllers/attendance.controller.js';
 import * as authController from '../controllers/auth.controller.js';
 
@@ -26,13 +27,12 @@ router.get('/attendance/:date', checkAuth, attendanceController.getAttendanceByD
 router.post('/attendance/admin/check-in', checkAuth, attendanceController.checkIn);
 router.post('/attendance/admin/check-out', checkAuth, attendanceController.checkOut);
 
-// 🚨 THE CRITICAL CRASH FIX: 
-// Temporarily stubbing 'markAbsent' using an inline handler since it isn't exported 
-// in your attendanceController. This keeps the route active without crashing the engine.
-router.post('/attendance/admin/mark-absent', checkAuth, (req, res) => {
-  return res.status(501).json({ 
-    detail: "The administrative mark-absent feature has not been initialized in the controller yet." 
-  });
-});
+// Mark absent — Admin/HR/Manager
+router.post(
+  '/attendance/admin/mark-absent',
+  checkAuth,
+  requireRole(['admin', 'manager', 'hr']),
+  attendanceController.markAbsent
+);
 
 export default router;

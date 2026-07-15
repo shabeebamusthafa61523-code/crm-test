@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import redis from '../config/redis.js';
 import mongoose from 'mongoose';
 import { recordAudit } from '../middleware/audit.middleware.js';
+import notificationService from '../services/notification.service.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key';
 
@@ -86,18 +87,55 @@ export const signup = async (req, res) => {
       designationId: resolvedDesignationId,
       department: resolvedDepartmentName,
       departmentId: resolvedDepartmentId,
-      designation_id: resolvedDesignationId ? String(resolvedDesignationId) : String(designation_id),
-      joining_date: new Date(joining_date),
+      designation_id: resolvedDesignationId ? String(resolvedDesignationId) : String(designation_id || ''),
+      joining_date: joining_date ? new Date(joining_date) : new Date(),
       salary: parseFloat(salary) || 0,
       address,
       identityType,
       identityNumber,
       profile_image: profile_image || null,
       avatar: profile_image || null,
-      employeeId: email
+      employeeId: email,
+      lastLogin: null
     });
 
     await newUser.save();
+
+    // Audit log for signup
+    req.user = { id: newUser._id };
+    await recordAudit(req, {
+      action: 'CREATE',
+      entity: 'User',
+      entityId: newUser._id,
+      newValue: { email: newUser.email, role: userRole }
+    });
+
+    // Welcome email notification
+    const signupWelcomeHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+        <div style="background: linear-gradient(135deg, #1a1a2e, #16213e); padding: 32px; text-align: center;">
+          <h1 style="color: #00d4ff; margin: 0; font-size: 24px;">🎉 Account Registered!</h1>
+        </div>
+        <div style="padding: 32px; background: #ffffff;">
+          <p style="font-size: 16px; color: #333;">Hi <strong>${newUser.name}</strong>,</p>
+          <p style="color: #555;">Your account has been successfully registered on the CRM platform.</p>
+          <div style="background: #f4f7ff; border-left: 4px solid #00d4ff; padding: 16px; border-radius: 4px; margin: 20px 0;">
+            <p style="margin: 4px 0;"><strong>Email:</strong> ${newUser.email}</p>
+            <p style="margin: 4px 0;"><strong>Role:</strong> ${userRole.toUpperCase()}</p>
+          </div>
+          <p style="color: #e74c3c; font-size: 13px;">⚠️ Please keep your login credentials secure.</p>
+        </div>
+      </div>
+    `;
+    try {
+      await notificationService.sendEmail(
+        newUser.email,
+        '🎉 Welcome — Your CRM Account is Ready',
+        signupWelcomeHtml
+      );
+    } catch (emailErr) {
+      console.warn('Failed to send signup welcome email:', emailErr.message);
+    }
 
     res.status(201).json({ message: "Staff Registration Successful!", userId: newUser._id });
   } catch (error) {

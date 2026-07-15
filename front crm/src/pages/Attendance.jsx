@@ -19,7 +19,11 @@ import {
   Fingerprint,
   ChevronLeft,
   ChevronRight,
-  Calendar
+  Calendar,
+  Coffee,
+  TrendingUp,
+  Users,
+  Zap
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL;
@@ -137,17 +141,19 @@ const LiveClock = () => {
 const Attendance = () => {
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      try {
-        const userObj = JSON.parse(savedUser);
-        const currentUserRole = String(userObj.role_id || userObj.roleId || userObj.role || '').toLowerCase().trim();
-        const isAdmin = ['1', '2', 'hr', 'admin'].includes(currentUserRole);
-        if (isAdmin) {
-          navigate('/dashboard', { replace: true });
-        }
-      } catch (err) {
+  // Detect logged-in user role
+  const currentUser = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem('user') || '{}'); }
+    catch { return {}; }
+  }, []);
+
+  const userRoleId = String(currentUser.role_id || currentUser.roleId || '').toLowerCase();
+  const userRole   = String(currentUser.role || '').toLowerCase();
+  const isAdmin    = ['1', '2', 'hr', 'admin'].includes(userRoleId) || ['hr', 'admin'].includes(userRole);
+  const isManager  = isAdmin || userRoleId === '3' || userRole === 'manager';
+
+  // Active view: 'self' | 'team'
+  const [activeView, setActiveView] = useState(isManager ? 'team' : 'self');
         console.error("Failed to parse user for admin check:", err);
       }
     }
@@ -156,9 +162,15 @@ const Attendance = () => {
   const [todayLog, setTodayLog] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [breakLoading, setBreakLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
+
+  // Team view state (Admin/Manager)
+  const [teamDate, setTeamDate] = useState(getISTDate());
+  const [teamRecords, setTeamRecords] = useState([]);
+  const [teamLoading, setTeamLoading] = useState(false);
 
   // Calendar and Selected Date States
   const [selectedDate, setSelectedDate] = useState(getISTDate());
@@ -283,39 +295,63 @@ const Attendance = () => {
     try {
       const response = await fetch(
         `${API_BASE}/attendance/${type}`,
-        {
-          method: 'POST',
-          headers: getHeaders()
-        }
+        { method: 'POST', headers: getHeaders() }
       );
 
       const result = await response.json();
 
-      if (!response.ok) {
-        throw new Error(result.detail || "Action denied");
-      }
+      if (!response.ok) throw new Error(result.detail || 'Action denied');
 
       setSuccessMsg(`${type.replace('-', ' ')} successful!`);
-
       await fetchStatus();
-      if (selectedDate === getISTDate()) {
-        fetchSelectedDateStatus(selectedDate);
-      }
-
-      setTimeout(() => {
-        setSuccessMsg(null);
-      }, 3000);
-
+      if (selectedDate === getISTDate()) fetchSelectedDateStatus(selectedDate);
+      setTimeout(() => setSuccessMsg(null), 3000);
     } catch (err) {
       setError(err.message);
-
-      setTimeout(() => {
-        setError(null);
-      }, 5000);
+      setTimeout(() => setError(null), 5000);
     } finally {
       setActionLoading(false);
     }
   };
+
+  const handleBreak = async (type) => {
+    setError(null);
+    setBreakLoading(true);
+    try {
+      const response = await fetch(
+        `${API_BASE}/attendance/break/${type}`,
+        { method: 'POST', headers: getHeaders() }
+      );
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.detail || 'Break action failed');
+      setSuccessMsg(type === 'start' ? 'Break started.' : 'Break ended.');
+      await fetchStatus();
+      setTimeout(() => setSuccessMsg(null), 3000);
+    } catch (err) {
+      setError(err.message);
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setBreakLoading(false);
+    }
+  };
+
+  const fetchTeamAttendance = useCallback(async (dateStr) => {
+    try {
+      setTeamLoading(true);
+      const response = await fetch(
+        `${API_BASE}/attendance/all/${dateStr}`,
+        { headers: getHeaders() }
+      );
+      if (!response.ok) { setTeamRecords([]); return; }
+      const data = await response.json();
+      setTeamRecords(Array.isArray(data) ? data : []);
+    } catch { setTeamRecords([]); }
+    finally { setTeamLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    if (isManager && activeView === 'team') fetchTeamAttendance(teamDate);
+  }, [isManager, activeView, teamDate, fetchTeamAttendance]);
 
   const liveWorkingHours = useMemo(() => {
     if (!todayLog?.check_in_time) return "0.00";
@@ -346,7 +382,7 @@ const Attendance = () => {
       <div className="max-w-7xl mx-auto">
 
         {/* HEADER */}
-        <header className="flex justify-between items-end mb-16">
+        <header className="flex justify-between items-end mb-10">
           <div>
             <motion.h2
               initial={{ opacity: 0, x: -20 }}
@@ -389,6 +425,87 @@ const Attendance = () => {
             }).toUpperCase()}
           </div>
         </header>
+
+        {/* VIEW TOGGLE TABS — Only visible to Admin/HR/Manager */}
+        {isManager && (
+          <div className="flex gap-3 mb-10">
+            {[{ id: 'self', label: 'My Attendance', icon: ShieldCheck }, { id: 'team', label: 'Team Overview', icon: Users }].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveView(tab.id)}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-widest border transition-all cursor-pointer ${
+                  activeView === tab.id
+                    ? 'bg-indigo-500 text-white border-indigo-500 shadow-md shadow-indigo-500/20'
+                    : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-indigo-500/40'
+                }`}
+              >
+                <tab.icon size={13} />
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* TEAM OVERVIEW PANEL — Admin/HR/Manager only */}
+        {isManager && activeView === 'team' && (
+          <div className="mb-10">
+            <div className="bg-white dark:bg-slate-900 border rounded-[2.5rem] p-8 shadow-sm">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-[10px] font-black tracking-[0.3em] text-indigo-500 uppercase">Team Attendance</h3>
+                <input
+                  type="date"
+                  value={teamDate}
+                  onChange={(e) => setTeamDate(e.target.value)}
+                  className="text-xs bg-slate-100 dark:bg-slate-800 border dark:border-slate-700 rounded-xl px-3 py-1.5 font-bold text-slate-700 dark:text-slate-200 cursor-pointer"
+                />
+              </div>
+
+              {teamLoading ? (
+                <div className="flex justify-center py-10"><Loader2 className="animate-spin text-indigo-500" size={28} /></div>
+              ) : teamRecords.length === 0 ? (
+                <div className="text-center py-10">
+                  <Users size={28} className="mx-auto text-slate-300 dark:text-slate-700 mb-2" />
+                  <p className="text-xs text-slate-400 font-medium">No attendance records for {teamDate}.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b dark:border-slate-800">
+                        <th className="text-left pb-3 pr-4">Employee</th>
+                        <th className="text-left pb-3 pr-4">Status</th>
+                        <th className="text-left pb-3 pr-4">In Time</th>
+                        <th className="text-left pb-3 pr-4">Out Time</th>
+                        <th className="text-left pb-3">Hours</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y dark:divide-slate-800">
+                      {teamRecords.map((r) => (
+                        <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                          <td className="py-3 pr-4 font-semibold text-slate-800 dark:text-slate-200">
+                            {r.user?.name || r.user_id || '—'}
+                            {r.user?.employeeId && <span className="ml-2 text-slate-400">#{r.user.employeeId}</span>}
+                          </td>
+                          <td className="py-3 pr-4">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                              r.status === 'PRESENT' ? 'bg-emerald-500/10 text-emerald-500' :
+                              r.status === 'LATE'    ? 'bg-orange-500/10 text-orange-500' :
+                              r.status === 'ABSENT'  ? 'bg-red-500/10 text-red-500' :
+                              'bg-slate-500/10 text-slate-400'
+                            }`}>{r.status || '—'}</span>
+                          </td>
+                          <td className="py-3 pr-4 text-slate-600 dark:text-slate-400">{formatTime(r.check_in_time)}</td>
+                          <td className="py-3 pr-4 text-slate-600 dark:text-slate-400">{formatTime(r.check_out_time)}</td>
+                          <td className="py-3 font-bold text-indigo-400">{r.working_hours ? `${r.working_hours}h` : '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <AnimatePresence mode="wait">
 
@@ -475,8 +592,8 @@ const Attendance = () => {
               </div>
             </div>
 
-            {/* STATS */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* STATS — 6 blocks: Date | In | Out | Hours | Overtime | Status */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
 
               <StatBlock
                 label="Session Date"
@@ -488,8 +605,15 @@ const Attendance = () => {
               <StatBlock
                 label="In Time"
                 value={formatTime(todayLog?.check_in_time)}
-                icon={Clock}
+                icon={LogIn}
                 color="text-indigo-400"
+              />
+
+              <StatBlock
+                label="Out Time"
+                value={formatTime(todayLog?.check_out_time)}
+                icon={LogOut}
+                color="text-rose-400"
               />
 
               <StatBlock
@@ -500,21 +624,57 @@ const Attendance = () => {
               />
 
               <StatBlock
+                label="Overtime"
+                value={`${todayLog?.overtime || '0.00'}h`}
+                icon={TrendingUp}
+                color="text-amber-400"
+              />
+
+              <StatBlock
                 label="Status"
                 value={
                   todayLog?.is_late
-                    ? "LATE_ENTRY"
-                    : "OPTIMAL"
+                    ? 'LATE_ENTRY'
+                    : todayLog?.check_in_time
+                      ? 'OPTIMAL'
+                      : 'NOT_CLOCKED'
                 }
                 icon={Activity}
                 color={
                   todayLog?.is_late
-                    ? "text-orange-500"
-                    : "text-indigo-400"
+                    ? 'text-orange-500'
+                    : todayLog?.check_in_time
+                      ? 'text-indigo-400'
+                      : 'text-slate-400'
                 }
               />
 
             </div>
+
+            {/* BREAK BUTTONS — only visible when checked in but not yet checked out */}
+            {todayLog?.check_in_time && !todayLog?.check_out_time && (
+              <div className="flex gap-4">
+                <motion.button
+                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                  disabled={breakLoading || (todayLog?.break_start && !todayLog?.break_end)}
+                  onClick={() => handleBreak('start')}
+                  className="flex items-center gap-2 px-5 py-3 bg-amber-500/10 border border-amber-500/30 hover:border-amber-500/60 text-amber-500 rounded-2xl text-xs font-bold uppercase tracking-widest disabled:opacity-30 cursor-pointer transition-all"
+                >
+                  <Coffee size={14} />
+                  Start Break
+                </motion.button>
+
+                <motion.button
+                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                  disabled={breakLoading || !todayLog?.break_start || !!todayLog?.break_end}
+                  onClick={() => handleBreak('end')}
+                  className="flex items-center gap-2 px-5 py-3 bg-indigo-500/10 border border-indigo-500/30 hover:border-indigo-500/60 text-indigo-400 rounded-2xl text-xs font-bold uppercase tracking-widest disabled:opacity-30 cursor-pointer transition-all"
+                >
+                  <Zap size={14} />
+                  End Break {todayLog?.break_start && !todayLog?.break_end ? '(Active)' : ''}
+                </motion.button>
+              </div>
+            )}
 
           </div>
 

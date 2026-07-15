@@ -9,8 +9,12 @@ export const sendNotification = async (userId, message, type = 'info') => {
   return { success: true, timestamp: new Date() };
 };
 
-export const sendEmail = async (to, subject, body) => {
+export const sendEmail = async (to, subject, bodyOrHtml, legacyBody) => {
+  const content = legacyBody || bodyOrHtml;
   console.log(`[Notification Service] Sending Email to ${to} | Subject: ${subject}`);
+  if (content && content.includes('<')) {
+    console.log(`[Notification Service] HTML email body detected (${content.length} chars).`);
+  }
   return { success: true };
 };
 
