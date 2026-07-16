@@ -1259,7 +1259,7 @@ const AcademicCounselorReportPage = () => {
                 <table className="w-full text-left border-collapse text-sm">
                   <thead>
                     <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
-                      <th className="px-5 py-4">Activity</th>
+                      <th className="px-5 py-4 w-[35%] min-w-[280px]">Activity</th>
                       <th className="px-5 py-4 w-36">Due Date</th>
                       <th className="px-5 py-4 w-44">Start Date</th>
                       <th className="px-5 py-4 w-44">End Date</th>
@@ -1748,7 +1748,7 @@ const AcademicCounselorReportPage = () => {
               <div className="p-6 overflow-y-auto max-h-[60vh]">
                 {monthlyActiveTab === 'range' && (
                   <div className="space-y-6 max-w-xl mx-auto py-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
                           Start Date
@@ -1933,7 +1933,7 @@ const AcademicCounselorReportPage = () => {
                         <table className="w-full text-left border-collapse text-sm">
                           <thead>
                             <tr className="bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
-                              <th className="px-5 py-4">Activity</th>
+                              <th className="px-5 py-4 w-[35%] min-w-[280px]">Activity</th>
                               <th className="px-5 py-4 w-36">Due Date</th>
                               <th className="px-5 py-4 w-44">Start Date</th>
                               <th className="px-5 py-4 w-44">End Date</th>

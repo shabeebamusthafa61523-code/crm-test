@@ -229,6 +229,7 @@ export const login = async (req, res) => {
         reportingManager: user.reportingManager || null,
         salary: user.salary ?? 0,
         profile_image: user.profile_image || null,
+        department: departmentName,
         departmentId: user.departmentId || null,
         department: departmentName,
         departmentCode: departmentCode,
@@ -367,4 +368,4 @@ export const logout = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-};
+};

@@ -9,17 +9,18 @@ import { useToast } from '../components/ToastProvider';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { fetchCompletedTasks } from '../utils/taskUtils';
+import SignatureUpload from '../components/SignatureUpload';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
 // Defaults from mockup
 const DEFAULT_ACCOUNTING_SUMMARY = [
-  { activity: 'Daily Entries Updated', status: '', dueDate: '', remarks: '' },
-  { activity: 'Cash Book Updated', status: '', dueDate: '', remarks: '' },
-  { activity: 'Bank Transactions Verified', status: '', dueDate: '', remarks: '' },
-  { activity: 'Invoices Generated', status: '', dueDate: '', remarks: '' },
-  { activity: 'Payment Follow-up Completed', status: '', dueDate: '', remarks: '' },
-  { activity: 'Expense Records Updated', status: '', dueDate: '', remarks: '' }
+  { activity: 'Daily Entries Updated', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' },
+  { activity: 'Cash Book Updated', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' },
+  { activity: 'Bank Transactions Verified', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' },
+  { activity: 'Invoices Generated', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' },
+  { activity: 'Payment Follow-up Completed', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' },
+  { activity: 'Expense Records Updated', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' }
 ];
 
 const DEFAULT_TRANSACTIONS = [
@@ -1330,8 +1331,15 @@ const AccountantReportPage = () => {
 
       // 2. DAILY ACCOUNTING SUMMARY
       drawSectionHeader("2. MONTHLY ACCOUNTING SUMMARY");
-      const summaryHeaders = [["Activity", "Status Summary", "Remarks"]];
-      const summaryRows = monthlyDailyAccountingSummary.map(o => [o.activity || '', o.status || '', o.remarks || '']);
+      const summaryHeaders = [["Activity", "Due Date", "Start Date", "End Date", "Status", "Remarks"]];
+      const summaryRows = monthlyDailyAccountingSummary.map(o => [
+        o.activity || '', 
+        o.dueDate || '', 
+        o.startDate || '', 
+        o.endDate || '', 
+        o.status || '', 
+        o.remarks || ''
+      ]);
 
       autoTable(doc, {
         head: summaryHeaders,
@@ -1341,9 +1349,12 @@ const AccountantReportPage = () => {
         headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
         styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
         columnStyles: {
-          0: { width: 70 },
-          1: { width: 45, halign: 'center' },
-          2: { width: 67 }
+          0: { width: 52 },
+          1: { width: 25 },
+          2: { width: 25 },
+          3: { width: 25 },
+          4: { width: 25, halign: 'center' },
+          5: { width: 30 }
         },
         margin: { left: 14, right: 14 }
       });
@@ -1690,8 +1701,15 @@ const AccountantReportPage = () => {
 
       // 2. DAILY ACCOUNTING SUMMARY
       drawSectionHeader("2. MONTHLY ACCOUNTING SUMMARY");
-      const summaryHeaders = [["Activity", "Status Summary", "Remarks"]];
-      const summaryRows = weeklyDailyAccountingSummary.map(o => [o.activity || '', o.status || '', o.remarks || '']);
+      const summaryHeaders = [["Activity", "Due Date", "Start Date", "End Date", "Status", "Remarks"]];
+      const summaryRows = weeklyDailyAccountingSummary.map(o => [
+        o.activity || '', 
+        o.dueDate || '', 
+        o.startDate || '', 
+        o.endDate || '', 
+        o.status || '', 
+        o.remarks || ''
+      ]);
 
       autoTable(doc, {
         head: summaryHeaders,
@@ -1701,9 +1719,12 @@ const AccountantReportPage = () => {
         headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
         styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
         columnStyles: {
-          0: { width: 70 },
-          1: { width: 45, halign: 'center' },
-          2: { width: 67 }
+          0: { width: 52 },
+          1: { width: 25 },
+          2: { width: 25 },
+          3: { width: 25 },
+          4: { width: 25, halign: 'center' },
+          5: { width: 30 }
         },
         margin: { left: 14, right: 14 }
       });
@@ -2306,7 +2327,7 @@ const AccountantReportPage = () => {
                 </h2>
                 <button
                   type="button"
-                  onClick={() => setDailyAccountingSummary([...dailyAccountingSummary, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }])}
+                  onClick={() => setDailyAccountingSummary([...dailyAccountingSummary, { activity: '', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' }])}
                   className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
                 >
                   <Plus size={14} /> Add Row
@@ -2316,9 +2337,11 @@ const AccountantReportPage = () => {
                 <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800 text-sm">
                   <thead className="bg-slate-50 dark:bg-slate-950">
                     <tr>
-                      <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-1/3">Activity</th>
-                      <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-1/3">Due Date</th>
-                      <th className="px-6 py-3 text-center text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-1/4">Status</th>
+                      <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-[35%] min-w-[280px]">Activity</th>
+                      <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-36">Due Date</th>
+                      <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-36">Start Date</th>
+                      <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-36">End Date</th>
+                      <th className="px-6 py-3 text-center text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-32">Status</th>
                       <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Remarks</th>
                       <th className="px-3 py-3 text-center w-12"></th>
                     </tr>
@@ -2342,6 +2365,45 @@ const AccountantReportPage = () => {
                         <td className="px-6 py-3">
                           <input
                             type="text"
+                            value={item.dueDate || ''}
+                            onChange={(e) => {
+                              const updated = [...dailyAccountingSummary];
+                              updated[idx].dueDate = e.target.value;
+                              setDailyAccountingSummary(updated);
+                            }}
+                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-2.5 py-1.5 text-sm focus:outline-none"
+                            placeholder="e.g. 2026-07-15"
+                          />
+                        </td>
+                        <td className="px-6 py-3">
+                          <input
+                            type="text"
+                            value={item.startDate || ''}
+                            onChange={(e) => {
+                              const updated = [...dailyAccountingSummary];
+                              updated[idx].startDate = e.target.value;
+                              setDailyAccountingSummary(updated);
+                            }}
+                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-2.5 py-1.5 text-sm focus:outline-none"
+                            placeholder="e.g. 2026-07-14"
+                          />
+                        </td>
+                        <td className="px-6 py-3">
+                          <input
+                            type="text"
+                            value={item.endDate || ''}
+                            onChange={(e) => {
+                              const updated = [...dailyAccountingSummary];
+                              updated[idx].endDate = e.target.value;
+                              setDailyAccountingSummary(updated);
+                            }}
+                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-2.5 py-1.5 text-sm focus:outline-none"
+                            placeholder="e.g. 2026-07-14"
+                          />
+                        </td>
+                        <td className="px-6 py-3">
+                          <input
+                            type="text"
                             value={item.status || ''}
                             onChange={(e) => {
                               const updated = [...dailyAccountingSummary];
@@ -2349,6 +2411,7 @@ const AccountantReportPage = () => {
                               setDailyAccountingSummary(updated);
                             }}
                             className="w-full text-center bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-2 py-1.5 text-sm focus:outline-none"
+                            placeholder="e.g. completed"
                           />
                         </td>
                         <td className="px-6 py-3">
@@ -2538,7 +2601,7 @@ const AccountantReportPage = () => {
                 <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800 text-sm">
                   <thead className="bg-slate-50 dark:bg-slate-950">
                     <tr>
-                      <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-1/3">Activity</th>
+                      <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-[35%] min-w-[280px]">Activity</th>
                       <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-1/3">Due Date</th>
                       <th className="px-6 py-3 text-center text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-1/4">Status</th>
                       <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Remarks</th>
@@ -2880,12 +2943,11 @@ const AccountantReportPage = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Signature Initials</label>
-                    <input
-                      type="text"
+                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Signature</label>
+                    <SignatureUpload
                       value={approval.accountantSignature || ''}
-                      onChange={(e) => setApproval({ ...approval, accountantSignature: e.target.value })}
-                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none"
+                      onChange={(val) => setApproval({ ...approval, accountantSignature: val })}
+                      placeholder="Upload accountant signature"
                     />
                   </div>
                   <div>
@@ -2913,14 +2975,11 @@ const AccountantReportPage = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Signature Initials</label>
-                    <input
-                      type="text"
+                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Signature</label>
+                    <SignatureUpload
                       value={approval.managerSignature || ''}
-                      onChange={(e) => setApproval({ ...approval, managerSignature: e.target.value })}
-                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none"
-                      disabled={!isPrivileged}
-                      placeholder={!isPrivileged ? "Restricted to Managers" : "Signature"}
+                      onChange={(val) => setApproval({ ...approval, managerSignature: val })}
+                      placeholder="Upload manager signature"
                     />
                   </div>
                   <div>
@@ -3079,7 +3138,7 @@ const AccountantReportPage = () => {
                       <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800 text-sm">
                         <thead className="bg-slate-50 dark:bg-slate-950">
                           <tr>
-                            <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 uppercase w-1/3">Activity</th>
+                            <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 uppercase w-[35%] min-w-[280px]">Activity</th>
                       <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 uppercase w-1/3">Due Date</th>
                             <th className="px-4 py-2 text-center text-xs font-bold text-slate-400 w-1/4">Status Summary</th>
                             <th className="px-4 py-2 text-left text-xs font-bold text-slate-400">Remarks Summary</th>
@@ -3223,7 +3282,7 @@ const AccountantReportPage = () => {
                         <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800 text-sm">
                           <thead className="bg-slate-50 dark:bg-slate-950">
                             <tr>
-                              <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 w-1/3">Activity</th>
+                              <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 w-[35%] min-w-[280px]">Activity</th>
                       <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 w-1/3">Due Date</th>
                               <th className="px-4 py-2 text-center text-xs font-bold text-slate-400 w-1/4">Status Summary</th>
                               <th className="px-4 py-2 text-left text-xs font-bold text-slate-400">Remarks Summary</th>
@@ -3727,7 +3786,7 @@ const AccountantReportPage = () => {
                       <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800 text-sm">
                         <thead className="bg-slate-50 dark:bg-slate-950">
                           <tr>
-                            <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 uppercase w-1/3">Activity</th>
+                            <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 uppercase w-[35%] min-w-[280px]">Activity</th>
                       <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 uppercase w-1/3">Due Date</th>
                             <th className="px-4 py-2 text-center text-xs font-bold text-slate-400 w-1/4">Status Summary</th>
                             <th className="px-4 py-2 text-left text-xs font-bold text-slate-400">Remarks Summary</th>
@@ -3871,7 +3930,7 @@ const AccountantReportPage = () => {
                         <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800 text-sm">
                           <thead className="bg-slate-50 dark:bg-slate-950">
                             <tr>
-                              <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 w-1/3">Activity</th>
+                              <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 w-[35%] min-w-[280px]">Activity</th>
                       <th className="px-4 py-2 text-left text-xs font-bold text-slate-400 w-1/3">Due Date</th>
                               <th className="px-4 py-2 text-center text-xs font-bold text-slate-400 w-1/4">Status Summary</th>
                               <th className="px-4 py-2 text-left text-xs font-bold text-slate-400">Remarks Summary</th>

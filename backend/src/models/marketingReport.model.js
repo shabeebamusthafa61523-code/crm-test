@@ -48,8 +48,10 @@ const marketingReportSchema = new mongoose.Schema({
     }
   ],
   approval: {
+    staffName: { type: String },
     staffSignature: { type: String },
     submittedAt: { type: String },
+    leaderName: { type: String },
     leaderApproval: { type: String },
     approvedOn: { type: String }
   }

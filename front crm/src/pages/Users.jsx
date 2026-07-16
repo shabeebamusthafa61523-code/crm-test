@@ -35,6 +35,7 @@ const Users = () => {
   const [designations, setDesignations] = useState([]);
   const [departments, setDepartments] = useState([]);
   const { showToast } = useToast();
+  const [imgErrors, setImgErrors] = useState({});
 
   const getAuthHeaders = useCallback(() => {
     const rawToken = localStorage.getItem('token');
@@ -326,18 +327,17 @@ const pagedUsers = filteredUsers.slice((currentPage - 1) * ITEMS_PER_PAGE, curre
                         <td className="py-4.5 px-6">
                           <div className="flex items-center gap-4">
                             <div className="relative shrink-0">
-                              {user.avatar || user.profile_image ? (
+                              {(user.avatar || user.profile_image) && !imgErrors[user._id || user.id] ? (
                                 <img 
                                   src={user.avatar || user.profile_image} 
                                   alt={user.name} 
                                   className="w-11 h-11 rounded-full object-cover border border-slate-200 dark:border-slate-800 shadow-sm"
-                                  onError={(e) => {
-                                    e.target.onerror = null;
-                                    e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=6366f1&color=fff`;
+                                  onError={() => {
+                                    setImgErrors(prev => ({ ...prev, [user._id || user.id]: true }));
                                   }}
                                 />
                               ) : (
-                                <div className="w-11 h-11 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 flex items-center justify-center shadow-sm">
+                                <div className="w-11 h-11 rounded-full bg-white-500/10 border border-indigo-500/20 text-indigo-500 flex items-center justify-center shadow-sm">
                                   <User size={18} />
                                 </div>
                               )}
@@ -1350,6 +1350,9 @@ const EditModal = ({ user, onClose, refresh, getAuthHeaders, designations, onDes
 
 // --- VIEW DOSSIER MODAL ---
 const ViewModal = ({ user, getDesignationName, getDepartmentName, onClose }) => {
+  // Local state to track image loading errors for this single view instance
+  const [imgError, setImgError] = useState(false);
+
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, []);
@@ -1391,15 +1394,12 @@ const ViewModal = ({ user, getDesignationName, getDepartmentName, onClose }) => 
         <div className="px-8 pb-8 relative">
           <div className="-mt-16 mb-4 flex items-end justify-between">
             <div className="relative">
-              {user.avatar || user.profile_image ? (
+              {(user.avatar || user.profile_image) && !imgError ? (
                 <img 
                   src={user.avatar || user.profile_image} 
                   alt={user.name} 
                   className="w-24 h-24 rounded-2xl object-cover border-4 border-white dark:border-slate-900 shadow-lg"
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=6366f1&color=fff`;
-                  }}
+                  onError={() => setImgError(true)}
                 />
               ) : (
                 <div className="w-24 h-24 rounded-2xl bg-indigo-500/10 border-4 border-white dark:border-slate-900 text-indigo-500 flex items-center justify-center shadow-lg">
@@ -1421,7 +1421,7 @@ const ViewModal = ({ user, getDesignationName, getDepartmentName, onClose }) => 
               <p className="text-xs font-semibold text-indigo-500 dark:text-indigo-400 mt-1 uppercase tracking-widest">{getDesignationName(user)}</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-6 bg-slate-50 dark:bg-slate-950/40 p-5 rounded-2xl border border-slate-100 dark:border-slate-800/40">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-slate-50 dark:bg-slate-950/40 p-5 rounded-2xl border border-slate-100 dark:border-slate-800/40">
               <div className="space-y-1">
                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Employee ID</span>
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{user.employeeId || 'N/A'}</span>
@@ -1485,7 +1485,7 @@ const ViewModal = ({ user, getDesignationName, getDepartmentName, onClose }) => 
               )}
             </div>
 
-            {/* --- NEW: Dynamic Account Credentials Section --- */}
+            {/* Account Credentials Section */}
             <div className="mt-4 pt-4 border-t border-dashed border-slate-200 dark:border-slate-800/80">
               <div className="flex items-center justify-between p-4 bg-indigo-500/5 dark:bg-lime-500/5 border border-indigo-500/10 dark:border-lime-500/10 rounded-xl">
                 <div className="space-y-0.5">
@@ -1507,5 +1507,6 @@ const ViewModal = ({ user, getDesignationName, getDepartmentName, onClose }) => 
       </motion.div>
     </motion.div>
   );
+
 };
 export default Users;

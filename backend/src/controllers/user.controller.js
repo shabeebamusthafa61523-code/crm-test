@@ -193,7 +193,14 @@ export const userController = {
       const loggedInUserId = req.user?.id || req.user?._id;
       const loggedInUserRole = String(req.user?.role || req.user?.role_id || '').toLowerCase().trim();
       
-      const isPrivileged = ['1', '2', 'hr', 'admin'].includes(loggedInUserRole);
+      let isNonOperational = false;
+      if (loggedInUserId) {
+        const currentUserObj = await User.findById(loggedInUserId).populate('departmentId', 'name');
+        const deptName = currentUserObj?.departmentId?.name || currentUserObj?.department || '';
+        isNonOperational = String(deptName).toLowerCase().trim() === 'non-operational';
+      }
+
+      const isPrivileged = ['1', '2', 'hr', 'admin'].includes(loggedInUserRole) || isNonOperational;
       
       let queryFilter = {
         isActive: true,
@@ -201,9 +208,9 @@ export const userController = {
         role_id: { $nin: ['10', 10] }
       };
 
-      // Only filter users by department if the request is originating from the employee-reports page
+      // Only filter users by department if the request is originating from the employee-reports, team-reports or monthly-reports page
       const referer = req.get('referer') || '';
-      const isReportsPage = referer.includes('employee-reports');
+      const isReportsPage = referer.includes('employee-reports') || referer.includes('team-reports') || referer.includes('monthly-reports');
 
       if (isReportsPage && !isPrivileged && loggedInUserId) {
         const Department = (await import('../modules/departments/department.model.js')).default;

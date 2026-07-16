@@ -3,22 +3,23 @@ import { uploadCompiledPDFReport } from '../services/departmentService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, Calendar, Plus, Trash2, Save, Download, 
-  CheckCircle, HelpCircle, Loader2, User, ChevronLeft, ChevronRight, Pencil
+  CheckCircle, HelpCircle, Loader2, User, ChevronLeft, ChevronRight, Pencil, X, Maximize2
 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { fetchCompletedTasks } from '../utils/taskUtils';
+import SignatureUpload from '../components/SignatureUpload';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
 // Default items for HR Shift Report
 const DEFAULT_DAILY_OPERATIONS = [
-  { activity: 'Staff Attendance Verified', status: '', dueDate: '', remarks: '' },
-  { activity: 'Admin Tasks Monitored', status: '', dueDate: '', remarks: '' },
-  { activity: 'Recruitment Follow-up', status: '', dueDate: '', remarks: '' },
-  { activity: 'Employee Support', status: '', dueDate: '', remarks: '' },
-  { activity: 'Reports Collected', status: '', dueDate: '', remarks: '' }
+  { activity: 'Staff Attendance Verified', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' },
+  { activity: 'Admin Tasks Monitored', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' },
+  { activity: 'Recruitment Follow-up', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' },
+  { activity: 'Employee Support', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' },
+  { activity: 'Reports Collected', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' }
 ];
 
 const DEFAULT_EMPLOYEE_MGMT = [
@@ -123,6 +124,7 @@ const HrReportPage = () => {
   });
 
   const [dailyOperations, setDailyOperations] = useState(DEFAULT_DAILY_OPERATIONS);
+  const [selectedActivityText, setSelectedActivityText] = useState(null);
   const [employeeManagement, setEmployeeManagement] = useState(DEFAULT_EMPLOYEE_MGMT);
   const [recruitmentReport, setRecruitmentReport] = useState(DEFAULT_RECRUITMENT);
   const [attendanceLeave, setAttendanceLeave] = useState(DEFAULT_ATTENDANCE_LEAVE);
@@ -1002,8 +1004,15 @@ const HrReportPage = () => {
       currentY = doc.lastAutoTable.finalY + 4;
 
       drawSectionHeader("2. DAILY OPERATIONS SUMMARY (CONSOLIDATED)");
-      const opsHeaders = [["Activity", "Status", "Remarks"]];
-      const opsRows = monthlyDailyOperations.map(o => [o.activity || '', o.status || '', o.remarks || '']);
+      const opsHeaders = [["Activity", "Due Date", "Start Date", "End Date", "Status", "Remarks"]];
+      const opsRows = monthlyDailyOperations.map(o => [
+        o.activity || '', 
+        o.dueDate || '', 
+        o.startDate || '', 
+        o.endDate || '', 
+        o.status || '', 
+        o.remarks || ''
+      ]);
 
       autoTable(doc, {
         head: opsHeaders,
@@ -1013,9 +1022,12 @@ const HrReportPage = () => {
         headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
         styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
         columnStyles: {
-          0: { width: 70 },
-          1: { width: 35, halign: 'center' },
-          2: { width: 77 }
+          0: { cellWidth: 52 },
+          1: { cellWidth: 25, halign: 'center' },
+          2: { cellWidth: 25, halign: 'center' },
+          3: { cellWidth: 25, halign: 'center' },
+          4: { cellWidth: 20, halign: 'center' },
+          5: { cellWidth: 35 }
         },
         margin: { left: 14, right: 14 }
       });
@@ -1312,8 +1324,15 @@ const HrReportPage = () => {
       currentY = doc.lastAutoTable.finalY + 4;
 
       drawSectionHeader("2. DAILY OPERATIONS SUMMARY (CONSOLIDATED)");
-      const opsHeaders = [["Activity", "Status", "Remarks"]];
-      const opsRows = weeklyDailyOperations.map(o => [o.activity || '', o.status || '', o.remarks || '']);
+      const opsHeaders = [["Activity", "Due Date", "Start Date", "End Date", "Status", "Remarks"]];
+      const opsRows = weeklyDailyOperations.map(o => [
+        o.activity || '', 
+        o.dueDate || '', 
+        o.startDate || '', 
+        o.endDate || '', 
+        o.status || '', 
+        o.remarks || ''
+      ]);
 
       autoTable(doc, {
         head: opsHeaders,
@@ -1323,9 +1342,12 @@ const HrReportPage = () => {
         headStyles: { fillColor: [255, 255, 255], textColor: [60, 35, 117], fontStyle: 'bold', lineColor: [180, 180, 180], lineWidth: 0.15 },
         styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
         columnStyles: {
-          0: { width: 70 },
-          1: { width: 35, halign: 'center' },
-          2: { width: 77 }
+          0: { cellWidth: 52 },
+          1: { cellWidth: 25, halign: 'center' },
+          2: { cellWidth: 25, halign: 'center' },
+          3: { cellWidth: 25, halign: 'center' },
+          4: { cellWidth: 20, halign: 'center' },
+          5: { cellWidth: 35 }
         },
         margin: { left: 14, right: 14 }
       });
@@ -1675,12 +1697,12 @@ const HrReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', dueDate: t.dueDate || '', remarks: 'Auto-fetched' }));
-            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
-            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', dueDate: t.dueDate || '', startDate: '', endDate: '', remarks: 'Auto-fetched' }));
+            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', startDate: '', endDate: '', remarks: '' });
+            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', startDate: '', endDate: '', remarks: '' });
             setDailyOperations(mappedTasks);
           } else {
-            setDailyOperations(prev => [...prev, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }]);
+            setDailyOperations(prev => [...prev, { activity: '', status: 'ongoing', dueDate: '', startDate: '', endDate: '', remarks: '' }, { activity: '', status: 'ongoing', dueDate: '', startDate: '', endDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -1693,12 +1715,12 @@ const HrReportPage = () => {
         try {
           const completedTasks = await fetchCompletedTasks(userId, dateStr);
           if (completedTasks && completedTasks.length > 0) {
-            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', dueDate: t.dueDate || '', remarks: 'Auto-fetched' }));
-            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
-            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', remarks: '' });
+            const mappedTasks = completedTasks.map(t => ({ activity: t.title, status: t.status || 'Done', dueDate: t.dueDate || '', startDate: '', endDate: '', remarks: 'Auto-fetched' }));
+            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', startDate: '', endDate: '', remarks: '' });
+            mappedTasks.push({ activity: '', status: 'ongoing', dueDate: '', startDate: '', endDate: '', remarks: '' });
             setDailyOperations(mappedTasks);
           } else {
-            setDailyOperations(prev => [...prev, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }]);
+            setDailyOperations(prev => [...prev, { activity: '', status: 'ongoing', dueDate: '', startDate: '', endDate: '', remarks: '' }, { activity: '', status: 'ongoing', dueDate: '', startDate: '', endDate: '', remarks: '' }]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
@@ -1984,7 +2006,7 @@ const HrReportPage = () => {
                 </p>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
                   onClick={() => setIsWeeklyModalOpen(true)}
@@ -2146,7 +2168,7 @@ const HrReportPage = () => {
                 </h2>
                 <button
                   type="button"
-                  onClick={() => setDailyOperations([...dailyOperations, { activity: '', status: 'ongoing', dueDate: '', remarks: '' }])}
+                  onClick={() => setDailyOperations([...dailyOperations, { activity: '', status: 'ongoing', dueDate: '', startDate: '', endDate: '', remarks: '' }])}
                   className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
                 >
                   <Plus size={14} /> Add Row
@@ -2156,9 +2178,11 @@ const HrReportPage = () => {
                 <table className="w-full text-left border-collapse text-sm">
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
-                      <th className="px-4 py-3">Activity</th>
-                      <th className="px-4 py-3">Due Date</th>
-                      <th className="px-4 py-3 w-40">Status</th>
+                      <th className="px-4 py-3 w-[35%] min-w-[280px]">Activity</th>
+                      <th className="px-4 py-3 w-36">Due Date</th>
+                      <th className="px-4 py-3 w-36">Start Date</th>
+                      <th className="px-4 py-3 w-36">End Date</th>
+                      <th className="px-4 py-3 w-32">Status</th>
                       <th className="px-4 py-3">Remarks</th>
                       <th className="px-4 py-3 w-12 text-center">Action</th>
                     </tr>
@@ -2166,7 +2190,8 @@ const HrReportPage = () => {
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
                     {dailyOperations.map((row, i) => (
                       <tr key={i}>
-                        <td className="px-4 py-2.5">
+                        <td className="px-4 py-2.5 relative group">
+                          <div className="flex items-center gap-1.5">
                           <input
                             type="text"
                             value={row.activity || ''}
@@ -2178,14 +2203,25 @@ const HrReportPage = () => {
                             className="w-full bg-transparent border-none focus:outline-none p-0 text-sm font-semibold text-slate-700 dark:text-slate-300"
                             placeholder="Activity name"
                           />
+                          {row.activity && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedActivityText(row.activity)}
+                              className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 dark:hover:text-lime-400 transition-all p-0.5"
+                              title="View full text"
+                            >
+                              <Maximize2 size={13} />
+                            </button>
+                          )}
+                          </div>
                         </td>
                         <td className="px-4 py-2.5">
                           <input
-                            type="text"
-                            value={row.status}
+                            type="date"
+                            value={row.dueDate || ''}
                             onChange={(e) => {
                               const newArr = [...dailyOperations];
-                              newArr[i].status = e.target.value;
+                              newArr[i].dueDate = e.target.value;
                               setDailyOperations(newArr);
                             }}
                             className="w-full bg-transparent border-none focus:outline-none p-0 text-sm"
@@ -2193,8 +2229,47 @@ const HrReportPage = () => {
                         </td>
                         <td className="px-4 py-2.5">
                           <input
+                            type="date"
+                            value={row.startDate || ''}
+                            onChange={(e) => {
+                              const newArr = [...dailyOperations];
+                              newArr[i].startDate = e.target.value;
+                              setDailyOperations(newArr);
+                            }}
+                            className="w-full bg-transparent border-none focus:outline-none p-0 text-sm"
+                          />
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <input
+                            type="date"
+                            value={row.endDate || ''}
+                            onChange={(e) => {
+                              const newArr = [...dailyOperations];
+                              newArr[i].endDate = e.target.value;
+                              setDailyOperations(newArr);
+                            }}
+                            className="w-full bg-transparent border-none focus:outline-none p-0 text-sm"
+                          />
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <select
+                            value={row.status || 'ongoing'}
+                            onChange={(e) => {
+                              const newArr = [...dailyOperations];
+                              newArr[i].status = e.target.value;
+                              setDailyOperations(newArr);
+                            }}
+                            className="w-full bg-transparent border-none focus:outline-none p-0 text-sm font-semibold text-slate-700 dark:text-slate-300"
+                          >
+                            <option value="ongoing">Ongoing</option>
+                            <option value="completed">Completed</option>
+                            <option value="pending">Pending</option>
+                          </select>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <input
                             type="text"
-                            value={row.remarks}
+                            value={row.remarks || ''}
                             onChange={(e) => {
                               const newArr = [...dailyOperations];
                               newArr[i].remarks = e.target.value;
@@ -2322,14 +2397,14 @@ const HrReportPage = () => {
                 <table className="w-full text-left border-collapse text-sm">
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
-                      <th className="px-4 py-3">Recruitment Activity</th>
+                      <th className="px-4 py-3 w-[35%] min-w-[280px]">Recruitment Activity</th>
                       <th className="px-4 py-3 w-48">Count / Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
                     {recruitmentReport.map((row, i) => (
                       <tr key={i}>
-                        <td className="px-4 py-2.5 font-semibold text-xs text-slate-500">{row.activity}</td>
+                        <td className="px-4 py-2.5 font-semibold text-xs text-slate-500 cursor-pointer hover:text-indigo-600 dark:hover:text-lime-400 transition-colors" onClick={() => setSelectedActivityText(row.activity)}>{row.activity}</td>
                         <td className="px-4 py-2.5">
                           <input
                             type="text"
@@ -2396,7 +2471,7 @@ const HrReportPage = () => {
                 <table className="w-full text-left border-collapse text-sm">
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
-                      <th className="px-4 py-3">Activity</th>
+                      <th className="px-4 py-3 w-[35%] min-w-[280px]">Activity</th>
                       <th className="px-4 py-3">Due Date</th>
                       <th className="px-4 py-3 w-48 font-semibold">Status</th>
                       <th className="px-4 py-3">Remarks</th>
@@ -2405,7 +2480,7 @@ const HrReportPage = () => {
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
                     {adminOperations.map((row, i) => (
                       <tr key={i}>
-                        <td className="px-4 py-2.5 font-semibold text-xs text-slate-500">{row.activity}</td>
+                        <td className="px-4 py-2.5 font-semibold text-xs text-slate-500 cursor-pointer hover:text-indigo-600 dark:hover:text-lime-400 transition-colors" onClick={() => setSelectedActivityText(row.activity)}>{row.activity}</td>
                         <td className="px-4 py-2.5">
                           <input
                             type="text"
@@ -2447,7 +2522,7 @@ const HrReportPage = () => {
                 <table className="w-full text-left border-collapse text-sm">
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
-                      <th className="px-4 py-3">Activity</th>
+                      <th className="px-4 py-3 w-[35%] min-w-[280px]">Activity</th>
                       <th className="px-4 py-3">Due Date</th>
                       <th className="px-4 py-3 w-48">Status</th>
                     </tr>
@@ -2455,7 +2530,7 @@ const HrReportPage = () => {
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
                     {documentationCompliance.map((row, i) => (
                       <tr key={i}>
-                        <td className="px-4 py-2.5 font-semibold text-xs text-slate-500">{row.activity}</td>
+                        <td className="px-4 py-2.5 font-semibold text-xs text-slate-500 cursor-pointer hover:text-indigo-600 dark:hover:text-lime-400 transition-colors" onClick={() => setSelectedActivityText(row.activity)}>{row.activity}</td>
                         <td className="px-4 py-2.5">
                           <input
                             type="text"
@@ -2662,12 +2737,10 @@ const HrReportPage = () => {
                   </div>
                   <div>
                     <label className="block text-xs mb-1">Signature</label>
-                    <input
-                      type="text"
+                    <SignatureUpload
                       value={approval.hrSignature || ''}
-                      onChange={(e) => setApproval({ ...approval, hrSignature: e.target.value })}
-                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none"
-                      placeholder="Type signature"
+                      onChange={(val) => setApproval({ ...approval, hrSignature: val })}
+                      placeholder="Upload HR signature"
                     />
                   </div>
                   <div>
@@ -2694,12 +2767,10 @@ const HrReportPage = () => {
                   </div>
                   <div>
                     <label className="block text-xs mb-1">Signature</label>
-                    <input
-                      type="text"
+                    <SignatureUpload
                       value={approval.cooSignature || ''}
-                      onChange={(e) => setApproval({ ...approval, cooSignature: e.target.value })}
-                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none"
-                      placeholder="COO signature"
+                      onChange={(val) => setApproval({ ...approval, cooSignature: val })}
+                      placeholder="Upload COO signature"
                     />
                   </div>
                   <div>
@@ -2716,7 +2787,7 @@ const HrReportPage = () => {
             </div>
 
             {/* Footer buttons */}
-            <div className="flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800 pt-5">
+            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800 pt-5">
               <button
                 type="button"
                 onClick={() => setIsWeeklyModalOpen(true)}
@@ -2866,7 +2937,7 @@ const HrReportPage = () => {
                             <table className="w-full text-left border-collapse text-sm">
                               <thead>
                                 <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
-                                  <th className="px-4 py-3">Recruitment Activity</th>
+                                  <th className="px-4 py-3 w-[35%] min-w-[280px]">Recruitment Activity</th>
                                   <th className="px-4 py-3 w-48">Count / Status</th>
                                 </tr>
                               </thead>
@@ -2943,23 +3014,25 @@ const HrReportPage = () => {
                               <table className="w-full text-left border-collapse text-sm">
                                 <thead>
                                   <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
-                                    <th className="px-4 py-3">Activity</th>
-                      <th className="px-4 py-3">Due Date</th>
-                                    <th className="px-4 py-3 w-40">Status</th>
+                                    <th className="px-4 py-3 w-[30%] min-w-[240px]">Activity</th>
+                                    <th className="px-4 py-3 w-32">Due Date</th>
+                                    <th className="px-4 py-3 w-32">Start Date</th>
+                                    <th className="px-4 py-3 w-32">End Date</th>
+                                    <th className="px-4 py-3 w-32">Status</th>
                                     <th className="px-4 py-3">Remarks</th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
                                   {monthlyDailyOperations.map((row, i) => (
                                     <tr key={i}>
-                                      <td className="px-4 py-3 font-semibold text-xs text-slate-500">{row.activity}</td>
+                                      <td className="px-4 py-3 font-semibold text-xs text-slate-500 cursor-pointer hover:text-indigo-600 dark:hover:text-lime-400 transition-colors" onClick={() => setSelectedActivityText(row.activity)}>{row.activity}</td>
                                       <td className="px-4 py-3">
                                         <input
-                                          type="text"
-                                          value={row.status}
+                                          type="date"
+                                          value={row.dueDate || ''}
                                           onChange={(e) => {
                                             const newArr = [...monthlyDailyOperations];
-                                            newArr[i].status = e.target.value;
+                                            newArr[i].dueDate = e.target.value;
                                             setMonthlyDailyOperations(newArr);
                                           }}
                                           className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
@@ -2967,14 +3040,54 @@ const HrReportPage = () => {
                                       </td>
                                       <td className="px-4 py-3">
                                         <input
+                                          type="date"
+                                          value={row.startDate || ''}
+                                          onChange={(e) => {
+                                            const newArr = [...monthlyDailyOperations];
+                                            newArr[i].startDate = e.target.value;
+                                            setMonthlyDailyOperations(newArr);
+                                          }}
+                                          className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                        />
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        <input
+                                          type="date"
+                                          value={row.endDate || ''}
+                                          onChange={(e) => {
+                                            const newArr = [...monthlyDailyOperations];
+                                            newArr[i].endDate = e.target.value;
+                                            setMonthlyDailyOperations(newArr);
+                                          }}
+                                          className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                        />
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        <select
+                                          value={row.status || 'ongoing'}
+                                          onChange={(e) => {
+                                            const newArr = [...monthlyDailyOperations];
+                                            newArr[i].status = e.target.value;
+                                            setMonthlyDailyOperations(newArr);
+                                          }}
+                                          className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                        >
+                                          <option value="ongoing">Ongoing</option>
+                                          <option value="completed">Completed</option>
+                                          <option value="pending">Pending</option>
+                                        </select>
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        <input
                                           type="text"
-                                          value={row.remarks}
+                                          value={row.remarks || ''}
                                           onChange={(e) => {
                                             const newArr = [...monthlyDailyOperations];
                                             newArr[i].remarks = e.target.value;
                                             setMonthlyDailyOperations(newArr);
                                           }}
                                           className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                          placeholder="Add remarks"
                                         />
                                       </td>
                                     </tr>
@@ -2992,7 +3105,7 @@ const HrReportPage = () => {
                               <table className="w-full text-left border-collapse text-sm">
                                 <thead>
                                   <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
-                                    <th className="px-4 py-3">Activity</th>
+                                    <th className="px-4 py-3 w-[35%] min-w-[280px]">Activity</th>
                       <th className="px-4 py-3">Due Date</th>
                                     <th className="px-4 py-3 w-40">Status</th>
                                     <th className="px-4 py-3">Remarks</th>
@@ -3001,7 +3114,7 @@ const HrReportPage = () => {
                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
                                   {monthlyAdminOperations.map((row, i) => (
                                     <tr key={i}>
-                                      <td className="px-4 py-3 font-semibold text-xs text-slate-500">{row.activity}</td>
+                                      <td className="px-4 py-3 font-semibold text-xs text-slate-500 cursor-pointer hover:text-indigo-600 dark:hover:text-lime-400 transition-colors" onClick={() => setSelectedActivityText(row.activity)}>{row.activity}</td>
                                       <td className="px-4 py-3">
                                         <input
                                           type="text"
@@ -3153,7 +3266,7 @@ const HrReportPage = () => {
                               <table className="w-full text-left border-collapse text-sm">
                                 <thead>
                                   <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
-                                    <th className="px-4 py-3">Activity</th>
+                                    <th className="px-4 py-3 w-[35%] min-w-[280px]">Activity</th>
                       <th className="px-4 py-3">Due Date</th>
                                     <th className="px-4 py-3 w-48">Status</th>
                                   </tr>
@@ -3161,7 +3274,7 @@ const HrReportPage = () => {
                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
                                   {monthlyDocumentationCompliance.map((row, i) => (
                                     <tr key={i}>
-                                      <td className="px-4 py-3 font-semibold text-xs text-slate-500">{row.activity}</td>
+                                      <td className="px-4 py-3 font-semibold text-xs text-slate-500 cursor-pointer hover:text-indigo-600 dark:hover:text-lime-400 transition-colors" onClick={() => setSelectedActivityText(row.activity)}>{row.activity}</td>
                                       <td className="px-4 py-3">
                                         <input
                                           type="text"
@@ -3503,7 +3616,7 @@ const HrReportPage = () => {
                             <table className="w-full text-left border-collapse text-sm">
                               <thead>
                                 <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
-                                  <th className="px-4 py-3">Recruitment Activity</th>
+                                  <th className="px-4 py-3 w-[35%] min-w-[280px]">Recruitment Activity</th>
                                   <th className="px-4 py-3 w-48">Count / Status</th>
                                 </tr>
                               </thead>
@@ -3576,27 +3689,29 @@ const HrReportPage = () => {
                             <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                               Daily Operations Summary
                             </h4>
-                            <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                             <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
                               <table className="w-full text-left border-collapse text-sm">
                                 <thead>
                                   <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
-                                    <th className="px-4 py-3">Activity</th>
-                      <th className="px-4 py-3">Due Date</th>
-                                    <th className="px-4 py-3 w-40">Status</th>
+                                    <th className="px-4 py-3 w-[30%] min-w-[240px]">Activity</th>
+                                    <th className="px-4 py-3 w-32">Due Date</th>
+                                    <th className="px-4 py-3 w-32">Start Date</th>
+                                    <th className="px-4 py-3 w-32">End Date</th>
+                                    <th className="px-4 py-3 w-32">Status</th>
                                     <th className="px-4 py-3">Remarks</th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
                                   {weeklyDailyOperations.map((row, i) => (
                                     <tr key={i}>
-                                      <td className="px-4 py-3 font-semibold text-xs text-slate-500">{row.activity}</td>
+                                      <td className="px-4 py-3 font-semibold text-xs text-slate-500 cursor-pointer hover:text-indigo-600 dark:hover:text-lime-400 transition-colors" onClick={() => setSelectedActivityText(row.activity)}>{row.activity}</td>
                                       <td className="px-4 py-3">
                                         <input
-                                          type="text"
-                                          value={row.status}
+                                          type="date"
+                                          value={row.dueDate || ''}
                                           onChange={(e) => {
                                             const newArr = [...weeklyDailyOperations];
-                                            newArr[i].status = e.target.value;
+                                            newArr[i].dueDate = e.target.value;
                                             setWeeklyDailyOperations(newArr);
                                           }}
                                           className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
@@ -3604,14 +3719,54 @@ const HrReportPage = () => {
                                       </td>
                                       <td className="px-4 py-3">
                                         <input
+                                          type="date"
+                                          value={row.startDate || ''}
+                                          onChange={(e) => {
+                                            const newArr = [...weeklyDailyOperations];
+                                            newArr[i].startDate = e.target.value;
+                                            setWeeklyDailyOperations(newArr);
+                                          }}
+                                          className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                        />
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        <input
+                                          type="date"
+                                          value={row.endDate || ''}
+                                          onChange={(e) => {
+                                            const newArr = [...weeklyDailyOperations];
+                                            newArr[i].endDate = e.target.value;
+                                            setWeeklyDailyOperations(newArr);
+                                          }}
+                                          className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                        />
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        <select
+                                          value={row.status || 'ongoing'}
+                                          onChange={(e) => {
+                                            const newArr = [...weeklyDailyOperations];
+                                            newArr[i].status = e.target.value;
+                                            setWeeklyDailyOperations(newArr);
+                                          }}
+                                          className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                        >
+                                          <option value="ongoing">Ongoing</option>
+                                          <option value="completed">Completed</option>
+                                          <option value="pending">Pending</option>
+                                        </select>
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        <input
                                           type="text"
-                                          value={row.remarks}
+                                          value={row.remarks || ''}
                                           onChange={(e) => {
                                             const newArr = [...weeklyDailyOperations];
                                             newArr[i].remarks = e.target.value;
                                             setWeeklyDailyOperations(newArr);
                                           }}
                                           className="w-full bg-transparent border-none focus:outline-none p-0 text-sm text-slate-700 dark:text-slate-200"
+                                          placeholder="Add remarks"
                                         />
                                       </td>
                                     </tr>
@@ -3629,7 +3784,7 @@ const HrReportPage = () => {
                               <table className="w-full text-left border-collapse text-sm">
                                 <thead>
                                   <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
-                                    <th className="px-4 py-3">Activity</th>
+                                    <th className="px-4 py-3 w-[35%] min-w-[280px]">Activity</th>
                       <th className="px-4 py-3">Due Date</th>
                                     <th className="px-4 py-3 w-40">Status</th>
                                     <th className="px-4 py-3">Remarks</th>
@@ -3638,7 +3793,7 @@ const HrReportPage = () => {
                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
                                   {weeklyAdminOperations.map((row, i) => (
                                     <tr key={i}>
-                                      <td className="px-4 py-3 font-semibold text-xs text-slate-500">{row.activity}</td>
+                                      <td className="px-4 py-3 font-semibold text-xs text-slate-500 cursor-pointer hover:text-indigo-600 dark:hover:text-lime-400 transition-colors" onClick={() => setSelectedActivityText(row.activity)}>{row.activity}</td>
                                       <td className="px-4 py-3">
                                         <input
                                           type="text"
@@ -3790,7 +3945,7 @@ const HrReportPage = () => {
                               <table className="w-full text-left border-collapse text-sm">
                                 <thead>
                                   <tr className="bg-slate-50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
-                                    <th className="px-4 py-3">Activity</th>
+                                    <th className="px-4 py-3 w-[35%] min-w-[280px]">Activity</th>
                       <th className="px-4 py-3">Due Date</th>
                                     <th className="px-4 py-3 w-48">Status</th>
                                   </tr>
@@ -3798,7 +3953,7 @@ const HrReportPage = () => {
                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
                                   {weeklyDocumentationCompliance.map((row, i) => (
                                     <tr key={i}>
-                                      <td className="px-4 py-3 font-semibold text-xs text-slate-500">{row.activity}</td>
+                                      <td className="px-4 py-3 font-semibold text-xs text-slate-500 cursor-pointer hover:text-indigo-600 dark:hover:text-lime-400 transition-colors" onClick={() => setSelectedActivityText(row.activity)}>{row.activity}</td>
                                       <td className="px-4 py-3">
                                         <input
                                           type="text"
@@ -4031,6 +4186,34 @@ const HrReportPage = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Activity Detail Modal */}
+      {selectedActivityText && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md p-6 shadow-2xl border border-slate-100 dark:border-slate-800 relative">
+            <button
+              type="button"
+              onClick={() => setSelectedActivityText(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition p-1"
+            >
+              <X size={18} />
+            </button>
+            <h3 className="text-lg font-black text-slate-900 dark:text-slate-100 mb-4">Activity Details</h3>
+            <div className="text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl max-h-[60vh] overflow-y-auto whitespace-pre-wrap break-words font-medium leading-relaxed">
+              {selectedActivityText}
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedActivityText(null)}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-indigo-600/20"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

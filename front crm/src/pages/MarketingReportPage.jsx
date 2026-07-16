@@ -3,12 +3,14 @@ import { uploadCompiledPDFReport } from '../services/departmentService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, Calendar, Plus, Trash2, Save, Download, 
-  CheckCircle, HelpCircle, Loader2, User, ChevronLeft, ChevronRight, Pencil
+  CheckCircle, HelpCircle, Loader2, User, ChevronLeft, ChevronRight, Pencil,
+  X, Maximize2
 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { fetchCompletedTasks } from '../utils/taskUtils';
+import SignatureUpload from '../components/SignatureUpload';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -77,11 +79,14 @@ const MarketingReportPage = () => {
   const [taskSummary, setTaskSummary] = useState(DEFAULT_TASK_SUMMARY);
   const [keyNumbers, setKeyNumbers] = useState(DEFAULT_KPI_TRACKING);
   const [blockersTomorrowPlan, setBlockersTomorrowPlan] = useState(DEFAULT_BLOCKERS_PLAN);
+  const [selectedActivityText, setSelectedActivityText] = useState(null);
   
   const [approval, setApproval] = useState({
+    staffName: '',
     staffSignature: '',
     submittedAt: '',
-    leaderApproval: 'CMO / Team Leader Approval',
+    leaderName: '',
+    leaderApproval: '',
     approvedOn: ''
   });
 
@@ -765,9 +770,11 @@ const MarketingReportPage = () => {
     setKeyNumbers(DEFAULT_KPI_TRACKING);
     setBlockersTomorrowPlan(DEFAULT_BLOCKERS_PLAN);
     setApproval({
-      staffSignature: userDetail.name || '',
+      staffName: userDetail.name || '',
+      staffSignature: '',
       submittedAt: timeStr,
-      leaderApproval: 'CMO / Team Leader Approval',
+      leaderName: '',
+      leaderApproval: '',
       approvedOn: ''
     });
   };
@@ -1144,7 +1151,7 @@ const MarketingReportPage = () => {
                 <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800 text-sm">
                   <thead className="bg-slate-50 dark:bg-slate-950">
                     <tr>
-                      <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Task</th>
+                      <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-[35%] min-w-[280px]">Task</th>
                       <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Due Date</th>
                       <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Start Date</th>
                       <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">End Date</th>
@@ -1388,12 +1395,20 @@ const MarketingReportPage = () => {
                     Staff Verification
                   </h4>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Staff Signature / Name</label>
+                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Staff Name</label>
                     <input
                       type="text"
+                      value={approval.staffName || ''}
+                      onChange={(e) => setApproval({ ...approval, staffName: e.target.value })}
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none text-slate-700 dark:text-slate-200"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Staff Signature</label>
+                    <SignatureUpload
                       value={approval.staffSignature || ''}
-                      onChange={(e) => setApproval({ ...approval, staffSignature: e.target.value })}
-                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none"
+                      onChange={(val) => setApproval({ ...approval, staffSignature: val })}
+                      placeholder="Upload staff signature"
                     />
                   </div>
                   <div>
@@ -1402,7 +1417,7 @@ const MarketingReportPage = () => {
                       type="text"
                       value={approval.submittedAt || ''}
                       onChange={(e) => setApproval({ ...approval, submittedAt: e.target.value })}
-                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none"
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none text-slate-700 dark:text-slate-200"
                     />
                   </div>
                 </div>
@@ -1412,14 +1427,20 @@ const MarketingReportPage = () => {
                     Team Leader Approval
                   </h4>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Team Leader Approval Signature</label>
+                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Team Leader Name</label>
                     <input
                       type="text"
+                      value={approval.leaderName || ''}
+                      onChange={(e) => setApproval({ ...approval, leaderName: e.target.value })}
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none text-slate-700 dark:text-slate-200"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Team Leader Approval Signature</label>
+                    <SignatureUpload
                       value={approval.leaderApproval || ''}
-                      onChange={(e) => setApproval({ ...approval, leaderApproval: e.target.value })}
-                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm focus:outline-none"
-                      disabled={!isPrivileged}
-                      placeholder={!isPrivileged ? "Restricted to Team Leader/CMO" : "Leader Approval"}
+                      onChange={(val) => setApproval({ ...approval, leaderApproval: val })}
+                      placeholder="Upload leader signature"
                     />
                   </div>
                   <div>
@@ -1587,7 +1608,7 @@ const MarketingReportPage = () => {
                             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800 text-sm">
                               <thead className="bg-slate-50 dark:bg-slate-950">
                                 <tr>
-                                  <th className="px-3 py-2 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Task</th>
+                                  <th className="px-3 py-2 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-[35%] min-w-[280px]">Task</th>
                                   <th className="px-3 py-2 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Due Date</th>
                                   <th className="px-3 py-2 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Start Date</th>
                                   <th className="px-3 py-2 text-left text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">End Date</th>
@@ -1828,6 +1849,34 @@ const MarketingReportPage = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Activity Detail Modal */}
+      {selectedActivityText && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md p-6 shadow-2xl border border-slate-100 dark:border-slate-800 relative">
+            <button
+              type="button"
+              onClick={() => setSelectedActivityText(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition p-1"
+            >
+              <X size={18} />
+            </button>
+            <h3 className="text-lg font-black text-slate-900 dark:text-slate-100 mb-4">Activity Details</h3>
+            <div className="text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl max-h-[60vh] overflow-y-auto whitespace-pre-wrap break-words font-medium leading-relaxed">
+              {selectedActivityText}
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedActivityText(null)}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-indigo-600/20"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

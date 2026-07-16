@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, Search, Download, Loader2, FileDown, AlertCircle, ChevronDown, ChevronUp,
@@ -29,6 +30,16 @@ const PERIOD_CONFIG = {
 };
 
 const EmployeeReports = () => {
+  const location = useLocation();
+  const isTeamReports = location.pathname.includes('team-reports');
+
+  const savedUser = localStorage.getItem('user');
+  const loggedInUser = savedUser ? JSON.parse(savedUser) : null;
+  const deptName = loggedInUser ? (loggedInUser.department || loggedInUser.departmentId?.name || '') : '';
+  const isNonOperational = String(deptName).toLowerCase().trim() === 'non-operational';
+
+  const isMonthlyReports = location.pathname.includes('monthly-reports');
+
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -162,7 +173,11 @@ const EmployeeReports = () => {
 
   const flattenedReports = Object.entries(uploadedReportsMap).flatMap(([empId, reports]) => {
     const emp = employees.find(e => (e._id || e.id) === empId);
-    return (reports || []).map(r => ({
+    let filtered = reports || [];
+    if (isNonOperational) {
+      filtered = filtered.filter(r => r.report_period !== 'daily');
+    }
+    return filtered.map(r => ({
       ...r,
       employee: emp
     }));
@@ -362,7 +377,10 @@ const EmployeeReports = () => {
   };
 
   const getFilteredReports = (empId) => {
-    const allReports = uploadedReportsMap[empId] || [];
+    let allReports = uploadedReportsMap[empId] || [];
+    if (isNonOperational) {
+      allReports = allReports.filter(r => r.report_period !== 'daily');
+    }
     const filter = periodFilters[empId] || 'all';
     let reports = filter === 'all' ? allReports : allReports.filter(r => r.report_period === filter);
     const sort = sortOrders[empId] || 'newest';
@@ -392,7 +410,10 @@ const EmployeeReports = () => {
   };
 
   const getReportCounts = (empId) => {
-    const all = uploadedReportsMap[empId] || [];
+    let all = uploadedReportsMap[empId] || [];
+    if (isNonOperational) {
+      all = all.filter(r => r.report_period !== 'daily');
+    }
     return {
       all: all.length,
       daily: all.filter(r => r.report_period === 'daily').length,
@@ -408,13 +429,15 @@ const EmployeeReports = () => {
         <div>
           <div className="flex items-center gap-2.5 mb-2">
             <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500/70 dark:text-indigo-400/80">Admin Directory</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500/70 dark:text-indigo-400/80">
+              {isMonthlyReports ? 'Monthly Directory' : (isTeamReports ? 'Team Directory' : 'Admin Directory')}
+            </span>
           </div>
           <h1 className="text-3xl md:text-5xl font-black italic uppercase tracking-tighter leading-none text-slate-900 dark:text-white">
-            Employee <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-500">Reports</span>
+            {isMonthlyReports ? 'Monthly' : (isTeamReports ? 'Team' : 'Employee')} <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-500">Reports</span>
           </h1>
           <p className="text-sm text-slate-500 mt-2">
-            Click on an employee card to reveal their saved <span className="font-semibold text-indigo-500">Daily</span>, <span className="font-semibold text-emerald-500">Weekly</span> &amp; <span className="font-semibold text-violet-500">Monthly</span> PDF reports.
+            Click on a {isMonthlyReports || isTeamReports ? 'team member' : 'employee'} card to reveal their saved {isMonthlyReports ? '' : <><span className="font-semibold text-indigo-500">Daily</span>, <span className="font-semibold text-emerald-500">Weekly</span> &amp; </>}<span className="font-semibold text-violet-500">Monthly</span> PDF reports.
           </p>
         </div>
 
@@ -449,7 +472,7 @@ const EmployeeReports = () => {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={14} />
             <input
               type="text"
-              placeholder={viewMode === 'employees' ? "Search employees..." : "Search reports & staff..."}
+              placeholder={viewMode === 'employees' ? (isMonthlyReports || isTeamReports ? "Search team..." : "Search employees...") : "Search reports & staff..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl pl-9 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 transition-all shadow-sm"
@@ -469,30 +492,29 @@ const EmployeeReports = () => {
               )}
             </button>
 
-            {/* Global Viewport Filter Modal */}
+            {/* Global Viewport Filter Dropdown */}
             <AnimatePresence>
               {isFiltersOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-sm">
-                  {/* Backdrop Click Closer */}
-                  <div className="absolute inset-0" onClick={() => setIsFiltersOpen(false)} />
+                <>
+                  {/* Invisible Backdrop Click Closer */}
+                  <div className="fixed inset-0 z-40 bg-transparent cursor-default" onClick={() => setIsFiltersOpen(false)} />
                   
                   <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                    initial={{ opacity: 0, scale: 0.95, y: 5 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl space-y-5 relative z-10"
+                    exit={{ opacity: 0, scale: 0.95, y: 5 }}
+                    className="absolute right-0 top-full mt-2 z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 w-72 shadow-xl space-y-4"
                   >
-                    {/* Modal Header */}
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                    {/* Header */}
+                    <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800">
                       <div>
                         <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">Filter &amp; Sort</h3>
-                        <p className="text-[10px] text-slate-400 mt-0.5">Refine report results and roster order</p>
                       </div>
                       <button
                         onClick={() => setIsFiltersOpen(false)}
-                        className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-slate-650 dark:hover:text-slate-350 transition-colors"
+                        className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-slate-650 dark:hover:text-slate-350 transition-colors"
                       >
-                        <X size={15} />
+                        <X size={13} />
                       </button>
                     </div>
 
@@ -503,7 +525,7 @@ const EmployeeReports = () => {
                         <select
                           value={selectedDepartment}
                           onChange={(e) => setSelectedDepartment(e.target.value)}
-                          className="w-full appearance-none bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl pl-4 pr-10 py-2.5 text-xs font-semibold text-slate-705 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                          className="w-full appearance-none bg-slate-55 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl pl-4 pr-10 py-2 text-xs font-semibold text-slate-705 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
                         >
                           <option value="all">All Departments</option>
                           {uniqueDepartments.map(dept => (
@@ -521,7 +543,7 @@ const EmployeeReports = () => {
                         <select
                           value={selectedDesignation}
                           onChange={(e) => setSelectedDesignation(e.target.value)}
-                          className="w-full appearance-none bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl pl-4 pr-10 py-2.5 text-xs font-semibold text-slate-705 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                          className="w-full appearance-none bg-slate-55 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl pl-4 pr-10 py-2 text-xs font-semibold text-slate-705 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
                         >
                           <option value="all">All Designations</option>
                           {uniqueDesignations.map(desig => (
@@ -540,10 +562,10 @@ const EmployeeReports = () => {
                           <select
                             value={selectedPeriod}
                             onChange={(e) => setSelectedPeriod(e.target.value)}
-                            className="w-full appearance-none bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl pl-4 pr-10 py-2.5 text-xs font-semibold text-slate-705 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                            className="w-full appearance-none bg-slate-55 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl pl-4 pr-10 py-2 text-xs font-semibold text-slate-705 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
                           >
                             <option value="all">All Periods</option>
-                            <option value="daily">Daily Only</option>
+                            {!isNonOperational && <option value="daily">Daily Only</option>}
                             <option value="weekly">Weekly Only</option>
                             <option value="monthly">Monthly Only</option>
                           </select>
@@ -559,7 +581,7 @@ const EmployeeReports = () => {
                         <select
                           value={globalSort}
                           onChange={(e) => setGlobalSort(e.target.value)}
-                          className="w-full appearance-none bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl pl-4 pr-10 py-2.5 text-xs font-semibold text-slate-705 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                          className="w-full appearance-none bg-slate-55 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl pl-4 pr-10 py-2 text-xs font-semibold text-slate-705 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
                         >
                           <option value="newest">Newest Reports</option>
                           <option value="oldest">Oldest Reports</option>
@@ -583,19 +605,19 @@ const EmployeeReports = () => {
                           setGlobalSort('newest');
                           setIsFiltersOpen(false);
                         }}
-                        className="flex-1 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-205 bg-slate-150 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-all cursor-pointer"
+                        className="flex-1 py-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-205 bg-slate-150 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-all cursor-pointer"
                       >
-                        Reset All
+                        Reset
                       </button>
                       <button
                         onClick={() => setIsFiltersOpen(false)}
-                        className="flex-1 py-2.5 text-xs font-bold uppercase tracking-wider bg-indigo-650 hover:bg-indigo-700 text-white rounded-xl transition-all shadow-md shadow-indigo-650/10 cursor-pointer"
+                        className="flex-1 py-2 text-xs font-bold uppercase tracking-wider bg-indigo-650 hover:bg-indigo-700 text-white rounded-xl transition-all shadow-md shadow-indigo-650/10 cursor-pointer"
                       >
                         Apply
                       </button>
                     </div>
                   </motion.div>
-                </div>
+                </>
               )}
             </AnimatePresence>
           </div>
@@ -618,13 +640,15 @@ const EmployeeReports = () => {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-24 gap-3">
           <Loader2 className="animate-spin text-indigo-500" size={36} />
-          <p className="text-sm text-slate-400 font-semibold uppercase tracking-wider">Retrieving employee roster...</p>
+          <p className="text-sm text-slate-400 font-semibold uppercase tracking-wider">
+            Retrieving {isMonthlyReports || isTeamReports ? 'team roster...' : 'employee roster...'}
+          </p>
         </div>
       ) : (viewMode === 'employees' ? filteredEmployees.length === 0 : sortedReports.length === 0) ? (
         <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/50 dark:border-slate-800/50 p-8 shadow-sm">
           <Users size={48} className="mx-auto text-slate-300 dark:text-slate-700 mb-4" />
           <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">
-            {viewMode === 'employees' ? 'No Employees Found' : 'No Reports Found'}
+            {viewMode === 'employees' ? (isMonthlyReports || isTeamReports ? 'No Team Members Found' : 'No Employees Found') : 'No Reports Found'}
           </h3>
           <p className="text-sm text-slate-500 mt-1">
             {viewMode === 'employees' ? 'Try adjusting your search query or filters.' : 'No saved PDF reports match your active filters.'}
@@ -637,7 +661,7 @@ const EmployeeReports = () => {
               <>
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-800 text-[11px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-slate-50/50 dark:bg-slate-950/20">
-                    <th className="px-6 py-4">Employee</th>
+                    <th className="px-6 py-4">{isMonthlyReports || isTeamReports ? 'Team Member' : 'Employee'}</th>
                     <th className="px-6 py-4">Designation</th>
                     <th className="px-6 py-4">Saved Reports</th>
                     <th className="px-6 py-4 text-right">Actions</th>
@@ -763,26 +787,28 @@ const EmployeeReports = () => {
                                 </div>
 
                                 {/* Period filter tabs */}
-                                <div className="flex items-center gap-1 mb-3 flex-wrap">
-                                  {[
-                                    { value: 'all',     label: `All (${counts.all})`,           cls: 'text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700' },
-                                    { value: 'daily',   label: `Daily (${counts.daily})`,        cls: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800' },
-                                    { value: 'weekly',  label: `Weekly (${counts.weekly})`,      cls: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800' },
-                                    { value: 'monthly', label: `Monthly (${counts.monthly})`,    cls: 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/40 border-violet-200 dark:border-violet-800' },
-                                  ].map(tab => (
-                                    <button
-                                      key={tab.value}
-                                      onClick={() => handlePeriodFilterChange(empId, tab.value)}
-                                      className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${
-                                        periodFilter === tab.value
-                                          ? `${tab.cls} ring-1 ring-current`
-                                          : 'text-slate-450 dark:text-slate-650 bg-transparent border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                                      }`}
-                                    >
-                                      {tab.label}
-                                    </button>
-                                  ))}
-                                </div>
+                                {!isMonthlyReports && (
+                                  <div className="flex items-center gap-1 mb-3 flex-wrap">
+                                    {[
+                                      { value: 'all',     label: `All (${counts.all})`,           cls: 'text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700' },
+                                      { value: 'daily',   label: `Daily (${counts.daily})`,        cls: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800' },
+                                      { value: 'weekly',  label: `Weekly (${counts.weekly})`,      cls: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800' },
+                                      { value: 'monthly', label: `Monthly (${counts.monthly})`,    cls: 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/40 border-violet-200 dark:border-violet-800' },
+                                    ].filter(tab => !isNonOperational || tab.value !== 'daily').map(tab => (
+                                      <button
+                                        key={tab.value}
+                                        onClick={() => handlePeriodFilterChange(empId, tab.value)}
+                                        className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${
+                                          periodFilter === tab.value
+                                            ? `${tab.cls} ring-1 ring-current`
+                                            : 'text-slate-450 dark:text-slate-650 bg-transparent border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                                        }`}
+                                      >
+                                        {tab.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
 
                                 {/* Reports list */}
                                 {loadingReportsMap[empId] ? (
