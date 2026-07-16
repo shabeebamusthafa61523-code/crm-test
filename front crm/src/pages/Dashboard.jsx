@@ -752,6 +752,7 @@ const Dashboard = () => {
                         cy={p.y} 
                         r="3.5" 
                         fill={userColor}
+                        style={{ transformOrigin: `${p.x}px ${p.y}px` }}
                         className="stroke-white dark:stroke-slate-900 stroke-2 transition-transform duration-300 group-hover/dot:scale-[1.35]" 
                       />
                       <text 
