@@ -140,6 +140,7 @@ export const userController = {
         }
       )
       .populate('designationId')
+      .populate('departmentId')
       .sort({ name: 1 });
 
       return res.status(200).json(users);
