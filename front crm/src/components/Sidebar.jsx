@@ -172,6 +172,18 @@ const menuItems = [
     allowedDesignations: ['6a2f909d2df21dc234018ca8'],
     // allowedRoles: ['1', '2', 'hr', 'admin']
   },
+  {
+    icon: LayoutDashboard,
+    label: 'Dashboard',
+    path: '/common-dashboard',
+    isCommonDashboardFallback: true
+  },
+  {
+    icon: FileText,
+    label: 'Daily Report',
+    path: '/basic-report',
+    isBasicReportFallback: true
+  },
   { icon: UserCheck, label: 'Attendance', path: '/attendance', excludeRoles: ['1', '2', 'hr', 'admin'] },
   { icon: ListCheck, label: 'Task Assign', path: '/todo' },
   { icon: Users, label: 'Student Attendance', path: '/student-attendance', allowedRoles: ['1', '2', 'hr', 'admin'], allowedDepartments: ['6a3caed51194353cbc8a3686'] },
@@ -228,13 +240,16 @@ const Sidebar = () => {
         currentUserDesignation = String(userObj.designation_id).trim();
       }
       
-      return menuItems.filter(item => {
+      const visible = menuItems.filter(item => {
         if (item.excludeRoles && item.excludeRoles.includes(currentUserRole)) {
           return false;
         }
         // Show Team Reports page only for department team leads
         if (item.isTeamLeadOnly) {
           return !!userObj.isTeamLead;
+        }
+        if (item.isCommonDashboardFallback || item.isBasicReportFallback) {
+          return false;
         }
         if (!item.allowedRoles && !item.allowedDepartments && !item.allowedDesignations) return true;
         const roleMatch = item.allowedRoles && item.allowedRoles.includes(currentUserRole);
@@ -248,6 +263,25 @@ const Sidebar = () => {
         
         return matches.some(m => m === true);
       });
+
+      // Fallback dashboard: if user has no other dashboard in visible items
+      const hasOtherDashboard = visible.some(item => item.label.toLowerCase().includes('dashboard'));
+      if (!hasOtherDashboard) {
+        const fallbackDashboard = menuItems.find(item => item.isCommonDashboardFallback);
+        if (fallbackDashboard) visible.unshift(fallbackDashboard);
+      }
+
+      // Fallback report: if user has no other report page in visible items
+      const hasOtherReport = visible.some(item => item.label.toLowerCase().includes('report') && item.label !== 'Employee Reports' && item.label !== 'Team Reports');
+      if (!hasOtherReport) {
+        const fallbackReport = menuItems.find(item => item.isBasicReportFallback);
+        if (fallbackReport) {
+          // Insert after Dashboard or at correct position
+          visible.push(fallbackReport);
+        }
+      }
+
+      return visible;
     } catch (e) {
       console.error("Error reading operator authorization layout paths:", e);
       return menuItems.filter(item => !item.allowedRoles && !item.allowedDepartments && !item.allowedDesignations);
