@@ -1178,7 +1178,7 @@ const VideographerReportPage = () => {
                 </p>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-start sm:justify-end">
                 <button
                   type="button"
                   onClick={() => setIsMonthlyModalOpen(true)}
@@ -1830,7 +1830,7 @@ const VideographerReportPage = () => {
             </div>
 
             {/* Form Footer Action Buttons */}
-            <div className="flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800 pt-5">
+            <div className="flex flex-wrap items-center justify-start sm:justify-end gap-3 border-t border-slate-100 dark:border-slate-800 pt-5 w-full">
               <button
                 type="button"
                 onClick={() => setIsMonthlyModalOpen(true)}

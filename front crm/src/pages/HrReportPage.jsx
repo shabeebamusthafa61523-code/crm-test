@@ -13,14 +13,7 @@ import SignatureUpload from '../components/SignatureUpload';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
-// Default items for HR Shift Report
-const DEFAULT_DAILY_OPERATIONS = [
-  { activity: 'Staff Attendance Verified', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' },
-  { activity: 'Admin Tasks Monitored', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' },
-  { activity: 'Recruitment Follow-up', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' },
-  { activity: 'Employee Support', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' },
-  { activity: 'Reports Collected', status: '', dueDate: '', startDate: '', endDate: '', remarks: '' }
-];
+const DEFAULT_DAILY_OPERATIONS = [];
 
 const DEFAULT_EMPLOYEE_MGMT = [
   { employeeName: 'NA', department: '', attendance: '', taskStatus: '', remarks: '' },
@@ -1920,7 +1913,7 @@ const HrReportPage = () => {
   const recentDates = getRecentDates();
 
   return (
-    <div className="flex gap-6 items-start w-full relative flex-col lg:flex-row">
+    <div className="flex gap-6 items-start w-full relative flex-col lg:flex-row lg:pr-8">
       {/* LEFT PANEL: Date Select Sidebar */}
       <div className={`transition-all duration-300 ease-in-out shrink-0 bg-white/70 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-md rounded-3xl p-5 shadow-sm relative ${
         isSidebarOpen 
@@ -1982,7 +1975,7 @@ const HrReportPage = () => {
       </button>
 
       {/* RIGHT PANEL: Form Details */}
-      <div className="flex-1 w-full bg-white/70 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-md rounded-3xl p-6 lg:p-8 shadow-sm">
+      <div className="flex-1 w-full bg-white/70 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-md rounded-3xl lg:p-20 shadow-sm ">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24 gap-3">
             <Loader2 className="animate-spin text-indigo-500" size={32} />
@@ -2006,7 +1999,7 @@ const HrReportPage = () => {
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-start sm:justify-end">
                 <button
                   type="button"
                   onClick={() => setIsWeeklyModalOpen(true)}
@@ -2787,7 +2780,7 @@ const HrReportPage = () => {
             </div>
 
             {/* Footer buttons */}
-            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800 pt-5">
+            <div className="flex flex-wrap items-center justify-start sm:justify-end gap-3 border-t border-slate-100 dark:border-slate-800 pt-5 w-full">
               <button
                 type="button"
                 onClick={() => setIsWeeklyModalOpen(true)}

@@ -454,7 +454,7 @@ const ProfileDrawer = ({ isOpen, onClose }) => {
                         {/* 2. UPDATE SECURITY PASSWORD FORM */}
                         <div className="space-y-4">
                           <div className="flex items-center gap-2">
-                            <Lock size={12} className="text-indigo-500" />
+                            {/* <Lock size={12} className="text-indigo-500" /> */}
                             <span className="text-[10px] font-bold text-slate-755 dark:text-slate-350 uppercase tracking-widest">Update Security Key</span>
                           </div>
                           
@@ -463,7 +463,7 @@ const ProfileDrawer = ({ isOpen, onClose }) => {
 
                           <div className="space-y-3">
                             <div className="relative">
-                              <Lock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                              {/* <Lock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" /> */}
                               <input 
                                 type="password"
                                 name="current-password"
@@ -476,7 +476,7 @@ const ProfileDrawer = ({ isOpen, onClose }) => {
                             </div>
 
                             <div className="relative">
-                              <Key size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                              {/* <Key size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" /> */}
                               <input 
                                 type="password"
                                 name="new-password"
@@ -489,7 +489,7 @@ const ProfileDrawer = ({ isOpen, onClose }) => {
                             </div>
 
                             <div className="relative">
-                              <Key size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                              {/* <Key size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" /> */}
                               <input 
                                 type="password"
                                 name="confirm-password"

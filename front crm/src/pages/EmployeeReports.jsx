@@ -130,10 +130,10 @@ const EmployeeReports = () => {
     const searchMatch = nameMatch || emailMatch;
 
     const deptName = emp.departmentId?.name || emp.department || '';
-    const deptMatch = selectedDepartment === 'all' || deptName === selectedDepartment;
+    const deptMatch = selectedDepartment === 'all' || deptName.toLowerCase().trim() === selectedDepartment.toLowerCase().trim();
 
     const desigName = emp.designationId?.name || emp.designation || '';
-    const desigMatch = selectedDesignation === 'all' || desigName === selectedDesignation;
+    const desigMatch = selectedDesignation === 'all' || desigName.toLowerCase().trim() === selectedDesignation.toLowerCase().trim();
 
     return searchMatch && deptMatch && desigMatch;
   });
@@ -191,10 +191,10 @@ const EmployeeReports = () => {
     const searchMatch = nameMatch || emailMatch || filenameMatch;
 
     const deptName = report.employee.departmentId?.name || report.employee.department || '';
-    const deptMatch = selectedDepartment === 'all' || deptName === selectedDepartment;
+    const deptMatch = selectedDepartment === 'all' || deptName.toLowerCase().trim() === selectedDepartment.toLowerCase().trim();
 
     const desigName = report.employee.designationId?.name || report.employee.designation || '';
-    const desigMatch = selectedDesignation === 'all' || desigName === selectedDesignation;
+    const desigMatch = selectedDesignation === 'all' || desigName.toLowerCase().trim() === selectedDesignation.toLowerCase().trim();
 
     const periodMatch = selectedPeriod === 'all' || report.report_period === selectedPeriod;
 
@@ -611,12 +611,9 @@ const EmployeeReports = () => {
                       >
                         Reset
                       </button>
-                      <button
+                      {/* <button
                         onClick={() => setIsFiltersOpen(false)}
-                        className="flex-1 py-2 text-xs font-bold uppercase tracking-wider bg-indigo-650 hover:bg-indigo-700 text-white rounded-xl transition-all shadow-md shadow-indigo-650/10 cursor-pointer"
-                      >
-                        Apply
-                      </button>
+className="flex-1 py-2 text-xs font-bold uppercase tracking-wider bg-indigo-650 hover:bg-indigo-700 text-indigo-200 hover:text-white rounded-xl transition-all shadow-md shadow-indigo-850/10 cursor-pointer">                      </button> */}
                     </div>
                   </motion.div>
                 </>
