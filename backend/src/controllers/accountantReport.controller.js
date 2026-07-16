@@ -1,5 +1,6 @@
 import AccountantReport from '../models/accountantReport.model.js';
 import User from '../models/user.model.js';
+import { getDesignationIdByName } from '../utils/lookup.util.js';
 
 /**
  * 1. GET ACCOUNTANT REPORT BY DATE
@@ -138,11 +139,12 @@ export const getAccountantStaffList = async (req, res, next) => {
       });
     }
 
+    const accountantDesigId = await getDesignationIdByName('Accountant');
     // Query users belonging to the Accountant / Junior Accountant Designation
     const staff = await User.find({
       $or: [
-        { designationId: '6a2f915e2df21dc234018cac' },
-        { designation_id: '6a2f915e2df21dc234018cac' }
+        { designationId: accountantDesigId },
+        { designation_id: accountantDesigId }
       ]
     }, '_id name employeeId email designation')
       .sort({ name: 1 })

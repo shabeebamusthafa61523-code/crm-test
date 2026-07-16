@@ -1,5 +1,6 @@
 import AcademicCounselorReport from '../models/academicCounselorReport.model.js';
 import User from '../models/user.model.js';
+import { getDesignationIdByName } from '../utils/lookup.util.js';
 
 /**
  * 1. GET REPORT BY DATE
@@ -32,7 +33,8 @@ export const getReportByDate = async (req, res, next) => {
       console.error('Failed to fetch current user designation:', err);
     }
 
-    const isCounselor = userDesignationId === '6a27939af292348deb7d0495';
+    const counselorDesigId = await getDesignationIdByName('Academic Counselor');
+    const isCounselor = userDesignationId === String(counselorDesigId || '');
 
     // If userId is provided, verify permissions
     if (targetUserId) {
@@ -99,7 +101,8 @@ export const saveReport = async (req, res, next) => {
       console.error('Failed to fetch current user designation:', err);
     }
 
-    const isCounselor = userDesignationId === '6a27939af292348deb7d0495';
+    const counselorDesigId = await getDesignationIdByName('Academic Counselor');
+    const isCounselor = userDesignationId === String(counselorDesigId || '');
 
     // If targetUserId is provided, check if client has rights to save on behalf of that user
     if (targetUserId) {
@@ -149,11 +152,12 @@ export const saveReport = async (req, res, next) => {
  */
 export const getCounselorsList = async (req, res, next) => {
   try {
+    const counselorDesigId = await getDesignationIdByName('Academic Counselor');
     // Query users belonging to the Sales Executive / Tele Caller & Academic Counselor Designation
     const counselors = await User.find({
       $or: [
-        { designationId: '6a27939af292348deb7d0495' },
-        { designation_id: '6a27939af292348deb7d0495' }
+        { designationId: counselorDesigId },
+        { designation_id: counselorDesigId }
       ]
     }, '_id name employeeId email designation')
       .sort({ name: 1 })

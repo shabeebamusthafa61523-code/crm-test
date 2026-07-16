@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { signup, login, verifyForgotPassword, resetForgotPassword } from '../controllers/auth.controller.js';
+import { signup, login, logout, verifyForgotPassword, resetForgotPassword } from '../controllers/auth.controller.js';
 import { designationController } from '../controllers/designation.controller.js';
 import { departmentController } from '../modules/departments/department.controller.js';
 import verifyJWT from '../middleware/auth.middleware.js';
@@ -16,6 +16,7 @@ const router = Router();
 
 router.post('/signup', signup);
 router.post('/login', login);
+router.post('/logout', verifyJWT, logout);
 router.post('/forgot-password/verify', verifyForgotPassword);
 router.post('/forgot-password/reset', resetForgotPassword);
 router.get('/designations', designationController.getDesignations);
@@ -28,8 +29,9 @@ router.put(
   validateBody(userStatusBodySchema),
   async (req, res, next) => {
     try {
-      const role = req.user.role || req.user.role_id;
-      if (role !== 'admin') {
+      const role = String(req.user.role || req.user.role_id || '').toLowerCase().trim();
+      const isAllowed = role === 'admin' || role === 'superadmin' || role === 'super admin' || role === '2';
+      if (!isAllowed) {
         throw new AppError('Access denied. Admin access only.', 403);
       }
 

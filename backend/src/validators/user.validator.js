@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+
 const roleEnum = z.enum([
   'MD',
   'COO',
@@ -7,24 +9,33 @@ const roleEnum = z.enum([
   'DEPARTMENT_MANAGER',
   'TEAM_LEADER',
   'STAFF',
-  'INTERN'
+  'INTERN',
+  'admin',
+  'hr',
+  'employee',
+  'digital_marketer',
+  'student'
 ]);
 
 export const createUserSchema = z.object({
   name: z.string().trim().min(2, 'Name must be at least 2 characters.'),
   email: z.string().trim().email('Invalid email address.'),
-  phone: z.string().trim().regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number format (must be international standard e.g. +919999988888).'),
+  phone: z.string().trim().optional(),
   role: roleEnum.default('STAFF'),
-  departmentId: z.string().uuid('Invalid department ID format.').optional().nullable(),
-  employeeId: z.string().trim().min(3, 'Employee ID must be at least 3 characters.'),
-  avatar: z.string().url('Invalid URL format for avatar.').optional().nullable(),
+  role_id: z.string().trim().optional(),
+  departmentId: z.string().regex(objectIdRegex, 'Invalid department ID format.').optional().nullable(),
+  designationId: z.string().regex(objectIdRegex, 'Invalid designation ID format.').optional().nullable(),
+  employeeId: z.string().trim().min(3, 'Employee ID must be at least 3 characters.').optional(),
+  avatar: z.string().optional().nullable(),
   password: z.string().min(8, 'Temporary password must be at least 8 characters.').optional()
 });
 
 export const updateUserSchema = z.object({
   name: z.string().trim().min(2, 'Name must be at least 2 characters.').optional(),
-  phone: z.string().trim().regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone format.').optional(),
-  departmentId: z.string().uuid().optional().nullable(),
+  phone: z.string().trim().optional(),
+  departmentId: z.string().regex(objectIdRegex, 'Invalid department ID format.').optional().nullable(),
+  designationId: z.string().regex(objectIdRegex, 'Invalid designation ID format.').optional().nullable(),
   avatar: z.string().optional().nullable(),
-  isActive: z.boolean().optional()
+  isActive: z.boolean().optional(),
+  status: z.string().trim().optional()
 });

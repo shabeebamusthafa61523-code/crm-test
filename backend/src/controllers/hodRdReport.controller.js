@@ -1,5 +1,6 @@
 import HodRdReport from '../models/hodRdReport.model.js';
 import User from '../models/user.model.js';
+import { getDesignationIdByName } from '../utils/lookup.util.js';
 
 /**
  * 1. GET REPORT BY DATE
@@ -134,11 +135,12 @@ export const getHodsList = async (req, res, next) => {
       });
     }
 
+    const hodDesigId = await getDesignationIdByName('HOD R&D');
     // Query users belonging to the HOD - R&D / Developer Designation
     const hods = await User.find({
       $or: [
-        { designationId: '6a2f9e086f1c41b0c80a9e21' },
-        { designation_id: '6a2f9e086f1c41b0c80a9e21' }
+        { designationId: hodDesigId },
+        { designation_id: hodDesigId }
       ]
     }, '_id name employeeId email designation')
       .sort({ name: 1 })

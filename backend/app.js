@@ -16,6 +16,7 @@ import apiRoutes from './src/routes/api.js';
 import aiRoutes from './src/routes/ai.routes.js';
 import Designation from './src/models/designation.model.js';
 import Department from './src/modules/departments/department.model.js';
+import schedulerService from './src/services/scheduler.service.js';
 
 dotenv.config();
 const app = express();
@@ -132,12 +133,23 @@ mongoose.connect(MONGO_URI)
   .then(async () => {
     console.log(' ✅ Successfully connected to MongoDB.');
     try {
+      schedulerService.start();
+    } catch (schedErr) {
+      console.error(' ❌ Failed to start SchedulerService:', schedErr.message);
+    }
+    try {
       const count = await Designation.countDocuments();
       if (count === 0) {
         const defaultDesignations = [
           "HR Manager",
           "Graphic Designer",
-          "Digital Marketer",
+          "Marketing Specialist",
+          "MERN Stack Developer",
+          "Academic Counselor",
+          "Videographer",
+          "Ops Manager",
+          "Accountant",
+          "HOD R&D",
           "React Developer",
           "Node Developer",
           "Flutter Developer",
@@ -159,7 +171,11 @@ mongoose.connect(MONGO_URI)
           { name: "HR & Admin", code: "HR" },
           { name: "Marketing", code: "MKT" },
           { name: "Development", code: "DEV" },
-          { name: "Designing", code: "DSN" }
+          { name: "Designing", code: "DSN" },
+          { name: "Telecaller", code: "TLC" },
+          { name: "Academic", code: "ACD" },
+          { name: "Ops", code: "OPS" },
+          { name: "R&D", code: "RD" }
         ];
         await Department.insertMany(defaultDepartments.map(d => ({ 
           name: d.name, 

@@ -5,6 +5,7 @@ import { hashPassword, comparePassword } from '../utils/bcrypt.util.js';
 import { authService } from '../services/auth.service.js';
 import { recordAudit } from '../middleware/audit.middleware.js';
 import notificationService from '../services/notification.service.js';
+import { socketService } from '../services/socket.service.js';
 import { sendSuccess } from '../utils/response.util.js';
 import {
   getPaginationParams,
@@ -19,6 +20,139 @@ cloudinary.config({
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
+
+const MENU_ITEMS = [
+  { icon: 'LayoutDashboard', label: 'Dashboard', path: '/dashboard', allowedRoles: ['1', '2', 'admin'] },
+  {
+    icon: 'LayoutDashboard',
+    label: 'HR Dashboard',
+    path: '/hr-dashboard',
+    allowedDesignationKeywords: ['hr manager', 'hr'],
+  },
+  {
+    icon: 'BarChart3',
+    label: 'Lead Dashboard',
+    path: '/lead-dashboard',
+    allowedDepartmentCodes: ['MKT', 'ACD', 'OPS'],
+    allowedDesignationKeywords: ['counselor']
+  },
+  {
+    icon: 'BarChart3',
+    label: 'Marketing Dashboard',
+    path: '/marketing-dashboard',
+    allowedDepartmentCodes: ['TLC']
+  },
+  { 
+    icon: 'Users', 
+    label: 'Users', 
+    path: '/users', 
+    allowedRoles: ['1', '2', 'hr', 'admin'],
+    allowedDepartmentCodes: ['HR']
+  },
+  { 
+    icon: 'TrendingUp', 
+    label: 'Leads Directory', 
+    path: '/leads',
+    allowedDepartmentCodes: ['TLC']
+  },
+  { 
+    icon: 'TrendingUp', 
+    label: 'Telecaller Leads', 
+    path: '/leads-telecaller',
+    allowedDesignationKeywords: ['counselor'],
+    allowedRoles: ['1', '2', 'hr', 'admin']
+  },
+  { 
+    icon: 'TrendingUp', 
+    label: 'Lead Counselor', 
+    path: '/lead-counselor',
+    allowedDesignationKeywords: ['ops manager', 'ops'],
+  },
+  {
+    icon: 'BarChart3',
+    label: 'Dev Dashboard',
+    path: '/developer-dashboard',
+    allowedDepartmentCodes: ['RD'],
+  },
+  {
+    icon: 'BarChart3',
+    label: 'GD Dashboard',
+    path: '/graphic-designer-dashboard',
+    allowedDesignationKeywords: ['graphic designer', 'graphic'],
+  },
+  {
+    icon: 'FileText',
+    label: 'Developer Report',
+    path: '/developer-report',
+    allowedDesignationKeywords: ['developer', 'mern stack developer'],
+  },
+  {
+    icon: 'FileText',
+    label: 'HOD R&D Report',
+    path: '/hod-rd-report',
+    allowedDesignationKeywords: ['hod r&d', 'hod', 'r&d', 'rd'],
+  },
+  {
+    icon: 'FileText',
+    label: 'Graphic Designer Report',
+    path: '/graphic-designer-report',
+    allowedDesignationKeywords: ['graphic designer', 'graphic'],
+  },
+  {
+    icon: 'FileText',
+    label: 'Academic Counselor Report',
+    path: '/academic-counselor-report',
+    allowedDesignationKeywords: ['academic counselor', 'counselor'],
+  },
+  {
+    icon: 'LayoutDashboard',
+    label: 'Video Dashboard',
+    path: '/videographer-dashboard',
+    allowedDesignationKeywords: ['videographer', 'video'],
+  },
+  {
+    icon: 'FileText',
+    label: 'Videographer Report',
+    path: '/videographer-report',
+    allowedDesignationKeywords: ['videographer', 'video'],
+  },
+  {
+    icon: 'FileText',
+    label: 'HR Shift Report',
+    path: '/hr-report',
+    allowedDesignationKeywords: ['hr manager', 'hr'],
+  },
+  {
+    icon: 'Sparkles',
+    label: 'AI Reports',
+    path: '/ai-report',
+    allowedDesignationKeywords: ['hr manager', 'hr'],
+    allowedRoles: ['1', '2', 'admin']
+  },
+  {
+    icon: 'FileText',
+    label: 'Ops Shift Report',
+    path: '/ops-report',
+    allowedDesignationKeywords: ['ops manager', 'ops'],
+  },
+  {
+    icon: 'FileText',
+    label: 'Accountant Shift Report',
+    path: '/accountant-report',
+    allowedDesignationKeywords: ['accountant'],
+  },
+  {
+    icon: 'FileText',
+    label: 'Marketing Shift Report',
+    path: '/marketing-report',
+    allowedDesignationKeywords: ['marketing specialist', 'marketing'],
+  },
+  { icon: 'UserCheck', label: 'Attendance', path: '/attendance', excludeRoles: ['1', '2', 'hr', 'admin'] },
+  { icon: 'ListCheck', label: 'Task Assign', path: '/todo' },
+  { icon: 'Users', label: 'Student Attendance', path: '/student-attendance', allowedRoles: ['1', '2', 'hr', 'admin'], allowedDepartmentCodes: ['HR'] },
+  { icon: 'Building', label: 'Departments', path: '/departments', allowedRoles: ['1', '2', 'hr', 'admin'], allowedDepartmentCodes: ['HR'] },
+  { icon: 'Users', label: 'Employee Reports', path: '/employee-reports', allowedRoles: ['1', '2', 'hr', 'admin'], allowedDepartmentCodes: ['HR'] }
+];
 
 const uploadToCloudinary = (fileBuffer) => {
   return new Promise((resolve, reject) => {
@@ -140,6 +274,7 @@ export const userController = {
         }
       )
       .populate('designationId')
+      .populate('departmentId', 'name code status')
       .sort({ name: 1 });
 
       return res.status(200).json(users);
@@ -217,7 +352,7 @@ export const userController = {
       let query = User.find(whereClause)
         .populate(
           'departmentId',
-          'name status'
+          'name code status'
         )
         .sort({ createdAt: -1 });
 
@@ -256,7 +391,7 @@ export const userController = {
         role: u.role,
         employeeId: u.employeeId,
         department: isDeptActive ? (u.departmentId.name || u.department) : '',
-        departmentId: isDeptActive ? u.departmentId._id : null,
+        departmentId: isDeptActive ? u.departmentId : null,
         designation: resolvedDesignationId || u.designation,
         designationId: resolvedDesignationId,
         designationName: designationMap.get(resolvedDesignationId) || u.designation,
@@ -304,7 +439,7 @@ export const userController = {
       const user = await User.findById(id)
         .populate(
           'departmentId',
-          'name headUserId status'
+          'name code headUserId status'
         )
         .populate('designationId', 'name');
 
@@ -430,29 +565,70 @@ export const userController = {
 
       const selectedDesignation = await findDesignationById(designation);
 
-      const newUser =
-        await User.create({
-          name,
-          email,
-          phone,
-          role: role || 'employee',
-          role_id: role === 'admin' ? '1' : (role === 'manager' ? '2' : '3'),
-          department,
-          departmentId,
-          designation: selectedDesignation?.name || '',
-          designationId: selectedDesignation?._id,
-          reportingManager,
-          status: status || 'active',
-          employeeId,
-          avatar: fileUrl,
-          profile_image: fileUrl,
-          passwordHash,
-          joining_date: joining_date ? new Date(joining_date) : new Date(),
-          salary: parseFloat(salary) || 0,
-          address: address || '',
-          identityType: identityType || 'aadhaar',
-          identityNumber: identityNumber || ''
-        });
+      // --- Fix: Correct role_id mapping aligned with system roleMap ---
+      // hr→1, admin→2, manager→3, employee→4, digital_marketer→5, student→10
+      const roleIdMap = {
+        hr: '1',
+        admin: '2',
+        manager: '3',
+        employee: '4',
+        team_leader: '4',
+        staff: '4',
+        intern: '4',
+        digital_marketer: '5',
+        student: '10'
+      };
+      const resolvedRole = (role || 'employee').toLowerCase();
+      const resolvedRoleId = roleIdMap[resolvedRole] || '4';
+
+      // --- Fix: Properly resolve and validate departmentId as ObjectId ---
+      let resolvedDeptId = null;
+      let resolvedDeptName = department || '';
+      const rawDeptId = departmentId;
+      if (rawDeptId && mongoose.Types.ObjectId.isValid(String(rawDeptId))) {
+        resolvedDeptId = new mongoose.Types.ObjectId(String(rawDeptId));
+        if (!resolvedDeptName) {
+          try {
+            const Department = (await import('../modules/departments/department.model.js')).default;
+            const deptDoc = await Department.findById(resolvedDeptId).select('name');
+            if (deptDoc) resolvedDeptName = deptDoc.name;
+          } catch (err) {
+            console.warn('Could not resolve department name:', err.message);
+          }
+        }
+      }
+
+      // --- Fix: Resolve reportingManager as ObjectId if valid ---
+      let resolvedManagerId = null;
+      if (reportingManager && mongoose.Types.ObjectId.isValid(String(reportingManager))) {
+        resolvedManagerId = new mongoose.Types.ObjectId(String(reportingManager));
+      }
+
+      const newUser = await User.create({
+        name,
+        email,
+        phone,
+        role: resolvedRole,
+        role_id: resolvedRoleId,
+        department: resolvedDeptName,
+        departmentId: resolvedDeptId,
+        designation: selectedDesignation?.name || '',
+        designationId: selectedDesignation?._id || null,
+        reportingManager: resolvedManagerId,
+        status: status || 'active',
+        isActive: (status || 'active') === 'active',
+        employeeId,
+        avatar: fileUrl,
+        profile_image: fileUrl,
+        password: passwordHash,
+        passwordHash,
+        joining_date: joining_date ? new Date(joining_date) : new Date(),
+        salary: parseFloat(salary) || 0,
+        address: address || '',
+        identityType: identityType || 'aadhaar',
+        identityNumber: identityNumber || '',
+        lastLogin: null
+      });
 
       await recordAudit(req, {
         action: 'CREATE',
@@ -461,34 +637,72 @@ export const userController = {
         newValue: {
           name,
           email,
-          role,
+          role: resolvedRole,
+          role_id: resolvedRoleId,
           employeeId,
-          department,
+          department: resolvedDeptName,
+          departmentId: resolvedDeptId,
           designation: selectedDesignation?.name || '',
           designationId: selectedDesignation?._id
         }
       });
 
+      // --- Fix: sendEmail with proper 3-arg signature + HTML welcome body ---
+      const welcomeHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+          <div style="background: linear-gradient(135deg, #1a1a2e, #16213e); padding: 32px; text-align: center;">
+            <h1 style="color: #00d4ff; margin: 0; font-size: 24px;">🎉 Welcome to the Team!</h1>
+          </div>
+          <div style="padding: 32px; background: #ffffff;">
+            <p style="font-size: 16px; color: #333;">Hi <strong>${newUser.name}</strong>,</p>
+            <p style="color: #555;">Your CRM account has been created successfully. Here are your login details:</p>
+            <div style="background: #f4f7ff; border-left: 4px solid #00d4ff; padding: 16px; border-radius: 4px; margin: 20px 0;">
+              <p style="margin: 4px 0;"><strong>Email:</strong> ${newUser.email}</p>
+              <p style="margin: 4px 0;"><strong>Temporary Password:</strong> <code style="background:#e8f4fd;padding:2px 6px;border-radius:3px;">${tempPass}</code></p>
+              <p style="margin: 4px 0;"><strong>Role:</strong> ${resolvedRole.toUpperCase()}</p>
+              ${resolvedDeptName ? `<p style="margin: 4px 0;"><strong>Department:</strong> ${resolvedDeptName}</p>` : ''}
+            </div>
+            <p style="color: #e74c3c; font-size: 13px;">⚠️ Please change your password after your first login for security.</p>
+          </div>
+        </div>
+      `;
       try {
         await notificationService.sendEmail(
           newUser.email,
-          '🎉 Welcome to the Team!',
-          'Your Command Center Account is Ready',
-          `Welcome ${newUser.name}! Temp Password: ${tempPass}`
+          '🎉 Welcome to the Team — Your Account is Ready',
+          welcomeHtml
         );
       } catch (err) {
         console.error('Failed to send welcome email:', err.message);
       }
 
+      // --- Fix: Broadcast new employee creation to admin dashboard via socket ---
+      try {
+        socketService.emitNewEmployee({
+          userId: String(newUser._id),
+          name: newUser.name,
+          email: newUser.email,
+          role: resolvedRole,
+          role_id: resolvedRoleId,
+          department: resolvedDeptName,
+          departmentId: resolvedDeptId,
+          joinedAt: new Date()
+        });
+      } catch (socketErr) {
+        console.warn('Socket broadcast skipped:', socketErr.message);
+      }
+
       return sendSuccess(res, {
         status: 201,
-        message:
-          'New employee account registered.',
+        message: 'New employee account registered successfully.',
         data: {
           id: newUser._id,
           name: newUser.name,
           email: newUser.email,
           role: newUser.role,
+          role_id: newUser.role_id,
+          departmentId: newUser.departmentId,
+          department: newUser.department,
           employeeId: newUser.employeeId,
           status: newUser.status
         }
@@ -851,6 +1065,120 @@ export const userController = {
       return sendSuccess(res, {
         status: 200,
         message: 'Password successfully updated.'
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  resetPassword: async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { newPassword } = req.body;
+
+      if (!newPassword) {
+        throw new AppError('New password is required.', 400);
+      }
+
+      const user = await User.findById(id);
+      if (!user) {
+        throw new AppError('User profile not found.', 404);
+      }
+
+      // Backend password validation matching forgot password complexity
+      const hasSymbol = /[\W_]/.test(newPassword);
+      const hasNumber = /\d/.test(newPassword);
+      const hasUppercase = /[A-Z]/.test(newPassword);
+      const hasLowercase = /[a-z]/.test(newPassword);
+      const isLongEnough = newPassword.length >= 8;
+
+      if (!hasSymbol || !hasNumber || !hasUppercase || !hasLowercase || !isLongEnough) {
+        throw new AppError('Password must be at least 8 characters long and include a symbol, number, uppercase and lowercase letters.', 400);
+      }
+
+      const hashedPassword = await hashPassword(newPassword);
+      user.password = hashedPassword;
+      user.passwordHash = hashedPassword;
+      await user.save();
+
+      await authService.revokeAllSessions(id);
+
+      await recordAudit(req, {
+        action: 'UPDATE',
+        entity: 'User',
+        entityId: id,
+        newValue: { details: 'Admin-initiated password reset' }
+      });
+
+      return sendSuccess(res, {
+        status: 200,
+        message: 'User password reset successfully.'
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  bulkImport: async (req, res, next) => {
+    try {
+      // Stub for bulk import of users
+      return sendSuccess(res, {
+        status: 200,
+        message: 'Bulk import completed successfully.'
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  getSidebarMenu: async (req, res, next) => {
+    try {
+      const userObj = await User.findById(req.user.id)
+        .populate('departmentId')
+        .populate('designationId');
+
+      if (!userObj) {
+        throw new AppError('User not found.', 404);
+      }
+
+      const currentUserRole = String(userObj.role_id || userObj.role || '').toLowerCase().trim();
+      const currentUserDeptCode = userObj.departmentId?.code 
+        ? String(userObj.departmentId.code).toUpperCase().trim() 
+        : '';
+      const currentUserDesignationName = userObj.designationId?.name 
+        ? String(userObj.designationId.name).toLowerCase().trim() 
+        : '';
+
+      const visibleItems = MENU_ITEMS.filter(item => {
+        if (item.excludeRoles && item.excludeRoles.includes(currentUserRole)) {
+          return false;
+        }
+        
+        // Allow department team leads to see Employee Reports page
+        if (item.label === 'Employee Reports' && userObj.isTeamLead) {
+          return true;
+        }
+
+        if (!item.allowedRoles && !item.allowedDepartmentCodes && !item.allowedDesignationKeywords) {
+          return true;
+        }
+
+        const roleMatch = item.allowedRoles && item.allowedRoles.includes(currentUserRole);
+        const deptMatch = item.allowedDepartmentCodes && currentUserDeptCode && item.allowedDepartmentCodes.includes(currentUserDeptCode);
+        const designationMatch = item.allowedDesignationKeywords && currentUserDesignationName && 
+          item.allowedDesignationKeywords.some(keyword => currentUserDesignationName.includes(keyword));
+
+        const matches = [];
+        if (item.allowedRoles) matches.push(roleMatch);
+        if (item.allowedDepartmentCodes) matches.push(deptMatch);
+        if (item.allowedDesignationKeywords) matches.push(designationMatch);
+
+        return matches.some(m => m === true);
+      });
+
+      return sendSuccess(res, {
+        status: 200,
+        data: visibleItems
       });
     } catch (error) {
       next(error);

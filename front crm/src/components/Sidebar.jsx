@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -19,167 +19,20 @@ import {
   ChevronRight
 } from 'lucide-react';
 
-const menuItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', allowedRoles: ['1', '2', 'admin' ],  allowedDepartments: ['6a55c7e8b613a280003481d8'] 
- },
-
-  {
-    icon: LayoutDashboard,
-    label: 'HR Dashboard',
-    path: '/hr-dashboard',
-    allowedDesignations: ['6a2f8efea2fe388770a38987'],
-  },
-  {
-    icon: BarChart3,
-    label: 'Lead Dashboard',
-    path: '/lead-dashboard',
-    // allowedRoles: ['1', '2', '3', 'hr', 'admin'],
-    allowedDepartments: ['6a26a7d72a56a1f9c49da8a3', '6a27f394558c220a47fff02e', '6a2f91472df21dc234018cab'],
-    allowedDesignations: ['6a27939af292348deb7d0495']
-  },
-  {
-    icon: BarChart3,
-    label: 'Marketing Dashboard',
-    path: '/marketing-dashboard',
-    // allowedRoles: ['1', '2', '3', 'hr', 'admin', 'marketing'],
-    allowedDepartments: [ '6a211b6621f80bb8da167efb']
-  },
-
-  { 
-    icon: Users, 
-    label: 'Users', 
-    path: '/users', 
-    allowedRoles: ['1', '2', 'hr', 'admin'],
-    allowedDepartments: ['6a3caed51194353cbc8a3686']
-  },
-  { 
-    icon: TrendingUp, 
-    label: 'Leads Directory', 
-    path: '/leads',
-    allowedDepartments: ['6a211b6621f80bb8da167efb']
-  },
-  { 
-    icon: TrendingUp, 
-    label: 'Telecaller Leads', 
-    path: '/leads-telecaller',
-    // allowedRoles: ['3'],
-    // allowedDepartments: ['6a26a7d72a56a1f9c49da8a3', '6a27f394558c220a47fff02e'],
-    allowedDesignations: ['6a27939af292348deb7d0495'],
-    allowedRoles: ['1', '2', 'hr', 'admin']
-  },
-  { 
-    icon: TrendingUp, 
-    label: 'Lead Counselor', 
-    path: '/lead-counselor',
-    allowedDesignations: ['6a2f91472df21dc234018cab'],
-    // allowedRoles: ['1', '2', 'hr', 'admin']
-  },
-  {
-    icon: BarChart3,
-    label: 'Dev Dashboard',
-    path: '/developer-dashboard',
-    allowedDepartments: ['6a1d5d3ea35c97490f38b383'],
-    // allowedRoles: ['1', '2', 'hr', 'admin']
-  },
-  {
-    icon: BarChart3,
-    label: 'GD Dashboard',
-    path: '/graphic-designer-dashboard',
-    allowedDesignations: ['6a1e8e6e01a0dae8b2f3b18d'],
-    // allowedRoles: ['1', '2', 'hr', 'admin']
-  },
-  {
-    icon: FileText,
-    label: 'Developer Report',
-    path: '/developer-report',
-    allowedDesignations: ['6a1e8e2d01a0dae8b2f3b18c'],
-    // allowedRoles: ['1', '2', 'hr', 'admin']
-  },
-  {
-    icon: FileText,
-    label: 'HOD R&D Report',
-    path: '/hod-rd-report',
-    allowedDesignations: ['6a2f9e086f1c41b0c80a9e21'],
-    // allowedRoles: ['1', '2', 'hr', 'admin']
-  },
-  {
-    icon: FileText,
-    label: 'Graphic Designer Report',
-    path: '/graphic-designer-report',
-    allowedDesignations: ['6a1e8e6e01a0dae8b2f3b18d'],
-    // allowedRoles: ['1', '2', 'hr', 'admin']
-  },
-  {
-    icon: FileText,
-    label: 'Academic Counselor Report',
-    path: '/academic-counselor-report',
-    allowedDesignations: ['6a27939af292348deb7d0495'],
-    // allowedRoles: ['1', '2', 'hr', 'admin']
-  },
-  // {
-  //   icon: BarChart3,
-  //   label: 'Counselor Dashboard',
-  //   path: '/counselor-dashboard',
-  //   allowedDesignations: ['6a27939af292348deb7d0495'],
-  //   // allowedRoles: ['1', '2', 'hr', 'admin']
-  // },
-  {
-    icon: LayoutDashboard,
-    label: 'Video Dashboard',
-    path: '/videographer-dashboard',
-    allowedDesignations: ['6a2f912c2df21dc234018caa'],
-  },
-  {
-    icon: FileText,
-    label: 'Videographer Report',
-    path: '/videographer-report',
-    allowedDesignations: ['6a2f912c2df21dc234018caa'],
-    // allowedRoles: ['1', '2', 'hr', 'admin']
-  },
- 
-  {
-    icon: FileText,
-    label: 'HR Shift Report',
-    path: '/hr-report',
-    allowedDesignations: ['6a2f8efea2fe388770a38987'],
-    // allowedRoles: ['1', '2', 'hr', 'admin']
-  },
-  {
-    icon: Sparkles,
-    label: 'AI Reports',
-    path: '/ai-report',
-    allowedDesignations: ['6a2f8efea2fe388770a38987'],
-    allowedRoles: ['1', '2', 'admin' ],
-  },
-  {
-    icon: FileText,
-    label: 'Ops Shift Report',
-    path: '/ops-report',
-    allowedDesignations: ['6a2f91472df21dc234018cab'],
-    // allowedRoles: ['1', '2', 'hr', 'admin']
-  },
-  {
-    icon: FileText,
-    label: 'Accountant Shift Report',
-    path: '/accountant-report',
-    allowedDesignations: ['6a2f915e2df21dc234018cac'],
-    // allowedRoles: ['1', '2', 'hr', 'admin']
-  },
-  {
-    icon: FileText,
-    label: 'Marketing Shift Report',
-    path: '/marketing-report',
-    allowedDesignations: ['6a2f909d2df21dc234018ca8'],
-    // allowedRoles: ['1', '2', 'hr', 'admin']
-  },
-  { icon: UserCheck, label: 'Attendance', path: '/attendance', excludeRoles: ['1', '2', 'hr', 'admin'] },
-  { icon: ListCheck, label: 'Task Assign', path: '/todo' },
-  { icon: Users, label: 'Student Attendance', path: '/student-attendance', allowedRoles: ['1', '2', 'hr', 'admin'], allowedDepartments: ['6a3caed51194353cbc8a3686'] },
-  { icon: Building, label: 'Departments', path: '/departments', allowedRoles: ['1', '2', 'hr', 'admin'], allowedDepartments: ['6a3caed51194353cbc8a3686'] },
-  { icon: Users, label: 'Employee Reports', path: '/employee-reports', allowedRoles: [ 'hr', 'admin'], allowedDepartments: ['6a3caed51194353cbc8a3686'] },
-  { icon: Users, label: 'Team Reports', path: '/team-reports', isTeamLeadOnly: true },
-];
-
+const iconMap = {
+  LayoutDashboard,
+  UserCheck,
+  ListCheck,
+  Users,
+  GraduationCap,
+  Settings,
+  LogOut,
+  Building,
+  TrendingUp,
+  BarChart3,
+  FileText,
+  Sparkles
+};
 
 // Simple Portal implementation to render the badge safely outside of parent overflow cropping
 const PortalTooltip = ({ children }) => {
@@ -190,72 +43,36 @@ const Sidebar = () => {
   const location = useLocation();
   const activePath = location.pathname;
   const [isOpen, setIsOpen] = useState(true);
+  const [visibleMenuItems, setVisibleMenuItems] = useState([]);
+  const token = localStorage.getItem('token');
 
-
-  const getVisibleMenuItems = () => {
-    try {
-      const savedUser = localStorage.getItem('user');
-      if (!savedUser) {
-        return menuItems.filter(item => !item.allowedRoles && !item.allowedDepartments && !item.allowedDesignations);
-      }
-
-      const userObj = JSON.parse(savedUser);
-      const currentUserRole = String(userObj.role_id || userObj.roleId || userObj.role || '').toLowerCase().trim();
-      
-      const deptName = userObj.department || userObj.departmentId?.name || '';
-      const isNonOperational = String(deptName).toLowerCase().trim() === 'non-operational';
-      if (isNonOperational) {
-        return menuItems.filter(item => item.label === 'Employee Reports' || item.label === 'Dashboard');
-      }
-
-      let currentUserDept = '';
-      if (userObj.departmentId) {
-        if (typeof userObj.departmentId === 'object' && userObj.departmentId._id) {
-          currentUserDept = String(userObj.departmentId._id).trim();
-        } else {
-          currentUserDept = String(userObj.departmentId).trim();
+  useEffect(() => {
+    const fetchSidebar = async () => {
+      try {
+        const rawToken = localStorage.getItem('token');
+        if (!rawToken) {
+          setVisibleMenuItems([]);
+          return;
         }
+        const cleanToken = rawToken.replace(/"/g, '');
+        const authHeader = cleanToken.startsWith('Bearer ') ? cleanToken : `Bearer ${cleanToken}`;
+
+        const API_BASE = import.meta.env.VITE_API_URL;
+        const res = await fetch(`${API_BASE}/v1/users/sidebar`, {
+          headers: { 'Authorization': authHeader }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.data)) {
+            setVisibleMenuItems(json.data);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading dynamic sidebar:", err);
       }
-
-      let currentUserDesignation = '';
-      if (userObj.designationId) {
-        if (typeof userObj.designationId === 'object' && userObj.designationId._id) {
-          currentUserDesignation = String(userObj.designationId._id).trim();
-        } else {
-          currentUserDesignation = String(userObj.designationId).trim();
-        }
-      } else if (userObj.designation_id) {
-        currentUserDesignation = String(userObj.designation_id).trim();
-      }
-      
-      return menuItems.filter(item => {
-        if (item.excludeRoles && item.excludeRoles.includes(currentUserRole)) {
-          return false;
-        }
-        // Show Team Reports page only for department team leads
-        if (item.isTeamLeadOnly) {
-          return !!userObj.isTeamLead;
-        }
-        if (!item.allowedRoles && !item.allowedDepartments && !item.allowedDesignations) return true;
-        const roleMatch = item.allowedRoles && item.allowedRoles.includes(currentUserRole);
-        const deptMatch = item.allowedDepartments && item.allowedDepartments.includes(currentUserDept);
-        const designationMatch = item.allowedDesignations && item.allowedDesignations.includes(currentUserDesignation);
-        
-        const matches = [];
-        if (item.allowedRoles) matches.push(roleMatch);
-        if (item.allowedDepartments) matches.push(deptMatch);
-        if (item.allowedDesignations) matches.push(designationMatch);
-        
-        return matches.some(m => m === true);
-      });
-    } catch (e) {
-      console.error("Error reading operator authorization layout paths:", e);
-      return menuItems.filter(item => !item.allowedRoles && !item.allowedDepartments && !item.allowedDesignations);
-    }
-  };
-
-
-  const visibleMenuItems = getVisibleMenuItems();
+    };
+    fetchSidebar();
+  }, [token, location.pathname]);
 
   return (
     <div
@@ -285,15 +102,18 @@ const Sidebar = () => {
       >
 
       <div className="flex lg:flex-col gap-3 lg:gap-4 overflow-x-auto lg:overflow-y-auto max-w-full lg:max-h-full scrollbar-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-0.5 px-0.5">
-        {visibleMenuItems.map((item) => (
-          <NavItem 
-            key={item.path}
-            icon={<item.icon size={22} />} 
-            label={item.label} 
-            to={item.path} 
-            active={activePath === item.path} 
-          />
-        ))}
+        {visibleMenuItems.map((item) => {
+          const IconComponent = iconMap[item.icon] || LayoutDashboard;
+          return (
+            <NavItem 
+              key={item.path}
+              icon={<IconComponent size={22} />} 
+              label={item.label} 
+              to={item.path} 
+              active={activePath === item.path} 
+            />
+          );
+        })}
       </div>
 
       <div className="hidden lg:block w-full h-[1px] bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-800 to-transparent my-2 shrink-0" />

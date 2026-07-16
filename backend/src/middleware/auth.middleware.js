@@ -7,7 +7,7 @@ import redis from '../config/redis.js';
 /**
  * Standard Token Verification Middleware for Departments Module
  */
-export const verifyToken = (req, res, next) => {
+export const verifyToken = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -20,7 +20,28 @@ export const verifyToken = (req, res, next) => {
     }
 
     const token = authHeader.split(' ')[1];
+
+    // Check if token has been blacklisted
+    try {
+      const isRevoked = await redis.get(`revoked_token:${token}`);
+      if (isRevoked) {
+        return sendError(res, 'Token has been revoked. Please log in again.', 401);
+      }
+    } catch (redisError) {
+      console.warn("Redis check failed in verifyToken:", redisError.message);
+    }
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_key');
+
+    // Check all-device revocation
+    try {
+      const revokedAt = await redis.get(`user_revoked_at:${decoded.id}`);
+      if (revokedAt && decoded.iat < parseInt(revokedAt)) {
+        return sendError(res, 'Session revoked from all devices. Please log in again.', 401);
+      }
+    } catch (redisError) {
+      console.warn("Redis check failed in verifyToken:", redisError.message);
+    }
     
     req.user = decoded;
     next();
@@ -37,21 +58,25 @@ export const verifyToken = (req, res, next) => {
 export const requireRole = (allowedRoles = []) => {
   return (req, res, next) => {
     // Collect possible role identifiers from req.user
-    const roleId = String(req.user?.role_id || '');
-    const roleName = String(req.user?.role || '');
+    const roleId = String(req.user?.role_id || '').toLowerCase().trim();
+    const roleName = String(req.user?.role || '').toLowerCase().trim();
 
     // Map of roles for broad compatibility
-    // Allows admin access if allowedRoles contains 'admin' and user is admin/1/MD/COO/EXECUTIVE_DIRECTOR
     const isAllowed = allowedRoles.some(allowed => {
-      const target = allowed.toLowerCase();
+      const target = allowed.toLowerCase().trim();
       
+      // Exact checks (e.g. custom role strings or IDs)
+      if (roleName === target || roleId === target) {
+        return true;
+      }
+
       // Admin checks
       if (target === 'admin') {
         return (
-          roleName.toLowerCase() === 'admin' ||
-          roleId === '1' ||
-          roleId === '10' ||
-          roleName === '10' ||
+          roleName === 'admin' ||
+          roleName === 'superadmin' ||
+          roleName === 'super admin' ||
+          roleId === '2' ||
           roleName.toUpperCase() === 'MD' ||
           roleName.toUpperCase() === 'COO' ||
           roleName.toUpperCase() === 'EXECUTIVE_DIRECTOR'
@@ -61,17 +86,16 @@ export const requireRole = (allowedRoles = []) => {
       // Manager checks
       if (target === 'manager') {
         return (
-          roleName.toLowerCase() === 'manager' ||
+          roleName === 'manager' ||
+          roleName === 'admin' ||
+          roleName === 'superadmin' ||
+          roleName === 'super admin' ||
           roleId === '2' ||
           roleName.toUpperCase() === 'DEPARTMENT_MANAGER'
         );
       }
 
-      // Exact checks (e.g. custom role strings or IDs)
-      return (
-        roleName.toLowerCase() === target ||
-        roleId === target
-      );
+      return false;
     });
 
     if (!isAllowed) {
@@ -107,7 +131,7 @@ export const restrictToRoles = (allowedRoles = []) => {
   };
 };
 
-export const restrictToDepartment = (departmentId) => {
+export const restrictToDepartment = (deptCodeOrId) => {
   return async (req, res, next) => {
     // Administrative roles (1, 2, hr, admin) can bypass department checks
     const role = String(req.user?.role || req.user?.role_id || '').toLowerCase().trim();
@@ -133,15 +157,34 @@ export const restrictToDepartment = (departmentId) => {
 
     userDeptId = String(userDeptId || '').trim();
 
-    // Bypass for HR/ADMIN & Non-Operational departments
-    if (userDeptId === '6a3caed51194353cbc8a3686' || userDeptId === '6a55c7e8b613a280003481d8') {
-      return next();
+    const Department = (await import('../modules/departments/department.model.js')).default;
+
+    // Bypass for HR/ADMIN department (code: 'HR')
+    try {
+      const hrDept = await Department.findOne({ code: 'HR' });
+      if (hrDept && userDeptId === String(hrDept._id)) {
+        return next();
+      }
+    } catch (err) {
+      console.error("Failed to fetch HR department for bypass check:", err);
     }
 
-    if (userDeptId !== String(departmentId).trim()) {
+    // Resolve the target department ID from deptCodeOrId (could be a code or ObjectID)
+    let targetDeptId = String(deptCodeOrId).trim();
+    if (targetDeptId.length !== 24) {
+      try {
+        const targetDept = await Department.findOne({ code: targetDeptId.toUpperCase() });
+        targetDeptId = targetDept ? String(targetDept._id) : '';
+      } catch (err) {
+        console.error("Failed to resolve department code:", err);
+        targetDeptId = '';
+      }
+    }
+
+    if (userDeptId !== targetDeptId) {
       return res.status(403).json({
         success: false,
-        message: 'Access denied. Exclusive to the marketing department.'
+        message: 'Access denied. Exclusive to the authorized department.'
       });
     }
 
@@ -175,12 +218,36 @@ const protectRoute = async (req, res, next) => {
 
     console.log("TOKEN:", token);
 
+    // Check if token has been blacklisted
+    try {
+      const isRevoked = await redis.get(`revoked_token:${token}`);
+      if (isRevoked) {
+        return res.status(401).json({
+          detail: "Token has been revoked. Please log in again."
+        });
+      }
+    } catch (redisError) {
+      console.warn("Redis check failed in protectRoute:", redisError.message);
+    }
+
     const decoded = jwt.verify(
       token,
       process.env.JWT_SECRET
     );
 
     console.log("DECODED:", decoded);
+
+    // Check all-device revocation
+    try {
+      const revokedAt = await redis.get(`user_revoked_at:${decoded.id}`);
+      if (revokedAt && decoded.iat < parseInt(revokedAt)) {
+        return res.status(401).json({
+          detail: "Session revoked from all devices. Please log in again."
+        });
+      }
+    } catch (redisError) {
+      console.warn("Redis check failed in protectRoute:", redisError.message);
+    }
 
     req.user = decoded;
 
@@ -212,4 +279,4 @@ const protectRoute = async (req, res, next) => {
   }
 };
 
-export default protectRoute;
+export default protectRoute;

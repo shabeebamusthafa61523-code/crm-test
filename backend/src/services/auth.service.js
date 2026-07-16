@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import redis from '../config/redis.js';
+import User from '../models/user.model.js';
 import { signToken } from '../utils/jwt.util.js';
 import { comparePassword, hashPassword } from '../utils/bcrypt.util.js';
 import { AppError } from '../middleware/errorHandler.js';
@@ -24,10 +25,7 @@ export const authService = {
     }
 
     // 2. Query user records
-    const user = await prisma.user.findUnique({
-      where: { email },
-      include: { department: true }
-    });
+    const user = await User.findOne({ email }).populate('departmentId');
 
     if (!user || !user.isActive) {
       // Increment failures in Redis even for non-existent users to prevent user-enumeration timing leaks
@@ -36,7 +34,7 @@ export const authService = {
     }
 
     // 3. Verify bcrypt password hash
-    const isMatch = await comparePassword(password, user.passwordHash);
+    const isMatch = await comparePassword(password, user.password || user.passwordHash);
     if (!isMatch) {
       await authService.incrementFailedAttempts(email);
       throw new AppError('Invalid email or password credentials supplied.', 401);
@@ -47,10 +45,7 @@ export const authService = {
     await redis.del(lockoutKey);
 
     // 5. Update DB lastLogin audit stamp
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { lastLogin: new Date() }
-    });
+    await User.findByIdAndUpdate(user.id || user._id, { lastLogin: new Date() });
 
     return user;
   },
@@ -153,9 +148,7 @@ export const authService = {
     await redis.set(`revoked_refresh:${oldRefreshToken}`, session.userId, 'EX', 48 * 60 * 60);
 
     // 2. Load user to fetch latest permissions/active state
-    const user = await prisma.user.findUnique({
-      where: { id: session.userId }
-    });
+    const user = await User.findById(session.userId);
 
     if (!user || !user.isActive) {
       throw new AppError('User account associated with this session is inactive or deleted.', 401);

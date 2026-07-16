@@ -1,5 +1,6 @@
 import OpsReport from '../models/opsReport.model.js';
 import User from '../models/user.model.js';
+import { getDesignationIdByName } from '../utils/lookup.util.js';
 import Lead from '../models/lead.model.js';
 import LeadFollowup from '../models/leadFollowup.model.js';
 
@@ -136,11 +137,12 @@ export const getOpsStaffList = async (req, res, next) => {
       });
     }
 
+    const opsDesigId = await getDesignationIdByName('Ops Manager');
     // Query users belonging to the Manager - OPS Sales & Growth Designation
     const opsStaff = await User.find({
       $or: [
-        { designationId: '6a2f91472df21dc234018cab' },
-        { designation_id: '6a2f91472df21dc234018cab' }
+        { designationId: opsDesigId },
+        { designation_id: opsDesigId }
       ]
     }, '_id name employeeId email designation')
       .sort({ name: 1 })

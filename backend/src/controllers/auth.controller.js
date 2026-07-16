@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import redis from '../config/redis.js';
 import mongoose from 'mongoose';
+import { recordAudit } from '../middleware/audit.middleware.js';
+import notificationService from '../services/notification.service.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key';
 
@@ -85,18 +87,55 @@ export const signup = async (req, res) => {
       designationId: resolvedDesignationId,
       department: resolvedDepartmentName,
       departmentId: resolvedDepartmentId,
-      designation_id: resolvedDesignationId ? String(resolvedDesignationId) : String(designation_id),
-      joining_date: new Date(joining_date),
+      designation_id: resolvedDesignationId ? String(resolvedDesignationId) : String(designation_id || ''),
+      joining_date: joining_date ? new Date(joining_date) : new Date(),
       salary: parseFloat(salary) || 0,
       address,
       identityType,
       identityNumber,
       profile_image: profile_image || null,
       avatar: profile_image || null,
-      employeeId: email
+      employeeId: email,
+      lastLogin: null
     });
 
     await newUser.save();
+
+    // Audit log for signup
+    req.user = { id: newUser._id };
+    await recordAudit(req, {
+      action: 'CREATE',
+      entity: 'User',
+      entityId: newUser._id,
+      newValue: { email: newUser.email, role: userRole }
+    });
+
+    // Welcome email notification
+    const signupWelcomeHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+        <div style="background: linear-gradient(135deg, #1a1a2e, #16213e); padding: 32px; text-align: center;">
+          <h1 style="color: #00d4ff; margin: 0; font-size: 24px;">🎉 Account Registered!</h1>
+        </div>
+        <div style="padding: 32px; background: #ffffff;">
+          <p style="font-size: 16px; color: #333;">Hi <strong>${newUser.name}</strong>,</p>
+          <p style="color: #555;">Your account has been successfully registered on the CRM platform.</p>
+          <div style="background: #f4f7ff; border-left: 4px solid #00d4ff; padding: 16px; border-radius: 4px; margin: 20px 0;">
+            <p style="margin: 4px 0;"><strong>Email:</strong> ${newUser.email}</p>
+            <p style="margin: 4px 0;"><strong>Role:</strong> ${userRole.toUpperCase()}</p>
+          </div>
+          <p style="color: #e74c3c; font-size: 13px;">⚠️ Please keep your login credentials secure.</p>
+        </div>
+      </div>
+    `;
+    try {
+      await notificationService.sendEmail(
+        newUser.email,
+        '🎉 Welcome — Your CRM Account is Ready',
+        signupWelcomeHtml
+      );
+    } catch (emailErr) {
+      console.warn('Failed to send signup welcome email:', emailErr.message);
+    }
 
     res.status(201).json({ message: "Staff Registration Successful!", userId: newUser._id });
   } catch (error) {
@@ -145,14 +184,30 @@ export const login = async (req, res) => {
       console.warn("Failed to set Redis session key during login:", redisError.message);
     }
 
+    // Record login audit log
+    req.user = { id: user._id };
+    await recordAudit(req, {
+      action: 'LOGIN',
+      entity: 'User',
+      entityId: user._id,
+      newValue: { email: user.email }
+    });
+
     const Department = (await import('../modules/departments/department.model.js')).default;
     const isTeamLead = await Department.exists({ managerId: user._id }) ? true : false;
 
-    let departmentName = user.department || '';
+    // Retrieve user's department to get name and code
+    let departmentName = user.department || null;
+    let departmentCode = null;
     if (user.departmentId) {
-      const deptObj = await Department.findById(user.departmentId).select('name');
-      if (deptObj && deptObj.name) {
-        departmentName = deptObj.name;
+      try {
+        const userDept = await Department.findById(user.departmentId).select('name code');
+        if (userDept) {
+          departmentName = userDept.name;
+          departmentCode = userDept.code;
+        }
+      } catch (err) {
+        console.error("Failed to query user department on login:", err);
       }
     }
 
@@ -176,6 +231,8 @@ export const login = async (req, res) => {
         profile_image: user.profile_image || null,
         department: departmentName,
         departmentId: user.departmentId || null,
+        department: departmentName,
+        departmentCode: departmentCode,
         employeeId: user.employeeId || null,
         avatar: user.avatar || null,
         isActive: user.isActive ?? true,
@@ -258,4 +315,57 @@ export const resetForgotPassword = async (req, res) => {
   } catch (error) {
     res.status(500).json({ success: false, detail: error.message });
   }
-};
+};
+
+export const logout = async (req, res, next) => {
+  try {
+    const userId = req.user?.id || req.user?._id;
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (token) {
+      // 1. Blacklist current JWT token in Redis for 7 days
+      try {
+        await redis.set(`revoked_token:${token}`, 'REVOKED', 'EX', 7 * 24 * 60 * 60);
+      } catch (redisError) {
+        console.warn("Failed to blacklist token in Redis:", redisError.message);
+      }
+    }
+
+    if (userId) {
+      const allDevices = req.body?.allDevices === true || req.query?.allDevices === 'true';
+      
+      if (allDevices) {
+        // 2. Invalidate sessions on ALL devices
+        try {
+          await redis.set(`user_revoked_at:${userId}`, Math.floor(Date.now() / 1000));
+          await redis.del(`session:active:${userId}`);
+          
+          const authService = (await import('../services/auth.service.js')).authService;
+          await authService.revokeAllSessions(String(userId));
+        } catch (redisError) {
+          console.warn("Failed to revoke all sessions in Redis:", redisError.message);
+        }
+        
+        console.log(`🧹 Logged out user ${userId} from all devices.`);
+      } else {
+        // 3. Single device logout (just delete inactivity session key)
+        try {
+          await redis.del(`session:active:${userId}`);
+        } catch (redisError) {
+          console.warn("Failed to delete active session key in Redis:", redisError.message);
+        }
+      }
+
+      await recordAudit(req, {
+        action: 'LOGOUT',
+        entity: 'User',
+        entityId: userId
+      });
+    }
+
+    return res.status(200).json({ success: true, message: "Logout successful" });
+  } catch (error) {
+    next(error);
+  }
+};

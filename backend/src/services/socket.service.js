@@ -70,6 +70,20 @@ export const socketService = {
     } catch (error) {
       logger.warn(`🔌 WS Attendance live feed alert skipped: ${error.message}`);
     }
+  },
+
+  /**
+   * Broadcasts a new employee onboarding event to all connected admins
+   * Namespace: /dashboard, Event: dashboard:new_employee
+   */
+  emitNewEmployee: (employeeDetails) => {
+    try {
+      const io = getSocketIO();
+      io.of('/dashboard').to('md-coo-hq').emit('dashboard:new_employee', employeeDetails);
+      logger.info(`🔌 WebSockets: Broadcasted new employee onboarding event (${employeeDetails.name}).`);
+    } catch (error) {
+      logger.warn(`🔌 WS New employee broadcast skipped: ${error.message}`);
+    }
   }
 };
 

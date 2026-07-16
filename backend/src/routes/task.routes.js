@@ -3,7 +3,7 @@
 import { Router } from 'express';
 
 import verifyJWT from '../middleware/auth.middleware.js';
-import upload from '../middleware/upload.middleware.js';
+import upload, { validateUploadedFile } from '../middleware/upload.middleware.js';
 
 import {
   createTask,
@@ -42,6 +42,7 @@ router.use(verifyJWT);
 router.post(
   '/create',
   upload.single('file'),
+  validateUploadedFile,
   validateBody(createTaskSchema),
   createTask
 );
@@ -85,6 +86,7 @@ router.put(
   '/update/:task_id',
   validateParams(taskIdParamsSchema),
   upload.single('file'),
+  validateUploadedFile,
   validateBody(updateTaskSchema),
   updateTask
 );

@@ -9,15 +9,32 @@ export const sendNotification = async (userId, message, type = 'info') => {
   return { success: true, timestamp: new Date() };
 };
 
-export const sendEmail = async (to, subject, body) => {
+export const sendEmail = async (to, subject, bodyOrHtml, legacyBody) => {
+  const content = legacyBody || bodyOrHtml;
   console.log(`[Notification Service] Sending Email to ${to} | Subject: ${subject}`);
+  if (content && content.includes('<')) {
+    console.log(`[Notification Service] HTML email body detected (${content.length} chars).`);
+  }
+  return { success: true };
+};
+
+export const sendBulk = async (userIds, channels, content) => {
+  console.log(`[Notification Service] sendBulk to ${userIds.length} users via ${channels.join(', ')}: ${content.title}`);
+  return { success: true };
+};
+
+export const dispatchMultiChannel = async (params) => {
+  console.log(`[Notification Service] dispatchMultiChannel to User ${params.userId} via ${params.channels.join(', ')}: ${params.title}`);
   return { success: true };
 };
 
 // Create a default export object containing the functions to satisfy both import styles
 const notificationService = {
   sendNotification,
-  sendEmail
+  sendEmail,
+  sendBulk,
+  dispatchMultiChannel
 };
 
+export { notificationService };
 export default notificationService;

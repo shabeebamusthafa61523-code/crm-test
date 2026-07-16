@@ -227,16 +227,18 @@ const Dashboard = () => {
       // Check if user has administrative/privileged role
       const currentUserRole = String(parsedUser.role_id || parsedUser.roleId || parsedUser.role || '').toLowerCase().trim();
       let currentUserDept = '';
+      let currentUserDeptCode = String(parsedUser.departmentCode || '').toUpperCase().trim();
       if (parsedUser.departmentId) {
         if (typeof parsedUser.departmentId === 'object' && parsedUser.departmentId._id) {
           currentUserDept = String(parsedUser.departmentId._id).trim();
+          if (parsedUser.departmentId.code) {
+            currentUserDeptCode = String(parsedUser.departmentId.code).toUpperCase().trim();
+          }
         } else {
           currentUserDept = String(parsedUser.departmentId).trim();
         }
       }
-      const privileged = ['1', '2', 'hr', 'admin'].includes(currentUserRole) || 
-                         currentUserDept === '6a3caed51194353cbc8a3686' || 
-                         currentUserDept === '6a55c7e8b613a280003481d8';
+      const privileged = ['1', '2', 'hr', 'admin'].includes(currentUserRole) || currentUserDeptCode === 'HR';
       setIsAdmin(privileged);
     }
 

@@ -1,5 +1,6 @@
 import HrReport from '../models/hrReport.model.js';
 import User from '../models/user.model.js';
+import { getDesignationIdByName } from '../utils/lookup.util.js';
 
 /**
  * 1. GET HR REPORT BY DATE
@@ -138,11 +139,12 @@ export const getHrStaffList = async (req, res, next) => {
       });
     }
 
+    const hrDesigId = await getDesignationIdByName('HR Manager');
     // Query users belonging to the HR / Admin Manager Designation
     const hrStaff = await User.find({
       $or: [
-        { designationId: '6a2f8efea2fe388770a38987' },
-        { designation_id: '6a2f8efea2fe388770a38987' }
+        { designationId: hrDesigId },
+        { designation_id: hrDesigId }
       ]
     }, '_id name employeeId email designation')
       .sort({ name: 1 })
