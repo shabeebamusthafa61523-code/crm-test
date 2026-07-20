@@ -65,12 +65,6 @@ const getRowClass = (interestedService) => {
   if (service === 'WRONG LEAD') {
     return 'bg-yellow-200 dark:bg-yellow-900/60 hover:bg-yellow-300 dark:hover:bg-yellow-800/70 text-yellow-950 dark:text-yellow-100 transition-all duration-200 border-b border-yellow-300 dark:border-yellow-800';
   }
-  if (service === 'RNT') {
-    return 'bg-purple-200 dark:bg-purple-900/60 hover:bg-purple-300 dark:hover:bg-purple-800/70 text-purple-950 dark:text-purple-100 transition-all duration-200 border-b border-purple-300 dark:border-purple-800';
-  }
-  if (service === 'SWITCHED OFF') {
-    return 'bg-pink-200 dark:bg-pink-900/60 hover:bg-pink-300 dark:hover:bg-pink-800/70 text-pink-950 dark:text-pink-100 transition-all duration-200 border-b border-pink-300 dark:border-pink-800';
-  }
   return 'hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all duration-200 border-b border-slate-200/60 dark:border-slate-800';
 };
 
@@ -2242,13 +2236,13 @@ const ViewModal = ({ isOpen, onClose, lead, details, loading }) => {
   if (!isOpen || !lead) return null;
 
   return (
-<div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 backdrop-blur-sm p-4 pt-16 overflow-y-auto">      <motion.div
+<div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 backdrop-blur-sm p-4 pt-6 overflow-y-auto">      <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
-        className="w-full max-w-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden"
+        className="w-full max-w-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
           <h2 className="text-base font-bold text-slate-850 dark:text-white flex items-center gap-2">
             <TrendingUp className="text-indigo-600" size={18} />
             Lead Timeline Profile
@@ -2258,7 +2252,7 @@ const ViewModal = ({ isOpen, onClose, lead, details, loading }) => {
           </button>
         </div>
 
-        <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+        <div className="p-6 space-y-5 overflow-y-auto flex-grow scrollbar-thin">
           {/* Top Lead Info Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-800/40 p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800/40">
             <div className="space-y-2.5">
@@ -2424,7 +2418,7 @@ const ViewModal = ({ isOpen, onClose, lead, details, loading }) => {
           </div>
         </div>
 
-        <div className="flex items-center justify-end px-6 py-4 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-end px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex-shrink-0">
           <button
             onClick={onClose}
             className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition cursor-pointer"

@@ -3,6 +3,7 @@ import Sidebar from '../components/Sidebar';
 import Navbar from '../components/Navbar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
+import AiChatWidget from '../components/AiChatWidget';
 
 const MainLayout = ({ children }) => {
   const location = useLocation();
@@ -226,6 +227,7 @@ const MainLayout = ({ children }) => {
         </div>
       </div>
 
+      {location.pathname !== '/ai-report' && <AiChatWidget />}
     </div>
   );
 };

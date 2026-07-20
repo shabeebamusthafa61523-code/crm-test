@@ -1597,13 +1597,13 @@ const ViewModal = ({ isOpen, onClose, lead, details, loading }) => {
   if (!isOpen || !lead) return null;
 
   return (
-<div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 backdrop-blur-sm p-4 pt-16 overflow-y-auto">      <motion.div
+<div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 backdrop-blur-sm p-4 pt-6 overflow-y-auto">      <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
-        className="w-full max-w-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden"
+        className="w-full max-w-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
           <h2 className="text-base font-bold text-slate-850 dark:text-white flex items-center gap-2">
             <TrendingUp className="text-indigo-600" size={18} />
             Lead Timeline Profile
@@ -1613,7 +1613,7 @@ const ViewModal = ({ isOpen, onClose, lead, details, loading }) => {
           </button>
         </div>
 
-        <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+        <div className="p-6 space-y-5 overflow-y-auto flex-grow scrollbar-thin">
           {/* Top Lead Info Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-800/40 p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800/40">
             <div className="space-y-2.5">
@@ -1731,7 +1731,7 @@ const ViewModal = ({ isOpen, onClose, lead, details, loading }) => {
           </div>
         </div>
 
-        <div className="flex items-center justify-end px-6 py-4 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-end px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex-shrink-0">
           <button
             onClick={onClose}
             className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition cursor-pointer"
