@@ -65,12 +65,6 @@ const getRowClass = (interestedService) => {
   if (service === 'WRONG LEAD') {
     return 'bg-yellow-200 dark:bg-yellow-900/60 hover:bg-yellow-300 dark:hover:bg-yellow-800/70 text-yellow-950 dark:text-yellow-100 transition-all duration-200 border-b border-yellow-300 dark:border-yellow-800';
   }
-  if (service === 'RNT') {
-    return 'bg-purple-200 dark:bg-purple-900/60 hover:bg-purple-300 dark:hover:bg-purple-800/70 text-purple-950 dark:text-purple-100 transition-all duration-200 border-b border-purple-300 dark:border-purple-800';
-  }
-  if (service === 'SWITCHED OFF') {
-    return 'bg-pink-200 dark:bg-pink-900/60 hover:bg-pink-300 dark:hover:bg-pink-800/70 text-pink-950 dark:text-pink-100 transition-all duration-200 border-b border-pink-300 dark:border-pink-800';
-  }
   return 'hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all duration-200 border-b border-slate-200/60 dark:border-slate-800';
 };
 
@@ -144,6 +138,13 @@ const [activePriority, setActivePriority] = useState('all');
     if (!currentUser) return false;
     const roleId = String(currentUser.role_id || currentUser.roleId || currentUser.role || '').toLowerCase().trim();
     return ['1', '2', '3','hr', 'admin'].includes(roleId);
+  }, [currentUser]);
+
+  const isAdmin = useMemo(() => {
+    if (!currentUser) return false;
+    const roleId = String(currentUser.role_id || currentUser.roleId || currentUser.role || '').toLowerCase().trim();
+    const designation = String(currentUser.designation || '').toLowerCase().trim();
+    return ['1', '2', 'admin'].includes(roleId) || designation.includes('admin');
   }, [currentUser]);
 
   const hasAccess = useMemo(() => {
@@ -590,13 +591,15 @@ const [activePriority, setActivePriority] = useState('all');
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => setIsImportOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium text-xs rounded-xl transition-all duration-300 cursor-pointer"
-            >
-              <FileSpreadsheet size={16} />
-              Import Excel
-            </button>
+            {!isAdmin && (
+              <button
+                onClick={() => setIsImportOpen(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium text-xs rounded-xl transition-all duration-300 cursor-pointer"
+              >
+                <FileSpreadsheet size={16} />
+                Import Excel
+              </button>
+            )}
             <button
               onClick={handleExportExcel}
               className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium text-xs rounded-xl transition-all duration-300 cursor-pointer"
@@ -611,13 +614,15 @@ const [activePriority, setActivePriority] = useState('all');
               <FileText size={16} />
               Export PDF
             </button>
-            <button
-              onClick={() => setIsCreateOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 transition-all duration-300 cursor-pointer"
-            >
-              <Plus size={16} />
-              Add Lead
-            </button>
+            {!isAdmin && (
+              <button
+                onClick={() => setIsCreateOpen(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 transition-all duration-300 cursor-pointer"
+              >
+                <Plus size={16} />
+                Add Lead
+              </button>
+            )}
           </div>
         </div>
 
@@ -1080,7 +1085,8 @@ const [activePriority, setActivePriority] = useState('all');
                           <select
                             value={lead.status || ''}
                             onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'status', e.target.value)}
-                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
+                            disabled={isAdmin}
                           >
                             <option value="" disabled>Select</option>
                             <option value="New">New</option>
@@ -1096,8 +1102,9 @@ const [activePriority, setActivePriority] = useState('all');
                           <select
                             value={lead.interestedService || ''}
                             onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'interestedService', e.target.value)}
-                            className="border rounded-lg px-2 py-1 text-xs font-bold focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                            className="border rounded-lg px-2 py-1 text-xs font-bold focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
                             style={lead.interestedService ? getCourseInterestStyle(lead.interestedService) : {}}
+                            disabled={isAdmin}
                           >
                             <option value="">Select</option>
                             <option value="HOT LEAD" style={{ backgroundColor: '#F0FDF4', color: '#9eb827' }}> HOT LEAD</option>
@@ -1106,7 +1113,7 @@ const [activePriority, setActivePriority] = useState('all');
                             <option value="RNT" style={{ backgroundColor: '#FAF5FF', color: '#7C3AED' }}>RNT</option>
                             <option value="SWITCHED OFF" style={{ backgroundColor: '#FDF2F8', color: '#DB2777' }}>SWITCHED OFF</option>
                             <option value="WRONG LEAD" style={{ backgroundColor: '#FEFCE8', color: '#A16207' }}>WRONG LEAD</option>
-                            <option value="CALL BACK">📞 CALL BACK</option>
+                            <option value="CALL BACK"> CALL BACK</option>
                           </select>
                         </td>
 
@@ -1115,7 +1122,8 @@ const [activePriority, setActivePriority] = useState('all');
                           <select
                             value={lead.source || ''}
                             onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'source', e.target.value)}
-                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
+                            disabled={isAdmin}
                           >
                             <option value="" disabled>Select</option>
                             <option value="REFERENCE">REFERENCE</option>
@@ -1131,7 +1139,8 @@ const [activePriority, setActivePriority] = useState('all');
                             type="date"
                             value={formatDateForInput(lead.leadsReceivedDate)}
                             onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'leadsReceivedDate', e.target.value || null)}
-                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
+                            disabled={isAdmin}
                           />
                         </td>
 
@@ -1141,7 +1150,8 @@ const [activePriority, setActivePriority] = useState('all');
                             type="date"
                             value={formatDateForInput(lead.followUpDate1)}
                             onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'followUpDate1', e.target.value || null)}
-                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
+                            disabled={isAdmin}
                           />
                         </td>
 
@@ -1151,7 +1161,8 @@ const [activePriority, setActivePriority] = useState('all');
                             type="date"
                             value={formatDateForInput(lead.followUpDate2)}
                             onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'followUpDate2', e.target.value || null)}
-                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
+                            disabled={isAdmin}
                           />
                         </td>
 
@@ -1161,7 +1172,8 @@ const [activePriority, setActivePriority] = useState('all');
                             type="date"
                             value={formatDateForInput(lead.followUpDate3)}
                             onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'followUpDate3', e.target.value || null)}
-                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
+                            disabled={isAdmin}
                           />
                         </td>
 
@@ -1171,7 +1183,8 @@ const [activePriority, setActivePriority] = useState('all');
                             type="date"
                             value={formatDateForInput(lead.followUpDate4)}
                             onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'followUpDate4', e.target.value || null)}
-                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
+                            disabled={isAdmin}
                           />
                         </td>
 
@@ -1181,7 +1194,8 @@ const [activePriority, setActivePriority] = useState('all');
                             type="date"
                             value={formatDateForInput(lead.followUpDate5)}
                             onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'followUpDate5', e.target.value || null)}
-                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
+                            disabled={isAdmin}
                           />
                         </td>
 
@@ -1195,7 +1209,8 @@ const [activePriority, setActivePriority] = useState('all');
                           <select
                             value={lead.clientMeetingFixed || ''}
                             onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'clientMeetingFixed', e.target.value)}
-                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
+                            disabled={isAdmin}
                           >
                             <option value="" disabled>Select</option>
                             <option value="Pending">Pending</option>
@@ -1209,7 +1224,8 @@ const [activePriority, setActivePriority] = useState('all');
                           <select
                             value={lead.admissionYesNo || ''}
                             onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'admissionYesNo', e.target.value)}
-                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
+                            disabled={isAdmin}
                           >
                             <option value="" disabled>Select</option>
                             <option value="Pending">Pending</option>
@@ -1243,33 +1259,37 @@ const [activePriority, setActivePriority] = useState('all');
                             >
                               <Eye size={15} />
                             </button>
-                            <button
-                              onClick={() => {
-                                setSelectedLead(lead);
-                                setIsFollowUpOpen(true);
-                              }}
-                              className="p-2 text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-150 cursor-pointer"
-                              title="Add follow-up log"
-                            >
-                              <Clock size={15} />
-                            </button>
-                            <button
-                              onClick={() => {
-                                setSelectedLead(lead);
-                                setIsEditOpen(true);
-                              }}
-                              className="p-2 text-slate-400 hover:text-blue-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-150 cursor-pointer"
-                              title="Edit Lead"
-                            >
-                              <Edit3 size={15} />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteLead(lead.id || lead._id, lead.leadName)}
-                              className="p-2 text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-150 cursor-pointer"
-                              title="Delete Lead"
-                            >
-                              <Trash2 size={15} />
-                            </button>
+                            {!isAdmin && (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setSelectedLead(lead);
+                                    setIsFollowUpOpen(true);
+                                  }}
+                                  className="p-2 text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-150 cursor-pointer"
+                                  title="Add follow-up log"
+                                >
+                                  <Clock size={15} />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setSelectedLead(lead);
+                                    setIsEditOpen(true);
+                                  }}
+                                  className="p-2 text-slate-400 hover:text-blue-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-150 cursor-pointer"
+                                  title="Edit Lead"
+                                >
+                                  <Edit3 size={15} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteLead(lead.id || lead._id, lead.leadName)}
+                                  className="p-2 text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-150 cursor-pointer"
+                                  title="Delete Lead"
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -1631,13 +1651,13 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
                 style={formData.interestedService ? getCourseInterestStyle(formData.interestedService) : {}}
               >
                 <option value="">Select</option>
-                <option value="HOT LEAD" style={{ backgroundColor: '#F0FDF4', color: '#9eb827' }}>🔥 HOT LEAD</option>
-                <option value="WARM LEAD" style={{ backgroundColor: '#F0F9FF', color: '#0369A1' }}>🌤 WARM LEAD</option>
-                <option value="COLD LEAD" style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}>❄️ COLD LEAD</option>
-                <option value="RNT" style={{ backgroundColor: '#FAF5FF', color: '#7C3AED' }}>📵 RNT</option>
-                <option value="SWITCHED OFF" style={{ backgroundColor: '#FDF2F8', color: '#DB2777' }}>📴 SWITCHED OFF</option>
-                <option value="WRONG LEAD" style={{ backgroundColor: '#FEFCE8', color: '#A16207' }}>❌ WRONG LEAD</option>
-                <option value="CALL BACK">📞 CALL BACK</option>
+                <option value="HOT LEAD" style={{ backgroundColor: '#F0FDF4', color: '#9eb827' }}> HOT LEAD</option>
+                <option value="WARM LEAD" style={{ backgroundColor: '#F0F9FF', color: '#0369A1' }}>WARM LEAD</option>
+                <option value="COLD LEAD" style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}> COLD LEAD</option>
+                <option value="RNT" style={{ backgroundColor: '#FAF5FF', color: '#7C3AED' }}>RNT</option>
+                <option value="SWITCHED OFF" style={{ backgroundColor: '#FDF2F8', color: '#DB2777' }}>SWITCHED OFF</option>
+                <option value="WRONG LEAD" style={{ backgroundColor: '#FEFCE8', color: '#A16207' }}> WRONG LEAD</option>
+                <option value="CALL BACK"> CALL BACK</option>
               </select>
             </div>
             <div>
@@ -2186,13 +2206,13 @@ const ViewModal = ({ isOpen, onClose, lead, details, loading }) => {
   if (!isOpen || !lead) return null;
 
   return (
-<div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 backdrop-blur-sm p-4 pt-16 overflow-y-auto">      <motion.div
+<div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 backdrop-blur-sm p-4 pt-6 overflow-y-auto">      <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
-        className="w-full max-w-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden"
+        className="w-full max-w-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
           <h2 className="text-base font-bold text-slate-850 dark:text-white flex items-center gap-2">
             <TrendingUp className="text-indigo-600" size={18} />
             Lead Timeline Profile
@@ -2202,7 +2222,7 @@ const ViewModal = ({ isOpen, onClose, lead, details, loading }) => {
           </button>
         </div>
 
-        <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+        <div className="p-6 space-y-5 overflow-y-auto flex-grow scrollbar-thin">
           {/* Top Lead Info Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-800/40 p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800/40">
             <div className="space-y-2.5">
@@ -2368,7 +2388,7 @@ const ViewModal = ({ isOpen, onClose, lead, details, loading }) => {
           </div>
         </div>
 
-        <div className="flex items-center justify-end px-6 py-4 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-end px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex-shrink-0">
           <button
             onClick={onClose}
             className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition cursor-pointer"

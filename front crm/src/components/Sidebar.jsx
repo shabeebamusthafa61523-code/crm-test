@@ -58,7 +58,7 @@ const menuItems = [
     label: 'Leads Directory', 
     path: '/leads',
     allowedDepartments: ['6a211b6621f80bb8da167efb'],
-    allowedRoles: ['1', '2', 'hr', 'admin'],
+    // allowedRoles: ['1', '2', 'hr', 'admin'],
   },
   { 
     icon: TrendingUp, 
@@ -67,7 +67,7 @@ const menuItems = [
     // allowedRoles: ['3'],
     // allowedDepartments: ['6a26a7d72a56a1f9c49da8a3', '6a27f394558c220a47fff02e'],
     allowedDesignations: ['6a27939af292348deb7d0495'],
-    // allowedRoles: ['1', '2', 'hr']
+    allowedRoles: ['1', '2', 'hr','admin']
   },
   { 
     icon: TrendingUp, 

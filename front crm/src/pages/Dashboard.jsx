@@ -1106,7 +1106,7 @@ const Dashboard = () => {
                 subtext="Total Registered Leads"
               />
               <StatCard
-                label="Admission Ok"
+                label="Leads Ok"
                 value={stats.admissionsConfirmed?.value || 0}
                 icon={CheckCircle}
                 color="text-teal-600 dark:text-teal-400"
@@ -1324,7 +1324,7 @@ const Dashboard = () => {
                           </div>
                           <div className="flex items-center gap-2 font-mono text-[10px] text-slate-500">
                             <span>{slice.value}</span>
-                            <span className="text-indigo-500">({slice.rate}%)</span>
+                            <span className="text-indigo-500">({slice.rate.toFixed(2)}%)</span>
                           </div>
                         </div>
                       ))}

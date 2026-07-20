@@ -238,7 +238,7 @@ const StudentAttendance = () => {
           designation_id: '10', joining_date: new Date().toISOString().split('T')[0],
           address: '', identityType: 'aadhaar', identityNumber: '', profile_image: ''
         });
-        showToast("Scholar enrolled successfully!", "success");
+        showToast("Student Added successfully!", "success");
       } else {
         let errMsg = "Enrollment failed.";
         try {
@@ -340,7 +340,7 @@ const StudentAttendance = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
           {[
-            { label: 'Total Enrolled Students', value: totalStudents, icon: GraduationCap },
+            { label: 'Total Students', value: totalStudents, icon: GraduationCap },
             { label: 'Verified Present Today', value: activePresenceCount, icon: UserCheck },
             { label: 'Confirmed Absent Today', value: unresolvedAbsentCount, icon: AlertCircle },
           ].map((stat, i) => (
@@ -373,7 +373,7 @@ const StudentAttendance = () => {
               <Download size={16} /> Excel Report
             </button>
             <button onClick={() => setIsModalOpen(true)} className="flex-1 lg:flex-none bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-600/20 cursor-pointer">
-              <UserPlus size={16} /> Enroll Scholar
+              <UserPlus size={16} /> Add Student
             </button>
           </div>
         </div>
@@ -555,7 +555,7 @@ const StudentAttendance = () => {
                 <header className="mb-10 flex justify-between items-start">
                   <div>
                     <h2 className="text-3xl md:text-5xl font-black text-slate-900 dark:text-slate-100 italic uppercase tracking-tighter">
-                      Enroll <span className="text-indigo-600">Scholar</span>
+                      Add <span className="text-indigo-600">Student</span>
                     </h2>
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.4em] mt-2">
                       Verified Institutional Student Registration Node
@@ -616,7 +616,7 @@ const StudentAttendance = () => {
                       className="w-full py-5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-[1.5rem] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-lg shadow-indigo-600/20 active:scale-[0.98] disabled:opacity-50 cursor-pointer"
                     >
                       {isAddingStudent ? <Loader2 className="animate-spin" size={20} /> : <CheckCircle2 size={20} />}
-                      Confirm Enrollment
+                      Confirm 
                     </button>
                   </div>
                 </form>

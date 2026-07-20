@@ -378,90 +378,89 @@ const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) 
   return (
     <motion.div 
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex justify-center items-start overflow-y-auto pt-10 pb-10 no-scrollbar"
+      className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex justify-center items-start pt-6 overflow-y-auto p-4"
     >
       <motion.div 
-        initial={{ y: -100, scale: 0.9 }} animate={{ y: 0, scale: 1 }}
-        className="bg-white border border-slate-200 w-full max-w-3xl rounded-[3rem] p-10 shadow-xl relative"
+        initial={{ y: -40, scale: 0.95 }} animate={{ y: 0, scale: 1 }}
+        className="bg-white border border-slate-200 w-full max-w-2xl rounded-2xl p-6 shadow-xl relative"
       >
-        <button onClick={onClose} className="absolute top-8 right-8 text-slate-500 hover:text-slate-900 transition-colors"><X size={24}/></button>
+        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 transition-colors"><X size={18}/></button>
         
-        <header className="mb-10">
-          <h2 className="text-3xl font-black text-slate-900 italic uppercase tracking-tighter">New <span className="text-indigo-600">Task</span></h2>
-          {/* <p className="text-[10px] font-bold text-slate-600 uppercase tracking-[0.4em] mt-2">Dossier Entry Protocol</p> */}
+        <header className="mb-4">
+          <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">New <span className="text-indigo-600">Task</span></h2>
         </header>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="group relative h-48 w-full rounded-[2rem] border-2 border-dashed border-slate-200 hover:border-indigo-500/50 flex flex-col items-center justify-center transition-all bg-slate-50">
-            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleImage} />
+        <form onSubmit={handleSubmit} className="space-y-3">
+          {/* Compact image upload field */}
+          <div className="group relative flex items-center gap-3 w-full border border-dashed border-slate-200 hover:border-indigo-500 rounded-xl px-3 py-2.5 bg-slate-50 transition-all cursor-pointer">
+            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer w-full" onChange={handleImage} />
             {preview ? (
-              <img src={preview} className="h-full w-full object-cover rounded-[2rem]" alt="preview" />
+              <img src={preview} className="w-8 h-8 rounded-lg object-cover shrink-0" alt="preview" />
             ) : (
-              <div className="text-center">
-                <Camera className="mx-auto text-indigo-500 mb-4" size={32} />
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Upload Intelligence Asset</p>
-              </div>
+              <Camera size={15} className="text-indigo-400 group-hover:text-indigo-600 shrink-0 transition-colors" />
             )}
+            <span className="text-[11px] text-slate-400 font-medium truncate">
+              {preview ? (form.image?.name || 'Image selected') : 'Attachment / Image — Click to upload'}
+            </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.2em] ml-2">Title</label>
-              <input required className="w-full bg-white border border-slate-200 p-5 rounded-2xl text-slate-900 font-bold outline-none focus:border-indigo-500/50" placeholder="TITLE" value={form.title} onChange={e => setForm({...form, title: e.target.value})} />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.2em] ml-1">Title</label>
+              <input required className="w-full bg-white border border-slate-200 px-3 py-2 rounded-xl text-slate-900 text-sm font-semibold outline-none focus:border-indigo-500/50" placeholder="Task title" value={form.title} onChange={e => setForm({...form, title: e.target.value})} />
             </div>
-            <div className="space-y-2">
-              <label className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.2em] ml-2">Due Date</label>
-              <input type="date" className="w-full bg-white border border-slate-200 p-5 rounded-2xl text-slate-900 font-bold outline-none focus:border-indigo-500/50" value={form.dueDate} onChange={e => setForm({...form, dueDate: e.target.value})} />
+            <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.2em] ml-1">Due Date</label>
+              <input type="date" className="w-full bg-white border border-slate-200 px-3 py-2 rounded-xl text-slate-900 text-sm font-semibold outline-none focus:border-indigo-500/50" value={form.dueDate} onChange={e => setForm({...form, dueDate: e.target.value})} />
             </div>
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.2em] ml-2">assign to</label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <select
-                  required
-                  className="appearance-none bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 p-5 rounded-2xl text-gray-900 dark:text-gray-200 text-[11px] font-bold outline-none"
-                  value={form.assigned_to}
-                  onChange={e => {
-                    const userId = e.target.value;
-                    const user = users.find(u => String(u.id || u._id) === String(userId));
-                    let desigId = '';
-                    if (user) {
-                      if (user.designationId) {
-                        desigId = typeof user.designationId === 'object'
-                          ? (user.designationId._id || user.designationId.id || '')
-                          : String(user.designationId);
-                      } else if (user.designation) {
-                        desigId = String(user.designation);
-                      }
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.2em] ml-1">Assign To</label>
+            <div className="grid grid-cols-2 gap-3">
+              <select
+                required
+                className="appearance-none bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 px-3 py-2 rounded-xl text-gray-900 dark:text-gray-200 text-xs font-bold outline-none"
+                value={form.assigned_to}
+                onChange={e => {
+                  const userId = e.target.value;
+                  const user = users.find(u => String(u.id || u._id) === String(userId));
+                  let desigId = '';
+                  if (user) {
+                    if (user.designationId) {
+                      desigId = typeof user.designationId === 'object'
+                        ? (user.designationId._id || user.designationId.id || '')
+                        : String(user.designationId);
+                    } else if (user.designation) {
+                      desigId = String(user.designation);
                     }
-                    setForm({ ...form, assigned_to: userId, designation_id: desigId });
-                  }}
-                >
-                  <option value="">Assign to</option>
-                  {users.map(u => (
-                    <option key={u.id || u._id} value={u.id || u._id} className="bg-white text-gray-900">
-                      {u.name}
-                    </option>
-                  ))}
-                </select>
-                <div className="bg-slate-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-650 p-5 rounded-2xl text-gray-500 dark:text-gray-400 text-[11px] font-bold flex items-center">
-                  <span>
-                    {designations.find(d => String(d.id || d._id) === String(form.designation_id))?.name || "Designation"}
-                  </span>
-                </div>
+                  }
+                  setForm({ ...form, assigned_to: userId, designation_id: desigId });
+                }}
+              >
+                <option value="">Assign to</option>
+                {users.map(u => (
+                  <option key={u.id || u._id} value={u.id || u._id} className="bg-white text-gray-900">
+                    {u.name}
+                  </option>
+                ))}
+              </select>
+              <div className="bg-slate-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-650 px-3 py-2 rounded-xl text-gray-500 dark:text-gray-400 text-xs font-bold flex items-center">
+                <span>
+                  {designations.find(d => String(d.id || d._id) === String(form.designation_id))?.name || "Designation"}
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.2em] ml-2">Briefing</label>
-            <textarea className="w-full bg-white border border-slate-200 p-5 rounded-2xl text-slate-900 text-sm h-40 resize-none outline-none focus:border-indigo-500/50" placeholder="Enter tactical requirements..." value={form.description} onChange={e => setForm({...form, description: e.target.value})} />
+          <div className="space-y-1">
+            <label className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.2em] ml-1">Briefing</label>
+            <textarea className="w-full bg-white border border-slate-200 px-3 py-2 rounded-xl text-slate-900 text-sm h-20 resize-none outline-none focus:border-indigo-500/50" placeholder="Enter task details..." value={form.description} onChange={e => setForm({...form, description: e.target.value})} />
           </div>
 
-          <button disabled={isSubmitting} className="w-full py-6 bg-indigo-600 text-white hover:bg-indigo-700 hover:text-white rounded-2xl font-black uppercase text-[12px] tracking-[0.3em] transition-all flex items-center justify-center gap-3">
-{isSubmitting ? <Loader2
-  size={18}
-  className="animate-spin"
-/> : <ShieldCheck size={20} />}            Submit
+          <button disabled={isSubmitting} className="w-full py-3 bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl font-black uppercase text-[11px] tracking-[0.2em] transition-all flex items-center justify-center gap-2">
+            {isSubmitting ? <Loader2 size={15} className="animate-spin" /> : <ShieldCheck size={15} />}
+            Submit Task
           </button>
         </form>
       </motion.div>
@@ -626,68 +625,63 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
   return (
     <motion.div 
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[5000] bg-slate-900/40 backdrop-blur-sm flex justify-center items-start overflow-y-auto pt-8 md:pt-16 p-4 no-scrollbar"
+      className="fixed inset-0 z-[5000] bg-slate-900/40 backdrop-blur-sm flex justify-center items-start pt-6 overflow-y-auto p-4"
     >
       <motion.div 
-        initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-6xl rounded-[3.5rem] overflow-hidden flex flex-col lg:flex-row shadow-2xl mb-10"
+        initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-4xl rounded-2xl overflow-hidden flex flex-col lg:flex-row shadow-2xl"
       >
-        <div className="w-full lg:w-5/12 bg-slate-50 dark:bg-slate-950/40 p-10 flex flex-col items-center justify-center relative border-r border-slate-100 dark:border-slate-800">
-          <div className="absolute top-8 left-10 flex items-center gap-3">
-            <div className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
-            <span className="text-[9px] font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-[0.4em]">Tactical Asset</span>
+        <div className="w-full lg:w-3/12 bg-slate-50 dark:bg-slate-950/40 p-4 flex flex-col items-center justify-start gap-3 relative border-r border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-1.5 self-start">
+            <div className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />
+            <span className="text-[8px] font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-[0.3em]">Task</span>
           </div>
 
           <div 
-            className="group relative cursor-zoom-in w-full transition-transform duration-500 hover:scale-[1.02]" 
+            className="group relative cursor-zoom-in w-full transition-transform duration-300 hover:scale-[1.02]" 
             onClick={() => window.open(getTaskImageUrl(task.image || task.file), '_blank')}
           >
             <img 
-              src={getTaskImageUrl(task.image || task.file) || 'https://placehold.co/600x800/111218/4f46e5?text=DATA+MISSING'} 
-              className="w-full rounded-3xl object-cover shadow-2xl border border-slate-100 dark:border-slate-850" 
-              alt="Task Asset" 
+              src={getTaskImageUrl(task.image || task.file) || 'https://placehold.co/600x800/111218/4f46e5?text=NO+IMAGE'} 
+              className="w-full rounded-xl object-cover shadow-md border border-slate-100 dark:border-slate-800 max-h-40" 
+              alt="Task " 
             />
           </div>
 
           {isEditing && (
-            <label className="mt-6 w-full py-4 border-2 border-dashed border-indigo-500/20 rounded-2xl flex items-center justify-center gap-3 cursor-pointer hover:bg-indigo-500/5 transition-all">
+            <label className="w-full py-2 border border-dashed border-indigo-500/30 rounded-lg flex items-center justify-center gap-2 cursor-pointer hover:bg-indigo-500/5 transition-all">
               <input type="file" className="hidden" onChange={(e) => setNewFile(e.target.files[0])} />
-              <Camera size={18} className="text-indigo-500" />
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate max-w-[200px]">
-                {newFile ? newFile.name : 'Update File'}
+              <Camera size={13} className="text-indigo-500" />
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate max-w-[120px]">
+                {newFile ? newFile.name : 'Replace File'}
               </span>
             </label>
           )}
         </div>
 
-        <div className="w-full lg:w-7/12 p-10 lg:p-16 relative flex flex-col justify-between bg-white dark:bg-slate-900">
-          <button onClick={onClose} className="absolute top-10 right-10 p-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-all">
-            <X />
+        <div className="w-full lg:w-9/12 p-5 relative flex flex-col justify-between bg-white dark:bg-slate-900">
+          <button onClick={onClose} className="absolute top-4 right-4 p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400 transition-all">
+            <X size={16} />
           </button>
 
           <div>
-            {/* STATUS DISPLAY */}
-            <div className="mb-8">
+            {/* STATUS */}
+            <div className="mb-3">
               {isEditing ? (
-                <div className="relative">
-                  <select
-                    value={editForm.status}
-                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                    className="w-full appearance-none bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-5 pr-12 rounded-2xl text-slate-900 dark:text-slate-100 text-[11px] font-black uppercase tracking-[0.2em] outline-none focus:border-indigo-500/50 transition-all cursor-pointer hover:border-indigo-500/30 shadow-sm"
-                  >
-                    <option value="pending" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">PENDING</option>
-                    <option value="current" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">CURRENT</option>
-                    <option value="preview" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">PREVIEW</option>
-                    <option value="done" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">COMPLETED</option>
-                  </select>
-                  <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-400/60">
-                    <Layout size={16} />
-                  </div>
-                </div>
+                <select
+                  value={editForm.status}
+                  onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                  className="w-full appearance-none bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-slate-900 dark:text-slate-100 text-xs font-black uppercase tracking-[0.15em] outline-none focus:border-indigo-500/50 cursor-pointer"
+                >
+                  <option value="pending">PENDING</option>
+                  <option value="current">CURRENT</option>
+                  <option value="preview">PREVIEW</option>
+                  <option value="done">COMPLETED</option>
+                </select>
               ) : (
-                <div className={`inline-flex items-center gap-3 px-6 py-3 rounded-full border ${statusConfig[task.status]?.activeClass || 'bg-slate-500/10 border-slate-500/20 text-slate-600'}`}>
-                  <div className={`w-2 h-2 rounded-full animate-pulse ${statusConfig[task.status]?.dot || 'bg-slate-500'}`} />
-                  <span className="font-black uppercase text-[11px] tracking-widest">
+                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${statusConfig[task.status]?.activeClass || 'bg-slate-500/10 border-slate-500/20 text-slate-600'}`}>
+                  <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${statusConfig[task.status]?.dot || 'bg-slate-500'}`} />
+                  <span className="font-black uppercase text-[10px] tracking-widest">
                     {statusConfig[task.status]?.label || task.status}
                   </span>
                 </div>
@@ -695,39 +689,39 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
             </div>
 
             {isEditing ? (
-              <div className="space-y-6">
+              <div className="space-y-3">
                 <div>
-                  <label className="text-[9px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest mb-2 block ml-2">Header</label>
+                  <label className="text-[9px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest mb-1 block ml-1">Title</label>
                   <input 
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 p-6 rounded-3xl text-slate-900 dark:text-slate-105 text-2xl font-bold outline-none focus:border-indigo-500/50" 
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-slate-900 dark:text-slate-100 text-base font-bold outline-none focus:border-indigo-500/50" 
                     value={editForm.title} 
                     onChange={e => setEditForm({...editForm, title: e.target.value})} 
                   />
                 </div>
                 <div>
-                  <label className="text-[9px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest mb-2 block ml-2">Objective Brief</label>
+                  <label className="text-[9px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest mb-1 block ml-1">Description</label>
                   <textarea 
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-855 p-6 rounded-3xl text-slate-900 dark:text-slate-110 text-sm h-48 outline-none focus:border-indigo-500/50 resize-none leading-relaxed" 
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-slate-900 dark:text-slate-100 text-sm h-24 outline-none focus:border-indigo-500/50 resize-none leading-relaxed" 
                     value={editForm.description} 
                     onChange={e => setEditForm({...editForm, description: e.target.value})} 
                   />
                 </div>
               </div>
             ) : (
-              <div className="space-y-8">
-                <h2 className="text-5xl md:text-7xl font-black text-slate-900 dark:text-slate-100 italic tracking-tighter uppercase leading-[0.85]">
+              <div className="space-y-3">
+                <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight leading-tight">
                   {task.title}
                 </h2>
-                <div className="p-8 bg-slate-50 dark:bg-slate-950/40 border-y border-r border-slate-100 dark:border-slate-800 border-l-2 border-l-indigo-500 rounded-r-[2rem]">
-                  <p className="text-slate-605 dark:text-slate-300 text-xl leading-relaxed font-medium italic opacity-80">
-                    {task.description || 'No briefing recorded for this asset.'}
+                <div className="p-3 bg-slate-50 dark:bg-slate-950/40 border-y border-r border-slate-100 dark:border-slate-800 border-l-2 border-l-indigo-500 rounded-r-xl">
+                  <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed font-medium">
+                    {task.description || 'No briefing recorded.'}
                   </p>
                 </div>
               </div>
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 py-8 border-y border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/20 rounded-2xl px-6 mt-8">
+          <div className="grid grid-cols-3 gap-3 py-3 border-y border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/20 rounded-xl px-3 mt-3">
             <div>
               <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.3em] block mb-2">Staff</span>
               {isEditing ? (
@@ -818,7 +812,7 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
             </div>
           </div>
 
-          <div className="mt-12 flex gap-4">
+          <div className="mt-4 flex gap-3">
             {canModify ? (
               <>
                 {isDeleteConfirmOpen ? (
@@ -854,7 +848,7 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
                   className="flex-1 py-6 bg-indigo-600 text-white font-black uppercase text-[11px] tracking-[0.2em] rounded-2xl flex items-center justify-center gap-3 hover:bg-indigo-700 transition-all active:scale-95 shadow-lg disabled:opacity-50"
                 >
                   {isSaving ? <Loader2 className="animate-spin" /> : isEditing ? <Save size={18} /> : <Edit3 size={18} />}
-                  {isEditing ? (isSaving ? "Saving..." : "Synchronize Changes") : "Modify Assignment"}
+                  {isEditing ? (isSaving ? "Saving..." : "Synchronize Changes") : "Edit Task"}
                 </button>
               </>
             ) : (

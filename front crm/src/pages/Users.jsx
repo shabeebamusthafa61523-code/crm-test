@@ -408,7 +408,7 @@ const pagedUsers = filteredUsers.slice((currentPage - 1) * ITEMS_PER_PAGE, curre
                             <button 
                               onClick={() => handleViewClick(user)}
                               className="p-2.5 bg-slate-100 hover:bg-indigo-500 hover:text-white dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-xl transition-all duration-300 cursor-pointer shadow-sm active:scale-90"
-                              title="View dossier"
+                              title="View details"
                             >
                               <Eye size={14} />
                             </button>
@@ -901,174 +901,156 @@ const CreateModal = ({ onClose, refresh, getAuthHeaders, designations, onDesigna
   }
 };
 
-  return (
+return (
     <motion.div 
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex justify-center items-start overflow-y-auto pt-16 pb-16 p-4"
+      className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex justify-center items-start pt-6 overflow-y-auto p-4"
     >
       <motion.div 
         initial={{ y: -50, scale: 0.95 }} animate={{ y: 0, scale: 1 }} exit={{ y: -50, scale: 0.95 }}
-        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-3xl rounded-3xl p-8 md:p-10 shadow-2xl relative"
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-5xl rounded-3xl p-6 md:p-8 shadow-2xl relative"
       >
         <button onClick={onClose} className="absolute top-6 right-6 p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-500 transition-colors"><X size={20}/></button>
         
-        <header className="mb-8">
-          <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-slate-100 italic uppercase tracking-tighter">ADD <span className="text-indigo-600 dark:text-indigo-400">EMPLOYEE FILE</span></h2>
-          {/* <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-1">Initiating Onboarding Protocols</p> */}
+        <header className="mb-6">
+          <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100 italic uppercase tracking-tighter">ADD <span className="text-indigo-600 dark:text-indigo-400">EMPLOYEE FILE</span></h2>
         </header>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          
-          {/* Avatar Upload Container */}
-          <div className="flex flex-col sm:flex-row items-center gap-6 p-6 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-100 dark:border-slate-800/40">
-            <div className="relative group w-24 h-24 rounded-full border-2 border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-center overflow-hidden bg-slate-100 dark:bg-slate-900 hover:border-indigo-500 transition-all cursor-pointer">
-              <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleAvatarChange} />
-              {preview ? (
-                <img src={preview} className="h-full w-full object-cover" alt="avatar preview" />
-              ) : (
-                <div className="text-center text-slate-400 group-hover:text-indigo-500 transition-colors">
-                  <ImageIcon className="mx-auto" size={24} />
-                  <span className="text-[8px] font-bold uppercase tracking-widest mt-1 block">IMAGE</span>
-                </div>
-              )}
-            </div>
-            <div>
-              <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm">Profile Image File</h4>
-              <p className="text-xs text-slate-500 mt-1">Provide a high-fidelity JPG, PNG, or WEBP  asset. Max size: 5MB.</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Input fields — 3-Column Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="space-y-1">
               <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Employee ID</label>
-              <input required name="employeeId" className="w-full" value={form.employeeId} onChange={handleInputChange} />
+              <input required name="employeeId" className="w-full text-xs py-2" value={form.employeeId} onChange={handleInputChange} />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Full Name</label>
+                <input required name="name" className="w-full text-xs py-2" placeholder="NAME" value={form.name} onChange={handleInputChange} />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Phone Number</label>
+                <input
+                  required
+                  name="phone"
+                  type="tel"
+                  maxLength={10}
+                  className={`w-full border rounded-xl px-3 py-2 text-xs outline-none transition focus:ring-1 ${
+                    form.phone && form.phone.length !== 10
+                      ? 'border-red-400 focus:ring-red-400'
+                      : 'border-slate-200 dark:border-slate-700 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-slate-850 dark:text-white'
+                  }`}
+                  placeholder="10-digit number"
+                  value={form.phone}
+                  onChange={e => {
+                    const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    setForm(prev => ({ ...prev, phone: digits }));
+                  }}
+                />
+                {form.phone && form.phone.length !== 10 && (
+                  <p className="text-[9px] text-red-500 ml-1">Must be 10 digits.</p>
+                )}
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Corporate Email</label>
+                <input required type="email" name="email" className="w-full text-xs py-2" placeholder="EMAIL" value={form.email} onChange={handleInputChange} />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Corporate Designation</label>
+                <DesignationSelect
+                  value={form.designation}
+                  onChange={(designation) => setForm(prev => ({ ...prev, designation }))}
+                  designations={designations}
+                  getAuthHeaders={getAuthHeaders}
+                  onDesignationCreated={onDesignationCreated}
+                  onDesignationUpdated={onDesignationUpdated}
+                  onDesignationDeleted={onDesignationDeleted}
+                  showToast={showToast}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Department Assignment</label>
+                <select 
+                  required 
+                  name="departmentId" 
+                  value={form.departmentId} 
+                  onChange={handleInputChange}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500 dark:focus:border-indigo-400 cursor-pointer"
+                >
+                  <option value="" disabled>SELECT DEPARTMENT</option>
+                  {departments.map((dept) => (
+                    <option key={dept._id || dept.id} value={dept._id || dept.id} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">
+                      {dept.name.toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Reporting Manager</label>
+                <input required name="reportingManager" className="w-full text-xs py-2" placeholder="MANAGER" value={form.reportingManager} onChange={handleInputChange} />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">System Status</label>
+                <select name="status" className="w-full text-xs py-2" value={form.status} onChange={handleInputChange}>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="blocked">Blocked</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">System Role</label>
+                <select name="role" className="w-full text-xs py-2" value={form.role} onChange={handleInputChange}>
+                  {ROLES.map(r => (
+                    <option key={r.id} value={r.name}>{r.name.toUpperCase()}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Monthly Salary</label>
+                <input name="salary" type="number" className="w-full text-xs py-2" placeholder="SALARY" value={form.salary} onChange={handleInputChange} />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Joining Date</label>
+                <input required name="joining_date" type="date" className="w-full text-xs py-2" value={form.joining_date} onChange={handleInputChange} />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Identity Type</label>
+                <select name="identityType" className="w-full text-xs py-2" value={form.identityType} onChange={handleInputChange}>
+                  <option value="aadhaar">Aadhaar</option>
+                  <option value="pan">PAN</option>
+                  <option value="passport">Passport</option>
+                  <option value="driving_license">Driving License</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">ID Number</label>
+                <input required name="identityNumber" className="w-full text-xs py-2" placeholder="ID NUMBER" value={form.identityNumber} onChange={handleInputChange} />
+              </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Profile Photo</label>
+              <div className="relative group flex items-center gap-2 w-full border border-dashed border-slate-200 dark:border-slate-700 rounded-xl px-2 py-1.5 bg-slate-50 dark:bg-slate-900 hover:border-indigo-500 transition-all cursor-pointer">
+                <input type="file" className="absolute inset-0 opacity-0 cursor-pointer w-full" onChange={handleAvatarChange} />
+                {preview ? (
+                  <img src={preview} className="w-7 h-7 rounded-lg object-cover shrink-0" alt="preview" />
+                ) : (
+                  <ImageIcon size={14} className="text-slate-400 group-hover:text-indigo-500 shrink-0" />
+                )}
+                <span className="text-[10px] text-slate-400 truncate">{preview ? 'Photo selected' : 'Click to upload · JPG/PNG'}</span>
+              </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Full Name</label>
-              <input required name="name" className="w-full" placeholder="NAME" value={form.name} onChange={handleInputChange} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Phone Number</label>
-              <input
-                required
-                name="phone"
-                type="tel"
-                maxLength={10}
-                className={`w-full border rounded-xl px-3 py-2 text-sm outline-none transition focus:ring-1 ${
-                  form.phone && form.phone.length !== 10
-                    ? 'border-red-400 focus:ring-red-400'
-                    : 'border-slate-200 dark:border-slate-700 focus:ring-indigo-500'
-                }`}
-                placeholder="10-digit number"
-                value={form.phone}
-                onChange={e => {
-                  const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
-                  setForm(prev => ({ ...prev, phone: digits }));
-                }}
-              />
-              {form.phone && form.phone.length !== 10 && (
-                <p className="text-[10px] text-red-500 ml-1">Must be exactly 10 digits.</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Corporate Email</label>
-              <input required type="email" name="email" className="w-full" placeholder="EMAIL" value={form.email} onChange={handleInputChange} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Corporate Designation</label>
-              <DesignationSelect
-                value={form.designation}
-                onChange={(designation) => setForm(prev => ({ ...prev, designation }))}
-                designations={designations}
-                getAuthHeaders={getAuthHeaders}
-                onDesignationCreated={onDesignationCreated}
-                onDesignationUpdated={onDesignationUpdated}
-                onDesignationDeleted={onDesignationDeleted}
-                showToast={showToast}
-              />
-            </div>
-            <div className="space-y-2">
-  <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">
-    Department Assignment
-  </label>
-  
-  <select 
-    required 
-    name="departmentId" 
-    value={form.departmentId} 
-    onChange={handleInputChange}
-    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500 dark:focus:border-indigo-400 cursor-pointer"
-  >
-    <option value="" disabled>
-      SELECT DEPARTMENT
-    </option>
-    
-    {departments.map((dept) => (
-      <option 
-        key={dept._id || dept.id} 
-        value={dept._id || dept.id}
-        className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200"
-      >
-        {dept.name.toUpperCase()}
-      </option>
-    ))}
-  </select>
-</div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Reporting Manager</label>
-              <input required name="reportingManager" className="w-full" placeholder="MANAGER" value={form.reportingManager} onChange={handleInputChange} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">System Status</label>
-              <select name="status" className="w-full" value={form.status} onChange={handleInputChange}>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="blocked">Blocked</option>
-              </select>
-            </div>
-             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">System Role</label>
-              <select name="role" className="w-full" value={form.role} onChange={handleInputChange}>
-                {ROLES.map(r => (
-                  <option key={r.id} value={r.name}>{r.name.toUpperCase()}</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Monthly Salary</label>
-              <input name="salary" type="number" className="w-full" placeholder="SALARY" value={form.salary} onChange={handleInputChange} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Joining Date</label>
-              <input required name="joining_date" type="date" className="w-full" value={form.joining_date} onChange={handleInputChange} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Identity Type</label>
-              <select name="identityType" className="w-full" value={form.identityType} onChange={handleInputChange}>
-                <option value="aadhaar">Aadhaar</option>
-                <option value="pan">PAN</option>
-                <option value="passport">Passport</option>
-                <option value="driving_license">Driving License</option>
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">ID Number</label>
-              <input required name="identityNumber" className="w-full" placeholder="ID NUMBER" value={form.identityNumber} onChange={handleInputChange} />
-            </div>
-            <div className="space-y-2 md:col-span-2">
+            <div className="space-y-1 sm:col-span-2">
               <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Residential Address</label>
-              <textarea name="address" rows={2} className="w-full bg-slate-50 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:border-indigo-500/50 outline-none transition" placeholder="ADDRESS" value={form.address} onChange={handleInputChange} />
+              <input name="address" className="w-full text-xs py-2" placeholder="Address" value={form.address} onChange={handleInputChange} />
             </div>
           </div>
 
           <button 
             disabled={isSubmitting} 
-            className="w-full py-5 bg-indigo-600 dark:bg-indigo-500 text-white dark:text-slate-900 dark:font-black font-bold rounded-2xl uppercase text-[12px] tracking-[0.2em] transition-all duration-300 flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.98]"
+            className="w-full py-4 bg-indigo-600 dark:bg-indigo-500 text-white dark:text-slate-900 dark:font-black font-bold rounded-2xl uppercase text-[11px] tracking-[0.2em] transition-all duration-300 flex items-center justify-center gap-2 hover:scale-[1.005] active:scale-[0.99]"
           >
             {isSubmitting ? (
-              <Loader2 size={16} className="animate-spin" />
+              <Loader2 size={15} className="animate-spin" />
             ) : (
-              <CheckCircle2 size={16} />
+              <CheckCircle2 size={15} />
             )}
             Add Employee
           </button>
@@ -1174,167 +1156,160 @@ const EditModal = ({ user, onClose, refresh, getAuthHeaders, designations, onDes
   return (
     <motion.div 
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex justify-center items-start overflow-y-auto pt-16 pb-16 p-4"
+      className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex justify-center items-start pt-6 overflow-y-auto p-4"
     >
       <motion.div 
         initial={{ y: -50, scale: 0.95 }} animate={{ y: 0, scale: 1 }} exit={{ y: -50, scale: 0.95 }}
-        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-3xl rounded-3xl p-8 md:p-10 shadow-2xl relative"
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-5xl rounded-3xl p-8 md:p-10 shadow-2xl relative"
       >
         <button onClick={onClose} className="absolute top-6 right-6 p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-500 transition-colors"><X size={20}/></button>
         
-        <header className="mb-8">
+        <header className="mb-6">
           <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-slate-100 italic uppercase tracking-tighter">EDIT <span className="text-indigo-600 dark:text-indigo-400">EMPLOYEE FILE</span></h2>
-          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-1">Synchronizing Tactical Assets</p>
+          {/* <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-1">Synchronizing Tactical Assets</p> */}
         </header>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          
-          {/* Avatar Upload Container */}
-          <div className="flex flex-col sm:flex-row items-center gap-6 p-6 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-100 dark:border-slate-800/40">
-            <div className="relative group w-24 h-24 rounded-full border-2 border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-center overflow-hidden bg-slate-100 dark:bg-slate-900 hover:border-indigo-500 transition-all cursor-pointer">
-              <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleAvatarChange} />
-              {preview ? (
-                <img src={preview} className="h-full w-full object-cover" alt="avatar preview" />
-              ) : (
-                <div className="text-center text-slate-400 group-hover:text-indigo-500 transition-colors">
-                  <ImageIcon className="mx-auto" size={24} />
-                  <span className="text-[8px] font-bold uppercase tracking-widest mt-1 block">IMAGE</span>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Fields Grid — full width */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Employee ID</label>
+                <input required name="employeeId" className="w-full" value={form.employeeId} onChange={handleInputChange} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Full Name</label>
+                <input required name="name" className="w-full" placeholder="NAME" value={form.name} onChange={handleInputChange} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Phone Number</label>
+                <input
+                  required
+                  name="phone"
+                  type="tel"
+                  maxLength={10}
+                  className={`w-full border rounded-xl px-3 py-2 text-sm outline-none transition focus:ring-1 ${
+                    form.phone && form.phone.length !== 10
+                      ? 'border-red-400 focus:ring-red-400'
+                      : 'border-slate-200 dark:border-slate-700 focus:ring-indigo-500'
+                  }`}
+                  placeholder="10-digit number"
+                  value={form.phone}
+                  onChange={e => {
+                    const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    setForm(prev => ({ ...prev, phone: digits }));
+                  }}
+                />
+                {form.phone && form.phone.length !== 10 && (
+                  <p className="text-[10px] text-red-500 ml-1">Must be exactly 10 digits.</p>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Corporate Email</label>
+                <input required type="email" name="email" className="w-full" placeholder="EMAIL" value={form.email} onChange={handleInputChange} disabled />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Corporate Designation</label>
+                <DesignationSelect
+                  value={form.designation}
+                  onChange={(designation) => setForm(prev => ({ ...prev, designation }))}
+                  designations={designations}
+                  getAuthHeaders={getAuthHeaders}
+                  onDesignationCreated={onDesignationCreated}
+                  onDesignationUpdated={onDesignationUpdated}
+                  onDesignationDeleted={onDesignationDeleted}
+                  showToast={showToast}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Department Assignment</label>
+                <select
+                  required
+                  name="departmentId"
+                  value={form.departmentId}
+                  onChange={handleInputChange}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500 dark:focus:border-indigo-400 cursor-pointer"
+                >
+                  <option value="" disabled>SELECT DEPARTMENT</option>
+                  {departments.map((dept) => (
+                    <option
+                      key={dept._id || dept.id}
+                      value={dept._id || dept.id}
+                      className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                    >
+                      {dept.name.toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Reporting Manager</label>
+                <input required name="reportingManager" className="w-full" placeholder="MANAGER" value={form.reportingManager} onChange={handleInputChange} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">System Status</label>
+                <select name="status" className="w-full" value={form.status} onChange={handleInputChange}>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="blocked">Blocked</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">System Role</label>
+                <select name="role" className="w-full" value={form.role} onChange={handleInputChange}>
+                  {ROLES.map(r => (
+                    <option key={r.id} value={r.name}>{r.name.toUpperCase()}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Monthly Salary</label>
+                <input name="salary" type="number" className="w-full" placeholder="SALARY" value={form.salary} onChange={handleInputChange} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Joining Date</label>
+                <input required name="joining_date" type="date" className="w-full" value={form.joining_date} onChange={handleInputChange} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Identity Type</label>
+                <select name="identityType" className="w-full" value={form.identityType} onChange={handleInputChange}>
+                  <option value="aadhaar">Aadhaar</option>
+                  <option value="pan">PAN</option>
+                  <option value="passport">Passport</option>
+                  <option value="driving_license">Driving License</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">ID Number</label>
+                <input required name="identityNumber" className="w-full" placeholder="ID NUMBER" value={form.identityNumber} onChange={handleInputChange} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Profile Photo</label>
+                <div className="relative group flex items-center gap-2 w-full border border-dashed border-slate-200 dark:border-slate-700 rounded-xl px-2 py-1.5 bg-slate-50 dark:bg-slate-900 hover:border-indigo-500 transition-all cursor-pointer">
+                  <input type="file" className="absolute inset-0 opacity-0 cursor-pointer w-full" onChange={handleAvatarChange} />
+                  {preview ? (
+                    <img src={preview} className="w-7 h-7 rounded-lg object-cover shrink-0" alt="preview" />
+                  ) : (
+                    <ImageIcon size={14} className="text-slate-400 group-hover:text-indigo-500 shrink-0" />
+                  )}
+                  <span className="text-[10px] text-slate-400 truncate">{preview ? 'Photo selected' : 'Click to upload · JPG/PNG'}</span>
                 </div>
-              )}
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Residential Address</label>
+                <input name="address" className="w-full" placeholder="Address" value={form.address} onChange={handleInputChange} />
+              </div>
             </div>
-            <div>
-              <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm">Update Avatar File</h4>
-              <p className="text-xs text-slate-500 mt-1">On-click triggers file manager. Upload high resolution files. Max size: 5MB.</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Employee ID</label>
-              <input required name="employeeId" className="w-full" value={form.employeeId} onChange={handleInputChange} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Full Name</label>
-              <input required name="name" className="w-full" placeholder="NAME" value={form.name} onChange={handleInputChange} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Phone Number</label>
-              <input
-                required
-                name="phone"
-                type="tel"
-                maxLength={10}
-                className={`w-full border rounded-xl px-3 py-2 text-sm outline-none transition focus:ring-1 ${
-                  form.phone && form.phone.length !== 10
-                    ? 'border-red-400 focus:ring-red-400'
-                    : 'border-slate-200 dark:border-slate-700 focus:ring-indigo-500'
-                }`}
-                placeholder="10-digit number"
-                value={form.phone}
-                onChange={e => {
-                  const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
-                  setForm(prev => ({ ...prev, phone: digits }));
-                }}
-              />
-              {form.phone && form.phone.length !== 10 && (
-                <p className="text-[10px] text-red-500 ml-1">Must be exactly 10 digits.</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Corporate Email</label>
-              <input required type="email" name="email" className="w-full" placeholder="EMAIL" value={form.email} onChange={handleInputChange} disabled />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Corporate Designation</label>
-              <DesignationSelect
-                value={form.designation}
-                onChange={(designation) => setForm(prev => ({ ...prev, designation }))}
-                designations={designations}
-                getAuthHeaders={getAuthHeaders}
-                onDesignationCreated={onDesignationCreated}
-                onDesignationUpdated={onDesignationUpdated}
-                onDesignationDeleted={onDesignationDeleted}
-                showToast={showToast}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Department Assignment</label>
-              <select
-                required
-                name="departmentId"
-                value={form.departmentId}
-                onChange={handleInputChange}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500 dark:focus:border-indigo-400 cursor-pointer"
-              >
-                <option value="" disabled>SELECT DEPARTMENT</option>
-                {departments.map((dept) => (
-                  <option
-                    key={dept._id || dept.id}
-                    value={dept._id || dept.id}
-                    className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200"
-                  >
-                    {dept.name.toUpperCase()}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Reporting Manager</label>
-              <input required name="reportingManager" className="w-full" placeholder="MANAGER" value={form.reportingManager} onChange={handleInputChange} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">System Status</label>
-              <select name="status" className="w-full" value={form.status} onChange={handleInputChange}>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="blocked">Blocked</option>
-              </select>
-            </div>
-             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">System Role</label>
-              <select name="role" className="w-full" value={form.role} onChange={handleInputChange}>
-                {ROLES.map(r => (
-                  <option key={r.id} value={r.name}>{r.name.toUpperCase()}</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Monthly Salary</label>
-              <input name="salary" type="number" className="w-full" placeholder="SALARY" value={form.salary} onChange={handleInputChange} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Joining Date</label>
-              <input required name="joining_date" type="date" className="w-full" value={form.joining_date} onChange={handleInputChange} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Identity Type</label>
-              <select name="identityType" className="w-full" value={form.identityType} onChange={handleInputChange}>
-                <option value="aadhaar">Aadhaar</option>
-                <option value="pan">PAN</option>
-                <option value="passport">Passport</option>
-                <option value="driving_license">Driving License</option>
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">ID Number</label>
-              <input required name="identityNumber" className="w-full" placeholder="ID NUMBER" value={form.identityNumber} onChange={handleInputChange} />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-wider block ml-1">Residential Address</label>
-              <textarea name="address" rows={2} className="w-full bg-slate-50 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:border-indigo-500/50 outline-none transition" placeholder="ADDRESS" value={form.address} onChange={handleInputChange} />
-            </div>
-          </div>
 
           <button 
-            disabled={isSubmitting} 
-            className="w-full py-5 bg-indigo-600 dark:bg-indigo-500 text-white dark:text-slate-900 dark:font-black font-bold rounded-2xl uppercase text-[12px] tracking-[0.2em] transition-all duration-300 flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.98]"
+            disabled={isSubmitting}
+            className="w-full py-4 bg-indigo-600 dark:bg-indigo-500 text-white dark:text-slate-900 dark:font-black font-bold rounded-2xl uppercase text-[11px] tracking-[0.2em] transition-all duration-300 flex items-center justify-center gap-2 hover:scale-[1.005] active:scale-[0.99]"
           >
             {isSubmitting ? (
-              <Loader2 size={16} className="animate-spin" />
+              <Loader2 size={15} className="animate-spin" />
             ) : (
-              <CheckCircle2 size={16} />
+              <CheckCircle2 size={15} />
             )}
-            Synchronize Onboard File
+            Save Changes
           </button>
         </form>
       </motion.div>
@@ -1366,138 +1341,90 @@ const ViewModal = ({ user, getDesignationName, getDepartmentName, onClose }) => 
   const implicitPassword = `${namePart}${phonePart}`;
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex justify-center items-start overflow-y-auto pt-16 pb-16 p-4"
+      className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex justify-center items-start pt-6 overflow-y-auto p-4"
     >
-      <motion.div 
-        initial={{ y: -50, scale: 0.95 }} animate={{ y: 0, scale: 1 }} exit={{ y: -50, scale: 0.95 }}
-        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-xl rounded-3xl overflow-hidden shadow-2xl relative"
+      <motion.div
+        initial={{ y: -30, scale: 0.97 }} animate={{ y: 0, scale: 1 }} exit={{ y: -30, scale: 0.97 }}
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-3xl rounded-2xl shadow-2xl"
       >
-        <button onClick={onClose} className="absolute top-6 right-6 p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-500 transition-colors z-10"><X size={20}/></button>
-
-        {/* Graphic Header Block */}
-        <div className="h-32 bg-gradient-to-r from-indigo-500 to-indigo-700 p-6 flex items-end relative">
-          <div className="absolute top-6 left-6 flex items-center gap-2">
-            <Shield size={16} className="text-white/60" />
-            <span className="text-[9px] font-black text-white/60 uppercase tracking-[0.3em]">Employee Details</span>
-          </div>
-        </div>
-
-        {/* Avatar overlay */}
-        <div className="px-8 pb-8 relative">
-          <div className="-mt-16 mb-4 flex items-end justify-between">
-            <div className="relative">
-              {(user.avatar || user.profile_image) && !imgError ? (
-                <img 
-                  src={user.avatar || user.profile_image} 
-                  alt={user.name} 
-                  className="w-24 h-24 rounded-2xl object-cover border-4 border-white dark:border-slate-900 shadow-lg"
-                  onError={() => setImgError(true)}
-                />
-              ) : (
-                <div className="w-24 h-24 rounded-2xl bg-indigo-500/10 border-4 border-white dark:border-slate-900 text-white-100 flex items-center justify-center shadow-lg">
-                  <User size={36} />
-                </div>
-              )}
-              <div className={`absolute -bottom-1.5 -right-1.5 w-5 h-5 rounded-full border-4 border-white dark:border-slate-900 ${meta.dot}`} />
-            </div>
-            
-            <span className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-wider border ${meta.color}`}>
-              {statusKey}
-            </span>
-          </div>
-
-          {/* Details */}
-          <div className="space-y-6">
+        {/* ── Modal Header ── */}
+        <div className="px-6 pt-5 pb-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none">{user.name}</h3>
-              <p className="text-xs font-semibold text-indigo-500 dark:text-indigo-400 mt-1 uppercase tracking-widest">{getDesignationName(user)}</p>
+              <h2 className="text-lg font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight">Employee <span className="text-indigo-600 dark:text-indigo-400">Details</span></h2>
+              {/* <p className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mt-0.5">Personnel Dossier</p> */}
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-slate-50 dark:bg-slate-950/40 p-5 rounded-2xl border border-slate-100 dark:border-slate-800/40">
-              <div className="space-y-1">
-                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Employee ID</span>
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{user.employeeId || 'N/A'}</span>
+            <button onClick={onClose} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 transition-colors">
+              <X size={18}/>
+            </button>
+          </div>
+          <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {(user.avatar || user.profile_image) && !imgError ? (
+              <img
+                src={user.avatar || user.profile_image}
+                alt={user.name}
+                className="w-10 h-10 rounded-xl object-cover"
+                onError={() => setImgError(true)}
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center">
+                <User size={18} className="text-white" />
               </div>
-              <div className="space-y-1">
-                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Corporate Email</span>
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{user.email || 'N/A'}</span>
-              </div>
-              <div className="space-y-1">
-                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">System Role</span>
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">{user.role || 'employee'}</span>
-              </div>
-              <div className="space-y-1">
-                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Department Assignment</span>
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{getDepartmentName(user)}</span>
-              </div>
-              <div className="space-y-1">
-                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Reporting Manager</span>
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{user.reportingManager || 'Unassigned'}</span>
-              </div>
-              <div className="space-y-1">
-                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Monthly Salary</span>
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">₹{user.salary || '0'}</span>
-              </div>
-              <div className="space-y-1">
-                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Joining Date</span>
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  {user.joining_date ? new Date(user.joining_date).toLocaleDateString() : 'N/A'}
-                </span>
-              </div>
-              <div className="space-y-1">
-                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Identity Document</span>
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">
-                  {user.identityType || 'N/A'}
-                </span>
-              </div>
-              <div className="space-y-1">
-                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">ID Number</span>
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  {user.identityNumber || 'N/A'}
-                </span>
-              </div>
-              <div className="space-y-1 col-span-2">
-                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Residential Address</span>
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  {user.address || 'N/A'}
-                </span>
-              </div>
+            )}
+            <div>
+              <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 leading-none">{user.name}</h3>
+              <p className="text-[10px] text-indigo-500 dark:text-indigo-400 mt-0.5 uppercase tracking-widest font-semibold">{getDesignationName(user)}</p>
             </div>
-
-            <div className="space-y-3.5 pt-2">
-              <div className="flex items-center gap-3.5 text-xs">
-                <Mail size={16} className="text-slate-400" />
-                <span className="font-semibold text-slate-600 dark:text-slate-300">{user.email}</span>
-              </div>
-              {user.phone && (
-                <div className="flex items-center gap-3.5 text-xs">
-                  <Phone size={16} className="text-slate-400" />
-                  <span className="font-semibold text-slate-600 dark:text-slate-300">{user.phone}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Account Credentials Section */}
-            <div className="mt-4 pt-4 border-t border-dashed border-slate-200 dark:border-slate-800/80">
-              <div className="flex items-center justify-between p-4 bg-indigo-500/5 dark:bg-lime-500/5 border border-indigo-500/10 dark:border-lime-500/10 rounded-xl">
-                <div className="space-y-0.5">
-                  <span className="text-[9px] font-black uppercase tracking-widest text-indigo-500 dark:text-lime-400 block">
-                    Initial System Password
-                  </span>
-                  <p className="text-[10px] text-slate-400 font-medium">
-                    Formula: First 3 letters of name + last 3 digits of phone
-                  </p>
-                </div>
-                <div className="px-3 py-1.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg font-mono text-xs font-bold tracking-wider text-slate-800 dark:text-slate-100 select-all shadow-sm">
-                  {implicitPassword}
-                </div>
-              </div>
-            </div>
-
+          </div>
+          <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${meta.color}`}>
+            {statusKey}
+          </span>
           </div>
         </div>
+
+        {/* ── Contact Row ── */}
+        <div className="flex items-center gap-6 px-6 py-3 bg-slate-50 dark:bg-slate-950/40 border-b border-slate-100 dark:border-slate-800 text-xs text-slate-500">
+          <span className="flex items-center gap-1.5"><Mail size={12} className="text-slate-400" />{user.email || 'N/A'}</span>
+          {user.phone && <span className="flex items-center gap-1.5"><Phone size={12} className="text-slate-400" />{user.phone}</span>}
+        </div>
+
+        {/* ── Details Grid ── */}
+        <div className="p-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-5">
+          {[
+            { label: 'Employee ID',      value: user.employeeId },
+            { label: 'System Role',      value: user.role,            upper: true },
+            { label: 'Department',       value: getDepartmentName(user) },
+            { label: 'Rep. Manager',     value: user.reportingManager || 'Unassigned' },
+            { label: 'Monthly Salary',   value: `₹${user.salary || '0'}` },
+            { label: 'Joining Date',     value: user.joining_date ? new Date(user.joining_date).toLocaleDateString() : 'N/A' },
+            { label: 'Identity Type',    value: user.identityType,    upper: true },
+            { label: 'ID Number',        value: user.identityNumber },
+          ].map(({ label, value, upper }) => (
+            <div key={label}>
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{label}</p>
+              <p className={`text-xs font-semibold text-slate-700 dark:text-slate-200 ${upper ? 'uppercase' : ''}`}>{value || 'N/A'}</p>
+            </div>
+          ))}
+          <div className="col-span-2 sm:col-span-3 lg:col-span-4">
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Residential Address</p>
+            <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">{user.address || 'N/A'}</p>
+          </div>
+        </div>
+
+        {/* ── Password Footer ── */}
+        <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950/40 rounded-b-2xl">
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-widest text-indigo-500 dark:text-lime-400">Initial System Password</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">First 3 letters of name + last 3 digits of phone</p>
+          </div>
+          <div className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg font-mono text-sm font-bold tracking-wider text-slate-800 dark:text-slate-100 select-all shadow-sm">
+            {implicitPassword}
+          </div>
+        </div>
+
       </motion.div>
     </motion.div>
   );
