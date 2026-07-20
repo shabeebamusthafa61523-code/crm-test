@@ -28,7 +28,7 @@ const COLUMN_META = {
   pending: { label: 'Pending', icon: Layout, color: 'bg-[#e26a6a]', glow: 'shadow-[#e26a6a]/20' },
   current: { label: 'Current', icon: Clock, color: 'bg-[#e5a23a]', glow: 'shadow-[#e5a23a]/20' },
   preview: { label: 'Preview', icon: Eye, color: 'bg-indigo-500', glow: 'shadow-indigo-500/20' },
-  done: { label: 'Completed', icon: CheckCircle2, color: 'bg-[#9dd384]', glow: 'shadow-[#9dd384]/20' }
+  done: { label: 'Completed', icon: CheckCircle2, color: 'bg-[#b7d333]', glow: 'shadow-[#b7d333]/20' }
 };
 
 const DEFAULT_DESIGNATIONS = [
@@ -154,14 +154,14 @@ console.log("HEADERS:", getAuthHeaders());
     <div className="text-slate-700 dark:text-slate-200 font-sans selection:bg-white-500/30 selection:text-white">
       <style>{`.no-scrollbar::-webkit-scrollbar { display: none; }`}</style>
       
-      <div className="max-w-[1700px] mx-auto px-6 py-10">
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-10 border-b border-slate-200 dark:border-slate-800 pb-5">
+      <div className="max-w-[1700px] mx-auto py-2">
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-6 border-b border-slate-200 dark:border-slate-800 pb-2">
           <div>
             <div className="flex items-center gap-3 ">
-              <div className="h-2 w-2 bg-indigo-500 rounded-full animate-ping" />
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500/70 dark:text-indigo-400/80">System Live</span>
+              {/* <div className="h-2 w-2 bg-indigo-500 rounded-full animate-ping" />
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500/70 dark:text-indigo-400/80">System Live</span> */}
             </div>
-            <h1 className="text-4xl md:text-6xl font-black text-slate-900 dark:text-slate-100 italic tracking-tighter leading-none">
+            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-slate-100 italic tracking-tighter leading-none">
               TASKS <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-500"></span>
             </h1>
           </div>
@@ -387,8 +387,8 @@ const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) 
         <button onClick={onClose} className="absolute top-8 right-8 text-slate-500 hover:text-slate-900 transition-colors"><X size={24}/></button>
         
         <header className="mb-10">
-          <h2 className="text-3xl font-black text-slate-900 italic uppercase tracking-tighter">New <span className="text-indigo-600">Assignment</span></h2>
-          <p className="text-[10px] font-bold text-slate-600 uppercase tracking-[0.4em] mt-2">Dossier Entry Protocol</p>
+          <h2 className="text-3xl font-black text-slate-900 italic uppercase tracking-tighter">New <span className="text-indigo-600">Task</span></h2>
+          {/* <p className="text-[10px] font-bold text-slate-600 uppercase tracking-[0.4em] mt-2">Dossier Entry Protocol</p> */}
         </header>
 
         <form onSubmit={handleSubmit} className="space-y-6">

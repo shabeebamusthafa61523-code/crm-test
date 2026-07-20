@@ -316,8 +316,8 @@ const StudentAttendance = () => {
               <ShieldCheck className="text-white" size={32} />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight uppercase">Attendance <span className="text-indigo-600 italic">Control</span></h1>
-              <p className="text-[10px] font-black tracking-[0.2em] text-slate-500 dark:text-slate-400 uppercase mt-1 italic">Verified Student Administration Session</p>
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight uppercase">Students <span className="text-indigo-600 italic">Attendance</span></h1>
+              {/* <p className="text-[10px] font-black tracking-[0.2em] text-slate-500 dark:text-slate-400 uppercase mt-1 italic">Verified Student Administration Session</p> */}
             </div>
           </div>
 

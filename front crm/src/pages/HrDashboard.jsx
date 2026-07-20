@@ -213,7 +213,7 @@ export default function HrDashboard() {
       { label: 'Pending', value: counts.pending, color: '#94a3b8', bgClass: 'bg-slate-400' },     // Slate 400
       { label: 'Current', value: counts.current, color: '#3b82f6', bgClass: 'bg-blue-500' },      // Blue 500
       { label: 'Preview', value: counts.preview, color: '#f59e0b', bgClass: 'bg-amber-500' },     // Amber 500
-      { label: 'Done', value: counts.done, color: '#10b981', bgClass: 'bg-emerald-500' }          // Emerald 500
+      { label: 'Done', value: counts.done, color: '#b7d333', bgClass: 'bg-emerald-500' }          // Emerald 500
     ];
   }, [tasks]);
 
@@ -596,7 +596,7 @@ export default function HrDashboard() {
                     { label: 'Pending', value: counts.pending, color: '#94a3b8' },
                     { label: 'Current', value: counts.current, color: '#3b82f6' },
                     { label: 'Preview', value: counts.preview, color: '#f59e0b' },
-                    { label: 'Done', value: counts.done, color: '#10b981' }
+                    { label: 'Done', value: counts.done, color: '#b7d333' }
                   ];
 
                   return (

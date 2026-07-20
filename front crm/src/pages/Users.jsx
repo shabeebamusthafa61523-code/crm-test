@@ -218,18 +218,18 @@ const pagedUsers = filteredUsers.slice((currentPage - 1) * ITEMS_PER_PAGE, curre
   };
 
   return (
-    <div className="p-4 md:p-8 min-h-screen text-slate-800 dark:text-slate-100 transition-colors duration-500">
-      <div className="max-w-[1600px] mx-auto space-y-8">
+    <div className="min-h-screen text-slate-800 dark:text-slate-100 transition-colors duration-500">
+      <div className="max-w-[1600px] mx-auto space-y-5">
         
         {/* Header */}
-        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-slate-200 dark:border-slate-800">
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-2">
           <div>
-            <div className="flex items-center gap-3 mb-2">
+            {/* <div className="flex items-center gap-3 mb-2">
               <div className="h-2 w-2 bg-emerald-500 rounded-full animate-ping" />
               <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Nexus Staff Portal</span>
-            </div>
-            <h1 className="text-3xl md:text-5xl font-black text-slate-900 dark:text-slate-100 italic tracking-tighter leading-none">
-              EMPLOYEE <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-indigo-600 dark:from-indigo-400 dark:to-lime-400">DIRECTORY</span>
+            </div> */}
+            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-slate-100 italic tracking-tighter leading-none">
+              EMPLOYEE <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-indigo-600 dark:from-indigo-400 dark:to-lime-400">LIST</span>
             </h1>
           </div>
           
@@ -244,7 +244,7 @@ const pagedUsers = filteredUsers.slice((currentPage - 1) * ITEMS_PER_PAGE, curre
         </header>
 
         {/* Filters and Search */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-white dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800/80 shadow-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 py-1">
           {/* Tabs */}
           <div className="flex flex-wrap gap-2">
             {['all', 'active', 'inactive', 'blocked'].map((tab) => (
@@ -306,7 +306,6 @@ const pagedUsers = filteredUsers.slice((currentPage - 1) * ITEMS_PER_PAGE, curre
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800/80">
                     <th className="py-4.5 px-6 text-[10px] font-black uppercase tracking-wider text-slate-400">Employee Details</th>
-                    <th className="py-4.5 px-6 text-[10px] font-black uppercase tracking-wider text-slate-400">Employee ID</th>
                     <th className="py-4.5 px-6 text-[10px] font-black uppercase tracking-wider text-slate-400">Contact</th>
                     <th className="py-4.5 px-6 text-[10px] font-black uppercase tracking-wider text-slate-400">Role / Designation</th>
                     <th className="py-4.5 px-6 text-[10px] font-black uppercase tracking-wider text-slate-400">Department / Manager</th>
@@ -347,16 +346,11 @@ const pagedUsers = filteredUsers.slice((currentPage - 1) * ITEMS_PER_PAGE, curre
                               <h4 className="font-bold text-slate-900 dark:text-slate-100 tracking-tight leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                                 {user.name}
                               </h4>
-                              <p className="text-[11px] text-slate-400 font-medium tracking-wide lowercase truncate max-w-[180px]">
-                                {user.email}
+                              <p className="text-[10px] text-slate-400 font-extrabold tracking-widest uppercase truncate max-w-[180px]">
+                                {user.employeeId || 'No ID'}
                               </p>
                             </div>
                           </div>
-                        </td>
-
-                        {/* Employee ID */}
-                        <td className="py-4.5 px-6 font-semibold text-xs tracking-wider text-slate-600 dark:text-slate-300">
-                          {user.employeeId || 'N/A'}
                         </td>
 
                         {/* Contact Info */}
@@ -428,7 +422,7 @@ const pagedUsers = filteredUsers.slice((currentPage - 1) * ITEMS_PER_PAGE, curre
                             <button 
                               onClick={() => handleDeleteUser(user.id || user._id, user.name)}
                               className="p-2.5 bg-slate-100 hover:bg-rose-500 hover:text-white dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-xl transition-all duration-300 cursor-pointer shadow-sm active:scale-90"
-                              title="Purge agent file"
+                              title="Delete file"
                             >
                               <Trash2 size={14} />
                             </button>
@@ -544,9 +538,9 @@ const pagedUsers = filteredUsers.slice((currentPage - 1) * ITEMS_PER_PAGE, curre
         isOpen={deleteUserConfirm.isOpen}
         onClose={() => setDeleteUserConfirm({ isOpen: false, id: null, name: '' })}
         onConfirm={handleConfirmDeleteUser}
-        title="Purge Employee Records"
+        title="Delete Employee?"
         message={`Are you absolutely sure you want to delete employee "${deleteUserConfirm.name}"? This action is permanent and cannot be undone.`}
-        confirmText="Yes, Purge"
+        confirmText="Yes, Delete"
         cancelText="Cancel"
         type="danger"
       />
@@ -919,8 +913,8 @@ const CreateModal = ({ onClose, refresh, getAuthHeaders, designations, onDesigna
         <button onClick={onClose} className="absolute top-6 right-6 p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-500 transition-colors"><X size={20}/></button>
         
         <header className="mb-8">
-          <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-slate-100 italic uppercase tracking-tighter">NEW <span className="text-indigo-600 dark:text-indigo-400">EMPLOYEE FILE</span></h2>
-          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-1">Initiating Onboarding Protocols</p>
+          <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-slate-100 italic uppercase tracking-tighter">ADD <span className="text-indigo-600 dark:text-indigo-400">EMPLOYEE FILE</span></h2>
+          {/* <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-1">Initiating Onboarding Protocols</p> */}
         </header>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -1076,7 +1070,7 @@ const CreateModal = ({ onClose, refresh, getAuthHeaders, designations, onDesigna
             ) : (
               <CheckCircle2 size={16} />
             )}
-            Onboard New Agent
+            Add Employee
           </button>
         </form>
       </motion.div>
@@ -1386,7 +1380,7 @@ const ViewModal = ({ user, getDesignationName, getDepartmentName, onClose }) => 
         <div className="h-32 bg-gradient-to-r from-indigo-500 to-indigo-700 p-6 flex items-end relative">
           <div className="absolute top-6 left-6 flex items-center gap-2">
             <Shield size={16} className="text-white/60" />
-            <span className="text-[9px] font-black text-white/60 uppercase tracking-[0.3em]">Agent Profile dossier</span>
+            <span className="text-[9px] font-black text-white/60 uppercase tracking-[0.3em]">Employee Details</span>
           </div>
         </div>
 
@@ -1402,7 +1396,7 @@ const ViewModal = ({ user, getDesignationName, getDepartmentName, onClose }) => 
                   onError={() => setImgError(true)}
                 />
               ) : (
-                <div className="w-24 h-24 rounded-2xl bg-indigo-500/10 border-4 border-white dark:border-slate-900 text-indigo-500 flex items-center justify-center shadow-lg">
+                <div className="w-24 h-24 rounded-2xl bg-indigo-500/10 border-4 border-white dark:border-slate-900 text-white-100 flex items-center justify-center shadow-lg">
                   <User size={36} />
                 </div>
               )}
@@ -1444,7 +1438,7 @@ const ViewModal = ({ user, getDesignationName, getDepartmentName, onClose }) => 
               </div>
               <div className="space-y-1">
                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Monthly Salary</span>
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">${user.salary || '0'}</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">₹{user.salary || '0'}</span>
               </div>
               <div className="space-y-1">
                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Joining Date</span>

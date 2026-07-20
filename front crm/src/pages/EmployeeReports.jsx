@@ -430,12 +430,12 @@ const EmployeeReports = () => {
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-200 dark:border-slate-800 pb-8">
         <div>
           <div className="flex items-center gap-2.5 mb-2">
-            <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+            {/* <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500/70 dark:text-indigo-400/80">
               {isMonthlyReports ? 'Monthly Directory' : (isTeamReports ? 'Team Directory' : 'Admin Directory')}
-            </span>
+            </span> */}
           </div>
-          <h1 className="text-3xl md:text-5xl font-black italic uppercase tracking-tighter leading-none text-slate-900 dark:text-white">
+          <h1 className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter leading-none text-slate-900 dark:text-white">
             {isMonthlyReports ? 'Monthly' : (isTeamReports ? 'Team' : 'Employee')} <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-500">Reports</span>
           </h1>
           <p className="text-sm text-slate-500 mt-2">
@@ -471,7 +471,7 @@ const EmployeeReports = () => {
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto shrink-0">
           {/* Search Input */}
           <div className="relative w-full sm:w-60">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={14} />
+            {/* <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={14} /> */}
             <input
               type="text"
               placeholder={viewMode === 'employees' ? (isMonthlyReports || isTeamReports ? "Search team..." : "Search employees...") : "Search reports & staff..."}
