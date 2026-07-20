@@ -36,7 +36,7 @@ const PRIORITY_META = {
 };
 
 const COURSE_INTEREST_COLORS = {
-  'HOT LEAD':     { bg: '#F0FDF4', text: '#15803D', border: '#86EFAC' },
+  'HOT LEAD':     { bg: '#F0FDF4', text: '#9eb827', border: '#86EFAC' },
   'WARM LEAD':    { bg: '#F0F9FF', text: '#0369A1', border: '#7DD3FC' },
   'COLD LEAD':    { bg: '#FEF2F2', text: '#DC2626', border: '#FCA5A5' },
   'WRONG LEAD':   { bg: '#FEFCE8', text: '#A16207', border: '#FDE047' },
@@ -1128,7 +1128,7 @@ const [activePriority, setActivePriority] = useState('all');
                             style={lead.interestedService ? getCourseInterestStyle(lead.interestedService) : {}}
                           >
                             <option value="">Select</option>
-                            <option value="HOT LEAD" style={{ backgroundColor: '#F0FDF4', color: '#15803D' }}>🔥 HOT LEAD</option>
+                            <option value="HOT LEAD" style={{ backgroundColor: '#F0FDF4', color: '#9eb827' }}>🔥 HOT LEAD</option>
                             <option value="WARM LEAD" style={{ backgroundColor: '#F0F9FF', color: '#0369A1' }}>🌤 WARM LEAD</option>
                             <option value="COLD LEAD" style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}>❄️ COLD LEAD</option>
                             <option value="RNT" style={{ backgroundColor: '#FAF5FF', color: '#7C3AED' }}>📵 RNT</option>
@@ -1687,7 +1687,7 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
                 style={formData.interestedService ? getCourseInterestStyle(formData.interestedService) : {}}
               >
                 <option value="">Select</option>
-                <option value="HOT LEAD" style={{ backgroundColor: '#F0FDF4', color: '#15803D' }}>🔥 HOT LEAD</option>
+                <option value="HOT LEAD" style={{ backgroundColor: '#F0FDF4', color: '#9eb827' }}>🔥 HOT LEAD</option>
                 <option value="WARM LEAD" style={{ backgroundColor: '#F0F9FF', color: '#0369A1' }}>🌤 WARM LEAD</option>
                 <option value="COLD LEAD" style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}>❄️ COLD LEAD</option>
                 <option value="RNT" style={{ backgroundColor: '#FAF5FF', color: '#7C3AED' }}>📵 RNT</option>
@@ -2060,7 +2060,7 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
                 style={formData.interestedService ? getCourseInterestStyle(formData.interestedService) : {}}
               >
                 <option value="">Select</option>
-                <option value="HOT LEAD" style={{ backgroundColor: '#F0FDF4', color: '#15803D' }}>🔥 HOT LEAD</option>
+                <option value="HOT LEAD" style={{ backgroundColor: '#F0FDF4', color: '#9eb827' }}>🔥 HOT LEAD</option>
                 <option value="WARM LEAD" style={{ backgroundColor: '#F0F9FF', color: '#0369A1' }}>🌤 WARM LEAD</option>
                 <option value="COLD LEAD" style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}>❄️ COLD LEAD</option>
                 <option value="RNT" style={{ backgroundColor: '#FAF5FF', color: '#7C3AED' }}>📵 RNT</option>

@@ -65,9 +65,9 @@ const fetchAllReports = async (query) => {
 
 export const getDailyReport = async (req, res) => {
   try {
-    const { department, force } = req.query;
+    const { department, force, customNotes } = req.query;
     const deptId = department || 'all';
-    const isForce = force === 'true';
+    const isForce = force === 'true' || !!customNotes;
 
     // 1. Check Cache
     if (!isForce) {
@@ -118,7 +118,7 @@ export const getDailyReport = async (req, res) => {
         assignee: t.assigned_to ? t.assigned_to.name : 'Unassigned'
       }));
 
-    const prompt = `You are an expert Company Operations & HR Analyst. I am providing you with today's task statistics and specific task details for our entire company across all departments (including Development, Design, Marketing, Operations, HODs, and HR). 
+    let prompt = `You are an expert Company Operations & HR Analyst. I am providing you with today's task statistics and specific task details for our entire company across all departments (including Development, Design, Marketing, Operations, HODs, and HR). 
 Please generate a report.
 You MUST analyze and overview all tasks in the company, regardless of who created or assigned them, ensuring you cover all departments and not just HR-related tasks.
 You MUST respond with a JSON object matching this schema:
@@ -132,6 +132,10 @@ You MUST respond with a JSON object matching this schema:
   "markdownReport": "The full, professional Daily Status Report summarizing the day's highlights, what specific tasks were worked on across all departments, and any potential bottlenecks, written in Markdown. Do not include placeholders."
 }
 Here is the data: ${JSON.stringify({ stats: taskStats, recentTasks: recentTasks })}`;
+
+    if (customNotes) {
+      prompt += `\n\nCRITICAL USER INSTRUCTIONS/NOTES: Please integrate these specific instructions/notes directly into the report content:\n${customNotes}`;
+    }
 
     const reportRaw = await generateAIReport(prompt, null, true);
     
@@ -177,9 +181,9 @@ Here is the data: ${JSON.stringify({ stats: taskStats, recentTasks: recentTasks 
 
 export const getMonthlyReport = async (req, res) => {
   try {
-    const { department, force } = req.query;
+    const { department, force, customNotes } = req.query;
     const deptId = department || 'all';
-    const isForce = force === 'true';
+    const isForce = force === 'true' || !!customNotes;
 
     // 1. Check Cache
     if (!isForce) {
@@ -264,7 +268,7 @@ export const getMonthlyReport = async (req, res) => {
         }
     });
 
-    const prompt = `You are an expert Company Operations & HR Director evaluating the entire company's monthly performance data across all departments (including Development, Design, Marketing, Operations, HODs, and HR).
+    let prompt = `You are an expert Company Operations & HR Director evaluating the entire company's monthly performance data across all departments (including Development, Design, Marketing, Operations, HODs, and HR).
 I am providing you with task completion statistics and self-evaluation data for each employee in the company.
 Please generate the monthly insights.
 You MUST analyze all tasks and reports in the system, regardless of who created or assigned them, to give a true overview of the entire company, not just HR-assigned tasks.
@@ -280,6 +284,10 @@ You MUST respond with a JSON object matching this schema:
   "markdownReport": "The full Monthly Performance Insights report. Provide a short Monthly Overview of the rest of the team's performance, highlights, and any bottlenecks across all departments. Format in Markdown. Do not include placeholders."
 }
 Here is the data: ${JSON.stringify({ employeeStats })}`;
+
+    if (customNotes) {
+      prompt += `\n\nCRITICAL USER INSTRUCTIONS/NOTES: Please integrate these specific instructions/notes directly into the report content:\n${customNotes}`;
+    }
 
     const reportRaw = await generateAIReport(prompt, { employeeStats }, true);
 

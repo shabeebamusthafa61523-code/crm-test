@@ -15,7 +15,7 @@ import autoTable from 'jspdf-autotable'; // 👈 Import it as a direct function
 const API_BASE = import.meta.env.VITE_API_URL;
 
 const COURSE_INTEREST_COLORS = {
-  'HOT LEAD':     { bg: '#F0FDF4', text: '#15803D', border: '#86EFAC' },
+  'HOT LEAD':     { bg: '#F0FDF4', text: '#9eb827', border: '#86EFAC' },
   'WARM LEAD':    { bg: '#F0F9FF', text: '#0369A1', border: '#7DD3FC' },
   'COLD LEAD':    { bg: '#FEF2F2', text: '#DC2626', border: '#FCA5A5' },
   'WRONG LEAD':   { bg: '#FEFCE8', text: '#A16207', border: '#FDE047' },
@@ -162,16 +162,16 @@ const Leads = () => {
   }, [getAuthHeaders]);
 
   useEffect(() => {
-    if (isMarketingDept) {
+    if (isMarketingDept || isPrivilegedUser) {
       fetchLeads();
     }
-  }, [fetchLeads, isMarketingDept]);
+  }, [fetchLeads, isMarketingDept, isPrivilegedUser]);
 
   useEffect(() => {
-    if (isMarketingDept) {
+    if (isMarketingDept || isPrivilegedUser) {
       fetchStaff();
     }
-  }, [fetchStaff, isMarketingDept]);
+  }, [fetchStaff, isMarketingDept, isPrivilegedUser]);
 
   // Fetch lead timeline/details
   const fetchLeadDetails = async (leadId) => {
@@ -374,7 +374,7 @@ const Leads = () => {
     );
   }
 
-  if (!isMarketingDept) {
+  if (!isMarketingDept && !isPrivilegedUser) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center p-6 text-slate-800 dark:text-slate-100">
         <motion.div 
@@ -403,23 +403,15 @@ const Leads = () => {
   }
 
   return (
-    <div className="min-h-screen p-4 lg:p-8 bg-slate-50/50 dark:bg-slate-950/20 text-slate-800 dark:text-slate-100">
+    <div className="min-h-screen text-slate-800 dark:text-slate-100">
       <div className="max-w-[1600px] mx-auto space-y-6">
         
         {/* Header Section */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/50 dark:border-slate-800/50 shadow-sm backdrop-blur-md">
-          <div className="flex items-center gap-3.5">
-            <div className="p-3.5 bg-white text-indigo dark:bg-indigo-500/20 dark:text-indigo-400 rounded-2xl shadow-inner">
-              <TrendingUp size={28} />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-                Leads Management
-              </h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Track status, follow-up logs, assignments, and sales conversions.
-              </p>
-            </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-2">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-slate-100 italic tracking-tighter leading-none">
+              LEADS <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-indigo-650 dark:from-indigo-455 dark:to-lime-400">DIRECTORY</span>
+            </h1>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -454,35 +446,7 @@ const Leads = () => {
           </div>
         </div>
 
-        {/* Tab Filters */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
-          {[
-            { id: 'all', label: 'All Leads', count: filteredLeads.length },
-            // { id: 'assigned', label: 'Assigned Leads', count: tabCounts.assigned },
-            // { id: 'follow-up', label: 'Follow-Up', count: tabCounts['follow-up'] },
-            // { id: 'converted', label: 'Converted', count: tabCounts.converted },
-            // { id: 'lost', label: 'Lost', count: tabCounts.lost }
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`relative px-4 py-2 text-xs font-semibold rounded-xl transition-all duration-300 cursor-pointer ${
-                activeTab === tab.id
-                  ? 'bg-indigo-600 text-white shadow-md'
-                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50'
-              }`}
-            >
-              {tab.label}
-              <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] ${
-                activeTab === tab.id
-                  ? 'bg-slate-200/60 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                  : 'bg-slate-200/60 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-              }`}>
-                {tab.count}
-              </span>
-            </button>
-          ))}
-        </div>
+
 
         {/* Search Bar + Filter Button Row */}
         <div className="space-y-2.5">
@@ -1256,7 +1220,7 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
                 style={formData.interestedService ? getCourseInterestStyle(formData.interestedService) : {}}
               >
                 <option value="">Select</option>
-                <option value="HOT LEAD" style={{ backgroundColor: '#F0FDF4', color: '#15803D' }}>🔥 HOT LEAD</option>
+                <option value="HOT LEAD" style={{ backgroundColor: '#F0FDF4', color: '#9eb827' }}>🔥 HOT LEAD</option>
                 <option value="WARM LEAD" style={{ backgroundColor: '#F0F9FF', color: '#0369A1' }}>🌤 WARM LEAD</option>
                 <option value="COLD LEAD" style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}>❄️ COLD LEAD</option>
                 <option value="RNT" style={{ backgroundColor: '#FAF5FF', color: '#7C3AED' }}>📵 RNT</option>
@@ -1532,7 +1496,7 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
                 style={formData.interestedService ? getCourseInterestStyle(formData.interestedService) : {}}
               >
                 <option value="">Select</option>
-                <option value="HOT LEAD" style={{ backgroundColor: '#F0FDF4', color: '#15803D' }}>🔥 HOT LEAD</option>
+                <option value="HOT LEAD" style={{ backgroundColor: '#F0FDF4', color: '#9eb827' }}>🔥 HOT LEAD</option>
                 <option value="WARM LEAD" style={{ backgroundColor: '#F0F9FF', color: '#0369A1' }}>🌤 WARM LEAD</option>
                 <option value="COLD LEAD" style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}>❄️ COLD LEAD</option>
                 <option value="RNT" style={{ backgroundColor: '#FAF5FF', color: '#7C3AED' }}>📵 RNT</option>

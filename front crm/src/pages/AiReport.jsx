@@ -15,6 +15,7 @@ const AiReport = () => {
   const [departments, setDepartments] = useState([]);
   const [selectedDept, setSelectedDept] = useState('all');
   const [reportStats, setReportStats] = useState(null);
+  const [customNotes, setCustomNotes] = useState('');
 
   const reportRef = useRef(null);
   const exportRef = useRef(null);
@@ -46,7 +47,8 @@ const AiReport = () => {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_URL}/v1/ai/${activeTab}?department=${selectedDept}${force ? '&force=true' : ''}`, {
+      const notesParam = customNotes ? `&customNotes=${encodeURIComponent(customNotes)}` : '';
+      const response = await fetch(`${API_URL}/v1/ai/${activeTab}?department=${selectedDept}${force ? '&force=true' : ''}${notesParam}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -137,7 +139,7 @@ const AiReport = () => {
             {/* Regenerate Button */}
             <button
               onClick={() => fetchReport(true)}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-xs shadow-md shadow-indigo-500/20 hover:bg-indigo-700 hover:shadow-lg transition-all active:scale-95 disabled:opacity-50 tracking-wider uppercase cursor-pointer"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-700 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-500/20 transition-all active:scale-95 disabled:opacity-50 tracking-wider uppercase cursor-pointer"
               disabled={loading}
             >
               <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
@@ -145,7 +147,34 @@ const AiReport = () => {
             </button>
           </div>
         </div>
- 
+
+        {/* Custom Guidelines Input Box */}
+        <div className="bg-white/80 dark:bg-slate-900/80 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-5 shadow-sm backdrop-blur-md space-y-3">
+          <label className="text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-wider flex items-center gap-1.5">
+            <Sparkles size={13} className="animate-pulse" /> Guide the AI Report (Optional)
+          </label>
+          <div className="flex gap-4 items-stretch">
+            <textarea
+              placeholder="Add custom points, highlight specific department blockades, or write instructions for the AI report generation..."
+              value={customNotes}
+              onChange={(e) => setCustomNotes(e.target.value)}
+              rows={2}
+              className="flex-1 w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 rounded-xl p-3.5 text-xs font-semibold placeholder:text-slate-400 focus:border-indigo-500/50 dark:focus:border-indigo-400/50 outline-none transition-all resize-none"
+            />
+            {customNotes && (
+              <button
+                onClick={() => setCustomNotes('')}
+                className="px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-350 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+            *Entering guidelines will automatically force regenerate the report incorporating your instructions when you click Regenerate.
+          </p>
+        </div>
+
         {/* Tabs */}
         <div className="flex bg-slate-100 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-850 p-1 rounded-xl w-full max-w-xs shadow-sm">
           <button

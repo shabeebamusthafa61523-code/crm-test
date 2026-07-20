@@ -41,7 +41,7 @@ const NotificationPopover = ({ isOpen, onClose }) => {
                   className={`p-4 border-b border-slate-100 dark:border-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-950/20 transition-all cursor-pointer relative group`}
                 >
                   {n.unread && (
-                    <div className="absolute left-2 top-1/2 -translate-y-1/2 w-1 h-8 bg-indigo-500 rounded-full shadow-[0_0_10px_#6366f1]" />
+                    <div className="absolute left-2 top-1/2 -translate-y-1/2 w-1 h-8 bg-indigo-500 rounded-full shadow-[0_0_10px_#442d82]" />
                   )}
                   <div className="flex justify-between items-start mb-1">
                     <h4 className={`text-xs font-bold ${n.unread ? 'text-slate-900 dark:text-slate-100' : 'text-slate-500 dark:text-slate-500'}`}>{n.title}</h4>

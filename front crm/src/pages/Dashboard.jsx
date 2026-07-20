@@ -488,11 +488,11 @@ const Dashboard = () => {
           <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
             <defs>
               <linearGradient id="userTodoGrad" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#8b5cf6" />
-                <stop offset="100%" stopColor="#ec4899" />
+                <stop offset="0%" stopColor="#442d82" />
+                <stop offset="100%" stopColor="#b7d333" />
               </linearGradient>
               <filter id="shadow-user" x="-10%" y="-20%" width="120%" height="150%">
-                <feDropShadow dx="0" dy="1.5" stdDeviation="2" floodColor="#ec4899" floodOpacity="0.25" />
+                <feDropShadow dx="0" dy="1.5" stdDeviation="2" floodColor="#442d82" floodOpacity="0.25" />
               </filter>
             </defs>
 
@@ -502,7 +502,7 @@ const Dashboard = () => {
               return (
                 <g key={idx} className="opacity-15 dark:opacity-[0.05]">
                   <line x1={x} y1={headerHeight} x2={x} y2={height - 15} stroke="currentColor" strokeWidth="1" strokeDasharray="2 2" className="text-slate-400" />
-                  <text x={x} y={headerHeight - 5} textAnchor="middle" className="text-[8px] font-black text-slate-500 fill-current">{ratio * 100}%</text>
+                  <text x={x} y={headerHeight - 5} textAnchor="middle" className="text-[8px] font-black text-slate-550 fill-current">{ratio * 100}%</text>
                 </g>
               );
             })}
@@ -560,7 +560,7 @@ const Dashboard = () => {
                     x={width - 5}
                     y={y + 8}
                     textAnchor="end"
-                    className="text-[9px] font-black text-pink-500 dark:text-pink-400 fill-current tracking-wider"
+                    className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 fill-current tracking-wider"
                   >
                     {user.completionRate}% Done
                   </text>
@@ -670,9 +670,9 @@ const Dashboard = () => {
     const chartHeight = height - paddingTop - paddingBottom;
 
     const lineColors = [
-      "#6366f1", // indigo
+      "#442d82", // indigo
       "#ec4899", // pink
-      "#10b981", // emerald
+      "#b7d333", // emerald
       "#f59e0b", // amber
       "#3b82f6", // blue
       "#a855f7", // purple
@@ -791,9 +791,34 @@ const Dashboard = () => {
     return list;
   }, [staffPerformance]);
 
-  // SVG Bar Chart Generator for Staff Performance
+  const leadSourceData = useMemo(() => {
+    if (!sourcePerformance) return [];
+    return sourcePerformance.slice(0, 6).map((src, i) => {
+      const colors = ["#442d82", "#b7d333", "#f59e0b", "#ec4899", "#06b6d4", "#8b5cf6"];
+      return {
+        label: src.source || "Unknown",
+        value: src.totalLeads || 0,
+        rate: src.conversionRate || 0,
+        color: colors[i % colors.length]
+      };
+    });
+  }, [sourcePerformance]);
+
+  const operatorConversionData = useMemo(() => {
+    if (!processedStaffPerformance) return [];
+    return processedStaffPerformance.slice(0, 6).map((staff, i) => {
+      const colors = ["#8b5cf6", "#3b82f6", "#b7d333", "#f59e0b", "#ec4899", "#06b6d4"];
+      return {
+        label: staff.name || "Unknown",
+        value: Math.round(staff.conversionRate || 0),
+        color: colors[i % colors.length]
+      };
+    });
+  }, [processedStaffPerformance]);
+
+  // SVG Pie/Donut Chart Generator for Staff Performance
   const renderStaffPerformanceChart = () => {
-    const data = processedStaffPerformance.slice(0, 5); // top 5 operators
+    const data = operatorConversionData;
 
     if (data.length === 0) {
       return (
@@ -806,97 +831,52 @@ const Dashboard = () => {
       );
     }
 
-    const width = 500;
-    const rowHeight = 35;
-    const headerHeight = 20;
-    const paddingLeft = 110; // for names
-    const paddingRight = 85; // for values & leads count
-    const chartWidth = width - paddingLeft - paddingRight;
-    const height = headerHeight + (data.length * rowHeight) + 15;
+    const total = data.reduce((acc, curr) => acc + curr.value, 0);
+    const avg = data.length ? Math.round(total / data.length) : 0;
+    let accumulated = 0;
 
     return (
-      <div className="w-full h-full flex flex-col justify-between">
-        <div className="relative flex-1" style={{ minHeight: `${height}px` }}>
-          <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
-            <defs>
-              <linearGradient id="barGrad" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#6366f1" />
-                <stop offset="100%" stopColor="#a855f7" />
-              </linearGradient>
-            </defs>
-
-            {/* Grid Lines */}
-            {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
-              const x = paddingLeft + ratio * chartWidth;
+      <div className="flex flex-col sm:flex-row items-center gap-6 py-2">
+        <div className="relative w-40 h-40 shrink-0">
+          <svg viewBox="0 0 120 120" className="w-full h-full transform -rotate-90">
+            {data.map((slice, i) => {
+              const percent = total > 0 ? slice.value / total : 0;
+              const strokeDasharray = `${percent * 314.159} ${314.159 - (percent * 314.159)}`;
+              const strokeDashoffset = -((accumulated / total) * 314.159);
+              accumulated += slice.value;
               return (
-                <g key={idx} className="opacity-15 dark:opacity-[0.07]">
-                  <line x1={x} y1={headerHeight} x2={x} y2={height - 15} stroke="currentColor" strokeWidth="1" strokeDasharray="2 2" className="text-slate-400" />
-                  <text x={x} y={headerHeight - 5} textAnchor="middle" className="text-[8px] font-black text-slate-500 fill-current">{ratio * 100}%</text>
-                </g>
-              );
-            })}
-
-            {/* Rows */}
-            {data.map((staff, idx) => {
-              const y = headerHeight + (idx * rowHeight) + 10;
-              const rate = staff.conversionRate ? Math.round(staff.conversionRate) : 0;
-              const barWidth = (rate / 100) * chartWidth;
-
-              return (
-                <g key={staff.id || staff._id || `staff-perf-${idx}`} className="group/row">
-                  {/* Operator Name */}
-                  <text
-                    x={paddingLeft - 10}
-                    y={y + 10}
-                    textAnchor="end"
-                    className="text-[9px] font-black text-slate-705 dark:text-slate-355 fill-current truncate cursor-pointer hover:fill-indigo-500 transition-colors"
-                  >
-                    {staff.name}
-                  </text>
-
-                  {/* Background Bar */}
-                  <rect
-                    x={paddingLeft}
-                    y={y}
-                    width={chartWidth}
-                    height="12"
-                    rx="3"
-                    className="fill-slate-100 dark:fill-slate-900 transition-all duration-300"
-                  />
-
-                  {/* Progress Bar */}
-                  <rect
-                    x={paddingLeft}
-                    y={y}
-                    width={Math.max(barWidth, 2)}
-                    height="12"
-                    rx="3"
-                    fill="url(#barGrad)"
-                    className="transition-all duration-500"
-                  />
-
-                  {/* Value Label */}
-                  <text
-                    x={paddingLeft + Math.max(barWidth, 2) + 6}
-                    y={y + 9}
-                    className="text-[9px] font-black text-slate-800 dark:text-slate-200 fill-current"
-                  >
-                    {rate}%
-                  </text>
-
-                  {/* Total Assigned Badge */}
-                  <text
-                    x={width - 5}
-                    y={y + 9}
-                    textAnchor="end"
-                    className="text-[8px] font-bold text-slate-450 fill-current"
-                  >
-                    {staff.totalAssigned} leads
-                  </text>
-                </g>
+                <circle
+                  key={i}
+                  cx="60"
+                  cy="60"
+                  r="50"
+                  fill="transparent"
+                  stroke={slice.color}
+                  strokeWidth="12"
+                  strokeDasharray={strokeDasharray}
+                  strokeDashoffset={strokeDashoffset}
+                  className="transition-all duration-300 hover:stroke-[14px] cursor-pointer"
+                  title={`${slice.label}: ${slice.value}%`}
+                />
               );
             })}
           </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider">Avg Conv</span>
+            <span className="text-xl font-black text-slate-800 dark:text-white">{avg}%</span>
+          </div>
+        </div>
+
+        <div className="flex-1 min-w-0 w-full space-y-2">
+          {data.map((slice, i) => (
+            <div key={i} className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: slice.color }} />
+                <span className="truncate uppercase text-[10px] tracking-wide">{slice.label}</span>
+              </div>
+              <span className="font-mono text-indigo-500">{slice.value}%</span>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -963,8 +943,8 @@ const Dashboard = () => {
           <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
             <defs>
               <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#6366f1" stopOpacity="0.22" />
-                <stop offset="100%" stopColor="#6366f1" stopOpacity="0.0" />
+                <stop offset="0%" stopColor="#442d82" stopOpacity="0.22" />
+                <stop offset="100%" stopColor="#442d82" stopOpacity="0.0" />
               </linearGradient>
             </defs>
 
@@ -988,7 +968,7 @@ const Dashboard = () => {
               <path 
                 d={pathD} 
                 fill="none" 
-                stroke="#6366f1" 
+                stroke="#442d82" 
                 strokeWidth="2.5" 
                 strokeLinecap="round" 
                 className="drop-shadow-[0_2px_6px_rgba(99,102,241,0.35)]" 
@@ -1002,7 +982,7 @@ const Dashboard = () => {
                   cx={p.x} 
                   cy={p.y} 
                   r="4" 
-                  fill="#6366f1" 
+                  fill="#442d82" 
                   stroke="#fff" 
                   strokeWidth="1.5" 
                   className="cursor-pointer transition-all duration-300 group-hover/anchor:r-5 group-hover/anchor:fill-lime-400" 
@@ -1059,12 +1039,12 @@ const Dashboard = () => {
         {/* HEADER */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
-            <div className="flex items-center gap-2 mb-1">
+            {/* <div className="flex items-center gap-2 mb-1">
               <Shield size={14} className="text-indigo-500" />
               <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.3em]">
                 System Control Console
               </p>
-            </div>
+            </div> */}
             <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100 italic uppercase tracking-tighter">
                <span className="text-indigo-650 dark:text-indigo-400">Dashboard</span>
             </h1>
@@ -1225,7 +1205,7 @@ const Dashboard = () => {
         {showLeadsArea && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* LEAD PIPELINE FUNNEL CHART */}
-            <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm flex flex-col justify-between">
+            <div className="lg:col-span-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm flex flex-col justify-between">
               <div className="flex justify-between items-center mb-6">
                 <div>
                   <h2 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">
@@ -1277,7 +1257,7 @@ const Dashboard = () => {
               ) : (
                 <div className="flex flex-col justify-center items-center py-12 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50 dark:bg-slate-950/40 h-full">
                   <BarChart2 className="mx-auto text-slate-350 dark:text-slate-655 mb-2" size={24} />
-                  <p className="text-[10px] font-bold text-slate-550 dark:text-slate-450 uppercase tracking-widest">
+                  <p className="text-[10px] font-bold text-slate-550 dark:text-slate-455 uppercase tracking-widest">
                     No Funnel Data Registered
                   </p>
                 </div>
@@ -1285,14 +1265,14 @@ const Dashboard = () => {
             </div>
 
             {/* LEAD SOURCE ATTRIBUTION */}
-            <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm flex flex-col">
+            <div className="lg:col-span-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm flex flex-col justify-between">
               <div className="flex justify-between items-center mb-6">
                 <div>
                   <h3 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">
                     Lead Sources Attribution
                   </h3>
                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
-                    Marketing channels comparison metrics
+                    Marketing channels comparison metrics and attribution
                   </p>
                 </div>
                 <span className="text-[9px] font-black text-lime-500 bg-lime-500/5 px-2 py-0.5 border border-lime-500/10 rounded uppercase">
@@ -1300,63 +1280,65 @@ const Dashboard = () => {
                 </span>
               </div>
 
-              {sourcePerformance && sourcePerformance.length > 0 ? (
-                <div className="space-y-4 flex-1 flex flex-col justify-center">
-                  {sourcePerformance.slice(0, 5).map((src, i) => {
-                    const totalLeadsCount = Math.max(...sourcePerformance.map(s => s.totalLeads), 1);
-                    const widthPercent = Math.round((src.totalLeads / totalLeadsCount) * 100);
+              {sourcePerformance && sourcePerformance.length > 0 ? (() => {
+                const totalLeads = leadSourceData.reduce((acc, curr) => acc + curr.value, 0);
+                let accumulatedLeads = 0;
+                return (
+                  <div className="flex flex-col sm:flex-row items-center gap-6 py-2 flex-1">
+                    <div className="relative w-36 h-36 shrink-0">
+                      <svg viewBox="0 0 120 120" className="w-full h-full transform -rotate-90">
+                        {leadSourceData.map((slice, i) => {
+                          const percent = totalLeads > 0 ? slice.value / totalLeads : 0;
+                          const strokeDasharray = `${percent * 314.159} ${314.159 - (percent * 314.159)}`;
+                          const strokeDashoffset = -((accumulatedLeads / totalLeads) * 314.159);
+                          accumulatedLeads += slice.value;
+                          return (
+                            <circle
+                              key={i}
+                              cx="60"
+                              cy="60"
+                              r="50"
+                              fill="transparent"
+                              stroke={slice.color}
+                              strokeWidth="12"
+                              strokeDasharray={strokeDasharray}
+                              strokeDashoffset={strokeDashoffset}
+                              className="transition-all duration-300 hover:stroke-[14px] cursor-pointer"
+                              title={`${slice.label}: ${slice.value} leads`}
+                            />
+                          );
+                        })}
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider">Leads</span>
+                        <span className="text-xl font-black text-slate-800 dark:text-white">{totalLeads}</span>
+                      </div>
+                    </div>
 
-                    return (
-                      <div key={src.source || i} className="space-y-1">
-                        <div className="flex justify-between items-baseline text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                          <span className="uppercase text-[10px] tracking-wide">{src.source || "Unknown Source"}</span>
-                          <div className="flex gap-3 text-slate-500 dark:text-slate-400">
-                            <span>{src.totalLeads} Leads</span>
-                            <span className="text-indigo-500 font-black">{src.conversionRate}% Conv.</span>
+                    <div className="flex-1 min-w-0 w-full space-y-2">
+                      {leadSourceData.map((slice, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: slice.color }} />
+                            <span className="truncate uppercase text-[9px] tracking-wide">{slice.label}</span>
+                          </div>
+                          <div className="flex items-center gap-2 font-mono text-[10px] text-slate-500">
+                            <span>{slice.value}</span>
+                            <span className="text-indigo-500">({slice.rate}%)</span>
                           </div>
                         </div>
-
-                        <div className="relative h-2 bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${widthPercent}%` }}
-                            transition={{ duration: 0.8, delay: i * 0.06 }}
-                            className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-indigo-650"
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
+                      ))}
+                    </div>
+                  </div>
+                );
+              })() : (
                 <div className="flex flex-col justify-center items-center py-12 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50 dark:bg-slate-950/40 h-full">
-                  <TrendingUp className="mx-auto text-slate-350 dark:text-slate-650 mb-2" size={24} />
-                  <p className="text-[10px] font-bold text-slate-550 dark:text-slate-450 uppercase tracking-widest">
+                  <TrendingUp className="mx-auto text-slate-350 dark:text-slate-655 mb-2" size={24} />
+                  <p className="text-[10px] font-bold text-slate-550 dark:text-slate-455 uppercase tracking-widest">
                     No Lead Sources Registered
                   </p>
                 </div>
               )}
-            </div>
-
-            {/* OPERATOR CONVERSION LEADERBOARD */}
-            <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm flex flex-col justify-between">
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h3 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-                    Operator Conversion Analytics
-                  </h3>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
-                    Lead conversion rate comparison leaderboard
-                  </p>
-                </div>
-                <span className="text-[9px] font-black text-indigo-500 bg-indigo-500/5 px-2 py-0.5 border border-indigo-500/10 rounded uppercase">
-                  Leaderboard
-                </span>
-              </div>
-
-              <div className="flex-1 min-h-[200px]">
-                {renderStaffPerformanceChart()}
-              </div>
             </div>
           </div>
         )}
@@ -1364,11 +1346,12 @@ const Dashboard = () => {
         {/* MIDDLE SECTION - QUICK ACTIONS & OPERATORS */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* QUICK ADMINISTRATIVE ACTIONS */}
-          <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm">
+          {/* QUICK ADMINISTRATIVE ACTIONS */}
+          <div className="lg:col-span-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm">
             <h2 className="text-xs font-black text-slate-800 dark:text-slate-255 uppercase tracking-wider mb-6">
               Console Navigation
             </h2>
-            <div className={`grid ${showLeadsArea ? 'grid-cols-2' : 'grid-cols-1 sm:grid-cols-3'} gap-4`}>
+            <div className={`grid grid-cols-2 ${showLeadsArea ? 'sm:grid-cols-4' : 'sm:grid-cols-3'} gap-4`}>
               <ActionCard
                 title="Users Hub"
                 desc="Enrolled staff list"
@@ -1396,118 +1379,6 @@ const Dashboard = () => {
                 onClick={() => navigate("/todo")}
               />
             </div>
-            
-            <button
-              onClick={() => navigate("/attendance")}
-              className="mt-4 flex items-center justify-between w-full p-4 bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl transition-all group"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-indigo-500/5 dark:bg-indigo-500/10 text-indigo-500 rounded-xl">
-                  <Timer size={16} />
-                </div>
-                <div className="text-left">
-                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-355">Attendance Portal</p>
-                  <p className="text-[9px] text-slate-400 uppercase tracking-tight mt-0.5">Operator check-in roster logs</p>
-                </div>
-              </div>
-              <ChevronRight size={14} className="text-slate-400 group-hover:translate-x-1 transition-transform" />
-            </button>
-          </div>
-
-          {/* ACTIVE STAFF ROSTER */}
-          <div className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm flex flex-col justify-between">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-              <div>
-                <h2 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-                  CRM Operator Roster
-                </h2>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
-                  Enrolled employee directory list
-                </p>
-              </div>
-
-              <div className="relative w-full sm:w-60">
-                <input
-                  type="text"
-                  placeholder="Search staff..."
-                  value={userSearch}
-                  onChange={(e) => setUserSearch(e.target.value)}
-                  className="w-full pl-4 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium text-slate-855 dark:text-slate-255 focus:outline-none focus:border-indigo-500/50 transition-all placeholder:text-slate-400"
-                />
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-x-auto scrollbar-thin">
-              {filteredUsers.length === 0 ? (
-                <div className="py-12 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50 dark:bg-slate-950/40">
-                  <p className="text-[9px] font-bold text-slate-455 uppercase tracking-widest">
-                    No operators match your query
-                  </p>
-                </div>
-              ) : (
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-100 dark:border-slate-800/80 text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider">
-                      <th className="pb-3 pr-4">Staff Operator</th>
-                      <th className="pb-3 pr-4">Role / Dept</th>
-                      <th className="pb-3 text-right">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredUsers.slice(0, 4).map((u) => (
-                      <tr key={u.id || u._id} className="border-b border-slate-50 dark:border-slate-800/30 last:border-none group">
-                        <td className="py-3 pr-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 shrink-0">
-                              <img
-                                src={u.avatar || `https://ui-avatars.com/api/?name=${u.name}&background=6366f1&color=fff`}
-                                className="w-full h-full object-cover"
-                                alt="staff avatar"
-                              />
-                            </div>
-                            <div>
-                              <h4 className="text-xs font-bold text-slate-800 dark:text-slate-255 group-hover:text-indigo-500 transition-colors">
-                                {u.name}
-                              </h4>
-                              <p className="text-[9px] text-slate-555 dark:text-slate-455 leading-tight">{u.email}</p>
-                              {u.phone && (
-                                <p className="text-[9px] text-slate-400 dark:text-slate-500 leading-tight mt-0.5">{u.phone}</p>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3 pr-4">
-                          <span className="text-[9px] font-black text-slate-700 dark:text-slate-355 uppercase tracking-tight block">
-                            {u.role || "Operator"}
-                          </span>
-                          <span className="text-[9px] text-slate-500 dark:text-slate-455 uppercase font-medium block">
-                            {u.department || "No Department"}
-                          </span>
-                        </td>
-                        <td className="py-3 text-right">
-                          <span className={`inline-block text-[9px] font-bold px-2 py-0.5 rounded-lg uppercase ${
-                            u.isActive !== false
-                              ? "text-emerald-500 bg-emerald-500/5 border border-emerald-500/10"
-                              : "text-rose-500 bg-rose-500/5 border border-rose-500/10"
-                          }`}>
-                            {u.isActive !== false ? "Active" : "Inactive"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            {filteredUsers.length > 4 && (
-              <button
-                onClick={() => navigate("/users")}
-                className="mt-4 text-center w-full py-2.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-950 border border-slate-150 dark:border-slate-800 rounded-xl text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-wider transition-all"
-              >
-                View Full Operators Directory ({allUsers.length})
-              </button>
-            )}
           </div>
         </div>
 
@@ -1836,7 +1707,7 @@ const ActionCard = ({ title, desc, icon: Icon, onClick }) => (
   >
     <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-500/5 rounded-bl-full group-hover:bg-indigo-500/10 transition-all" />
     <div className="p-3 bg-indigo-500/5 dark:bg-indigo-500/10 text-indigo-650 dark:text-indigo-400 rounded-xl w-fit mb-4 group-hover:scale-110 transition-transform">
-      <Icon size={18} />
+      <Icon size={18} className="text-white" />
     </div>
     <div className="flex items-center gap-1">
       <h3 className="text-xs font-black text-slate-850 dark:text-slate-200 uppercase tracking-tight group-hover:text-indigo-500 transition-colors">
