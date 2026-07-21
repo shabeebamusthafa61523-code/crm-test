@@ -145,6 +145,9 @@ const AccountantReportPage = () => {
   const [weeklyNextDayTaskPlan, setWeeklyNextDayTaskPlan] = useState(['', '', '', '']);
   const [weeklyFinalShiftHandover, setWeeklyFinalShiftHandover] = useState([]);
   const [weeklyAccountantComments, setWeeklyAccountantComments] = useState('');
+  const [weeklyAchievements, setWeeklyAchievements] = useState('');
+  const [weeklyImprovements, setWeeklyImprovements] = useState('');
+  const [weeklyNextWeekPlanning, setWeeklyNextWeekPlanning] = useState('');
 
   // Selection states
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -1948,6 +1951,27 @@ const AccountantReportPage = () => {
         startY: currentY,
         theme: 'grid',
         styles: { fontSize: 8.5, cellPadding: 3, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      // 13. SUMMARY & PLANNING
+      drawSectionHeader("13. WEEKLY SUMMARY & PLANNING");
+      const weeklySummaryPlanningRows = [
+        ["Achievements:", weeklyAchievements || ''],
+        ["Improvements Needed:", weeklyImprovements || ''],
+        ["Next Week Planning:", weeklyNextWeekPlanning || '']
+      ];
+      autoTable(doc, {
+        body: weeklySummaryPlanningRows,
+        startY: currentY,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 2.2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 45 },
+          1: { width: 137 }
+        },
         margin: { left: 14, right: 14 }
       });
 
@@ -4305,6 +4329,36 @@ const AccountantReportPage = () => {
                         onChange={(e) => setWeeklyAccountantComments(e.target.value)}
                         className="w-full h-36 bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-3 text-sm focus:outline-none text-slate-800 dark:text-slate-200"
                         placeholder="Enter consolidated comments..."
+                      />
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-wider">Achievements</h3>
+                      <textarea
+                        value={weeklyAchievements}
+                        onChange={(e) => setWeeklyAchievements(e.target.value)}
+                        className="w-full h-36 bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-3 text-sm focus:outline-none text-slate-800 dark:text-slate-200"
+                        placeholder="Enter achievements..."
+                      />
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-wider">Improvements</h3>
+                      <textarea
+                        value={weeklyImprovements}
+                        onChange={(e) => setWeeklyImprovements(e.target.value)}
+                        className="w-full h-36 bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-3 text-sm focus:outline-none text-slate-800 dark:text-slate-200"
+                        placeholder="Enter improvements needed..."
+                      />
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-wider">Next Week Planning</h3>
+                      <textarea
+                        value={weeklyNextWeekPlanning}
+                        onChange={(e) => setWeeklyNextWeekPlanning(e.target.value)}
+                        className="w-full h-36 bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-3 text-sm focus:outline-none text-slate-800 dark:text-slate-200"
+                        placeholder="Enter next week planning..."
                       />
                     </div>
                   </div>

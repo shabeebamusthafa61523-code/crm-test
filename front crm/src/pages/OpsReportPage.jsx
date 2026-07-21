@@ -111,6 +111,10 @@ const OpsReportPage = () => {
     directorName: 'Executive Director Approval'
   });
 
+  const [weeklyAchievements, setWeeklyAchievements] = useState('');
+  const [weeklyImprovements, setWeeklyImprovements] = useState('');
+  const [weeklyNextWeekPlanning, setWeeklyNextWeekPlanning] = useState('');
+
   // Monthly Report States
   const [isMonthlyModalOpen, setIsMonthlyModalOpen] = useState(false);
 
@@ -1028,7 +1032,27 @@ const OpsReportPage = () => {
 
       currentY = doc.lastAutoTable.finalY + 4;
 
-      drawSectionHeader("7. WEEKLY HANDOVER");
+      drawSectionHeader("7. WEEKLY SUMMARY & PLANNING");
+      const summaryRows = [
+        ["Achievements:", weeklyData.achievements || ''],
+        ["Improvements Needed:", weeklyData.improvements || ''],
+        ["Next Week Planning:", weeklyData.nextWeekPlanning || '']
+      ];
+      autoTable(doc, {
+        body: summaryRows,
+        startY: currentY,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 2.2, textColor: [0, 0, 0], lineColor: [180, 180, 180], lineWidth: 0.15 },
+        columnStyles: {
+          0: { fontStyle: 'bold', fillColor: [245, 245, 247], width: 45 },
+          1: { width: 137 }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 4;
+
+      drawSectionHeader("8. WEEKLY HANDOVER");
       const handoverRows = [
         ["Pending Leads Shared:", weeklyData.handover.pendingLeadsShared || ''],
         ["CRM Updated: Yes / No - NA", weeklyData.handover.crmUpdated || ''],
@@ -2710,6 +2734,43 @@ const OpsReportPage = () => {
                           </div>
                         </div>
                       </div>
+
+                      {/* Weekly Summary & Planning */}
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 border-b border-slate-100 dark:border-slate-850 pb-2">Weekly Summary & Planning</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Achievements</label>
+                            <textarea
+                              value={weeklyAchievements}
+                              onChange={(e) => setWeeklyAchievements(e.target.value)}
+                              rows={4}
+                              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                              placeholder="Enter achievements..."
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Improvements</label>
+                            <textarea
+                              value={weeklyImprovements}
+                              onChange={(e) => setWeeklyImprovements(e.target.value)}
+                              rows={4}
+                              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                              placeholder="Enter improvements needed..."
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Next Week Planning</label>
+                            <textarea
+                              value={weeklyNextWeekPlanning}
+                              onChange={(e) => setWeeklyNextWeekPlanning(e.target.value)}
+                              rows={4}
+                              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                              placeholder="Enter next week planning..."
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -2735,7 +2796,10 @@ const OpsReportPage = () => {
                         academyStatus: weeklyAcademyStatus,
                         issuesEscalations: weeklyIssuesEscalations,
                         handover: weeklyHandover,
-                        approval: weeklyApproval
+                        approval: weeklyApproval,
+                        achievements: weeklyAchievements,
+                        improvements: weeklyImprovements,
+                        nextWeekPlanning: weeklyNextWeekPlanning
                       })}
                       className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition-all shadow-md"
                     >

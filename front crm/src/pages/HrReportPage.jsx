@@ -238,6 +238,9 @@ const HrReportPage = () => {
   const [weeklyFinalShiftHandover, setWeeklyFinalShiftHandover] = useState([]);
   const [weeklyNextDayActionPlan, setWeeklyNextDayActionPlan] = useState('');
   const [weeklyHrAdminComments, setWeeklyHrAdminComments] = useState('');
+  const [weeklyAchievements, setWeeklyAchievements] = useState('');
+  const [weeklyImprovements, setWeeklyImprovements] = useState('');
+  const [weeklyNextWeekPlanning, setWeeklyNextWeekPlanning] = useState('');
 
   // Get Auth Headers Helper
   const getAuthHeaders = useCallback(() => {
@@ -1541,6 +1544,64 @@ const HrReportPage = () => {
       const commentsBoxHeight = Math.max(16, commentsLines.length * 4.2 + 6);
       doc.setDrawColor(180, 180, 180);
       doc.rect(14, currentY, 182, commentsBoxHeight);
+
+      currentY += commentsBoxHeight + 6;
+
+      if (currentY > 230) {
+        doc.addPage();
+        currentY = 15;
+        drawHeader();
+        currentY = 27;
+      }
+
+      drawSectionHeader("13. ACHIEVEMENTS");
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(0, 0, 0);
+      const achievementsLines = doc.splitTextToSize(weeklyAchievements || '', 178);
+      doc.text(achievementsLines, 16, currentY + 5);
+      const achievementsBoxHeight = Math.max(16, achievementsLines.length * 4.2 + 6);
+      doc.setDrawColor(180, 180, 180);
+      doc.rect(14, currentY, 182, achievementsBoxHeight);
+
+      currentY += achievementsBoxHeight + 6;
+
+      if (currentY > 230) {
+        doc.addPage();
+        currentY = 15;
+        drawHeader();
+        currentY = 27;
+      }
+
+      drawSectionHeader("14. IMPROVEMENTS");
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(0, 0, 0);
+      const improvementsLines = doc.splitTextToSize(weeklyImprovements || '', 178);
+      doc.text(improvementsLines, 16, currentY + 5);
+      const improvementsBoxHeight = Math.max(16, improvementsLines.length * 4.2 + 6);
+      doc.setDrawColor(180, 180, 180);
+      doc.rect(14, currentY, 182, improvementsBoxHeight);
+
+      currentY += improvementsBoxHeight + 6;
+
+      if (currentY > 230) {
+        doc.addPage();
+        currentY = 15;
+        drawHeader();
+        currentY = 27;
+      }
+
+      drawSectionHeader("15. NEXT WEEK PLANNING");
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(0, 0, 0);
+      const nextWeekLines = doc.splitTextToSize(weeklyNextWeekPlanning || '', 178);
+      doc.text(nextWeekLines, 16, currentY + 5);
+      const nextWeekBoxHeight = Math.max(16, nextWeekLines.length * 4.2 + 6);
+      doc.setDrawColor(180, 180, 180);
+      doc.rect(14, currentY, 182, nextWeekBoxHeight);
+
       const pdfBlob = doc.output('blob');
       const filename = `HR_Weekly_Consolidated_Report_${weeklyBasicDetails.employeeName || 'HR'}_${weeklyStartDate}_to_${weeklyEndDate}.pdf`;
       try {
@@ -4142,6 +4203,42 @@ const HrReportPage = () => {
                               value={weeklyHrAdminComments}
                               onChange={(e) => setWeeklyHrAdminComments(e.target.value)}
                               className="w-full bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-850 rounded-2xl p-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 min-h-[120px] text-slate-700 dark:text-slate-200"
+                            />
+                          </div>
+
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                              Achievements
+                            </h4>
+                            <textarea
+                              value={weeklyAchievements}
+                              onChange={(e) => setWeeklyAchievements(e.target.value)}
+                              className="w-full bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-850 rounded-2xl p-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 min-h-[120px] text-slate-700 dark:text-slate-200"
+                              placeholder="Enter achievements..."
+                            />
+                          </div>
+
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                              Improvements
+                            </h4>
+                            <textarea
+                              value={weeklyImprovements}
+                              onChange={(e) => setWeeklyImprovements(e.target.value)}
+                              className="w-full bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-850 rounded-2xl p-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 min-h-[120px] text-slate-700 dark:text-slate-200"
+                              placeholder="Enter improvements needed..."
+                            />
+                          </div>
+
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                              Next Week Planning
+                            </h4>
+                            <textarea
+                              value={weeklyNextWeekPlanning}
+                              onChange={(e) => setWeeklyNextWeekPlanning(e.target.value)}
+                              className="w-full bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-850 rounded-2xl p-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 min-h-[120px] text-slate-700 dark:text-slate-200"
+                              placeholder="Enter next week planning..."
                             />
                           </div>
                         </div>
