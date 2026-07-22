@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Search, Edit3, Trash2, Eye, X, Mail, Phone,
   Folder, User, ChevronRight, CheckCircle2, AlertTriangle,
   FileSpreadsheet, FileDown, FileText, Loader2, Calendar,
   TrendingUp, Clock, Tag, MessageSquare, Briefcase, RefreshCw, Send,
-  UserCheck, Shield, HelpCircle, SlidersHorizontal, ChevronDown
+  UserCheck, Shield, HelpCircle, SlidersHorizontal, ChevronDown,
+  LayoutList, LayoutGrid
 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
 import ConfirmModal from '../components/ConfirmModal';
@@ -108,6 +110,7 @@ const [activePriority, setActivePriority] = useState('all');
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [viewMode, setViewMode] = useState('list'); // 'list' | 'grid'
   const { showToast } = useToast();
 
   // Modals state
@@ -899,6 +902,36 @@ const [activePriority, setActivePriority] = useState('all');
               )}
             </div>
 
+            {/* View Mode Toggle (List / Grid) */}
+            <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 p-1 rounded-2xl shadow-sm">
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  viewMode === 'list'
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+                title="List View"
+              >
+                <LayoutList size={15} />
+                <span className="hidden sm:inline">List</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  viewMode === 'grid'
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+                title="Grid View"
+              >
+                <LayoutGrid size={15} />
+                <span className="hidden sm:inline">Grid</span>
+              </button>
+            </div>
+
             {/* Page Size Selector */}
             {filteredLeads.length > 10 && (
               <select
@@ -981,7 +1014,180 @@ const [activePriority, setActivePriority] = useState('all');
               There are no leads matched for the current selection. Click "Add Lead" or import an Excel spreadsheet sheet to add leads to your dashboard.
             </p>
           </div>
+        ) : viewMode === 'grid' ? (
+          /* Grid View Mode */
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {paginatedLeads.map((lead) => {
+                const courseStyle = getCourseInterestStyle(lead.interestedService);
+                return (
+                  <div
+                    key={lead.id || lead._id}
+                    className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4"
+                  >
+                    {/* Top Header & Status */}
+                    <div>
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div>
+                          <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                            {lead.leadName}
+                          </h3>
+                          {lead.companyName && !lead.companyName.toLowerCase().includes('software development leads form') && (
+                            <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
+                              <Briefcase size={12} />
+                              {lead.companyName}
+                            </p>
+                          )}
+                        </div>
+
+                        {(() => {
+                          const ciVal = (lead.interestedService || lead.courseIntrests || '').trim();
+                          const isUpdated = ciVal && ciVal.toLowerCase() !== 'select' && ciVal !== '—' && !ciVal.toLowerCase().includes('software development');
+                          return isUpdated ? (
+                            <span 
+                              className="px-2.5 py-1 text-[10px] font-bold rounded-lg uppercase tracking-wider border shrink-0"
+                              style={courseStyle}
+                            >
+                              {ciVal}
+                            </span>
+                          ) : null;
+                        })()}
+                      </div>
+
+                      {/* Contact Info */}
+                      <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-xs">
+                        {lead.phone && (
+                          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300 font-medium">
+                            <Phone size={13} className="text-slate-400" />
+                            <span>{lead.phone}</span>
+                          </div>
+                        )}
+                        {lead.email && (
+                          <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 truncate">
+                            <Mail size={13} className="text-slate-400 shrink-0" />
+                            <span className="truncate">{lead.email}</span>
+                          </div>
+                        )}
+                        {lead.city && (
+                          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300 font-medium">
+                            <span className="text-slate-400">📍</span>
+                            <span>{lead.city}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Campaign & Platform Badges */}
+                      {((lead.campaignName && !lead.campaignName.toLowerCase().includes('software development leads form')) || lead.leadPlatform || lead.source) && (
+                        <div className="flex flex-wrap items-center gap-1.5 pt-2">
+                          {lead.campaignName && !lead.campaignName.toLowerCase().includes('software development leads form') && (
+                            <span 
+                              className="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-800/50 rounded-md font-semibold text-[9px] uppercase truncate max-w-[220px]"
+                              title={lead.campaignName}
+                            >
+                              Campaign: {lead.campaignName}
+                            </span>
+                          )}
+                          {lead.leadPlatform && !lead.leadPlatform.toLowerCase().includes('software development leads form') && (
+                            <span className="px-2 py-0.5 bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 border border-teal-200/50 dark:border-teal-800/50 rounded-md font-semibold text-[9px] uppercase">
+                              Platform: {lead.leadPlatform}
+                            </span>
+                          )}
+                          {lead.source && (
+                            <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-md font-semibold text-[9px] uppercase">
+                              Source: {lead.source}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Inline Dropdowns for Telecaller */}
+                      <div className="grid grid-cols-2 gap-2 pt-3">
+                        <div>
+                          <label className="block text-[9px] font-bold text-slate-400 mb-1">STATUS</label>
+                          <select
+                            value={lead.status || ''}
+                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'status', e.target.value)}
+                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                          >
+                            <option value="" disabled>Select</option>
+                            <option value="New">New</option>
+                            <option value="Contacted">Contacted</option>
+                            <option value="Follow Up">Follow Up</option>
+                            <option value="Interested">Interested</option>
+                            <option value="Converted">Converted</option>
+                            <option value="Lost">Lost</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-[9px] font-bold text-slate-400 mb-1">COURSE INT.</label>
+                          <select
+                            value={lead.interestedService || ''}
+                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'interestedService', e.target.value)}
+                            className="w-full border rounded-lg px-2 py-1 text-xs font-bold focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                            style={lead.interestedService ? getCourseInterestStyle(lead.interestedService) : {}}
+                          >
+                            <option value="">Select</option>
+                            <option value="HOT LEAD">HOT LEAD</option>
+                            <option value="WARM LEAD">WARM LEAD</option>
+                            <option value="COLD LEAD">COLD LEAD</option>
+                            <option value="RNT">RNT</option>
+                            <option value="SWITCHED OFF">SWITCHED OFF</option>
+                            <option value="WRONG LEAD">WRONG LEAD</option>
+                            <option value="CALL BACK">CALL BACK</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
+                      <span className="text-[10px] text-slate-400 flex items-center gap-1 font-medium">
+                        <Calendar size={12} />
+                        {lead.createdAt ? formatDate(lead.createdAt) : '—'}
+                      </span>
+
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => {
+                            setSelectedLead(lead);
+                            fetchLeadDetails(lead.id || lead._id);
+                            setIsViewOpen(true);
+                          }}
+                          className="p-2 text-slate-400 hover:text-indigo-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all cursor-pointer"
+                          title="View details"
+                        >
+                          <Eye size={15} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedLead(lead);
+                            setIsEditOpen(true);
+                          }}
+                          className="p-2 text-slate-400 hover:text-blue-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all cursor-pointer"
+                          title="Edit Lead"
+                        >
+                          <Edit3 size={15} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedLead(lead);
+                            setIsFollowUpOpen(true);
+                          }}
+                          className="p-2 text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all cursor-pointer"
+                          title="Add Follow-up"
+                        >
+                          <MessageSquare size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         ) : (
+          /* List View Mode (Table) */
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/50 dark:border-slate-800/50 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-left">
@@ -1479,12 +1685,6 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
   });
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (isOpen) {
-      window.scrollTo({ top: 0 });
-    }
-  }, [isOpen]);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.leadName || !formData.phone) {
@@ -1545,15 +1745,15 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 backdrop-blur-sm p-4 pt-16 overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
-        className="w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden"
+        className="w-full max-w-2xl max-h-[90vh] flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden"
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
           <h2 className="text-base font-bold text-slate-850 dark:text-white flex items-center gap-2">
             <Plus className="text-indigo-600" size={18} />
             Create Lead Profile
@@ -1563,7 +1763,7 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-grow scrollbar-thin">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Lead Name *</label>
@@ -1809,7 +2009,8 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
           </div>
         </form>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
@@ -1922,15 +2123,15 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
 
   if (!isOpen || !lead) return null;
 
-  return (
-<div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 backdrop-blur-sm p-4 pt-16 overflow-y-auto">    
-  <motion.div
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">    
+      <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
-        className="w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden"
+        className="w-full max-w-2xl max-h-[90vh] flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden"
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
           <h2 className="text-base font-bold text-slate-850 dark:text-white flex items-center gap-2">
             <Edit3 className="text-indigo-600" size={18} />
             Modify Lead Profile
@@ -1940,7 +2141,7 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-grow scrollbar-thin">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Lead Name *</label>
@@ -2195,7 +2396,8 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
           </div>
         </form>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
@@ -2205,8 +2407,9 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
 const ViewModal = ({ isOpen, onClose, lead, details, loading }) => {
   if (!isOpen || !lead) return null;
 
-  return (
-<div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 backdrop-blur-sm p-4 pt-6 overflow-y-auto">      <motion.div
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+      <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
@@ -2397,7 +2600,8 @@ const ViewModal = ({ isOpen, onClose, lead, details, loading }) => {
           </button>
         </div>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
@@ -2461,15 +2665,15 @@ const FollowUpModal = ({ isOpen, onClose, onFollowedUp, lead, getAuthHeaders, sh
 
   if (!isOpen || !lead) return null;
 
-  return (
-<div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 backdrop-blur-sm p-4 pt-16 overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
-        className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden"
+        className="w-full max-w-lg max-h-[90vh] flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden"
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
           <h2 className="text-base font-bold text-slate-850 dark:text-white flex items-center gap-2">
             <Clock className="text-indigo-600" size={18} />
             Log Follow-Up Activity: {lead.leadName}
@@ -2479,7 +2683,7 @@ const FollowUpModal = ({ isOpen, onClose, onFollowedUp, lead, getAuthHeaders, sh
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-grow scrollbar-thin">
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Interaction Notes / Remarks *</label>
             <textarea
@@ -2560,7 +2764,8 @@ const FollowUpModal = ({ isOpen, onClose, onFollowedUp, lead, getAuthHeaders, sh
           </div>
         </form>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
@@ -2822,15 +3027,15 @@ const ImportModal = ({ isOpen, onClose, onImported, getAuthHeaders, showToast })
 
   if (!isOpen) return null;
 
-  return (
-<div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 backdrop-blur-sm p-4 pt-16 overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
-        className="w-full max-w-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden"
+        className="w-full max-w-xl max-h-[90vh] flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden"
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
           <h2 className="text-base font-bold text-slate-850 dark:text-white flex items-center gap-2">
             <FileSpreadsheet className="text-indigo-600" size={18} />
             Excel Data Import Mapper
@@ -2846,7 +3051,7 @@ const ImportModal = ({ isOpen, onClose, onImported, getAuthHeaders, showToast })
           </button>
         </div>
 
-        <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+        <div className="p-6 space-y-4 overflow-y-auto flex-grow scrollbar-thin">
           {/* File Picker */}
           {!file ? (
             <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 dark:border-slate-800 p-8 rounded-2xl text-center">
@@ -3164,7 +3369,8 @@ const ImportModal = ({ isOpen, onClose, onImported, getAuthHeaders, showToast })
           )}
         </div>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
