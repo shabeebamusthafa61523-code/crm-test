@@ -15,6 +15,7 @@ import {
   BarChart3,
   FileText,
   Sparkles,
+  Bell,
   ChevronLeft,
   ChevronRight,
   X
@@ -192,6 +193,7 @@ const menuItems = [
   { icon: Building, label: 'Departments', path: '/departments', allowedRoles: ['1', '2', 'hr', 'admin'], allowedDepartments: ['6a3caed51194353cbc8a3686'] },
   { icon: Users, label: 'Employee Reports', path: '/employee-reports', allowedRoles: [ 'hr', 'admin'], allowedDepartments: ['6a3caed51194353cbc8a3686'] },
   { icon: Users, label: 'Team Reports', path: '/team-reports', isTeamLeadOnly: true },
+  { icon: Bell, label: 'Notifications', path: '/notifications' },
 ];
 
 // Simple Portal implementation to render the badge safely outside of parent overflow cropping
