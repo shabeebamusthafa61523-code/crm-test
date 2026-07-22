@@ -1,11 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Bell, User, LogOut, Sun, Moon, Menu } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
 import ProfileDrawer from './ProfileDrawer';
+import NotificationPopover from './NotificationPopover';
+
+const API_BASE = import.meta.env.VITE_API_URL;
 
 const Navbar = ({ isSidebarCollapsed, toggleMobileSidebar }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
   const location = useLocation();
 
   const pathName = location.pathname.substring(1);
@@ -36,19 +43,16 @@ const Navbar = ({ isSidebarCollapsed, toggleMobileSidebar }) => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
 
-      // Keep visible at the top of the page
       if (currentScrollY <= 10) {
         setIsVisible(true);
         setLastScrollY(currentScrollY);
         return;
       }
 
-      // Ignore micro-scroll fluctuations
       if (Math.abs(currentScrollY - lastScrollY) < 5) {
         return;
       }
 
-      // Show when scrolling up (back scrolling), hide when scrolling down
       if (currentScrollY < lastScrollY) {
         setIsVisible(true);
       } else {
@@ -69,7 +73,6 @@ const Navbar = ({ isSidebarCollapsed, toggleMobileSidebar }) => {
   });
 
   useEffect(() => {
-    // Pull user data stored during login
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
       try {
@@ -84,13 +87,80 @@ const Navbar = ({ isSidebarCollapsed, toggleMobileSidebar }) => {
     }
   }, []);
 
+  const getAuthHeaders = useCallback(() => {
+    const rawToken = localStorage.getItem('token');
+    const cleanToken = rawToken ? rawToken.replace(/"/g, '') : '';
+    return { 
+      'Content-Type': 'application/json',
+      'Authorization': cleanToken.startsWith('Bearer ') ? cleanToken : `Bearer ${cleanToken}` 
+    };
+  }, []);
+
+  // Fetch notifications for the current logged in user
+  const fetchMyNotifications = useCallback(async () => {
+    try {
+      const rawToken = localStorage.getItem('token');
+      if (!rawToken) return;
+
+      const res = await fetch(`${API_BASE}/v1/notifications/my-notifications`, {
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setNotifications(data.data);
+        setUnreadCount(data.unreadCount || data.data.filter(n => !n.isRead).length);
+      }
+    } catch (err) {
+      console.error("Failed to fetch my notifications in Navbar:", err);
+    }
+  }, [getAuthHeaders]);
+
+  useEffect(() => {
+    fetchMyNotifications();
+    // Poll for notifications every 30 seconds
+    const interval = setInterval(fetchMyNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [fetchMyNotifications]);
+
+  const handleMarkAsRead = async (id) => {
+    try {
+      const res = await fetch(`${API_BASE}/v1/notifications/${id}/read`, {
+        method: 'PUT',
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      if (data.success) {
+        setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    } catch (err) {
+      console.error("Error marking notification as read:", err);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/v1/notifications/mark-all-read`, {
+        method: 'PUT',
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      if (data.success) {
+        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+        setUnreadCount(0);
+      }
+    } catch (err) {
+      console.error("Error marking all notifications as read:", err);
+    }
+  };
+
   return (
     <>
       <header className={`fixed top-0 right-0 z-30 h-16 flex items-center justify-between px-6 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-800/50 transition-all duration-300 transform ${
         isVisible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
       } ${isSidebarCollapsed ? 'lg:left-20' : 'lg:left-64'} left-0`}>
         
-        {/* Left Side: Mobile Hamburger & Page Title */}
+        {/* Left Side: Mobile Hamburger */}
         <div className="flex items-center gap-3">
           <button
             onClick={toggleMobileSidebar}
@@ -99,14 +169,22 @@ const Navbar = ({ isSidebarCollapsed, toggleMobileSidebar }) => {
           >
             <Menu size={20} />
           </button>
-{/*           
-          <h1 className="text-2xl md:text-3xl font-black text-slate-850 dark:text-slate-100 tracking-tight uppercase">
-            {pageTitle}
-          </h1> */}
         </div>
 
         {/* Right Actions Wrapper */}
-        <div className="flex items-center gap-2 bg-slate-50/50 dark:bg-slate-800/30 border border-slate-200/30 dark:border-slate-800/30 p-1 rounded-xl shadow-sm transition-colors">
+        <div className="flex items-center gap-2 bg-slate-50/50 dark:bg-slate-800/30 border border-slate-200/30 dark:border-slate-800/30 p-1 rounded-xl shadow-sm transition-colors relative">
+
+          {/* Bell Icon Notification Trigger */}
+          <button
+            onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+            className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-lime-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all cursor-pointer relative"
+            title="Notifications"
+          >
+            <Bell size={18} />
+            {unreadCount > 0 && (
+              <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white dark:ring-slate-900 animate-pulse" />
+            )}
+          </button>
 
           {/* Theme Toggle Button */}
           <button
@@ -125,7 +203,7 @@ const Navbar = ({ isSidebarCollapsed, toggleMobileSidebar }) => {
 
           <div className="h-5 w-[1px] bg-slate-200 dark:bg-slate-800 mx-1"></div>
 
-          {/* Profile Trigger - DYNAMIC DATA (No text label next to the icon) */}
+          {/* Profile Trigger */}
           <div
             onClick={() => setIsProfileOpen(true)}
             className="flex items-center gap-2 p-1 group cursor-pointer"
@@ -135,6 +213,15 @@ const Navbar = ({ isSidebarCollapsed, toggleMobileSidebar }) => {
               <User size={16} />
             </div>
           </div>
+
+          {/* Notification Popover Dropdown */}
+          <NotificationPopover
+            isOpen={isNotificationOpen}
+            onClose={() => setIsNotificationOpen(false)}
+            notifications={notifications}
+            onMarkAsRead={handleMarkAsRead}
+            onMarkAllRead={handleMarkAllRead}
+          />
         </div>
 
       </header>
@@ -143,7 +230,7 @@ const Navbar = ({ isSidebarCollapsed, toggleMobileSidebar }) => {
       <ProfileDrawer
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
-        user={currentUser} // Passing dynamic user to drawer
+        user={currentUser}
       />
     </>
   );

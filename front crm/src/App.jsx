@@ -38,6 +38,7 @@ import CounselorDashboard from './pages/CounselorDashboard';
 import AiReport from './pages/AiReport';
 import CommonDashboard from './pages/CommonDashboard';
 import BasicReportPage from './pages/BasicReportPage';
+import NotificationPage from './pages/NotificationPage';
 
 
 
@@ -176,6 +177,7 @@ function App() {
         <Route path="/ai-report" element={<ProtectedRoute><MainLayout><AiReport /></MainLayout></ProtectedRoute>} />
         <Route path="/common-dashboard" element={<ProtectedRoute><MainLayout><CommonDashboard /></MainLayout></ProtectedRoute>} />
         <Route path="/basic-report" element={<ProtectedRoute><MainLayout><BasicReportPage /></MainLayout></ProtectedRoute>} />
+        <Route path="/notifications" element={<ProtectedRoute><MainLayout><NotificationPage /></MainLayout></ProtectedRoute>} />
 
         {/* Default Landing Route */}
         <Route path="/" element={<LandingRoute />} />

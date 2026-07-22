@@ -17,10 +17,7 @@ import graphicDesignerReportRoutes from './graphicDesignerReport.routes.js';
 import academicCounselorReportRoutes from './academicCounselorReport.routes.js';
 import videographerReportRoutes from './videographerReport.routes.js';
 import employeeReportPDFRoutes from './employeeReportPDF.routes.js';
-
-
-
-
+import notificationRoutes from './notification.routes.js';
 
 const router = Router();
 
@@ -43,5 +40,6 @@ router.use('/graphic-designer-reports', graphicDesignerReportRoutes);
 router.use('/academic-counselor-reports', academicCounselorReportRoutes);
 router.use('/videographer-reports', videographerReportRoutes);
 router.use('/employee-reports', employeeReportPDFRoutes);
+router.use('/notifications', notificationRoutes);
 
 export default router;
