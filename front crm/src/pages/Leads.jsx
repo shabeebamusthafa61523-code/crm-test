@@ -38,6 +38,57 @@ const getISTDate = () => {
   }).format(new Date());
 };
 
+const STATUS_META = {
+  'New': { label: 'New', color: 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:bg-blue-500/20 dark:text-blue-400', dot: 'bg-blue-500' },
+  'Contacted': { label: 'Contacted', color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:bg-indigo-500/20 dark:text-indigo-400', dot: 'bg-indigo-500' },
+  'Follow Up': { label: 'Follow Up', color: 'bg-amber-500/10 text-amber-600 border-amber-500/20 dark:bg-amber-500/20 dark:text-amber-400', dot: 'bg-amber-500' },
+  'Interested': { label: 'Interested', color: 'bg-purple-500/10 text-purple-600 border-purple-500/20 dark:bg-purple-500/20 dark:text-purple-400', dot: 'bg-purple-500' },
+  'Converted': { label: 'Converted', color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-400', dot: 'bg-emerald-500' },
+  'Lost': { label: 'Lost', color: 'bg-rose-500/10 text-rose-500 border-rose-500/20 dark:bg-rose-500/20 dark:text-rose-400', dot: 'bg-rose-500' }
+};
+
+const PRIORITY_META = {
+  'Low': { label: 'Low', color: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' },
+  'Medium': { label: 'Medium', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-400' },
+  'High': { label: 'High', color: 'bg-rose-100 text-rose-800 dark:bg-rose-950/30 dark:text-rose-400' }
+};
+
+
+
+const getRowClass = (interestedService) => {
+  const service = String(interestedService || '').trim().toUpperCase();
+  if (service === 'HOT LEAD') {
+    return 'bg-green-200 dark:bg-green-900/60 hover:bg-green-300 dark:hover:bg-green-800/70 text-green-950 dark:text-green-100 transition-all duration-200 border-b border-green-300 dark:border-green-800';
+  }
+  if (service === 'WARM LEAD') {
+    return 'bg-sky-200 dark:bg-sky-900/60 hover:bg-sky-300 dark:hover:bg-sky-800/70 text-sky-950 dark:text-sky-100 transition-all duration-200 border-b border-sky-300 dark:border-sky-800';
+  }
+  if (service === 'COLD LEAD') {
+    return 'bg-rose-200 dark:bg-rose-900/60 hover:bg-rose-300 dark:hover:bg-rose-800/70 text-rose-950 dark:text-rose-100 transition-all duration-200 border-b border-rose-300 dark:border-rose-800';
+  }
+  if (service === 'RNT') {
+    return 'bg-purple-200 dark:bg-purple-900/60 hover:bg-purple-300 dark:hover:bg-purple-800/70 text-purple-950 dark:text-purple-100 transition-all duration-200 border-b border-purple-300 dark:border-purple-800';
+  }
+  if (service === 'SWITCHED OFF') {
+    return 'bg-pink-200 dark:bg-pink-900/60 hover:bg-pink-300 dark:hover:bg-pink-800/70 text-pink-950 dark:text-pink-100 transition-all duration-200 border-b border-pink-300 dark:border-pink-800';
+  }
+  if (service === 'WRONG LEAD') {
+    return 'bg-amber-200 dark:bg-amber-900/60 hover:bg-amber-300 dark:hover:bg-amber-800/70 text-amber-950 dark:text-amber-100 transition-all duration-200 border-b border-amber-300 dark:border-amber-800';
+  }
+  return 'hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all duration-200';
+};
+
+const formatDateForInput = (dateString) => {
+  if (!dateString) return '';
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return '';
+    return d.toISOString().split('T')[0];
+  } catch (e) {
+    return '';
+  }
+};
+
 const Leads = () => {
   const [leads, setLeads] = useState([]);
   const [staff, setStaff] = useState([]);
@@ -266,6 +317,35 @@ const Leads = () => {
     const offset = (currentPage - 1) * itemsPerPage;
     return filteredLeads.slice(offset, offset + itemsPerPage);
   }, [filteredLeads, currentPage, itemsPerPage]);
+
+  const handleInlineUpdate = async (leadId, fieldName, value) => {
+    try {
+      const res = await fetch(`${API_BASE}/v1/leads/update`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          id: leadId,
+          [fieldName]: value
+        })
+      });
+      const data = await res.json();
+      if (res.ok || data.success) {
+        showToast('Lead updated successfully!', 'success');
+        setLeads(prevLeads => prevLeads.map(l => {
+          const lId = l.id || l._id;
+          if (lId === leadId) {
+            return { ...l, [fieldName]: value, isUpdated: true };
+          }
+          return l;
+        }));
+      } else {
+        showToast(data.message || 'Failed to update lead.', 'error');
+      }
+    } catch (error) {
+      console.error(error);
+      showToast('Failed to update lead.', 'error');
+    }
+  };
 
   const totalPages = useMemo(() => {
     return Math.ceil(filteredLeads.length / itemsPerPage);
@@ -992,8 +1072,20 @@ const Leads = () => {
                   <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200/60 dark:border-slate-800">
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Lead Info</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Contact Details</th>
-                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Context</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">City / Place</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Campaign/platform</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Course Interest</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Source</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Leads Received</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">1st Followup</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">2nd Followup</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">3rd Followup</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">4th Followup</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">5th Followup</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Remarks</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Client Meeting</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Admission</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Created</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400 text-right">Actions</th>
                   </tr>
@@ -1001,7 +1093,7 @@ const Leads = () => {
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {paginatedLeads.map((lead) => {
                     return (
-                      <tr key={lead.id || lead._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all duration-200">
+                      <tr key={lead.id || lead._id} className={getRowClass(lead.interestedService)}>
                         {/* Name & Company */}
                         <td className="px-6 py-4.5">
                           <div className="font-semibold text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
@@ -1017,7 +1109,7 @@ const Leads = () => {
 
                         {/* Contact */}
                         <td className="px-6 py-4.5 text-xs">
-                          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 font-medium">
+                          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-350 font-medium">
                             <Phone size={12} className="text-slate-400" />
                             {lead.phone}
                           </div>
@@ -1029,18 +1121,22 @@ const Leads = () => {
                           )}
                         </td>
 
-                         {/* Source & Interested Service */}
+                        {/* City / Place */}
+                        <td className="px-6 py-4.5 text-xs font-semibold text-slate-700 dark:text-slate-200">
+                          {lead.city || (
+                            <span className="text-[10px] font-medium text-slate-400 italic">
+                              Not Specified
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Campaign & Platform */}
                         <td className="px-6 py-4.5 text-xs">
-                          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 font-medium">
+                          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-350 font-medium">
                             <Tag size={12} className="text-slate-400" />
                             {lead.campaignName || 'No Campaign'}
                           </div>
                           <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                            {lead.source && (
-                              <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded font-semibold text-[8px] uppercase">
-                                Source: {lead.source}
-                              </span>
-                            )}
                             {lead.leadPlatform && (
                               <span className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200/30 rounded font-semibold text-[8px] uppercase">
                                 Platform: {lead.leadPlatform}
@@ -1049,13 +1145,148 @@ const Leads = () => {
                           </div>
                         </td>
 
-                        {/* City / Place */}
+                        {/* Status */}
+                        <td className="px-6 py-4.5 text-xs">
+                          <select
+                            value={lead.status || ''}
+                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'status', e.target.value)}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                          >
+                            <option value="" disabled>Select</option>
+                            <option value="New">New</option>
+                            <option value="Contacted">Contacted</option>
+                            <option value="Follow Up">Follow Up</option>
+                            <option value="Interested">Interested</option>
+                            <option value="Converted">Converted</option>
+                            <option value="Lost">Lost</option>
+                          </select>
+                        </td>
+
+                        {/* Course Interest */}
+                        <td className="px-6 py-4.5 text-xs font-semibold">
+                          <select
+                            value={lead.interestedService || ''}
+                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'interestedService', e.target.value)}
+                            className="border rounded-lg px-2 py-1 text-xs font-bold focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                            style={lead.interestedService ? getCourseInterestStyle(lead.interestedService) : {}}
+                          >
+                            <option value="">Select</option>
+                            <option value="HOT LEAD" style={{ backgroundColor: '#F0FDF4', color: '#9eb827' }}> HOT LEAD</option>
+                            <option value="WARM LEAD" style={{ backgroundColor: '#F0F9FF', color: '#0369A1' }}>WARM LEAD</option>
+                            <option value="COLD LEAD" style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}> COLD LEAD</option>
+                            <option value="RNT" style={{ backgroundColor: '#FAF5FF', color: '#7C3AED' }}>RNT</option>
+                            <option value="SWITCHED OFF" style={{ backgroundColor: '#FDF2F8', color: '#DB2777' }}>SWITCHED OFF</option>
+                            <option value="WRONG LEAD" style={{ backgroundColor: '#FEFCE8', color: '#A16207' }}>WRONG LEAD</option>
+                            <option value="CALL BACK"> CALL BACK</option>
+                          </select>
+                        </td>
+
+                        {/* Source */}
+                        <td className="px-6 py-4.5 text-xs">
+                          <select
+                            value={lead.source || ''}
+                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'source', e.target.value)}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                          >
+                            <option value="" disabled>Select</option>
+                            <option value="REFERENCE">REFERENCE</option>
+                            <option value="INBOUND CALLS">INBOUND CALLS</option>
+                            <option value="INBOUND MSG">INBOUND MSG</option>
+                            <option value="MARKETING">MARKETING</option>
+                          </select>
+                        </td>
+
+                        {/* Leads Received Date */}
                         <td className="px-6 py-4.5 text-xs font-semibold text-slate-700 dark:text-slate-200">
-                          {lead.city || (
-                            <span className="text-[10px] font-medium text-slate-400 italic">
-                              Not Specified
-                            </span>
-                          )}
+                          <input
+                            type="date"
+                            value={formatDateForInput(lead.leadsReceivedDate)}
+                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'leadsReceivedDate', e.target.value || null)}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                          />
+                        </td>
+
+                        {/* 1st Followup Date */}
+                        <td className="px-6 py-4.5 text-xs">
+                          <input
+                            type="date"
+                            value={formatDateForInput(lead.followUpDate1)}
+                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'followUpDate1', e.target.value || null)}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                          />
+                        </td>
+
+                        {/* 2nd Followup Date */}
+                        <td className="px-6 py-4.5 text-xs">
+                          <input
+                            type="date"
+                            value={formatDateForInput(lead.followUpDate2)}
+                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'followUpDate2', e.target.value || null)}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                          />
+                        </td>
+
+                        {/* 3rd Followup Date */}
+                        <td className="px-6 py-4.5 text-xs">
+                          <input
+                            type="date"
+                            value={formatDateForInput(lead.followUpDate3)}
+                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'followUpDate3', e.target.value || null)}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                          />
+                        </td>
+
+                        {/* 4th Followup Date */}
+                        <td className="px-6 py-4.5 text-xs">
+                          <input
+                            type="date"
+                            value={formatDateForInput(lead.followUpDate4)}
+                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'followUpDate4', e.target.value || null)}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                          />
+                        </td>
+
+                        {/* 5th Followup Date */}
+                        <td className="px-6 py-4.5 text-xs">
+                          <input
+                            type="date"
+                            value={formatDateForInput(lead.followUpDate5)}
+                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'followUpDate5', e.target.value || null)}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                          />
+                        </td>
+
+                        {/* Remarks */}
+                        <td className="px-6 py-4.5 text-xs text-slate-600 dark:text-slate-350 max-w-xs truncate">
+                          {lead.remarks || '—'}
+                        </td>
+
+                        {/* Client Meeting Fixed */}
+                        <td className="px-6 py-4.5 text-xs">
+                          <select
+                            value={lead.clientMeetingFixed || ''}
+                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'clientMeetingFixed', e.target.value)}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                          >
+                            <option value="" disabled>Select</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                          </select>
+                        </td>
+
+                        {/* Admission Status */}
+                        <td className="px-6 py-4.5 text-xs">
+                          <select
+                            value={lead.admissionYesNo || ''}
+                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'admissionYesNo', e.target.value)}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                          >
+                            <option value="" disabled>Select</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                          </select>
                         </td>
 
                         {/* Created Date */}
@@ -1082,6 +1313,16 @@ const Leads = () => {
                               title="View details & history"
                             >
                               <Eye size={15} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedLead(lead);
+                                setIsFollowUpOpen(true);
+                              }}
+                              className="p-2 text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-150 cursor-pointer"
+                              title="Add follow-up log"
+                            >
+                              <Clock size={15} />
                             </button>
                             <button
                               onClick={() => {
@@ -1225,6 +1466,19 @@ const Leads = () => {
 
 
 
+      {/* FOLLOW UP MODAL */}
+      <FollowUpModal
+        isOpen={isFollowUpOpen}
+        onClose={() => {
+          setIsFollowUpOpen(false);
+          setSelectedLead(null);
+        }}
+        onFollowedUp={fetchLeads}
+        lead={selectedLead}
+        getAuthHeaders={getAuthHeaders}
+        showToast={showToast}
+      />
+
       {/* EXCEL IMPORT MODAL */}
       <ImportModal
         isOpen={isImportOpen}
@@ -1246,6 +1500,170 @@ const Leads = () => {
       />
 
     </div>
+  );
+};
+
+/* ==========================================
+   FOLLOW UP LOGGING MODAL
+   ========================================== */
+const FollowUpModal = ({ isOpen, onClose, onFollowedUp, lead, getAuthHeaders, showToast }) => {
+  const [formData, setFormData] = useState({
+    remarks: '',
+    nextFollowUpDate: '',
+    callSummary: '',
+    meetingNotes: '',
+    statusChangedTo: ''
+  });
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (lead) {
+      setFormData({
+        remarks: '',
+        nextFollowUpDate: lead.nextFollowUpDate ? new Date(lead.nextFollowUpDate).toISOString().split('T')[0] : '',
+        callSummary: '',
+        meetingNotes: '',
+        statusChangedTo: lead.status || 'Follow Up'
+      });
+    }
+  }, [lead]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.remarks && !formData.callSummary && !formData.meetingNotes && !formData.statusChangedTo) {
+      showToast('Please log some comments or status changes.', 'warning');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const res = await fetch(`${API_BASE}/v1/leads/followup`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          ...formData,
+          leadId: lead.id || lead._id
+        })
+      });
+      const data = await res.json();
+      if (res.ok || data.success) {
+        showToast('Follow-up activity recorded successfully!', 'success');
+        onFollowedUp();
+        onClose();
+      } else {
+        showToast(data.message || 'Failed to submit follow-up.', 'error');
+      }
+    } catch (e) {
+      console.error(e);
+      showToast('Error recording followup details.', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!isOpen || !lead) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 15 }}
+        className="w-full max-w-lg max-h-[90vh] flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden"
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
+          <h2 className="text-base font-bold text-slate-850 dark:text-white flex items-center gap-2">
+            <Clock className="text-indigo-600" size={18} />
+            Log Follow-Up Activity: {lead.leadName}
+          </h2>
+          <button onClick={onClose} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer">
+            <X size={18} className="text-slate-400 hover:text-slate-600" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-grow scrollbar-thin">
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Interaction Notes / Remarks *</label>
+            <textarea
+              rows={3}
+              required
+              value={formData.remarks}
+              onChange={e => setFormData({ ...formData, remarks: e.target.value })}
+              className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition resize-none"
+              placeholder="Detail conversation, comments, or client reactions..."
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Update Status</label>
+              <select
+                value={formData.statusChangedTo}
+                onChange={e => setFormData({ ...formData, statusChangedTo: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              >
+                <option value="New">New</option>
+                <option value="Contacted">Contacted</option>
+                <option value="Follow Up">Follow Up</option>
+                <option value="Interested">Interested</option>
+                <option value="Converted">Converted</option>
+                <option value="Lost">Lost</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Next Follow-Up Date</label>
+              <input
+                type="date"
+                value={formData.nextFollowUpDate}
+                onChange={e => setFormData({ ...formData, nextFollowUpDate: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Call Details Summary (Optional)</label>
+            <input
+              type="text"
+              value={formData.callSummary}
+              onChange={e => setFormData({ ...formData, callSummary: e.target.value })}
+              className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              placeholder="e.g. Called at 2PM, answered. Discussed pricing details."
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Meeting Notes / Agenda (Optional)</label>
+            <input
+              type="text"
+              value={formData.meetingNotes}
+              onChange={e => setFormData({ ...formData, meetingNotes: e.target.value })}
+              className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              placeholder="e.g. Schedule Google Meet for Friday 10AM."
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border border-slate-200 dark:border-slate-850 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 transition cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 transition flex items-center gap-2 cursor-pointer"
+            >
+              {submitting && <Loader2 size={14} className="animate-spin" />}
+              Save History
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>,
+    document.body
   );
 };
 

@@ -66,7 +66,7 @@ const menuItems = [
     label: 'Telecaller Leads', 
     path: '/leads-telecaller',
     allowedDesignations: ['6a27939af292348deb7d0495'],
-    allowedRoles: ['1', '2', '3', 'hr', 'admin', 'superadmin']
+    allowedRoles: ['1', '2', 'hr', 'admin', 'superadmin']
   },
   { 
     icon: TrendingUp, 
