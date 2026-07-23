@@ -73,7 +73,7 @@ const menuItems = [
     label: 'Lead Counselor', 
     path: '/lead-counselor',
     allowedDesignations: ['6a2f91472df21dc234018cab'],
-    allowedRoles: ['1', '2', '3', 'hr', 'admin', 'superadmin']
+    // allowedRoles: ['1', '2', '3', 'hr', 'admin', 'superadmin']
   },
   {
     icon: BarChart3,
@@ -202,26 +202,6 @@ const PortalTooltip = ({ children }) => {
 const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }) => {
   const location = useLocation();
   const activePath = location.pathname;
-  const sidebarRef = useRef(null);
-
-  // Click-inside to expand, click-outside to collapse on desktop
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (window.innerWidth < 1024) return; // Desktop only behavior
-      if (sidebarRef.current) {
-        if (sidebarRef.current.contains(event.target)) {
-          setIsCollapsed(prev => !prev);
-        } else {
-          setIsCollapsed(true);
-        }
-      }
-    };
-    
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [setIsCollapsed]);
 
   const getVisibleMenuItems = () => {
     try {
@@ -313,20 +293,33 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
     <>
       {/* 1. Desktop Sidebar */}
       <aside
-        ref={sidebarRef}
         className={`fixed top-0 bottom-0 left-0 z-40 hidden lg:flex flex-col bg-white dark:bg-slate-900 border-r border-slate-200/50 dark:border-slate-800/50 transition-all duration-300 ${
           isCollapsed ? 'w-20' : 'w-64'
         }`}
       >
         {/* Logo header */}
-        <div className="h-16 flex items-center px-5  shrink-0 overflow-hidden">
-          <div className="flex items-center gap-3 w-full justify-center lg:justify-start">
+        <div className="h-16 flex items-center justify-between px-5 shrink-0 overflow-hidden border-b border-slate-100 dark:border-slate-800/40">
+          <div className="flex items-center gap-3">
             {!isCollapsed ? (
               <img src="/logo3.png" alt="StaffHQ Logo" className="h-8 w-auto object-contain" />
             ) : (
               <img src="/logo2.png" alt="StaffHQ Logo Icon" className="h-8 w-8 object-contain shrink-0" />
             )}
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              setIsCollapsed(prev => {
+                const nextState = !prev;
+                localStorage.setItem('sidebarCollapsed', JSON.stringify(nextState));
+                return nextState;
+              });
+            }}
+            className="p-1.5 rounded-xl text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+            title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+          >
+            {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          </button>
         </div>
 
         {/* Menu Items (Scrollable) */}
