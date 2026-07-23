@@ -153,7 +153,8 @@ const [activePriority, setActivePriority] = useState('all');
   const hasAccess = useMemo(() => {
     if (!currentUser) return false;
     const roleId = String(currentUser.role_id || currentUser.roleId || currentUser.role || '').toLowerCase().trim();
-    if (['1', '2', '3', 'hr'].includes(roleId)) return true;
+    const designation = String(currentUser.designation || '').toLowerCase().trim();
+    if (['1', '2', '3', 'hr', 'admin', 'superadmin'].includes(roleId) || designation.includes('admin')) return true;
 
     let departmentId = '';
     if (currentUser.departmentId) {
@@ -594,15 +595,13 @@ const [activePriority, setActivePriority] = useState('all');
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            {!isAdmin && (
-              <button
-                onClick={() => setIsImportOpen(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium text-xs rounded-xl transition-all duration-300 cursor-pointer"
-              >
-                <FileSpreadsheet size={16} />
-                Import Excel
-              </button>
-            )}
+            <button
+              onClick={() => setIsImportOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium text-xs rounded-xl transition-all duration-300 cursor-pointer"
+            >
+              <FileSpreadsheet size={16} />
+              Import Excel
+            </button>
             <button
               onClick={handleExportExcel}
               className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium text-xs rounded-xl transition-all duration-300 cursor-pointer"
@@ -617,15 +616,13 @@ const [activePriority, setActivePriority] = useState('all');
               <FileText size={16} />
               Export PDF
             </button>
-            {!isAdmin && (
-              <button
-                onClick={() => setIsCreateOpen(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 transition-all duration-300 cursor-pointer"
-              >
-                <Plus size={16} />
-                Add Lead
-              </button>
-            )}
+            <button
+              onClick={() => setIsCreateOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 transition-all duration-300 cursor-pointer"
+            >
+              <Plus size={16} />
+              Add Lead
+            </button>
           </div>
         </div>
 
@@ -1292,7 +1289,6 @@ const [activePriority, setActivePriority] = useState('all');
                             value={lead.status || ''}
                             onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'status', e.target.value)}
                             className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
-                            disabled={isAdmin}
                           >
                             <option value="" disabled>Select</option>
                             <option value="New">New</option>
@@ -1310,7 +1306,6 @@ const [activePriority, setActivePriority] = useState('all');
                             onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'interestedService', e.target.value)}
                             className="border rounded-lg px-2 py-1 text-xs font-bold focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
                             style={lead.interestedService ? getCourseInterestStyle(lead.interestedService) : {}}
-                            disabled={isAdmin}
                           >
                             <option value="">Select</option>
                             <option value="HOT LEAD" style={{ backgroundColor: '#F0FDF4', color: '#9eb827' }}> HOT LEAD</option>
@@ -1329,7 +1324,6 @@ const [activePriority, setActivePriority] = useState('all');
                             value={lead.source || ''}
                             onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'source', e.target.value)}
                             className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
-                            disabled={isAdmin}
                           >
                             <option value="" disabled>Select</option>
                             <option value="REFERENCE">REFERENCE</option>
@@ -1346,7 +1340,6 @@ const [activePriority, setActivePriority] = useState('all');
                             value={formatDateForInput(lead.leadsReceivedDate)}
                             onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'leadsReceivedDate', e.target.value || null)}
                             className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
-                            disabled={isAdmin}
                           />
                         </td>
 
@@ -1357,7 +1350,6 @@ const [activePriority, setActivePriority] = useState('all');
                             value={formatDateForInput(lead.followUpDate1)}
                             onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'followUpDate1', e.target.value || null)}
                             className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
-                            disabled={isAdmin}
                           />
                         </td>
 
@@ -1368,7 +1360,6 @@ const [activePriority, setActivePriority] = useState('all');
                             value={formatDateForInput(lead.followUpDate2)}
                             onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'followUpDate2', e.target.value || null)}
                             className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
-                            disabled={isAdmin}
                           />
                         </td>
 
@@ -1379,7 +1370,6 @@ const [activePriority, setActivePriority] = useState('all');
                             value={formatDateForInput(lead.followUpDate3)}
                             onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'followUpDate3', e.target.value || null)}
                             className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
-                            disabled={isAdmin}
                           />
                         </td>
 
@@ -1390,7 +1380,6 @@ const [activePriority, setActivePriority] = useState('all');
                             value={formatDateForInput(lead.followUpDate4)}
                             onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'followUpDate4', e.target.value || null)}
                             className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
-                            disabled={isAdmin}
                           />
                         </td>
 
@@ -1401,7 +1390,6 @@ const [activePriority, setActivePriority] = useState('all');
                             value={formatDateForInput(lead.followUpDate5)}
                             onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'followUpDate5', e.target.value || null)}
                             className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
-                            disabled={isAdmin}
                           />
                         </td>
 
@@ -1416,7 +1404,6 @@ const [activePriority, setActivePriority] = useState('all');
                             value={lead.clientMeetingFixed || ''}
                             onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'clientMeetingFixed', e.target.value)}
                             className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
-                            disabled={isAdmin}
                           >
                             <option value="" disabled>Select</option>
                             <option value="Pending">Pending</option>
@@ -1431,7 +1418,6 @@ const [activePriority, setActivePriority] = useState('all');
                             value={lead.admissionYesNo || ''}
                             onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'admissionYesNo', e.target.value)}
                             className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
-                            disabled={isAdmin}
                           >
                             <option value="" disabled>Select</option>
                             <option value="Pending">Pending</option>
@@ -1465,37 +1451,33 @@ const [activePriority, setActivePriority] = useState('all');
                             >
                               <Eye size={15} />
                             </button>
-                            {!isAdmin && (
-                              <>
-                                <button
-                                  onClick={() => {
-                                    setSelectedLead(lead);
-                                    setIsFollowUpOpen(true);
-                                  }}
-                                  className="p-2 text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-150 cursor-pointer"
-                                  title="Add follow-up log"
-                                >
-                                  <Clock size={15} />
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setSelectedLead(lead);
-                                    setIsEditOpen(true);
-                                  }}
-                                  className="p-2 text-slate-400 hover:text-blue-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-150 cursor-pointer"
-                                  title="Edit Lead"
-                                >
-                                  <Edit3 size={15} />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteLead(lead.id || lead._id, lead.leadName)}
-                                  className="p-2 text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-150 cursor-pointer"
-                                  title="Delete Lead"
-                                >
-                                  <Trash2 size={15} />
-                                </button>
-                              </>
-                            )}
+                            <button
+                              onClick={() => {
+                                setSelectedLead(lead);
+                                setIsFollowUpOpen(true);
+                              }}
+                              className="p-2 text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-150 cursor-pointer"
+                              title="Add follow-up log"
+                            >
+                              <Clock size={15} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedLead(lead);
+                                setIsEditOpen(true);
+                              }}
+                              className="p-2 text-slate-400 hover:text-blue-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-150 cursor-pointer"
+                              title="Edit Lead"
+                            >
+                              <Edit3 size={15} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteLead(lead.id || lead._id, lead.leadName)}
+                              className="p-2 text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-150 cursor-pointer"
+                              title="Delete Lead"
+                            >
+                              <Trash2 size={15} />
+                            </button>
                           </div>
                         </td>
                       </tr>

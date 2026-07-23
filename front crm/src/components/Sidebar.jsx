@@ -65,17 +65,15 @@ const menuItems = [
     icon: TrendingUp, 
     label: 'Telecaller Leads', 
     path: '/leads-telecaller',
-    // allowedRoles: ['3'],
-    // allowedDepartments: ['6a26a7d72a56a1f9c49da8a3', '6a27f394558c220a47fff02e'],
     allowedDesignations: ['6a27939af292348deb7d0495'],
-    allowedRoles: ['1', '2', 'hr','admin']
+    allowedRoles: ['1', '2', 'hr', 'admin', 'superadmin']
   },
   { 
     icon: TrendingUp, 
     label: 'Lead Counselor', 
     path: '/lead-counselor',
     allowedDesignations: ['6a2f91472df21dc234018cab'],
-    // allowedRoles: ['1', '2', 'hr', 'admin']
+    allowedRoles: ['1', '2', '3', 'hr', 'admin', 'superadmin']
   },
   {
     icon: BarChart3,
