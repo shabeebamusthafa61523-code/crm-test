@@ -140,13 +140,15 @@ const [activePriority, setActivePriority] = useState('all');
   const isPrivilegedUser = useMemo(() => {
     if (!currentUser) return false;
     const roleId = String(currentUser.role_id || currentUser.roleId || currentUser.role || '').toLowerCase().trim();
-    return ['1', '2', '3','hr', 'admin'].includes(roleId);
+    const designation = String(currentUser.designation || '').toLowerCase().trim();
+    return ['1', '2', '3', 'hr', 'admin', 'superadmin'].includes(roleId) || designation.includes('admin');
   }, [currentUser]);
 
   const hasAccess = useMemo(() => {
     if (!currentUser) return false;
     const roleId = String(currentUser.role_id || currentUser.roleId || currentUser.role || '').toLowerCase().trim();
-    if (roleId === '3') return true;
+    const designation = String(currentUser.designation || '').toLowerCase().trim();
+    if (['1', '2', '3', 'hr', 'admin', 'superadmin'].includes(roleId) || designation.includes('admin')) return true;
 
     let departmentId = '';
     if (currentUser.departmentId) {

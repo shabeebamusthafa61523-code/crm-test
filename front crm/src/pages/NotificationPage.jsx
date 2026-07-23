@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Bell, 
@@ -40,7 +40,17 @@ const NotificationPage = () => {
   // Notifications List State
   const [notifications, setNotifications] = useState([]);
   const [loadingNotifications, setLoadingNotifications] = useState(true);
-  const [activeTab, setActiveTab] = useState('received'); // 'received' | 'all'
+  // Notification tab state
+  const [activeTab, setActiveTab] = useState('received'); // 'received' | 'assigned_by'
+
+  const currentUser = useMemo(() => {
+    try {
+      const savedUser = localStorage.getItem('user');
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch (e) {
+      return null;
+    }
+  }, []);
 
   const getAuthHeaders = useCallback(() => {
     const rawToken = localStorage.getItem('token');
@@ -113,6 +123,40 @@ const NotificationPage = () => {
   useEffect(() => {
     fetchNotifications();
   }, [fetchNotifications]);
+
+  // Filter notifications created/sent by logged-in user for "Assigned By" tab
+  const displayedNotifications = useMemo(() => {
+    if (activeTab === 'assigned_by') {
+      const currentUserId = String(currentUser?._id || currentUser?.id || currentUser?.user_id || localStorage.getItem('user_id') || '');
+      const currentUserName = (currentUser?.name || currentUser?.username || '').toLowerCase().trim();
+
+      return notifications.filter(n => {
+        if (!n) return false;
+        const createdById = String(
+          typeof n.createdBy === 'object' 
+            ? (n.createdBy?._id || n.createdBy?.id || '') 
+            : (n.createdBy || n.senderId || n.userId || '')
+        );
+        if (currentUserId && createdById && createdById === currentUserId) return true;
+        if (n.createdByName && currentUserName && n.createdByName.toLowerCase().trim() === currentUserName) return true;
+        if (n.createdBy?.name && currentUserName && n.createdBy.name.toLowerCase().trim() === currentUserName) return true;
+        return false;
+      });
+    }
+    return notifications;
+  }, [notifications, activeTab, currentUser]);
+
+  const formatAssignedTo = (assignedTo) => {
+    if (!assignedTo) return 'User';
+    if (Array.isArray(assignedTo)) {
+      const names = assignedTo.map(u => (typeof u === 'object' ? u.name || u.email : u)).filter(Boolean);
+      return names.length > 0 ? names.join(', ') : 'User';
+    }
+    if (typeof assignedTo === 'object') {
+      return assignedTo.name || assignedTo.email || 'User';
+    }
+    return String(assignedTo);
+  };
 
   // Multi-select User Helper Functions
   const toggleUserSelection = (rawId) => {
@@ -268,6 +312,20 @@ const NotificationPage = () => {
             </h2>
 
             <form onSubmit={handleSendNotification} className="space-y-4">
+              {/* Title / Subject (Placed ABOVE Description) */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                  Title / Subject <span className="text-slate-400 font-normal">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Urgent Task Update"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-3.5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-slate-800 dark:text-slate-200"
+                />
+              </div>
+
               {/* Notification Description */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
@@ -393,20 +451,6 @@ const NotificationPage = () => {
                 </div>
               </div>
 
-              {/* Title / Subject (Optional) */}
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
-                  Title / Subject <span className="text-slate-400 font-normal">(Optional)</span>
-                </label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Urgent Task Update"
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-3.5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-slate-800 dark:text-slate-200"
-                />
-              </div>
-
               {/* Submit Button */}
               <button
                 type="submit"
@@ -447,14 +491,14 @@ const NotificationPage = () => {
                   Assigned To Me
                 </button>
                 <button
-                  onClick={() => setActiveTab('all')}
+                  onClick={() => setActiveTab('assigned_by')}
                   className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    activeTab === 'all'
+                    activeTab === 'assigned_by'
                       ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                   }`}
                 >
-                  All System Notifications
+                  Assigned By
                 </button>
               </div>
 
@@ -475,28 +519,30 @@ const NotificationPage = () => {
                 <Loader2 className="animate-spin text-indigo-600" size={32} />
                 <p className="text-xs font-medium text-slate-400">Loading notifications...</p>
               </div>
-            ) : notifications.length === 0 ? (
+            ) : displayedNotifications.length === 0 ? (
               <div className="text-center py-16 px-4">
                 <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto mb-3">
                   <Bell size={24} />
                 </div>
-                <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300">No notifications found</h3>
+                <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                  {activeTab === 'assigned_by' ? 'No notifications sent by you yet' : 'No notifications found'}
+                </h3>
                 <p className="text-xs text-slate-400 mt-1">There are no notifications in this view currently.</p>
               </div>
             ) : (
               <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-                {notifications.map((n) => (
+                {displayedNotifications.map((n) => (
                   <motion.div
                     key={n._id}
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
                     className={`p-4 rounded-2xl border transition-all relative ${
-                      !n.isRead
+                      !n.isRead && activeTab === 'received'
                         ? 'bg-indigo-50/40 dark:bg-indigo-950/20 border-indigo-200/60 dark:border-indigo-800/40'
                         : 'bg-slate-50/50 dark:bg-slate-950/50 border-slate-200/40 dark:border-slate-800/40'
                     }`}
                   >
-                    {!n.isRead && (
+                    {!n.isRead && activeTab === 'received' && (
                       <div className="absolute left-3 top-4 w-2 h-2 rounded-full bg-rose-500 ring-4 ring-rose-500/20" />
                     )}
 
@@ -506,7 +552,7 @@ const NotificationPage = () => {
                           <h4 className="text-sm font-black text-slate-900 dark:text-white">
                             {n.title || 'Notification'}
                           </h4>
-                          {!n.isRead && (
+                          {!n.isRead && activeTab === 'received' && (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-500 border border-rose-500/20">
                               NEW
                             </span>
@@ -523,17 +569,17 @@ const NotificationPage = () => {
                             {new Date(n.createdAt).toLocaleDateString()} {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                           
-                          {n.createdByName && (
-                            <span className="flex items-center gap-1">
-                              <User size={12} />
-                              From: {n.createdByName}
-                            </span>
-                          )}
-
-                          {activeTab === 'all' && n.assignedTo && (
+                          {activeTab === 'received' ? (
+                            n.createdByName && (
+                              <span className="flex items-center gap-1">
+                                <User size={12} />
+                                Assigned By: {n.createdByName}
+                              </span>
+                            )
+                          ) : (
                             <span className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-bold">
                               <Users size={12} />
-                              Assigned To: {n.assignedTo.name || 'User'}
+                              Assigned To: {formatAssignedTo(n.assignedTo)}
                             </span>
                           )}
                         </div>
@@ -541,7 +587,7 @@ const NotificationPage = () => {
 
                       {/* Action buttons */}
                       <div className="flex items-center gap-1.5 shrink-0">
-                        {!n.isRead && (
+                        {!n.isRead && activeTab === 'received' && (
                           <button
                             onClick={() => handleMarkAsRead(n._id)}
                             title="Mark as read"
