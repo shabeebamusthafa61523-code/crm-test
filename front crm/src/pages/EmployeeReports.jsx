@@ -3,9 +3,11 @@ import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, Search, Download, Loader2, FileDown, AlertCircle, ChevronDown, ChevronUp,
-  CalendarDays, CalendarRange, BarChart3, SlidersHorizontal, X
+  CalendarDays, CalendarRange, BarChart3, SlidersHorizontal, X, Eye, FileText, Sparkles, Brain
 } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { useToast } from '../components/ToastProvider';
+import { AiAnalyzeButton, AiAnalyzeModal } from '../components/AiAnalyzeModal';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -45,6 +47,11 @@ const EmployeeReports = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [downloading, setDownloading] = useState(null); // empId being downloaded
   const [downloadingReportId, setDownloadingReportId] = useState(null); // specific saved report being downloaded
+  const [loadingPreviewId, setLoadingPreviewId] = useState(null); // reportId or empId being previewed
+  const [previewPdfModal, setPreviewPdfModal] = useState({ isOpen: false, url: null, title: '', report: null, emp: null });
+  const [isEmployeeAiOpen, setIsEmployeeAiOpen] = useState(false);
+  const [employeeAiContext, setEmployeeAiContext] = useState(null);
+  const [employeeAiTitle, setEmployeeAiTitle] = useState('Employee Reports Analysis');
   const [errorMsg, setErrorMsg] = useState(null);
 
   const [expandedEmpId, setExpandedEmpId] = useState(null);
@@ -361,6 +368,96 @@ const EmployeeReports = () => {
     }
   };
 
+  // Preview/View a specific saved report (PDF) without forced download
+  const handleViewReport = async (emp, report) => {
+    const token = localStorage.getItem('token');
+    const cleanToken = token ? token.replace(/"/g, '') : '';
+    const headers = {
+      'Authorization': cleanToken.startsWith('Bearer ') ? cleanToken : `Bearer ${cleanToken}`
+    };
+
+    setLoadingPreviewId(report._id);
+    showToast(`Loading ${report.report_period || 'report'} preview...`, "info");
+
+    try {
+      const url = `${API_BASE}/v1/employee-reports/stream/${report._id}`;
+      const res = await fetch(url, { headers });
+
+      if (res.ok) {
+        const blob = await res.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        setPreviewPdfModal({
+          isOpen: true,
+          url: objectUrl,
+          title: `${emp.name || 'Employee'} — ${report.report_period || 'Daily'} Report (${report.report_date})`,
+          report,
+          emp
+        });
+      } else {
+        showToast("Could not load PDF preview for this report.", "error");
+      }
+    } catch (err) {
+      console.error('Preview report error:', err);
+      showToast("Failed to load PDF preview.", "error");
+    } finally {
+      setLoadingPreviewId(null);
+    }
+  };
+
+  // Preview latest daily report for an employee directly
+  const handleViewLatest = async (emp) => {
+    const config = getDesignationConfig(emp);
+    if (!config) {
+      setErrorMsg(`No report template configured for ${emp.name || 'this employee'}.`);
+      setTimeout(() => setErrorMsg(null), 4000);
+      return;
+    }
+
+    const empId = emp._id || emp.id;
+    setLoadingPreviewId(empId);
+    showToast("Generating PDF report preview...", "info");
+
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const token = localStorage.getItem('token');
+      const cleanToken = token ? token.replace(/"/g, '') : '';
+      const headers = {
+        'Authorization': cleanToken.startsWith('Bearer ') ? cleanToken : `Bearer ${cleanToken}`
+      };
+
+      const reportTypeSlug = config.apiPrefix.replace('-reports', '');
+      let url = `${API_BASE}/v1/employee-reports/generate-pdf?userId=${empId}&dateString=${today}&reportType=${reportTypeSlug}`;
+      let res = await fetch(url, { headers });
+
+      if (!res.ok) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yStr = yesterday.toISOString().split('T')[0];
+        url = `${API_BASE}/v1/employee-reports/generate-pdf?userId=${empId}&dateString=${yStr}&reportType=${reportTypeSlug}`;
+        res = await fetch(url, { headers });
+      }
+
+      if (res.ok) {
+        const blob = await res.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        setPreviewPdfModal({
+          isOpen: true,
+          url: objectUrl,
+          title: `${emp.name || 'Employee'} — Latest Daily Report`,
+          report: { report_date: 'Latest', report_period: 'daily' },
+          emp
+        });
+      } else {
+        showToast(`No report found for ${emp.name || 'this employee'} for today or yesterday.`, "error");
+      }
+    } catch (err) {
+      console.error('View latest failed:', err);
+      showToast('Failed to load PDF report preview.', 'error');
+    } finally {
+      setLoadingPreviewId(null);
+    }
+  };
+
   const handleSortChange = (empId, newSortOrder) => {
     setSortOrders(prev => ({ ...prev, [empId]: newSortOrder }));
     if (newSortOrder === 'newest' || newSortOrder === 'oldest') {
@@ -424,6 +521,222 @@ const EmployeeReports = () => {
     };
   };
 
+  // AI Report Analysis Handler for Directory
+  const handleAnalyzeAllEmployeeReports = () => {
+    const totalEmps = employees.length;
+    const totalReportsCount = flattenedReports.length;
+    
+    const deptSummary = {};
+    employees.forEach(emp => {
+      const dept = emp.departmentId?.name || emp.department || 'General';
+      const empId = emp._id || emp.id;
+      const reports = uploadedReportsMap[empId] || [];
+      if (!deptSummary[dept]) {
+        deptSummary[dept] = { employeeCount: 0, totalReports: 0 };
+      }
+      deptSummary[dept].employeeCount += 1;
+      deptSummary[dept].totalReports += reports.length;
+    });
+
+    const contextObj = {
+      target: 'Overall Employee Reports Directory',
+      totalEmployees: totalEmps,
+      totalSavedReports: totalReportsCount,
+      departmentBreakdown: deptSummary,
+      activeDepartmentFilter: selectedDepartment,
+      activeDesignationFilter: selectedDesignation,
+      recentReportsSample: sortedReports.slice(0, 15).map(r => ({
+        employeeName: r.employee?.name,
+        designation: r.employee?.designationId?.name || r.employee?.designation,
+        reportPeriod: r.report_period,
+        reportDate: r.report_date,
+        filename: r.filename
+      }))
+    };
+
+    setEmployeeAiContext(contextObj);
+    setEmployeeAiTitle('Employee Reports Directory Intelligence');
+    setIsEmployeeAiOpen(true);
+  };
+
+  // AI Report Analysis Handler for Single Employee (Fetches ALL reports in active sort order)
+  const handleAnalyzeSingleEmployee = async (emp, report = null) => {
+    const config = getDesignationConfig(emp);
+    const empId = emp._id || emp.id;
+    
+    // Get all reports for this employee respecting active period filter and sort order
+    const filteredSortedReports = getFilteredReports(empId);
+    
+    // If a specific report was targeted (e.g. from PDF preview modal), analyze that one. Otherwise, analyze ALL sorted reports!
+    const reportsToAnalyze = report ? [report] : filteredSortedReports;
+    const sortOrderLabel = sortOrders[empId] || 'newest';
+    const periodFilterLabel = periodFilters[empId] || 'all';
+
+    showToast(`Fetching content across ${reportsToAnalyze.length} report(s) for ${emp.name}...`, "info");
+    setLoadingPreviewId(empId);
+
+    const token = localStorage.getItem('token');
+    const cleanToken = token ? token.replace(/"/g, '') : '';
+    const headers = {
+      'Authorization': cleanToken.startsWith('Bearer ') ? cleanToken : `Bearer ${cleanToken}`
+    };
+
+    // Analyze up to top 15 reports in active sorted order
+    const targetReportsSample = reportsToAnalyze.slice(0, 15);
+
+    const fetchedContentPromises = targetReportsSample.map(async (rpt) => {
+      let contentText = "";
+      if (config && rpt.report_date) {
+        try {
+          const res = await fetch(`${API_BASE}/v1/${config.apiPrefix}/by-date?userId=${empId}&dateString=${rpt.report_date}`, { headers });
+          if (res.ok) {
+            const resJson = await res.json();
+            if (resJson.success && resJson.data) {
+              const d = resJson.data;
+              const parts = [
+                d.workDone && `Work Accomplished: ${typeof d.workDone === 'object' ? JSON.stringify(d.workDone) : d.workDone}`,
+                d.tasks && `Tasks Logged: ${typeof d.tasks === 'object' ? JSON.stringify(d.tasks) : d.tasks}`,
+                d.dailyTasks && `Daily Work Entries: ${typeof d.dailyTasks === 'object' ? JSON.stringify(d.dailyTasks) : d.dailyTasks}`,
+                d.deliverables && `Deliverables: ${typeof d.deliverables === 'object' ? JSON.stringify(d.deliverables) : d.deliverables}`,
+                d.projects && `Projects: ${typeof d.projects === 'object' ? JSON.stringify(d.projects) : d.projects}`,
+                d.remarks && `Remarks: ${d.remarks}`,
+                d.challenges && `Challenges & Blockers: ${d.challenges}`,
+                d.learnings && `Learnings: ${d.learnings}`,
+                d.hoursWorked && `Hours Worked: ${d.hoursWorked} hrs`,
+                d.totalCalls !== undefined && `Total Calls: ${d.totalCalls}`,
+                d.conversions !== undefined && `Conversions: ${d.conversions}`,
+                d.summary && `Summary Notes: ${d.summary}`
+              ].filter(Boolean);
+              if (parts.length > 0) {
+                contentText = parts.join(" | ");
+              }
+            }
+          }
+        } catch (e) {
+          console.warn(`Failed fetching report content for date ${rpt.report_date}:`, e);
+        }
+      }
+
+      if (!contentText) {
+        contentText = `Report File: ${rpt.filename || 'PDF Report'}, Period: ${rpt.report_period || 'Daily'}`;
+      }
+
+      return `[REPORT DATE: ${rpt.report_date || 'N/A'} | PERIOD: ${(rpt.report_period || 'daily').toUpperCase()}]\n${contentText}`;
+    });
+
+    const compiledReportEntries = await Promise.all(fetchedContentPromises);
+    const fullCompiledContentText = compiledReportEntries.join("\n\n---\n\n");
+
+    const contextObj = {
+      target: `Comprehensive Multi-Report Content Analysis: ${emp.name}`,
+      employeeName: emp.name,
+      email: emp.email,
+      designation: emp.designationId?.name || emp.designation || config?.name || 'Staff',
+      department: emp.departmentId?.name || emp.department || 'General',
+      totalReportsAnalyzed: targetReportsSample.length,
+      totalReportsInDirectory: filteredSortedReports.length,
+      activeSortOrder: sortOrderLabel,
+      activePeriodFilter: periodFilterLabel,
+      actualReportContentText: fullCompiledContentText || 'No text content available in employee reports.'
+    };
+
+    setEmployeeAiContext(contextObj);
+    setEmployeeAiTitle(`AI Content Summary: ${emp.name}`);
+    setIsEmployeeAiOpen(true);
+    setLoadingPreviewId(null);
+  };
+
+  // AI Conclude Handler: Fetches ALL reports for an employee across their entire history & generates a final work conclusion
+  const handleAiConcludeEmployee = async (emp) => {
+    const config = getDesignationConfig(emp);
+    const empId = emp._id || emp.id;
+    
+    // Fetch all uploaded reports for this employee
+    let allReports = uploadedReportsMap[empId] || [];
+    if (isNonOperational) {
+      allReports = allReports.filter(r => r.report_period !== 'daily');
+    }
+
+    if (allReports.length === 0) {
+      showToast(`No saved reports found for ${emp.name}.`, "warning");
+      return;
+    }
+
+    showToast(`Fetching all ${allReports.length} reports of ${emp.name} for AI Conclusion...`, "info");
+    setLoadingPreviewId(empId);
+
+    const token = localStorage.getItem('token');
+    const cleanToken = token ? token.replace(/"/g, '') : '';
+    const headers = {
+      'Authorization': cleanToken.startsWith('Bearer ') ? cleanToken : `Bearer ${cleanToken}`
+    };
+
+    // Sort reports chronologically
+    const sortedReportsList = [...allReports].sort((a, b) => new Date(b.created_at || b.report_date) - new Date(a.created_at || a.report_date));
+    
+    // Sample up to 20 reports across their history for deep evaluation
+    const sampleReports = sortedReportsList.slice(0, 20);
+
+    const fetchedPromises = sampleReports.map(async (rpt) => {
+      let contentText = "";
+      if (config && rpt.report_date) {
+        try {
+          const res = await fetch(`${API_BASE}/v1/${config.apiPrefix}/by-date?userId=${empId}&dateString=${rpt.report_date}`, { headers });
+          if (res.ok) {
+            const resJson = await res.json();
+            if (resJson.success && resJson.data) {
+              const d = resJson.data;
+              const parts = [
+                d.workDone && `Work Accomplished: ${typeof d.workDone === 'object' ? JSON.stringify(d.workDone) : d.workDone}`,
+                d.tasks && `Tasks Logged: ${typeof d.tasks === 'object' ? JSON.stringify(d.tasks) : d.tasks}`,
+                d.dailyTasks && `Daily Entries: ${typeof d.dailyTasks === 'object' ? JSON.stringify(d.dailyTasks) : d.dailyTasks}`,
+                d.deliverables && `Deliverables: ${typeof d.deliverables === 'object' ? JSON.stringify(d.deliverables) : d.deliverables}`,
+                d.projects && `Projects: ${typeof d.projects === 'object' ? JSON.stringify(d.projects) : d.projects}`,
+                d.remarks && `Remarks: ${d.remarks}`,
+                d.challenges && `Challenges: ${d.challenges}`,
+                d.hoursWorked && `Hours: ${d.hoursWorked}h`,
+                d.totalCalls !== undefined && `Calls: ${d.totalCalls}`,
+                d.conversions !== undefined && `Conversions: ${d.conversions}`,
+                d.summary && `Summary: ${d.summary}`
+              ].filter(Boolean);
+              if (parts.length > 0) {
+                contentText = parts.join(" | ");
+              }
+            }
+          }
+        } catch (e) {
+          console.warn(`Failed to fetch report for date ${rpt.report_date}:`, e);
+        }
+      }
+
+      if (!contentText) {
+        contentText = `Report File: ${rpt.filename || 'PDF Report'}, Period: ${rpt.report_period || 'Daily'}`;
+      }
+
+      return `[DATE: ${rpt.report_date || 'N/A'} | TYPE: ${(rpt.report_period || 'daily').toUpperCase()}]\n${contentText}`;
+    });
+
+    const reportContents = await Promise.all(fetchedPromises);
+    const compiledFullText = reportContents.join("\n\n---\n\n");
+
+    const contextObj = {
+      isConclusionMode: true,
+      target: `AI Final Work Conclusion for ${emp.name}`,
+      employeeName: emp.name,
+      email: emp.email,
+      designation: emp.designationId?.name || emp.designation || config?.name || 'Staff Member',
+      department: emp.departmentId?.name || emp.department || 'General',
+      totalSubmittedReports: allReports.length,
+      reportsAnalyzedCount: sampleReports.length,
+      actualReportContentText: compiledFullText
+    };
+
+    setEmployeeAiContext(contextObj);
+    setEmployeeAiTitle(`AI Work Conclusion: ${emp.name}`);
+    setIsEmployeeAiOpen(true);
+    setLoadingPreviewId(null);
+  };
+
   return (
     <div className="space-y-10 max-w-7xl mx-auto">
       {/* Header */}
@@ -471,7 +784,6 @@ const EmployeeReports = () => {
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto shrink-0">
           {/* Search Input */}
           <div className="relative w-full sm:w-60">
-            {/* <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={14} /> */}
             <input
               type="text"
               placeholder={viewMode === 'employees' ? (isMonthlyReports || isTeamReports ? "Search team..." : "Search employees...") : "Search reports & staff..."}
@@ -729,23 +1041,23 @@ className="flex-1 py-2 text-xs font-bold uppercase tracking-wider bg-indigo-650 
                             </div>
                           </td>
                           <td className="px-6 py-5 text-right" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center justify-end gap-3">
-                              {/* Download Latest Daily */}
+                            <div className="flex items-center justify-end gap-2">
+                              {/* AI Insight Button */}
                               <button
-                                onClick={() => handleDownload(emp)}
-                                disabled={isDownloading}
-                                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all border ${
-                                  config
-                                    ? 'bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/40 hover:shadow-sm'
-                                    : 'bg-slate-50 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 border-slate-100 dark:border-slate-800/50 cursor-not-allowed opacity-60'
-                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAiConcludeEmployee(emp);
+                                }}
+                                disabled={loadingPreviewId === empId}
+                                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all border border-purple-200/50 dark:border-purple-800/50 bg-gradient-to-r from-purple-700 via-indigo-600 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white shadow-sm hover:shadow-md cursor-pointer shrink-0"
+                                title={`Fetch all reports of ${emp.name} and generate AI Insights`}
                               >
-                                {isDownloading ? (
-                                  <Loader2 size={12} className="animate-spin" />
+                                {loadingPreviewId === empId ? (
+                                  <Loader2 size={13} className="animate-spin text-amber-300" />
                                 ) : (
-                                  <FileDown size={12} />
+                                  <Brain size={13} className="text-amber-300 animate-pulse shrink-0" />
                                 )}
-                                <span className="hidden sm:inline">Latest</span>
+                                <span>Insight</span>
                               </button>
 
                               {/* Toggle Expand Arrow */}
@@ -826,16 +1138,12 @@ className="flex-1 py-2 text-xs font-bold uppercase tracking-wider bg-indigo-650 
                                       const pConf = PERIOD_CONFIG[period] || PERIOD_CONFIG.daily;
                                       const PeriodIcon = pConf.icon;
                                       const isThisDownloading = downloadingReportId === report._id;
+                                      const isThisPreviewing = loadingPreviewId === report._id;
 
                                       return (
-                                        <button
+                                        <div
                                           key={report._id}
-                                          onClick={() => {
-                                            if (!isThisDownloading) handleDownloadSavedReport(emp, report);
-                                          }}
-                                          disabled={isThisDownloading}
                                           className="flex items-center justify-between px-3 py-2.5 bg-white hover:bg-slate-50 dark:bg-slate-800/30 dark:hover:bg-slate-800/60 border border-slate-200/50 dark:border-slate-800/50 rounded-xl text-left transition-all hover:shadow-sm group/row"
-                                          title={`Download ${period} report — ${report.report_date}`}
                                         >
                                           <div className="flex items-center gap-2 min-w-0 flex-1">
                                             <span className={`inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shrink-0 ${pConf.color}`}>
@@ -846,12 +1154,35 @@ className="flex-1 py-2 text-xs font-bold uppercase tracking-wider bg-indigo-650 
                                               {report.report_date}
                                             </span>
                                           </div>
-                                          {isThisDownloading ? (
-                                            <Loader2 size={12} className="animate-spin text-indigo-500 shrink-0" />
-                                          ) : (
-                                            <FileDown size={12} className="opacity-40 group-hover/row:opacity-85 shrink-0 text-slate-500 dark:text-slate-400 transition-opacity" />
-                                          )}
-                                        </button>
+                                          <div className="flex items-center gap-1 shrink-0">
+                                            {/* View Button */}
+                                            <button
+                                              onClick={() => handleViewReport(emp, report)}
+                                              disabled={isThisPreviewing}
+                                              className="p-1.5 rounded-lg text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 transition-colors"
+                                              title={`View ${period} report (${report.report_date})`}
+                                            >
+                                              {isThisPreviewing ? (
+                                                <Loader2 size={12} className="animate-spin text-purple-500" />
+                                              ) : (
+                                                <Eye size={13} />
+                                              )}
+                                            </button>
+                                            {/* Download Button */}
+                                            <button
+                                              onClick={() => handleDownloadSavedReport(emp, report)}
+                                              disabled={isThisDownloading}
+                                              className="p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors"
+                                              title={`Download ${period} report (${report.report_date})`}
+                                            >
+                                              {isThisDownloading ? (
+                                                <Loader2 size={12} className="animate-spin text-indigo-500" />
+                                              ) : (
+                                                <FileDown size={13} />
+                                              )}
+                                            </button>
+                                          </div>
+                                        </div>
                                       );
                                     })}
                                   </div>
@@ -919,18 +1250,34 @@ className="flex-1 py-2 text-xs font-bold uppercase tracking-wider bg-indigo-650 
                           {report.filename}
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <button
-                            onClick={() => handleDownloadSavedReport(emp, report)}
-                            disabled={isThisDownloading}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all border border-indigo-100 dark:border-indigo-900/40 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 hover:shadow-sm"
-                          >
-                            {isThisDownloading ? (
-                              <Loader2 size={12} className="animate-spin" />
-                            ) : (
-                              <FileDown size={12} />
-                            )}
-                            <span>Download</span>
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleViewReport(emp, report)}
+                              disabled={loadingPreviewId === report._id}
+                              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all border border-purple-100 dark:border-purple-900/40 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/30 dark:hover:bg-purple-950/60 text-purple-600 dark:text-purple-400 hover:shadow-sm cursor-pointer"
+                              title="View PDF report without downloading"
+                            >
+                              {loadingPreviewId === report._id ? (
+                                <Loader2 size={12} className="animate-spin text-purple-500" />
+                              ) : (
+                                <Eye size={12} />
+                              )}
+                              <span>View</span>
+                            </button>
+                            <button
+                              onClick={() => handleDownloadSavedReport(emp, report)}
+                              disabled={isThisDownloading}
+                              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all border border-indigo-100 dark:border-indigo-900/40 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 hover:shadow-sm cursor-pointer"
+                              title="Download PDF report"
+                            >
+                              {isThisDownloading ? (
+                                <Loader2 size={12} className="animate-spin" />
+                              ) : (
+                                <FileDown size={12} />
+                              )}
+                              <span>Download</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -966,6 +1313,80 @@ className="flex-1 py-2 text-xs font-bold uppercase tracking-wider bg-indigo-650 
           )}
         </div>
       )}
+      {/* PDF Report Preview Modal */}
+      {previewPdfModal.isOpen && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            className="w-full max-w-5xl h-[88vh] flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-2xl border border-purple-500/20">
+                  <Eye size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    {previewPdfModal.title}
+                  </h3>
+                  <p className="text-[11px] font-medium text-slate-400">
+                    {previewPdfModal.emp?.name} — {previewPdfModal.emp?.designationId?.name || previewPdfModal.emp?.designation || 'Staff Report'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => handleAnalyzeSingleEmployee(previewPdfModal.emp, previewPdfModal.report)}
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-800 hover:to-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer"
+                  title="Generate AI summary of this employee report"
+                >
+                  <Sparkles size={14} className="text-amber-300 animate-pulse" />
+                  <span>AI Summarize</span>
+                </button>
+                <a
+                  href={previewPdfModal.url}
+                  download={previewPdfModal.report?.filename || `Report_${previewPdfModal.report?.report_date || 'preview'}.pdf`}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-sm"
+                >
+                  <FileDown size={14} />
+                  <span>Download PDF</span>
+                </a>
+                <button
+                  onClick={() => {
+                    if (previewPdfModal.url) URL.revokeObjectURL(previewPdfModal.url);
+                    setPreviewPdfModal({ isOpen: false, url: null, title: '', report: null, emp: null });
+                  }}
+                  className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* PDF Viewer Canvas Body */}
+            <div className="flex-1 bg-slate-100 dark:bg-slate-950 p-2 overflow-hidden">
+              <iframe
+                src={previewPdfModal.url}
+                className="w-full h-full rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-inner"
+                title="PDF Document Preview"
+              />
+            </div>
+          </motion.div>
+        </div>,
+        document.body
+      )}
+
+      {/* Dedicated Employee Reports AI Analysis Modal */}
+      <AiAnalyzeModal
+        isOpen={isEmployeeAiOpen}
+        onClose={() => setIsEmployeeAiOpen(false)}
+        contextData={employeeAiContext}
+        title={employeeAiTitle}
+      />
     </div>
   );
 };

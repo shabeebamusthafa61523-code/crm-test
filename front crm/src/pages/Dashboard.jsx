@@ -1053,14 +1053,14 @@ const Dashboard = () => {
           <div className="flex items-center gap-3">
             <button
               onClick={handleSync}
-              className="px-5 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:border-indigo-500/50 dark:hover:border-indigo-500/50 transition-all active:scale-95 shadow-sm"
+              className="px-5 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:border-indigo-500/50 dark:hover:border-indigo-500/50 transition-all active:scale-95 shadow-sm cursor-pointer"
             >
               <RefreshCw size={14} />
               <span>Sync System</span>
             </button>
-           <div className="px-5 py-3 bg-indigo-600/5 dark:bg-indigo-500/10 border border-indigo-500/20 rounded-2xl text-xs font-black text-white uppercase tracking-wider">
-  {currentTime.toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short" })}
-</div>
+            <div className="px-5 py-3 bg-indigo-600/5 dark:bg-indigo-500/10 border border-indigo-500/20 rounded-2xl text-xs font-black text-white uppercase tracking-wider">
+              {currentTime.toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short" })}
+            </div>
           </div>
         </div>
 
@@ -1556,23 +1556,25 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Shift start block */}
-          <div
-            onClick={() => navigate("/attendance")}
-            className="cursor-pointer bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-[2rem] flex items-center gap-4 hover:border-indigo-500/30 dark:hover:border-indigo-500/50 transition-all shadow-sm"
-          >
-            <div className="p-3 bg-white-500/10 dark:bg-indigo-100/20 rounded-xl text-indigo-500 dark:text-indigo-400"><Timer size={20} /></div>
-            <div>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase">Shift Start</p>
-              <p className="text-lg font-black text-slate-900 dark:text-slate-100 uppercase">
-                {attendanceRecord?.check_in_time
-                  ? parseAsUTC(attendanceRecord.check_in_time).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: true
-                  })
-                  : 'OFFLINE'}
-              </p>
+          <div className="flex items-center gap-3">
+            {/* Shift start block */}
+            <div
+              onClick={() => navigate("/attendance")}
+              className="cursor-pointer bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-[2rem] flex items-center gap-4 hover:border-indigo-500/30 dark:hover:border-indigo-500/50 transition-all shadow-sm"
+            >
+              <div className="p-3 bg-white-500/10 dark:bg-indigo-100/20 rounded-xl text-indigo-500 dark:text-indigo-400"><Timer size={20} /></div>
+              <div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase">Shift Start</p>
+                <p className="text-lg font-black text-slate-900 dark:text-slate-100 uppercase">
+                  {attendanceRecord?.check_in_time
+                    ? parseAsUTC(attendanceRecord.check_in_time).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: true
+                    })
+                    : 'OFFLINE'}
+                </p>
+              </div>
             </div>
           </div>
         </div>

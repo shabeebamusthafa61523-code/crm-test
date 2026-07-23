@@ -7,7 +7,14 @@ import AiChatWidget from '../components/AiChatWidget';
 
 const MainLayout = ({ children }) => {
   const location = useLocation();
-  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(() => {
+    try {
+      const saved = localStorage.getItem('sidebarCollapsed');
+      return saved !== null ? JSON.parse(saved) : false;
+    } catch (e) {
+      return false;
+    }
+  });
   const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false);
 
   // --- Inactivity sliding session timeout tracker (30 minutes) ---
