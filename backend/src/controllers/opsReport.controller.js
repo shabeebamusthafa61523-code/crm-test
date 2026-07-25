@@ -98,6 +98,7 @@ export const saveReport = async (req, res, next) => {
       salesPerformance: req.body.salesPerformance || [],
       revenueTracking: req.body.revenueTracking || [],
       academyStatus: req.body.academyStatus || [],
+      kpiTracking: req.body.kpiTracking || [],
       issuesEscalations: req.body.issuesEscalations || [],
       handover: req.body.handover,
       approval: req.body.approval
