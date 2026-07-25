@@ -8,19 +8,25 @@ import {
 import { useToast } from '../components/ToastProvider';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { fetchCompletedTasks } from '../utils/taskUtils';
+import { fetchCompletedTasks, fetchDelegatedTasks } from '../utils/taskUtils';
 import SignatureUpload from '../components/SignatureUpload';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
 // Default data for Operations Manager Shift Report
+const DEFAULT_KPI_TRACKING = [
+  { project: '', kpi: '', target: '', achieved: '' },
+  { project: '', kpi: '', target: '', achieved: '' },
+  { project: '', kpi: '', target: '', achieved: '' }
+];
+
 const DEFAULT_DAILY_OPERATIONS = [
-  { activity: 'Team Attendance Verified', status: '', dueDate: '', remarks: '' },
-  { activity: 'Daily Sales Targets Assigned', status: '', dueDate: '', remarks: '' },
-  { activity: 'Lead Follow-up Reviewed', status: '', dueDate: '', remarks: '' },
-  { activity: 'Client Meetings Conducted', status: '', dueDate: '', remarks: '' },
-  { activity: 'Academy Coordination Completed', status: '', dueDate: '', remarks: '' },
-  { activity: 'Reports Collected from Team', status: '', dueDate: '', remarks: '' }
+  { activity: 'Team Attendance Verified', status: '', dueDate: '', remarks: '', isTodoTask: false },
+  { activity: 'Daily Sales Targets Assigned', status: '', dueDate: '', remarks: '', isTodoTask: false },
+  { activity: 'Lead Follow-up Reviewed', status: '', dueDate: '', remarks: '', isTodoTask: false },
+  { activity: 'Client Meetings Conducted', status: '', dueDate: '', remarks: '', isTodoTask: false },
+  { activity: 'Academy Coordination Completed', status: '', dueDate: '', remarks: '', isTodoTask: false },
+  { activity: 'Reports Collected from Team', status: '', dueDate: '', remarks: '', isTodoTask: false }
 ];
 
 const DEFAULT_SALES_ACTIVITY = [
@@ -95,6 +101,7 @@ const OpsReportPage = () => {
   const [weeklySalesPerformance, setWeeklySalesPerformance] = useState(DEFAULT_SALES_PERFORMANCE);
   const [weeklyRevenueTracking, setWeeklyRevenueTracking] = useState(DEFAULT_REVENUE_TRACKING);
   const [weeklyAcademyStatus, setWeeklyAcademyStatus] = useState(DEFAULT_ACADEMY_STATUS);
+  const [weeklyKpiTracking, setWeeklyKpiTracking] = useState([]);
   const [weeklyIssuesEscalations, setWeeklyIssuesEscalations] = useState({
     issue: '',
     priority: '',
@@ -140,6 +147,7 @@ const OpsReportPage = () => {
   const [monthlySalesPerformance, setMonthlySalesPerformance] = useState(DEFAULT_SALES_PERFORMANCE);
   const [monthlyRevenueTracking, setMonthlyRevenueTracking] = useState(DEFAULT_REVENUE_TRACKING);
   const [monthlyAcademyStatus, setMonthlyAcademyStatus] = useState(DEFAULT_ACADEMY_STATUS);
+  const [monthlyKpiTracking, setMonthlyKpiTracking] = useState([]);
   const [monthlyIssuesEscalations, setMonthlyIssuesEscalations] = useState({
     issue: '',
     priority: '',
@@ -222,6 +230,7 @@ const OpsReportPage = () => {
   const [salesPerformance, setSalesPerformance] = useState(DEFAULT_SALES_PERFORMANCE);
   const [revenueTracking, setRevenueTracking] = useState(DEFAULT_REVENUE_TRACKING);
   const [academyStatus, setAcademyStatus] = useState(DEFAULT_ACADEMY_STATUS);
+  const [kpiTracking, setKpiTracking] = useState(DEFAULT_KPI_TRACKING);
   
   const [issuesEscalations, setIssuesEscalations] = useState({
     issue: '',
@@ -375,6 +384,7 @@ const OpsReportPage = () => {
         setSalesPerformance(Array.isArray(report.salesPerformance) ? report.salesPerformance : []);
         setRevenueTracking(Array.isArray(report.revenueTracking) ? report.revenueTracking : []);
         setAcademyStatus(Array.isArray(report.academyStatus) ? report.academyStatus : []);
+        setKpiTracking(Array.isArray(report.kpiTracking) && report.kpiTracking.length > 0 ? report.kpiTracking : DEFAULT_KPI_TRACKING);
         setIssuesEscalations(report.issuesEscalations || { issue: '', priority: '', actionTaken: '' });
         setHandover(report.handover || { pendingLeadsShared: 'Yes', crmUpdated: 'Yes / No- NA', reportsSubmitted: 'Yes', teamUpdated: 'Yes' });
         setApproval(report.approval || {});
@@ -390,12 +400,22 @@ const OpsReportPage = () => {
               startDate: t.startTime || '',
               endDate: t.endTime || '',
               status: t.status || 'Done',
-              remarks: t.description || ''
+              remarks: t.description || '',
+              isTodoTask: true
             }));
-            setDailyOperations(mappedTasks);
+            setDailyOperations([...mappedTasks, ...DEFAULT_DAILY_OPERATIONS]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
+        }
+
+        try {
+          const delegatedTasks = await fetchDelegatedTasks(userId, dateStr);
+          if (delegatedTasks && delegatedTasks.length > 0) {
+            setKpiTracking(delegatedTasks);
+          }
+        } catch(e) {
+          console.error("Error auto-fetching delegated tasks:", e);
         }
 
       }
@@ -411,12 +431,22 @@ const OpsReportPage = () => {
               startDate: t.startTime || '',
               endDate: t.endTime || '',
               status: t.status || 'Done',
-              remarks: t.description || ''
+              remarks: t.description || '',
+              isTodoTask: true
             }));
-            setDailyOperations(mappedTasks);
+            setDailyOperations([...mappedTasks, ...DEFAULT_DAILY_OPERATIONS]);
           }
         } catch(e) {
           console.error("Error auto-fetching tasks:", e);
+        }
+
+        try {
+          const delegatedTasks = await fetchDelegatedTasks(userId, dateStr);
+          if (delegatedTasks && delegatedTasks.length > 0) {
+            setKpiTracking(delegatedTasks);
+          }
+        } catch(e) {
+          console.error("Error auto-fetching delegated tasks:", e);
         }
 
     } finally {
@@ -629,6 +659,30 @@ const OpsReportPage = () => {
       setMonthlySalesPerformance(finalPerformance);
       setMonthlyRevenueTracking(finalRevenue);
       setMonthlyAcademyStatus(finalAcademyStatus);
+
+      // Sum KPI Tracking
+      const monthlyKpiMap = {};
+      validReports.forEach(report => {
+        const items = report.kpiTracking || [];
+        items.forEach(item => {
+          const projectKey = (item.project || '').trim() || 'General';
+          const kpiKey = (item.kpi || '').trim();
+          if (!kpiKey) return;
+          const compositeKey = `${projectKey}::${kpiKey}`;
+          if (!monthlyKpiMap[compositeKey]) {
+            monthlyKpiMap[compositeKey] = { project: projectKey, kpi: kpiKey, targets: [], achieveds: [] };
+          }
+          if (item.target) monthlyKpiMap[compositeKey].targets.push(item.target.trim());
+          if (item.achieved) monthlyKpiMap[compositeKey].achieveds.push(item.achieved.trim());
+        });
+      });
+      const consolidatedMonthlyKpi = Object.values(monthlyKpiMap).map(group => {
+        const target = Array.from(new Set(group.targets)).filter(Boolean).join('; ');
+        const achieved = Array.from(new Set(group.achieveds)).filter(Boolean).join('; ');
+        return { project: group.project, kpi: group.kpi, target, achieved };
+      });
+      setMonthlyKpiTracking(consolidatedMonthlyKpi.length > 0 ? consolidatedMonthlyKpi : DEFAULT_KPI_TRACKING);
+
       setMonthlyIssuesEscalations({
         issue: consolidatedIssues.length > 0 ? consolidatedIssues.join('\n') : 'None reported',
         priority: consolidatedIssues.length > 0 ? 'Medium' : 'None',
@@ -822,6 +876,30 @@ const OpsReportPage = () => {
       setWeeklySalesPerformance(finalPerformance);
       setWeeklyRevenueTracking(finalRevenue);
       setWeeklyAcademyStatus(finalAcademyStatus);
+
+      // Sum KPI Tracking
+      const weeklyKpiMap = {};
+      validReports.forEach(report => {
+        const items = report.kpiTracking || [];
+        items.forEach(item => {
+          const projectKey = (item.project || '').trim() || 'General';
+          const kpiKey = (item.kpi || '').trim();
+          if (!kpiKey) return;
+          const compositeKey = `${projectKey}::${kpiKey}`;
+          if (!weeklyKpiMap[compositeKey]) {
+            weeklyKpiMap[compositeKey] = { project: projectKey, kpi: kpiKey, targets: [], achieveds: [] };
+          }
+          if (item.target) weeklyKpiMap[compositeKey].targets.push(item.target.trim());
+          if (item.achieved) weeklyKpiMap[compositeKey].achieveds.push(item.achieved.trim());
+        });
+      });
+      const consolidatedWeeklyKpi = Object.values(weeklyKpiMap).map(group => {
+        const target = Array.from(new Set(group.targets)).filter(Boolean).join('; ');
+        const achieved = Array.from(new Set(group.achieveds)).filter(Boolean).join('; ');
+        return { project: group.project, kpi: group.kpi, target, achieved };
+      });
+      setWeeklyKpiTracking(consolidatedWeeklyKpi.length > 0 ? consolidatedWeeklyKpi : DEFAULT_KPI_TRACKING);
+
       setWeeklyIssuesEscalations({
         issue: consolidatedIssues.length > 0 ? consolidatedIssues.join('\n') : 'None reported',
         priority: consolidatedIssues.length > 0 ? 'Medium' : 'None',
@@ -1395,6 +1473,16 @@ const OpsReportPage = () => {
     setSalesPerformance(DEFAULT_SALES_PERFORMANCE);
     setRevenueTracking(DEFAULT_REVENUE_TRACKING);
     setAcademyStatus(DEFAULT_ACADEMY_STATUS);
+    try {
+      const delegatedTasks = await fetchDelegatedTasks(userId, dateStr);
+      if (delegatedTasks && delegatedTasks.length > 0) {
+        setKpiTracking(delegatedTasks);
+      } else {
+        setKpiTracking(DEFAULT_KPI_TRACKING);
+      }
+    } catch(e) {
+      setKpiTracking(DEFAULT_KPI_TRACKING);
+    }
     setIssuesEscalations({
       issue: '',
       priority: '',
@@ -1425,6 +1513,7 @@ const OpsReportPage = () => {
       const cleanSalesPerformance = salesPerformance.filter(t => (t.telecallerName || '').trim() !== '' || (t.kpi || '').trim() !== '');
       const cleanRevenueTracking = revenueTracking.filter(t => (t.particulars || '').trim() !== '' || (t.amount || '').trim() !== '');
       const cleanAcademyStatus = academyStatus.filter(t => (t.particulars || '').trim() !== '');
+      const cleanKpiTracking = kpiTracking.filter(t => (t.project || '').trim() !== '' || (t.kpi || '').trim() !== '');
       const cleanIssuesEscalations = issuesEscalations.filter(t => (t.issue || '').trim() !== '');
       const cleanHandover = handover.filter(t => (t.particulars || '').trim() !== '');
 
@@ -1437,6 +1526,7 @@ const OpsReportPage = () => {
         salesPerformance: cleanSalesPerformance,
         revenueTracking: cleanRevenueTracking,
         academyStatus: cleanAcademyStatus,
+        kpiTracking: cleanKpiTracking,
         issuesEscalations: cleanIssuesEscalations,
         handover: cleanHandover,
         approval
@@ -1459,6 +1549,36 @@ const OpsReportPage = () => {
       showToast("Server error. Please try again.", 'error');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const addKpiRow = () => {
+    setKpiTracking([...kpiTracking, { project: '', kpi: '', target: '', achieved: '' }]);
+  };
+
+  const removeKpiRow = (index) => {
+    if (kpiTracking.length > 1) {
+      setKpiTracking(kpiTracking.filter((_, i) => i !== index));
+    }
+  };
+
+  const addWeeklyKpiRow = () => {
+    setWeeklyKpiTracking([...weeklyKpiTracking, { project: '', kpi: '', target: '', achieved: '' }]);
+  };
+
+  const removeWeeklyKpiRow = (index) => {
+    if (weeklyKpiTracking.length > 1) {
+      setWeeklyKpiTracking(weeklyKpiTracking.filter((_, i) => i !== index));
+    }
+  };
+
+  const addMonthlyKpiRow = () => {
+    setMonthlyKpiTracking([...monthlyKpiTracking, { project: '', kpi: '', target: '', achieved: '' }]);
+  };
+
+  const removeMonthlyKpiRow = (index) => {
+    if (monthlyKpiTracking.length > 1) {
+      setMonthlyKpiTracking(monthlyKpiTracking.filter((_, i) => i !== index));
     }
   };
 
@@ -1789,97 +1909,131 @@ const OpsReportPage = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
-                    {dailyOperations.map((row, i) => (
-                      <tr key={i}>
-                        <td className="px-4 py-2.5 relative group">
-                          <div className="flex items-center gap-1.5">
+                    {dailyOperations.map((row, i) => {
+                      const isTodo = Boolean(row.isTodoTask || row.startDate || row.endDate);
+                      return (
+                        <tr key={i}>
+                          <td className="px-4 py-2.5 relative group">
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="text"
+                                value={row.activity || ''}
+                                onChange={(e) => {
+                                  const newArr = [...dailyOperations];
+                                  newArr[i].activity = e.target.value;
+                                  setDailyOperations(newArr);
+                                }}
+                                className="w-full bg-transparent border-none focus:outline-none p-0 text-sm font-semibold text-slate-700 dark:text-slate-300"
+                                placeholder="Activity name"
+                              />
+                              {row.activity && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedActivityText(row.activity)}
+                                  className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 dark:hover:text-lime-400 transition-all p-0.5"
+                                  title="View full text"
+                                >
+                                  <Maximize2 size={13} />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-2.5">
+                            {isTodo ? (
+                              <input
+                                type="text"
+                                value={row.dueDate || ''}
+                                onChange={(e) => {
+                                  const newArr = [...dailyOperations];
+                                  newArr[i].dueDate = e.target.value;
+                                  setDailyOperations(newArr);
+                                }}
+                                className="w-full bg-transparent border-none focus:outline-none p-0 text-sm"
+                                placeholder="Due date"
+                              />
+                            ) : (
+                              <span className="text-slate-400 text-xs font-medium text-center block">-</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2.5">
+                            {isTodo ? (
+                              <input
+                                type="text"
+                                value={row.startDate || ''}
+                                onChange={(e) => {
+                                  const newArr = [...dailyOperations];
+                                  newArr[i].startDate = e.target.value;
+                                  setDailyOperations(newArr);
+                                }}
+                                className="w-full bg-transparent border-none focus:outline-none p-0 text-sm"
+                                placeholder="Start date"
+                              />
+                            ) : (
+                              <span className="text-slate-400 text-xs font-medium text-center block">-</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2.5">
+                            {isTodo ? (
+                              <input
+                                type="text"
+                                value={row.endDate || ''}
+                                onChange={(e) => {
+                                  const newArr = [...dailyOperations];
+                                  newArr[i].endDate = e.target.value;
+                                  setDailyOperations(newArr);
+                                }}
+                                className="w-full bg-transparent border-none focus:outline-none p-0 text-sm"
+                                placeholder="End date"
+                              />
+                            ) : (
+                              <span className="text-slate-400 text-xs font-medium text-center block">-</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2.5">
+                            {isTodo ? (
+                              <input
+                                type="text"
+                                value={row.status || ''}
+                                onChange={(e) => {
+                                  const newArr = [...dailyOperations];
+                                  newArr[i].status = e.target.value;
+                                  setDailyOperations(newArr);
+                                }}
+                                className="w-full bg-transparent border-none focus:outline-none p-0 text-sm font-medium"
+                                placeholder="Status"
+                              />
+                            ) : (
+                              <select
+                                value={row.status || ''}
+                                onChange={(e) => {
+                                  const newArr = [...dailyOperations];
+                                  newArr[i].status = e.target.value;
+                                  setDailyOperations(newArr);
+                                }}
+                                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                              >
+                                <option value="">Select</option>
+                                <option value="Yes">Yes</option>
+                                <option value="No">No</option>
+                                {row.status && row.status !== 'Yes' && row.status !== 'No' && (
+                                  <option value={row.status}>{row.status}</option>
+                                )}
+                              </select>
+                            )}
+                          </td>
+                          <td className="px-4 py-2.5">
                             <input
                               type="text"
-                              value={row.activity || ''}
+                              value={row.remarks || ''}
                               onChange={(e) => {
                                 const newArr = [...dailyOperations];
-                                newArr[i].activity = e.target.value;
+                                newArr[i].remarks = e.target.value;
                                 setDailyOperations(newArr);
                               }}
-                              className="w-full bg-transparent border-none focus:outline-none p-0 text-sm font-semibold text-slate-700 dark:text-slate-300"
-                              placeholder="Activity name"
+                              className="w-full bg-transparent border-none focus:outline-none p-0 text-sm"
+                              placeholder="Add remarks"
                             />
-                            {row.activity && (
-                              <button
-                                type="button"
-                                onClick={() => setSelectedActivityText(row.activity)}
-                                className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 dark:hover:text-lime-400 transition-all p-0.5"
-                                title="View full text"
-                              >
-                                <Maximize2 size={13} />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <input
-                            type="text"
-                            value={row.dueDate || ''}
-                            onChange={(e) => {
-                              const newArr = [...dailyOperations];
-                              newArr[i].dueDate = e.target.value;
-                              setDailyOperations(newArr);
-                            }}
-                            className="w-full bg-transparent border-none focus:outline-none p-0 text-sm"
-                            placeholder="Due date"
-                          />
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <input
-                            type="text"
-                            value={row.startDate || ''}
-                            onChange={(e) => {
-                              const newArr = [...dailyOperations];
-                              newArr[i].startDate = e.target.value;
-                              setDailyOperations(newArr);
-                            }}
-                            className="w-full bg-transparent border-none focus:outline-none p-0 text-sm"
-                            placeholder="Start date"
-                          />
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <input
-                            type="text"
-                            value={row.endDate || ''}
-                            onChange={(e) => {
-                              const newArr = [...dailyOperations];
-                              newArr[i].endDate = e.target.value;
-                              setDailyOperations(newArr);
-                            }}
-                            className="w-full bg-transparent border-none focus:outline-none p-0 text-sm"
-                            placeholder="End date"
-                          />
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <input
-                            type="text"
-                            value={row.status || ''}
-                            onChange={(e) => {
-                              const newArr = [...dailyOperations];
-                              newArr[i].status = e.target.value;
-                              setDailyOperations(newArr);
-                            }}
-                            className="w-full bg-transparent border-none focus:outline-none p-0 text-sm"
-                          />
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <input
-                            type="text"
-                            value={row.remarks || ''}
-                            onChange={(e) => {
-                              const newArr = [...dailyOperations];
-                              newArr[i].remarks = e.target.value;
-                              setDailyOperations(newArr);
-                            }}
-                            className="w-full bg-transparent border-none focus:outline-none p-0 text-sm"
-                            placeholder="Add remarks"
-                          />
-                        </td>
+                          </td>
                         <td className="px-4 py-2.5 text-center">
                           <button
                             type="button"
@@ -1894,7 +2048,8 @@ const OpsReportPage = () => {
                           </button>
                         </td>
                       </tr>
-                    ))}
+                    );
+                  })}
                   </tbody>
                 </table>
               </div>
@@ -2052,10 +2207,120 @@ const OpsReportPage = () => {
               </div>
             </div>
 
-            {/* 5. REVENUE TRACKING */}
+            {/* 5. KPI TRACKING (TASKS ASSIGNED TO OTHERS) */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
+                  <span className="flex items-center justify-center w-5 h-5 rounded bg-indigo-100 dark:bg-lime-950/50 text-[10px]">5</span>
+                  KPI Tracking (Tasks Assigned to Others)
+                </h2>
+                <button
+                  type="button"
+                  onClick={addKpiRow}
+                  className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
+                >
+                  <Plus size={14} /> Add Row
+                </button>
+              </div>
+
+              <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                <table className="w-full text-left border-collapse text-sm">
+                  <thead>
+                    <tr className="bg-slate-50/80 dark:bg-slate-950/30 border-b border-slate-100 dark:border-slate-800 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                      <th className="px-5 py-4 w-[20%]">Assigned To</th>
+                      <th className="px-5 py-4 w-[40%]">Task</th>
+                      <th className="px-5 py-4 w-[20%]">Due Date</th>
+                      <th className="px-5 py-4 w-[15%] text-center">Status</th>
+                      <th className="px-5 py-4 w-[5%] text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {kpiTracking.map((item, index) => (
+                      <tr key={index} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5 transition-colors">
+                        <td className="px-5 py-3">
+                          <input
+                            type="text"
+                            value={item.project}
+                            onChange={(e) => {
+                              const updated = [...kpiTracking];
+                              updated[index].project = e.target.value;
+                              setKpiTracking(updated);
+                            }}
+                            placeholder="Staff name / Project"
+                            className="w-full bg-transparent border-none focus:outline-none text-slate-700 dark:text-slate-200"
+                          />
+                        </td>
+                        <td className="px-5 py-3 relative group">
+                          <div className="flex items-center gap-1.5">
+                            <textarea
+                              value={item.kpi}
+                              onChange={(e) => {
+                                const updated = [...kpiTracking];
+                                updated[index].kpi = e.target.value;
+                                setKpiTracking(updated);
+                              }}
+                              placeholder="Task details"
+                              rows={1}
+                              className="w-full bg-transparent border-none focus:outline-none resize-y text-slate-700 dark:text-slate-200"
+                            />
+                            {item.kpi && (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedActivityText(item.kpi)}
+                                className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 dark:hover:text-lime-400 transition-all p-0.5"
+                                title="View full text"
+                              >
+                                <Maximize2 size={13} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-5 py-3">
+                          <input
+                            type="date"
+                            value={item.target}
+                            onChange={(e) => {
+                              const updated = [...kpiTracking];
+                              updated[index].target = e.target.value;
+                              setKpiTracking(updated);
+                            }}
+                            className="w-full bg-transparent border-none focus:outline-none text-sm text-slate-700 dark:text-slate-200"
+                          />
+                        </td>
+                        <td className="px-5 py-3">
+                          <input
+                            type="text"
+                            value={item.achieved}
+                            onChange={(e) => {
+                              const updated = [...kpiTracking];
+                              updated[index].achieved = e.target.value;
+                              setKpiTracking(updated);
+                            }}
+                            placeholder="Status"
+                            className="w-full bg-transparent border-none focus:outline-none text-center text-sm text-slate-700 dark:text-slate-200"
+                          />
+                        </td>
+                        <td className="px-5 py-3 text-center">
+                          <button
+                            type="button"
+                            onClick={() => removeKpiRow(index)}
+                            className="text-slate-400 hover:text-red-500 transition-colors p-1"
+                            title="Remove Row"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* 6. REVENUE TRACKING */}
             <div className="space-y-4">
               <h2 className="text-xs font-bold text-indigo-600 dark:text-lime-400 uppercase tracking-widest flex items-center gap-2">
-                <span className="flex items-center justify-center w-5 h-5 rounded bg-indigo-100 dark:bg-lime-950/50 text-[10px]">5</span>
+                <span className="flex items-center justify-center w-5 h-5 rounded bg-indigo-100 dark:bg-lime-950/50 text-[10px]">6</span>
                 Revenue Tracking
               </h2>
               <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
@@ -2357,16 +2622,22 @@ const OpsReportPage = () => {
                     3. Team & Academy
                   </button>
                   <button
+                    onClick={() => weeklyBasicDetails.dateRange ? setWeeklyActiveTab("kpi") : showToast("Please fetch data first", "warning")}
+                    className={`px-4 py-2 rounded-xl transition-all ${weeklyActiveTab === "kpi" ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-lime-400 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
+                  >
+                    4. KPI Tracking
+                  </button>
+                  <button
                     onClick={() => weeklyBasicDetails.dateRange ? setWeeklyActiveTab("revenue") : showToast("Please fetch data first", "warning")}
                     className={`px-4 py-2 rounded-xl transition-all ${weeklyActiveTab === "revenue" ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-lime-400 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
                   >
-                    4. Revenue
+                    5. Revenue
                   </button>
                   <button
                     onClick={() => weeklyBasicDetails.dateRange ? setWeeklyActiveTab("issues") : showToast("Please fetch data first", "warning")}
                     className={`px-4 py-2 rounded-xl transition-all ${weeklyActiveTab === "issues" ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-lime-400 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
                   >
-                    5. Issues & Handover
+                    6. Issues & Handover
                   </button>
                 </div>
 
@@ -2609,6 +2880,97 @@ const OpsReportPage = () => {
                             </tbody>
                           </table>
                         </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {weeklyActiveTab === "kpi" && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-850 pb-2">
+                        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">Consolidated Weekly KPI Tracking (Tasks Assigned to Others)</h4>
+                        <button
+                          type="button"
+                          onClick={addWeeklyKpiRow}
+                          className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold"
+                        >
+                          <Plus size={14} /> Add Row
+                        </button>
+                      </div>
+                      <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                        <table className="w-full text-left border-collapse text-sm">
+                          <thead>
+                            <tr className="bg-slate-50 dark:bg-slate-950/40 text-slate-400 text-[10px] font-bold uppercase border-b border-slate-100 dark:border-slate-800">
+                              <th className="px-4 py-3 w-[20%]">Assigned To</th>
+                              <th className="px-4 py-3 w-[40%]">Task</th>
+                              <th className="px-4 py-3 w-[20%]">Due Date</th>
+                              <th className="px-4 py-3 w-[15%] text-center">Status</th>
+                              <th className="px-4 py-3 w-[5%] text-center">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                            {weeklyKpiTracking.map((item, idx) => (
+                              <tr key={idx} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5">
+                                <td className="px-4 py-2.5">
+                                  <input
+                                    type="text"
+                                    value={item.project}
+                                    onChange={(e) => {
+                                      const updated = [...weeklyKpiTracking];
+                                      updated[idx].project = e.target.value;
+                                      setWeeklyKpiTracking(updated);
+                                    }}
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg py-1 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                                  />
+                                </td>
+                                <td className="px-4 py-2.5">
+                                  <input
+                                    type="text"
+                                    value={item.kpi}
+                                    onChange={(e) => {
+                                      const updated = [...weeklyKpiTracking];
+                                      updated[idx].kpi = e.target.value;
+                                      setWeeklyKpiTracking(updated);
+                                    }}
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg py-1 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                                  />
+                                </td>
+                                <td className="px-4 py-2.5">
+                                  <input
+                                    type="text"
+                                    value={item.target}
+                                    onChange={(e) => {
+                                      const updated = [...weeklyKpiTracking];
+                                      updated[idx].target = e.target.value;
+                                      setWeeklyKpiTracking(updated);
+                                    }}
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg py-1 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                                  />
+                                </td>
+                                <td className="px-4 py-2.5 text-center">
+                                  <input
+                                    type="text"
+                                    value={item.achieved}
+                                    onChange={(e) => {
+                                      const updated = [...weeklyKpiTracking];
+                                      updated[idx].achieved = e.target.value;
+                                      setWeeklyKpiTracking(updated);
+                                    }}
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg py-1 px-2 text-center text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                                  />
+                                </td>
+                                <td className="px-4 py-2.5 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => removeWeeklyKpiRow(idx)}
+                                    className="text-slate-400 hover:text-red-500 transition-colors p-1"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
                   )}
@@ -2857,16 +3219,22 @@ const OpsReportPage = () => {
                     3. Team & Academy
                   </button>
                   <button
+                    onClick={() => monthlyBasicDetails.dateRange ? setMonthlyActiveTab("kpi") : showToast("Please fetch data first", "warning")}
+                    className={`px-4 py-2 rounded-xl transition-all ${monthlyActiveTab === "kpi" ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-lime-400 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
+                  >
+                    4. KPI Tracking
+                  </button>
+                  <button
                     onClick={() => monthlyBasicDetails.dateRange ? setMonthlyActiveTab("revenue") : showToast("Please fetch data first", "warning")}
                     className={`px-4 py-2 rounded-xl transition-all ${monthlyActiveTab === "revenue" ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-lime-400 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
                   >
-                    4. Revenue
+                    5. Revenue
                   </button>
                   <button
                     onClick={() => monthlyBasicDetails.dateRange ? setMonthlyActiveTab("issues") : showToast("Please fetch data first", "warning")}
                     className={`px-4 py-2 rounded-xl transition-all ${monthlyActiveTab === "issues" ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-lime-400 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
                   >
-                    5. Issues & Handover
+                    6. Issues & Handover
                   </button>
                 </div>
 
@@ -3109,6 +3477,97 @@ const OpsReportPage = () => {
                             </tbody>
                           </table>
                         </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {monthlyActiveTab === "kpi" && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-850 pb-2">
+                        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">Consolidated Monthly KPI Tracking (Tasks Assigned to Others)</h4>
+                        <button
+                          type="button"
+                          onClick={addMonthlyKpiRow}
+                          className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold"
+                        >
+                          <Plus size={14} /> Add Row
+                        </button>
+                      </div>
+                      <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                        <table className="w-full text-left border-collapse text-sm">
+                          <thead>
+                            <tr className="bg-slate-50 dark:bg-slate-950/40 text-slate-400 text-[10px] font-bold uppercase border-b border-slate-100 dark:border-slate-800">
+                              <th className="px-4 py-3 w-[20%]">Assigned To</th>
+                              <th className="px-4 py-3 w-[40%]">Task</th>
+                              <th className="px-4 py-3 w-[20%]">Due Date</th>
+                              <th className="px-4 py-3 w-[15%] text-center">Status</th>
+                              <th className="px-4 py-3 w-[5%] text-center">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                            {monthlyKpiTracking.map((item, idx) => (
+                              <tr key={idx} className="hover:bg-slate-50/20 dark:hover:bg-slate-950/5">
+                                <td className="px-4 py-2.5">
+                                  <input
+                                    type="text"
+                                    value={item.project}
+                                    onChange={(e) => {
+                                      const updated = [...monthlyKpiTracking];
+                                      updated[idx].project = e.target.value;
+                                      setMonthlyKpiTracking(updated);
+                                    }}
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg py-1 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                                  />
+                                </td>
+                                <td className="px-4 py-2.5">
+                                  <input
+                                    type="text"
+                                    value={item.kpi}
+                                    onChange={(e) => {
+                                      const updated = [...monthlyKpiTracking];
+                                      updated[idx].kpi = e.target.value;
+                                      setMonthlyKpiTracking(updated);
+                                    }}
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg py-1 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                                  />
+                                </td>
+                                <td className="px-4 py-2.5">
+                                  <input
+                                    type="text"
+                                    value={item.target}
+                                    onChange={(e) => {
+                                      const updated = [...monthlyKpiTracking];
+                                      updated[idx].target = e.target.value;
+                                      setMonthlyKpiTracking(updated);
+                                    }}
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg py-1 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                                  />
+                                </td>
+                                <td className="px-4 py-2.5 text-center">
+                                  <input
+                                    type="text"
+                                    value={item.achieved}
+                                    onChange={(e) => {
+                                      const updated = [...monthlyKpiTracking];
+                                      updated[idx].achieved = e.target.value;
+                                      setMonthlyKpiTracking(updated);
+                                    }}
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg py-1 px-2 text-center text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                                  />
+                                </td>
+                                <td className="px-4 py-2.5 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => removeMonthlyKpiRow(idx)}
+                                    className="text-slate-400 hover:text-red-500 transition-colors p-1"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
                   )}
