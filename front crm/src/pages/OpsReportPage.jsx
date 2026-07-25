@@ -1508,14 +1508,14 @@ const OpsReportPage = () => {
     try {
       setSaving(true);
 
-      const cleanDailyOperations = dailyOperations.filter(t => (t.activity || '').trim() !== '');
-      const cleanSalesActivity = salesActivity.filter(t => (t.leadName || '').trim() !== '' || (t.contactNumber || '').trim() !== '' || (t.courseInterested || '').trim() !== '');
-      const cleanSalesPerformance = salesPerformance.filter(t => (t.telecallerName || '').trim() !== '' || (t.kpi || '').trim() !== '');
-      const cleanRevenueTracking = revenueTracking.filter(t => (t.particulars || '').trim() !== '' || (t.amount || '').trim() !== '');
-      const cleanAcademyStatus = academyStatus.filter(t => (t.particulars || '').trim() !== '');
-      const cleanKpiTracking = kpiTracking.filter(t => (t.project || '').trim() !== '' || (t.kpi || '').trim() !== '');
-      const cleanIssuesEscalations = issuesEscalations.filter(t => (t.issue || '').trim() !== '');
-      const cleanHandover = handover.filter(t => (t.particulars || '').trim() !== '');
+      const cleanDailyOperations = Array.isArray(dailyOperations) ? dailyOperations.filter(t => (t.activity || '').trim() !== '') : [];
+      const cleanSalesActivity = Array.isArray(salesActivity) ? salesActivity.filter(t => (t.activity || '').trim() !== '' || (t.count || '').trim() !== '') : [];
+      const cleanSalesPerformance = Array.isArray(salesPerformance) ? salesPerformance.filter(t => (t.staffName || '').trim() !== '' || (t.taskAssigned || '').trim() !== '') : [];
+      const cleanRevenueTracking = Array.isArray(revenueTracking) ? revenueTracking.filter(t => (t.category || '').trim() !== '' || (t.amount || '').trim() !== '') : [];
+      const cleanAcademyStatus = Array.isArray(academyStatus) ? academyStatus.filter(t => (t.activity || '').trim() !== '') : [];
+      const cleanKpiTracking = Array.isArray(kpiTracking) ? kpiTracking.filter(t => (t.project || '').trim() !== '' || (t.kpi || '').trim() !== '') : [];
+      const cleanIssuesEscalations = Array.isArray(issuesEscalations) ? issuesEscalations.filter(t => (t.issue || '').trim() !== '') : issuesEscalations;
+      const cleanHandover = Array.isArray(handover) ? handover.filter(t => (t.particulars || '').trim() !== '') : handover;
 
       const payload = {
         userId: selectedUserId,
@@ -1541,12 +1541,15 @@ const OpsReportPage = () => {
       if (res.ok && data.success) {
         showToast("Operations Daily Shift Report saved successfully!", 'success');
         fetchSubmittedDates(selectedUserId);
+        return true;
       } else {
         showToast(data.message || "Failed to save the report.", 'error');
+        return false;
       }
     } catch (e) {
       console.error(e);
       showToast("Server error. Please try again.", 'error');
+      return false;
     } finally {
       setSaving(false);
     }
@@ -1585,7 +1588,8 @@ const OpsReportPage = () => {
   const handleDownloadPDF = async () => {
     const reportType = 'ops';
     // Automatically save report as well
-    await handleSaveReport();
+    const saved = await handleSaveReport();
+    if (!saved) return;
 
     try {
       showToast("Generating PDF on server...", "info");
