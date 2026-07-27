@@ -30,18 +30,18 @@ const DEFAULT_DAILY_OPERATIONS = [
 ];
 
 const DEFAULT_SALES_ACTIVITY = [
-  { activity: 'New Leads Generated from marketing team', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  { activity: 'New Leads Generated', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
   { activity: 'Qualified Lead', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
   { activity: 'Total Calls Made', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
   { activity: 'Total Follow up', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
   { activity: 'Hot Leads', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
   { activity: 'Warm Leads', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
   { activity: 'Cold Leads', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
-  { activity: 'Call back Leads', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  // { activity: 'Call back Leads', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
   { activity: 'RNT Leads (Ring Next Time)', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
   { activity: 'Switch Off Leads', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
   { activity: 'Wrong leads', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
-  { activity: 'Total Pending Follow-ups', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
+  // { activity: 'Total Pending Follow-ups', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
   { activity: 'Total Pending Leads', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
   { activity: 'Client/Student Meetings Fixed', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' },
   { activity: 'Admissions/Closings Done', count: '', digitalMktg: '', web: '', dueDate: '', remarks: '' }
