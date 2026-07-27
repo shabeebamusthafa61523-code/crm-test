@@ -734,6 +734,10 @@ const AcademicCounselorReportPage = () => {
       let currentY = 15;
       
       const drawSectionHeader = (title) => {
+        if (currentY + 25 > 280) {
+          doc.addPage();
+          currentY = 15;
+        }
         doc.setFillColor(60, 35, 117);
         doc.rect(14, currentY, 182, 7, 'F');
         doc.setFont('helvetica', 'bold');
@@ -814,8 +818,7 @@ const AcademicCounselorReportPage = () => {
         margin: { left: 14, right: 14 }
       });
 
-      doc.addPage();
-      currentY = 15;
+      currentY = doc.lastAutoTable.finalY + 4;
 
       drawSectionHeader("3. OPERATIONS SUMMARY (CONSOLIDATED)");
       
@@ -1116,6 +1119,10 @@ const AcademicCounselorReportPage = () => {
       let currentY = 15;
       
       const drawSectionHeader = (title) => {
+        if (currentY + 25 > 280) {
+          doc.addPage();
+          currentY = 15;
+        }
         doc.setFillColor(60, 35, 117);
         doc.rect(14, currentY, 182, 7, 'F');
         doc.setFont('helvetica', 'bold');
@@ -1196,8 +1203,7 @@ const AcademicCounselorReportPage = () => {
         margin: { left: 14, right: 14 }
       });
 
-      doc.addPage();
-      currentY = 15;
+      currentY = doc.lastAutoTable.finalY + 4;
 
       drawSectionHeader("3. OPERATIONS SUMMARY (CONSOLIDATED)");
       

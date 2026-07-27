@@ -945,6 +945,12 @@ const OpsReportPage = () => {
       let currentY = 15;
 
       const drawSectionHeader = (title) => {
+        if (currentY + 25 > 280) {
+          doc.addPage();
+          currentY = 15;
+          if (typeof drawHeader === 'function') drawHeader();
+          currentY = 27;
+        }
         doc.setFillColor(60, 35, 117);
         doc.rect(14, currentY, 182, 7, 'F');
         doc.setFont('helvetica', 'bold');
@@ -1194,6 +1200,12 @@ const OpsReportPage = () => {
       let currentY = 15;
 
       const drawSectionHeader = (title) => {
+        if (currentY + 25 > 280) {
+          doc.addPage();
+          currentY = 15;
+          if (typeof drawHeader === 'function') drawHeader();
+          currentY = 27;
+        }
         doc.setFillColor(60, 35, 117);
         doc.rect(14, currentY, 182, 7, 'F');
         doc.setFont('helvetica', 'bold');
@@ -1270,10 +1282,7 @@ const OpsReportPage = () => {
         margin: { left: 14, right: 14 }
       });
 
-      doc.addPage();
-      currentY = 15;
-      drawHeader();
-      currentY = 27;
+      currentY = doc.lastAutoTable.finalY + 4;
 
       drawSectionHeader("3. MONTHLY SALES TEAM PERFORMANCE");
       const perfHeaders = [["Staff Name", "Task Assigned", "Leads", "Closings", "Status"]];
