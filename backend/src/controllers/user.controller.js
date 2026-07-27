@@ -66,7 +66,7 @@ export const userController = {
         isNonOperational = String(deptName).toLowerCase().trim() === 'non-operational';
       }
 
-      const isPrivileged = ['1', '2', 'hr', 'admin'].includes(loggedInUserRole) || isNonOperational;
+      const isPrivileged = ['1', 'admin', 'hr', 'superadmin'].includes(loggedInUserRole) || isNonOperational;
       
       let queryFilter = {
         isActive: true,
@@ -74,11 +74,7 @@ export const userController = {
         role_id: { $nin: ['10', 10] }
       };
 
-      // Only filter users by department if the request is originating from the employee-reports, team-reports or monthly-reports page
-      const referer = req.get('referer') || '';
-      const isReportsPage = referer.includes('employee-reports') || referer.includes('team-reports') || referer.includes('monthly-reports');
-
-      if (isReportsPage && !isPrivileged && loggedInUserId) {
+      if (!isPrivileged && loggedInUserId) {
         const Department = (await import('../modules/departments/department.model.js')).default;
         const UserDepartment = (await import('../models/userDepartment.model.js')).default;
         

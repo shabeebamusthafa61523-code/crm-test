@@ -131,6 +131,10 @@ const EmployeeReports = () => {
     employees.map(emp => emp.designationId?.name || emp.designation || '').filter(Boolean)
   )).sort();
 
+  const userRole = String(loggedInUser?.role || loggedInUser?.role_id || '').toLowerCase().trim();
+  const userDept = loggedInUser?.department || loggedInUser?.departmentId?.name || '';
+  const isSuperAdmin = ['1', 'admin', 'hr', 'superadmin'].includes(userRole) || isNonOperational;
+
   const filteredEmployees = employees.filter(emp => {
     const nameMatch = (emp.name || '').toLowerCase().includes(searchQuery.toLowerCase());
     const emailMatch = (emp.email || '').toLowerCase().includes(searchQuery.toLowerCase());
@@ -141,6 +145,14 @@ const EmployeeReports = () => {
 
     const desigName = emp.designationId?.name || emp.designation || '';
     const desigMatch = selectedDesignation === 'all' || desigName.toLowerCase().trim() === selectedDesignation.toLowerCase().trim();
+
+    if (!isSuperAdmin && userDept) {
+      const empIdStr = String(emp._id || emp.id || '');
+      const loggedInIdStr = String(loggedInUser?._id || loggedInUser?.id || '');
+      if (empIdStr !== loggedInIdStr && deptName.toLowerCase().trim() !== userDept.toLowerCase().trim()) {
+        return false;
+      }
+    }
 
     return searchMatch && deptMatch && desigMatch;
   });

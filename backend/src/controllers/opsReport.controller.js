@@ -280,7 +280,7 @@ export const getLeadStats = async (req, res, next) => {
 
     // Build the salesActivity array matching the OPS report structure
     const salesActivity = [
-      { activity: 'New Leads Generated from marketing team', count: String(totalNewLeads), digitalMktg: String(totalDigital), web: String(totalWeb), dueDate: '', remarks: '' },
+      { activity: 'New Leads Generated', count: String(totalNewLeads), digitalMktg: String(totalDigital), web: String(totalWeb), dueDate: '', remarks: '' },
       { activity: 'Qualified Lead', count: String(qualifiedLeads), digitalMktg: '', web: '', dueDate: '', remarks: '' },
       { activity: 'Total Calls Made', count: String(totalCalls), digitalMktg: '', web: '', dueDate: '', remarks: '' },
       { activity: 'Total Follow up', count: String(followUpsToday), digitalMktg: '', web: '', dueDate: '', remarks: '' },

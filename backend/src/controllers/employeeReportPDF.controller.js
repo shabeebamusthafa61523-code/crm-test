@@ -75,7 +75,7 @@ const isAuthorizedToAccessUser = async (reqUser, targetUserId) => {
     isNonOperational = String(deptName).toLowerCase().trim() === 'non-operational';
   }
 
-  const isPrivileged = ['1', '2', 'hr', 'admin'].includes(loggedInUserRole) || isNonOperational;
+  const isPrivileged = ['1', 'admin', 'hr', 'superadmin'].includes(loggedInUserRole) || isNonOperational;
 
   // Privileged roles can see everything
   if (isPrivileged) return true;
