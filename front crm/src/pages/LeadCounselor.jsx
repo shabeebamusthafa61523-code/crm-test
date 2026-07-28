@@ -146,8 +146,68 @@ const [activePriority, setActivePriority] = useState('all');
   const isPrivilegedUser = useMemo(() => {
     if (!currentUser) return false;
     const roleId = String(currentUser.role_id || currentUser.roleId || currentUser.role || '').toLowerCase().trim();
-    return ['1', '2', '3','hr', 'admin'].includes(roleId);
+    return ['1', '2', 'hr', 'admin', 'superadmin'].includes(roleId);
   }, [currentUser]);
+
+  const isAcademicCounselor = useMemo(() => {
+    if (!currentUser) return false;
+    const roleId = String(currentUser.role_id || currentUser.roleId || currentUser.role || '').toLowerCase().trim();
+    const designation = String(currentUser.designation || currentUser.designationId?.name || currentUser.designation_id || '').toLowerCase().trim();
+    const deptName = String(currentUser.department || currentUser.departmentId?.name || '').toLowerCase().trim();
+
+    let desigId = '';
+    if (currentUser.designationId) {
+      if (typeof currentUser.designationId === 'object' && currentUser.designationId._id) {
+        desigId = String(currentUser.designationId._id).trim();
+      } else {
+        desigId = String(currentUser.designationId).trim();
+      }
+    } else if (currentUser.designation_id) {
+      desigId = String(currentUser.designation_id).trim();
+    }
+
+    // Explicitly match Academic Counselor Designation ID: 6a27939af292348deb7d0495
+    if (desigId === '6a27939af292348deb7d0495') {
+      return true;
+    }
+
+    const isCounselorOrTelecaller = (
+      roleId === '3' ||
+      designation.includes('counselor') ||
+      designation.includes('telecaller') ||
+      deptName.includes('counselor') ||
+      deptName.includes('telecaller')
+    );
+
+    const isOps = designation.includes('operation') || designation.includes('ops') || deptName.includes('operation') || deptName.includes('ops');
+
+    return isCounselorOrTelecaller && !isOps;
+  }, [currentUser]);
+
+  const isOperationManager = useMemo(() => {
+    if (!currentUser) return false;
+    if (isAcademicCounselor) return false;
+
+    const roleId = String(currentUser.role_id || currentUser.roleId || currentUser.role || '').toLowerCase().trim();
+    const designation = String(currentUser.designation || currentUser.designationId?.name || currentUser.designation_id || '').toLowerCase().trim();
+    const deptName = String(currentUser.department || currentUser.departmentId?.name || '').toLowerCase().trim();
+
+    return (
+      ['1', '2', 'admin', 'superadmin', 'manager'].includes(roleId) ||
+      designation.includes('operation') ||
+      designation.includes('ops') ||
+      designation.includes('manager') ||
+      deptName.includes('operation') ||
+      deptName.includes('ops') ||
+      !!currentUser.isTeamLead
+    );
+  }, [currentUser, isAcademicCounselor]);
+
+  const canEditAssignedTo = useMemo(() => {
+    if (!currentUser) return false;
+    if (isAcademicCounselor) return false;
+    return isOperationManager;
+  }, [isAcademicCounselor, isOperationManager]);
 
   const hasAccess = useMemo(() => {
     if (!currentUser) return false;
@@ -1950,7 +2010,7 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
                 <option value="No">No</option>
               </select>
             </div>
-            {isPrivilegedUser && (
+            {canEditAssignedTo && (
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Assign to Representative</label>
                 <select
@@ -2323,7 +2383,7 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
                 <option value="No">No</option>
               </select>
             </div>
-            {isPrivilegedUser && (
+            {canEditAssignedTo && (
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Assign to Representative</label>
                 <select
