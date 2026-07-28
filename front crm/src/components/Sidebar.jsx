@@ -68,13 +68,6 @@ const menuItems = [
     allowedDesignations: ['6a27939af292348deb7d0495'],
     allowedRoles: ['1', '2', 'hr', 'admin', 'superadmin']
   },
-  { 
-    icon: TrendingUp, 
-    label: 'Lead Counselor', 
-    path: '/lead-counselor',
-    allowedDesignations: ['6a2f91472df21dc234018cab'],
-    // allowedRoles: ['1', '2', '3', 'hr', 'admin', 'superadmin']
-  },
   {
     icon: BarChart3,
     label: 'Dev Dashboard',
@@ -249,6 +242,18 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
         }
         if (item.isCommonDashboardFallback || item.isBasicReportFallback) {
           return false;
+        }
+        if (item.label === 'Telecaller Leads') {
+          const desigName = String(userObj.designation || userObj.designationId?.name || '').toLowerCase();
+          const dName = String(deptName).toLowerCase();
+          if (
+            ['1', '2', 'admin', 'superadmin', 'manager', 'hr'].includes(currentUserRole) ||
+            desigName.includes('operation') || desigName.includes('ops') || desigName.includes('manager') ||
+            dName.includes('operation') || dName.includes('ops') ||
+            !!userObj.isTeamLead
+          ) {
+            return true;
+          }
         }
         if (!item.allowedRoles && !item.allowedDepartments && !item.allowedDesignations) return true;
         const roleMatch = item.allowedRoles && item.allowedRoles.includes(currentUserRole);

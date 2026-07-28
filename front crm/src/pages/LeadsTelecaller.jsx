@@ -140,8 +140,101 @@ const [activePriority, setActivePriority] = useState('all');
   const isPrivilegedUser = useMemo(() => {
     if (!currentUser) return false;
     const roleId = String(currentUser.role_id || currentUser.roleId || currentUser.role || '').toLowerCase().trim();
-    return ['1', '2', '3','hr', 'admin'].includes(roleId);
+    return ['1', '2', 'hr', 'admin', 'superadmin'].includes(roleId);
   }, [currentUser]);
+
+  const isAcademicCounselor = useMemo(() => {
+    if (!currentUser) return false;
+    const roleId = String(currentUser.role_id || currentUser.roleId || currentUser.role || '').toLowerCase().trim();
+    const designation = String(currentUser.designation || currentUser.designationId?.name || currentUser.designation_id || '').toLowerCase().trim();
+    const deptName = String(currentUser.department || currentUser.departmentId?.name || '').toLowerCase().trim();
+
+    let desigId = '';
+    if (currentUser.designationId) {
+      if (typeof currentUser.designationId === 'object' && currentUser.designationId._id) {
+        desigId = String(currentUser.designationId._id).trim();
+      } else {
+        desigId = String(currentUser.designationId).trim();
+      }
+    } else if (currentUser.designation_id) {
+      desigId = String(currentUser.designation_id).trim();
+    }
+
+    // Explicitly match Academic Counselor Designation ID: 6a27939af292348deb7d0495
+    if (desigId === '6a27939af292348deb7d0495') {
+      return true;
+    }
+
+    const isCounselorOrTelecaller = (
+      roleId === '3' ||
+      designation.includes('counselor') ||
+      designation.includes('telecaller') ||
+      deptName.includes('counselor') ||
+      deptName.includes('telecaller')
+    );
+
+    const isOps = designation.includes('operation') || designation.includes('ops') || deptName.includes('operation') || deptName.includes('ops');
+
+    return isCounselorOrTelecaller && !isOps;
+  }, [currentUser]);
+
+  const isOperationManager = useMemo(() => {
+    if (!currentUser) return false;
+    if (isAcademicCounselor) return false;
+
+    const roleId = String(currentUser.role_id || currentUser.roleId || currentUser.role || '').toLowerCase().trim();
+    const designation = String(currentUser.designation || currentUser.designationId?.name || currentUser.designation_id || '').toLowerCase().trim();
+    const deptName = String(currentUser.department || currentUser.departmentId?.name || '').toLowerCase().trim();
+
+    return (
+      ['1', '2', 'admin', 'superadmin', 'manager'].includes(roleId) ||
+      designation.includes('operation') ||
+      designation.includes('ops') ||
+      designation.includes('manager') ||
+      deptName.includes('operation') ||
+      deptName.includes('ops') ||
+      !!currentUser.isTeamLead
+    );
+  }, [currentUser, isAcademicCounselor]);
+
+  const canEditAssignedTo = useMemo(() => {
+    if (!currentUser) return false;
+    if (isAcademicCounselor) return false;
+    return isOperationManager;
+  }, [isAcademicCounselor, isOperationManager]);
+
+  const departmentStaff = useMemo(() => {
+    if (!staff || !Array.isArray(staff)) return [];
+    if (!currentUser) return staff;
+
+    const roleId = String(currentUser.role_id || currentUser.roleId || currentUser.role || '').toLowerCase().trim();
+    
+    // Superadmin and Admin role 1 see all staff across departments
+    if (roleId === '1' || roleId === 'superadmin') {
+      return staff;
+    }
+
+    // For Operations Manager or Department Team Lead, restrict staff dropdown to members in their department
+    const userDeptId = typeof currentUser.departmentId === 'object' 
+      ? String(currentUser.departmentId?._id || '') 
+      : String(currentUser.departmentId || currentUser.department_id || '');
+    const userDeptName = String(currentUser.department || currentUser.departmentId?.name || '').toLowerCase().trim();
+
+    const filtered = staff.filter(member => {
+      const memberDeptId = typeof member.departmentId === 'object' 
+        ? String(member.departmentId?._id || '') 
+        : String(member.departmentId || member.department_id || '');
+      const memberDeptName = String(member.department || member.departmentId?.name || '').toLowerCase().trim();
+
+      if (userDeptId && memberDeptId && userDeptId === memberDeptId) return true;
+      if (userDeptName && memberDeptName && userDeptName.length > 2 && memberDeptName.includes(userDeptName)) return true;
+      if (userDeptName && memberDeptName && memberDeptName.length > 2 && userDeptName.includes(memberDeptName)) return true;
+      if (String(member.id || member._id) === String(currentUser.id || currentUser._id)) return true;
+      return false;
+    });
+
+    return filtered.length > 0 ? filtered : staff;
+  }, [staff, currentUser]);
 
   const isAdmin = useMemo(() => {
     if (!currentUser) return false;
@@ -153,8 +246,8 @@ const [activePriority, setActivePriority] = useState('all');
   const hasAccess = useMemo(() => {
     if (!currentUser) return false;
     const roleId = String(currentUser.role_id || currentUser.roleId || currentUser.role || '').toLowerCase().trim();
-    const designation = String(currentUser.designation || '').toLowerCase().trim();
-    if (['1', '2', '3', 'hr', 'admin', 'superadmin'].includes(roleId) || designation.includes('admin')) return true;
+    const designation = String(currentUser.designation || currentUser.designationId?.name || currentUser.designation_id || '').toLowerCase().trim();
+    if (['1', '2', '3', 'hr', 'admin', 'superadmin', 'manager'].includes(roleId) || designation.includes('admin') || designation.includes('operation') || designation.includes('ops') || designation.includes('manager')) return true;
 
     let departmentId = '';
     if (currentUser.departmentId) {
@@ -218,30 +311,26 @@ const [activePriority, setActivePriority] = useState('all');
         setLeads([]);
       }
     } catch (error) {
-      console.error('Failed to fetch leads:', error);
-      showToast('Could not reload leads list.', 'error');
+      console.error('Error fetching leads:', error);
+      showToast('Failed to fetch leads', 'error');
       setLeads([]);
     } finally {
       setLoading(false);
     }
-  }, [activeTab, staffFilter, dateFrom, dateTo, getAuthHeaders, showToast]);
+  }, [activeTab, dateFrom, dateTo, getAuthHeaders, showToast]);
 
   // Fetch staff list for assignments
   const fetchStaff = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/v1/users/list`, {
+      const res = await fetch(`${API_BASE}/v1/users`, {
         headers: getAuthHeaders()
       });
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setStaff(data);
-      } else if (data && Array.isArray(data.data)) {
-        setStaff(data.data);
-      } else {
-        setStaff([]);
+      const resJson = await res.json();
+      if (resJson.success && Array.isArray(resJson.data)) {
+        setStaff(resJson.data);
       }
     } catch (error) {
-      console.error('Failed to fetch staff list:', error);
+      console.error('Error fetching staff list:', error);
     }
   }, [getAuthHeaders]);
 
@@ -294,6 +383,10 @@ const [activePriority, setActivePriority] = useState('all');
         setLeads(prevLeads => prevLeads.map(l => {
           const lId = l.id || l._id;
           if (lId === leadId) {
+            if (fieldName === 'assignedTo') {
+              const matchedStaff = staff.find(s => String(s.id || s._id) === String(value));
+              return { ...l, assignedTo: matchedStaff || value };
+            }
             return { ...l, [fieldName]: value };
           }
           return l;
@@ -840,8 +933,9 @@ const [activePriority, setActivePriority] = useState('all');
                         ))}
                       </div>
                     </div>
-                    {/* Staff Filter (privileged only) */}
-                    {isPrivilegedUser && (
+
+                    {/* Staff Filter (Operations Manager only) */}
+                    {canEditAssignedTo && (
                       <div className="space-y-1.5">
                         <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Assigned Staff</label>
                         <select
@@ -850,7 +944,7 @@ const [activePriority, setActivePriority] = useState('all');
                           className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none transition"
                         >
                           <option value="all">All Assigned Staff</option>
-                          {staff.map(member => (
+                          {departmentStaff.map(member => (
                             <option key={member.id || member._id} value={member.id || member._id}>
                               {member.name} ({member.designation || 'Staff'})
                             </option>
@@ -1135,6 +1229,29 @@ const [activePriority, setActivePriority] = useState('all');
                           </select>
                         </div>
                       </div>
+
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                        <label className="block text-[9px] font-bold text-slate-400 mb-1">ASSIGNED TO</label>
+                        {canEditAssignedTo ? (
+                          <select
+                            value={typeof lead.assignedTo === 'object' ? (lead.assignedTo?._id || lead.assignedTo?.id || '') : (lead.assignedTo || '')}
+                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'assignedTo', e.target.value)}
+                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                          >
+                            <option value="">Unassigned</option>
+                            {departmentStaff.map(member => (
+                              <option key={member.id || member._id} value={member.id || member._id}>
+                                {member.name}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1">
+                            <User size={12} className="text-slate-400" />
+                            {typeof lead.assignedTo === 'object' ? (lead.assignedTo?.name || 'Unassigned') : (lead.assignedToName || staff.find(s => String(s.id || s._id) === String(lead.assignedTo))?.name || 'Unassigned')}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {/* Footer Actions */}
@@ -1195,6 +1312,7 @@ const [activePriority, setActivePriority] = useState('all');
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">City / Place</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Campaign/platform</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Assigned To</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Course Interest</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Source</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Leads Received</th>
@@ -1228,18 +1346,6 @@ const [activePriority, setActivePriority] = useState('all');
                               {lead.companyName}
                             </div>
                           )}
-                          {/* <div className="flex flex-wrap items-center gap-1 mt-1.5 max-w-[180px]">
-                            {lead.leadPlatform && (
-                              <span className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200/30 rounded font-semibold text-[8px] uppercase">
-                                {lead.leadPlatform}
-                              </span>
-                            )}
-                            {lead.campaignName && (
-                              <span className="px-1.5 py-0.5 bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 border border-teal-200/30 rounded font-semibold text-[8px] uppercase">
-                                {lead.campaignName}
-                              </span>
-                            )}
-                          </div> */}
                         </td>
 
                         {/* Contact */}
@@ -1264,18 +1370,13 @@ const [activePriority, setActivePriority] = useState('all');
                             </span>
                           )}
                         </td>
- {/* Source & Interested Service */}
+                        {/* Source & Interested Service */}
                         <td className="px-6 py-4.5 text-xs">
                           <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 font-medium">
                             <Tag size={12} className="text-slate-400" />
                             {lead.campaignName || 'No Campaign'}
                           </div>
                           <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                            {/* {lead.source && (
-                              <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded font-semibold text-[8px] uppercase">
-                                Source: {lead.source}
-                              </span>
-                            )} */}
                             {lead.leadPlatform && (
                               <span className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200/30 rounded font-semibold text-[8px] uppercase">
                                 Platform: {lead.leadPlatform}
@@ -1298,6 +1399,28 @@ const [activePriority, setActivePriority] = useState('all');
                             <option value="Converted">Converted</option>
                             <option value="Lost">Lost</option>
                           </select>
+                        </td>
+                        {/* Assigned To */}
+                        <td className="px-6 py-4.5 text-xs">
+                          {canEditAssignedTo ? (
+                            <select
+                              value={typeof lead.assignedTo === 'object' ? (lead.assignedTo?._id || lead.assignedTo?.id || '') : (lead.assignedTo || '')}
+                              onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'assignedTo', e.target.value)}
+                              className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer min-w-[130px]"
+                            >
+                              <option value="">Unassigned</option>
+                              {departmentStaff.map(member => (
+                                <option key={member.id || member._id} value={member.id || member._id}>
+                                  {member.name}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-200">
+                              <User size={12} className="text-slate-400" />
+                              {typeof lead.assignedTo === 'object' ? (lead.assignedTo?.name || 'Unassigned') : (lead.assignedToName || staff.find(s => String(s.id || s._id) === String(lead.assignedTo))?.name || 'Unassigned')}
+                            </span>
+                          )}
                         </td>
                         {/* Course Interest */}
                         <td className="px-6 py-4.5 text-xs font-semibold">
@@ -1888,23 +2011,28 @@ const CreateModal = ({ isOpen, onClose, onCreated, staff, getAuthHeaders, showTo
                 <option value="No">No</option>
               </select>
             </div>
-            {isPrivilegedUser && (
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Assign to Representative</label>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Assign to Representative</label>
+              {canEditAssignedTo ? (
                 <select
                   value={formData.assignedTo}
                   onChange={e => setFormData({ ...formData, assignedTo: e.target.value })}
                   className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
                 >
                   <option value="">Unassigned</option>
-                  {staff.map(member => (
+                  {departmentStaff.map(member => (
                     <option key={member.id || member._id} value={member.id || member._id}>
                       {member.name} ({member.role === '1' || member.role === 'hr' ? 'HR' : member.role === '2' || member.role === 'admin' ? 'Admin' : 'Staff'})
                     </option>
                   ))}
                 </select>
-              </div>
-            )}
+              ) : (
+                <div className="px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                  <User size={12} className="text-slate-400" />
+                  {typeof formData.assignedTo === 'object' ? (formData.assignedTo?.name || 'Unassigned') : (staff.find(s => String(s.id || s._id) === String(formData.assignedTo))?.name || formData.assignedTo || 'Unassigned')}
+                </div>
+              )}
+            </div>
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Leads Received Date</label>
               <input
@@ -2262,23 +2390,28 @@ const EditModal = ({ isOpen, onClose, onUpdated, lead, staff, getAuthHeaders, sh
                 <option value="No">No</option>
               </select>
             </div>
-            {isPrivilegedUser && (
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Assign to Representative</label>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Assign to Representative</label>
+              {canEditAssignedTo ? (
                 <select
                   value={formData.assignedTo}
                   onChange={e => setFormData({ ...formData, assignedTo: e.target.value })}
                   className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition"
                 >
                   <option value="">Unassigned</option>
-                  {staff.map(member => (
+                  {departmentStaff.map(member => (
                     <option key={member.id || member._id} value={member.id || member._id}>
                       {member.name} ({member.role === '1' || member.role === 'hr' ? 'HR' : member.role === '2' || member.role === 'admin' ? 'Admin' : 'Staff'})
                     </option>
                   ))}
                 </select>
-              </div>
-            )}
+              ) : (
+                <div className="px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                  <User size={12} className="text-slate-400" />
+                  {typeof formData.assignedTo === 'object' ? (formData.assignedTo?.name || 'Unassigned') : (staff.find(s => String(s.id || s._id) === String(formData.assignedTo))?.name || formData.assignedTo || 'Unassigned')}
+                </div>
+              )}
+            </div>
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Leads Received Date</label>
               <input
