@@ -554,44 +554,57 @@ const AcademicCounselorReportPage = () => {
     }
     setIsMonthlyLoading(true);
     try {
-      const start = new Date(monthlyStartDate);
-      const end = new Date(monthlyEndDate);
-      const dates = [];
-      let temp = new Date(start);
-      while (temp <= end) {
-        dates.push(temp.toISOString().split('T')[0]);
-        temp.setDate(temp.getDate() + 1);
+      let validReports = [];
+      try {
+        const res = await fetch(`${API_BASE}/v1/academic-counselor-reports/range?userId=${selectedUserId}&startDate=${monthlyStartDate}&endDate=${monthlyEndDate}`, {
+          headers: getAuthHeaders()
+        });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          validReports = data.data;
+        }
+      } catch (e) {
+        console.error("Error fetching monthly reports range:", e);
       }
 
-      if (dates.length === 0) {
-        showToast("Invalid date range.", "error");
-        return;
-      }
-
-      const fetchedResults = await Promise.all(
-        dates.map(async (d) => {
-          try {
-            const res = await fetch(`${API_BASE}/v1/academic-counselor-reports/by-date?userId=${selectedUserId}&dateString=${d}`, {
-              headers: getAuthHeaders()
-            });
-            const data = await res.json();
-            if (data.success && data.data) {
-              return data.data;
-            }
-          } catch (err) {
-            console.error(`Error fetching for date ${d}:`, err);
-          }
-          return null;
-        })
-      );
-
-      const validReports = fetchedResults.filter(Boolean);
       if (validReports.length === 0) {
-        showToast("No reports found in the selected date range.", "warning");
+        const start = new Date(monthlyStartDate);
+        const end = new Date(monthlyEndDate);
+        const dates = [];
+        let temp = new Date(start);
+        while (temp <= end) {
+          dates.push(temp.toISOString().split('T')[0]);
+          temp.setDate(temp.getDate() + 1);
+        }
+        const fetchedResults = await Promise.all(
+          dates.map(async (d) => {
+            try {
+              const res = await fetch(`${API_BASE}/v1/academic-counselor-reports/by-date?userId=${selectedUserId}&dateString=${d}`, {
+                headers: getAuthHeaders()
+              });
+              const data = await res.json();
+              if (data.success && data.data) return data.data;
+            } catch (err) {}
+            return null;
+          })
+        );
+        validReports = fetchedResults.filter(Boolean);
+      }
+
+      if (validReports.length === 0) {
+        showToast("No saved reports found in selected monthly date range.", "warning");
       }
 
       const lastReport = validReports[validReports.length - 1];
-      const details = lastReport?.basicDetails || basicDetails;
+      const selectedCounselor = counselors.find(c => (c._id || c.id) === selectedUserId);
+      const details = lastReport?.basicDetails || {
+        employeeName: selectedCounselor?.name || basicDetails.employeeName || '',
+        designation: selectedCounselor?.designation || basicDetails.designation || 'Sales Executive / Tele Caller & Academic Counselor',
+        department: selectedCounselor?.department || basicDetails.department || 'Sales & Growth / Academy',
+        shiftTiming: basicDetails.shiftTiming || '9:00 AM - 5.00 PM',
+        reportingTo: selectedCounselor?.reportingManager || basicDetails.reportingTo || 'Manager - OPS Sales & Growth'
+      };
+
       setMonthlyBasicDetails({
         employeeName: details.employeeName || '',
         designation: details.designation || 'Sales Executive / Tele Caller & Academic Counselor',
@@ -946,37 +959,55 @@ const AcademicCounselorReportPage = () => {
 
     try {
       setIsWeeklyLoading(true);
-      const start = new Date(weeklyStartDate);
-      const end = new Date(weeklyEndDate);
-      const datesList = [];
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        datesList.push(d.toISOString().split('T')[0]);
+      let validReports = [];
+      try {
+        const res = await fetch(`${API_BASE}/v1/academic-counselor-reports/range?userId=${selectedUserId}&startDate=${weeklyStartDate}&endDate=${weeklyEndDate}`, {
+          headers: getAuthHeaders()
+        });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          validReports = data.data;
+        }
+      } catch (e) {
+        console.error("Error fetching weekly reports range:", e);
       }
 
-      const fetchedResults = await Promise.all(
-        datesList.map(async (d) => {
-          try {
-            const res = await fetch(`${API_BASE}/v1/academic-counselor-reports?userId=${selectedUserId}&dateString=${d}`, {
-              headers: getAuthHeaders()
-            });
-            const data = await res.json();
-            if (data.success && data.data) {
-              return data.data;
-            }
-          } catch (err) {
-            console.error(`Error fetching for date ${d}:`, err);
-          }
-          return null;
-        })
-      );
-
-      const validReports = fetchedResults.filter(Boolean);
       if (validReports.length === 0) {
-        showToast("No reports found in the selected weekly date range.", "warning");
+        const start = new Date(weeklyStartDate);
+        const end = new Date(weeklyEndDate);
+        const datesList = [];
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          datesList.push(d.toISOString().split('T')[0]);
+        }
+        const fetchedResults = await Promise.all(
+          datesList.map(async (d) => {
+            try {
+              const res = await fetch(`${API_BASE}/v1/academic-counselor-reports/by-date?userId=${selectedUserId}&dateString=${d}`, {
+                headers: getAuthHeaders()
+              });
+              const data = await res.json();
+              if (data.success && data.data) return data.data;
+            } catch (err) {}
+            return null;
+          })
+        );
+        validReports = fetchedResults.filter(Boolean);
+      }
+
+      if (validReports.length === 0) {
+        showToast("No saved reports found in the selected weekly date range.", "warning");
       }
 
       const lastReport = validReports[validReports.length - 1];
-      const details = lastReport?.basicDetails || basicDetails;
+      const selectedCounselor = counselors.find(c => (c._id || c.id) === selectedUserId);
+      const details = lastReport?.basicDetails || {
+        employeeName: selectedCounselor?.name || basicDetails.employeeName || '',
+        designation: selectedCounselor?.designation || basicDetails.designation || 'Sales Executive / Tele Caller & Academic Counselor',
+        department: selectedCounselor?.department || basicDetails.department || 'Sales & Growth / Academy',
+        shiftTiming: basicDetails.shiftTiming || '9:00 AM - 5.00 PM',
+        reportingTo: selectedCounselor?.reportingManager || basicDetails.reportingTo || 'Manager - OPS Sales & Growth'
+      };
+
       setWeeklyBasicDetails({
         employeeName: details.employeeName || '',
         designation: details.designation || 'Sales Executive / Tele Caller & Academic Counselor',
