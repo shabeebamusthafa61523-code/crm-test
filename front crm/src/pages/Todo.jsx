@@ -305,10 +305,21 @@ console.log("HEADERS:", getAuthHeaders());
 const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) => {
   const { showToast } = useToast();
 
-  const [form, setForm] = useState({ title: '', description: '', assigned_to: '', designation_id: '', image: null, dueDate: '' });
+  const [form, setForm] = useState({ title: '', description: '', assigned_to: '', designation_id: '', image: null, dueDate: '', client: '', project: '' });
+  const [clientsList, setClientsList] = useState([]);
+  const [clientProjects, setClientProjects] = useState([]);
 
   const [preview, setPreview] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/v1/clients?limit=100`, { headers: getAuthHeaders() })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.success) setClientsList(data.data.clients || []);
+      })
+      .catch(err => console.error("Failed to load clients in task modal", err));
+  }, []);
 
   const handleImage = (e) => {
     const file = e.target.files[0];
@@ -326,8 +337,6 @@ const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) 
 
   const fd = new FormData();
 
- 
-
   fd.append('title', form.title);
   fd.append('description', form.description || '');
   fd.append('assigned_to', form.assigned_to);
@@ -335,6 +344,12 @@ const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) 
   fd.append('status', 'pending');
   if (form.dueDate) {
     fd.append('dueDate', form.dueDate);
+  }
+  if (form.client) {
+    fd.append('client', form.client);
+  }
+  if (form.project) {
+    fd.append('project', form.project);
   }
 
   if (form.image) {
@@ -412,6 +427,54 @@ const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) 
             <div className="space-y-1">
               <label className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.2em] ml-1">Due Date</label>
               <input type="date" className="w-full bg-white border border-slate-200 px-3 py-2 rounded-xl text-slate-900 text-sm font-semibold outline-none focus:border-indigo-500/50" value={form.dueDate} onChange={e => setForm({...form, dueDate: e.target.value})} />
+            </div>
+          </div>
+
+          {/* Client & Project Selection Section (Feature 1) */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.2em] ml-1">Client</label>
+              <select
+                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl text-slate-900 dark:text-slate-100 text-xs font-bold outline-none"
+                value={form.client}
+                onChange={async (e) => {
+                  const clientId = e.target.value;
+                  setForm(prev => ({ ...prev, client: clientId, project: '' }));
+                  if (clientId) {
+                    try {
+                      const res = await fetch(`${API_BASE}/projects?client=${clientId}&limit=100`, { headers: getAuthHeaders() });
+                      const d = await res.json();
+                      if (d && d.success) setClientProjects(d.data.projects || []);
+                    } catch (err) { console.error("Failed to fetch client projects", err); }
+                  } else {
+                    setClientProjects([]);
+                  }
+                }}
+              >
+                <option value="">Select Client (Optional)</option>
+                {clientsList.map(c => (
+                  <option key={c._id || c.id} value={c._id || c.id}>
+                    {c.companyName} ({c.clientId})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.2em] ml-1">Project</label>
+              <select
+                disabled={!form.client}
+                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl text-slate-900 dark:text-slate-100 text-xs font-bold outline-none disabled:opacity-50"
+                value={form.project}
+                onChange={e => setForm({ ...form, project: e.target.value })}
+              >
+                <option value="">{form.client ? 'Select Active Project...' : 'Select Client First'}</option>
+                {clientProjects.map(p => (
+                  <option key={p._id || p.id} value={p._id || p.id}>
+                    {p.projectName} ({p.projectCode})
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 

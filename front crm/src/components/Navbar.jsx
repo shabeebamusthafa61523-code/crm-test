@@ -91,11 +91,12 @@ const Navbar = ({ isSidebarCollapsed, toggleMobileSidebar }) => {
   }, []);
 
   const getAuthHeaders = useCallback(() => {
-    const rawToken = localStorage.getItem('token');
-    const cleanToken = rawToken ? rawToken.replace(/"/g, '') : '';
+    let rawToken = localStorage.getItem('token') || '';
+    let cleanToken = rawToken.replace(/^"(.*)"$/, '$1').trim();
+    if (cleanToken.startsWith('Bearer ')) cleanToken = cleanToken.slice(7).trim();
     return { 
       'Content-Type': 'application/json',
-      'Authorization': cleanToken.startsWith('Bearer ') ? cleanToken : `Bearer ${cleanToken}` 
+      'Authorization': `Bearer ${cleanToken}` 
     };
   }, []);
 

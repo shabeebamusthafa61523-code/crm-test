@@ -25,6 +25,16 @@ const taskSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  client: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Client',
+    default: null
+  },
+  project: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Project',
+    default: null
+  },
   status: {
     type: String,
     enum: ['pending', 'current', 'preview', 'done'],

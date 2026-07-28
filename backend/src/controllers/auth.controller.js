@@ -110,17 +110,55 @@ export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // 1. Find user by email
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(401).json({ detail: "Invalid credentials provided." });
+    if (!email || !password) {
+      return res.status(400).json({ detail: "Email and password are required." });
     }
 
-    // 2. Verify password
+    const normalizedEmail = String(email).toLowerCase().trim();
+
+    // 1. Find user by normalized or exact email
+    const user = await User.findOne({
+      $or: [
+        { email: normalizedEmail },
+        { email: email }
+      ]
+    });
+
+    if (!user) {
+      return res.status(401).json({ detail: "Invalid credentials. User email not found." });
+    }
+
+    // Check account status
+    if (user.isActive === false || user.status === 'blocked' || user.status === 'inactive') {
+      return res.status(403).json({ detail: "Account is inactive or blocked. Please contact your administrator." });
+    }
+
+    // 2. Verify password (supports bcrypt hashes as well as legacy plaintext passwords with auto-hash upgrade)
     const storedPassword = user.password || user.passwordHash;
-    const validPassword = storedPassword && await bcrypt.compare(password, storedPassword);
+    let validPassword = false;
+
+    if (storedPassword) {
+      const isBcrypt = storedPassword.startsWith('$2a$') || storedPassword.startsWith('$2b$') || storedPassword.startsWith('$2y$');
+      if (isBcrypt) {
+        validPassword = await bcrypt.compare(password, storedPassword);
+      } else {
+        validPassword = (password === storedPassword);
+        if (validPassword) {
+          // Auto-upgrade legacy plaintext password to bcrypt hash
+          try {
+            const hashed = await bcrypt.hash(password, 10);
+            user.password = hashed;
+            user.passwordHash = hashed;
+            await user.save();
+          } catch (upgradeErr) {
+            console.warn("Failed to upgrade legacy password hash:", upgradeErr.message);
+          }
+        }
+      }
+    }
+
     if (!validPassword) {
-      return res.status(401).json({ detail: "Invalid credentials provided." });
+      return res.status(401).json({ detail: "Invalid credentials. Incorrect password." });
     }
 
     // 3. Sign Auth JWT Token
@@ -131,7 +169,7 @@ export const login = async (req, res) => {
         role: user.role,
         departmentId: user.departmentId || null
       },
-      process.env.JWT_SECRET,
+      JWT_SECRET,
       {
         expiresIn: '7d'
       }
