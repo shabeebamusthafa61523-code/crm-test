@@ -115,6 +115,14 @@ export const fetchCompletedTasks = async (userId, dateStr) => {
   }
 };
 
+const extractUserId = (userField) => {
+  if (!userField) return '';
+  if (typeof userField === 'object') {
+    return String(userField._id || userField.id || '').trim();
+  }
+  return String(userField).trim();
+};
+
 export const fetchDelegatedTasks = async (userId, dateStr) => {
   if (!userId || !dateStr) return [];
   const API_BASE = import.meta.env.VITE_API_URL;
@@ -128,14 +136,38 @@ export const fetchDelegatedTasks = async (userId, dateStr) => {
     const data = await res.json();
     const tasks = Array.isArray(data) ? data : (data.tasks || data.data || []);
     
-    const delegatedTasks = tasks.filter(t => {
-      const assignedUser = t.assigned_to?._id || t.assigned_to?.id || t.assigned_to || t.assignedTo?._id || t.assignedTo?.id || t.assignedTo;
-      const createdUser = t.created_by?._id || t.created_by?.id || t.created_by || t.user_id;
+    const matchesDate = (d) => {
+      if (!d) return false;
+      try {
+        const dateObj = new Date(d);
+        if (isNaN(dateObj.getTime())) return false;
+        const localY = dateObj.getFullYear();
+        const localM = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const localD = String(dateObj.getDate()).padStart(2, '0');
+        const localDateStr = `${localY}-${localM}-${localD}`;
 
-      if (String(createdUser) !== String(userId)) return false;
-      if (String(assignedUser) === String(userId)) return false; 
+        const utcY = dateObj.getUTCFullYear();
+        const utcM = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+        const utcD = String(dateObj.getUTCDate()).padStart(2, '0');
+        const utcDateStr = `${utcY}-${utcM}-${utcD}`;
+
+        return localDateStr === dateStr || utcDateStr === dateStr;
+      } catch (e) {
+        return false;
+      }
+    };
+
+    const delegatedTasks = tasks.filter(t => {
+      const createdUser = extractUserId(t.created_by) || extractUserId(t.user_id);
+      const assignedUser = extractUserId(t.assigned_to) || extractUserId(t.assignedTo);
+
+      if (createdUser !== String(userId)) return false;
+      if (assignedUser && assignedUser === String(userId)) return false; 
       
-      return true;
+      const dateMatches = matchesDate(t.date) || matchesDate(t.createdAt) || matchesDate(t.updatedAt) || matchesDate(t.dueDate);
+      const isPendingOrInProgress = ['pending', 'current'].includes(String(t.status).toLowerCase());
+
+      return dateMatches || isPendingOrInProgress;
     });
 
     return delegatedTasks.map(t => {

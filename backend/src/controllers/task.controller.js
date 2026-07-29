@@ -166,8 +166,18 @@ export const getAllTasks = async (req, res, next) => {
       ['md', 'coo', 'executive_director'].includes(roleName)
     );
 
+    const targetUserId = req.query.user_id || req.query.userId || req.query.targetUserId;
+
     let query = {};
-    if (isAdminOrHr) {
+    if (targetUserId) {
+      query = {
+        $or: [
+          { created_by: targetUserId },
+          { assigned_to: targetUserId },
+          { user_id: targetUserId }
+        ]
+      };
+    } else if (isAdminOrHr) {
       // Admin/HR see all tasks
       query = {};
     } else {

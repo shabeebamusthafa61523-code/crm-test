@@ -15,6 +15,7 @@ import Users from './pages/Users';
 import Leads from './pages/Leads';
 import LeadsTelecaller from './pages/LeadsTelecaller';
 import LeadCounselor from './pages/LeadCounselor';
+import ClientLeads from './pages/ClientLeads';
 import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
 import StudentAttendance from './pages/StudentAttendance';
@@ -164,6 +165,7 @@ function App() {
         <Route path="/users" element={<ProtectedRoute><MainLayout><RestrictedRoute><Users /></RestrictedRoute></MainLayout></ProtectedRoute>} />
         <Route path="/leads" element={<ProtectedRoute><MainLayout><RestrictedRoute><Leads /></RestrictedRoute></MainLayout></ProtectedRoute>} />
         <Route path="/leads-telecaller" element={<ProtectedRoute><MainLayout><RestrictedRoute><LeadsTelecaller /></RestrictedRoute></MainLayout></ProtectedRoute>} />
+        <Route path="/client-leads" element={<ProtectedRoute><MainLayout><RestrictedRoute><ClientLeads /></RestrictedRoute></MainLayout></ProtectedRoute>} />
         <Route path="/lead-counselor" element={<ProtectedRoute><MainLayout><RestrictedRoute><LeadCounselor /></RestrictedRoute></MainLayout></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
         <Route path="/student-attendance" element={<ProtectedRoute><MainLayout><StudentAttendance /></MainLayout></ProtectedRoute>} />

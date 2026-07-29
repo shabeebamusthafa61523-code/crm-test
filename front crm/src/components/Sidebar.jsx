@@ -12,6 +12,7 @@ import {
   LogOut,
   Building,
   TrendingUp,
+  Briefcase,
   BarChart3,
   FileText,
   Sparkles,
@@ -81,6 +82,11 @@ const menuItems = [
     path: '/leads-telecaller',
     allowedDesignations: ['6a27939af292348deb7d0495'],
     allowedRoles: ['1', '2', 'hr', 'admin', 'superadmin']
+  },
+  { 
+    icon: Briefcase, 
+    label: 'Client Leads', 
+    path: '/client-leads'
   },
   {
     icon: BarChart3,
@@ -268,6 +274,16 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
           ) {
             return true;
           }
+        }
+        if (item.label === 'Leads Directory' || item.label === 'Leads' || item.path === '/leads') {
+          const dName = String(userObj.department || userObj.departmentId?.name || deptName || '').toLowerCase().trim();
+          const desigName = String(userObj.designation || userObj.designationId?.name || '').toLowerCase().trim();
+          if (dName.includes('marketing') || desigName.includes('marketing')) {
+            return false;
+          }
+        }
+        if (item.label === 'Client Leads') {
+          return true;
         }
         if (!item.allowedRoles && !item.allowedDepartments && !item.allowedDesignations) return true;
         const roleMatch = item.allowedRoles && item.allowedRoles.includes(currentUserRole);

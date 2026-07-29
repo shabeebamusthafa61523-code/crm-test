@@ -384,7 +384,25 @@ const OpsReportPage = () => {
         setSalesPerformance(Array.isArray(report.salesPerformance) ? report.salesPerformance : []);
         setRevenueTracking(Array.isArray(report.revenueTracking) ? report.revenueTracking : []);
         setAcademyStatus(Array.isArray(report.academyStatus) ? report.academyStatus : []);
-        setKpiTracking(Array.isArray(report.kpiTracking) && report.kpiTracking.length > 0 ? report.kpiTracking : DEFAULT_KPI_TRACKING);
+
+        const savedKpis = Array.isArray(report.kpiTracking) ? report.kpiTracking : [];
+        const hasMeaningfulKpi = savedKpis.some(item => (item.project && item.project.trim()) || (item.kpi && item.kpi.trim()));
+
+        if (hasMeaningfulKpi) {
+          setKpiTracking(savedKpis);
+        } else {
+          try {
+            const delegatedTasks = await fetchDelegatedTasks(userId, dateStr);
+            if (delegatedTasks && delegatedTasks.length > 0) {
+              setKpiTracking(delegatedTasks);
+            } else {
+              setKpiTracking(savedKpis.length > 0 ? savedKpis : DEFAULT_KPI_TRACKING);
+            }
+          } catch(e) {
+            setKpiTracking(savedKpis.length > 0 ? savedKpis : DEFAULT_KPI_TRACKING);
+          }
+        }
+
         setIssuesEscalations(report.issuesEscalations || { issue: '', priority: '', actionTaken: '' });
         setHandover(report.handover || { pendingLeadsShared: 'Yes', crmUpdated: 'Yes / No- NA', reportsSubmitted: 'Yes', teamUpdated: 'Yes' });
         setApproval(report.approval || {});
@@ -2227,13 +2245,36 @@ const OpsReportPage = () => {
                   <span className="flex items-center justify-center w-5 h-5 rounded bg-indigo-100 dark:bg-lime-950/50 text-[10px]">5</span>
                   KPI Tracking (Tasks Assigned to Others)
                 </h2>
-                <button
-                  type="button"
-                  onClick={addKpiRow}
-                  className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all"
-                >
-                  <Plus size={14} /> Add Row
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const delegatedTasks = await fetchDelegatedTasks(selectedUserId, selectedDate);
+                        if (delegatedTasks && delegatedTasks.length > 0) {
+                          setKpiTracking(delegatedTasks);
+                          showToast(`Fetched ${delegatedTasks.length} delegated tasks!`, 'success');
+                        } else {
+                          showToast('No delegated tasks found for this date.', 'info');
+                        }
+                      } catch (e) {
+                        console.error(e);
+                        showToast('Error refreshing tasks', 'error');
+                      }
+                    }}
+                    className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-indigo-600 dark:hover:text-lime-400 font-bold transition-all cursor-pointer"
+                    title="Auto-fetch delegated tasks for this date"
+                  >
+                    <Loader2 size={13} className="hover:rotate-180 transition-transform" /> Refresh Tasks
+                  </button>
+                  <button
+                    type="button"
+                    onClick={addKpiRow}
+                    className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-lime-400 hover:opacity-80 font-bold transition-all cursor-pointer"
+                  >
+                    <Plus size={14} /> Add Row
+                  </button>
+                </div>
               </div>
 
               <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">

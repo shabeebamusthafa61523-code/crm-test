@@ -20,6 +20,7 @@ import employeeReportPDFRoutes from './employeeReportPDF.routes.js';
 import notificationRoutes from './notification.routes.js';
 import clientRoutes from './client.routes.js';
 import projectRoutes from './project.routes.js';
+import clientLeadRoutes from './clientLead.routes.js';
 
 const router = Router();
 
@@ -31,6 +32,7 @@ router.use('/attendance', attendanceRoutes);
 router.use('/departments', departmentRoutes);
 router.use('/designations', designationRoutes);
 router.use('/leads', leadRoutes);
+router.use('/client-leads', clientLeadRoutes);
 router.use('/analytics', analyticsRoutes);
 router.use('/developer-reports', developerReportRoutes);
 router.use('/hr-reports', hrReportRoutes);
