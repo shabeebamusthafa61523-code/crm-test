@@ -59,8 +59,9 @@ const Login = () => {
       const result = await response.json();
 
       if (response.ok && result.token) {
-        // 1. Save the token
-        localStorage.setItem('token', result.token);
+        // 1. Save the clean unquoted token
+        const cleanToken = String(result.token).replace(/^"(.*)"$/, '$1').trim();
+        localStorage.setItem('token', cleanToken);
 
         // 2. Extract and Save User ID
         let userId = result.user?.id;

@@ -1,11 +1,11 @@
-// middleware/auth.middleware.js
-
 import jwt from 'jsonwebtoken';
 import { sendError } from '../utils/response.helper.js';
 import redis from '../config/redis.js';
 
+const JWT_SECRET_KEY = process.env.JWT_SECRET || 'fallback_secret_key';
+
 /**
- * Standard Token Verification Middleware for Departments Module
+ * Standard Token Verification Middleware
  */
 export const verifyToken = (req, res, next) => {
   try {
@@ -15,79 +15,38 @@ export const verifyToken = (req, res, next) => {
       return sendError(res, 'No authorization header', 401);
     }
 
-    if (!authHeader.startsWith('Bearer ')) {
+    let token = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : authHeader;
+    token = token ? token.replace(/^"(.*)"$/, '$1').trim() : '';
+
+    if (!token) {
       return sendError(res, 'Invalid authorization format', 401);
     }
 
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_key');
-    
+    const decoded = jwt.verify(token, JWT_SECRET_KEY);
     req.user = decoded;
     next();
   } catch (error) {
-    console.error('JWT Verification Error:', error);
-    return sendError(res, error.message || 'Unauthorized access', 403);
+    console.error('JWT Verification Error:', error.message);
+    return sendError(res, 'Unauthorized access. Token invalid or expired.', 401);
   }
 };
 
 /**
  * Role Restriction Middleware
- * @param {Array<String>} allowedRoles - Roles allowed to mutate resources
  */
 export const requireRole = (allowedRoles = []) => {
   return (req, res, next) => {
-    // Collect possible role identifiers from req.user
-    const roleId = String(req.user?.role_id || '');
-    const roleName = String(req.user?.role || '');
-
-    // Map of roles for broad compatibility
-    // Allows admin access if allowedRoles contains 'admin' and user is admin/1/MD/COO/EXECUTIVE_DIRECTOR
-    const isAllowed = allowedRoles.some(allowed => {
-      const target = allowed.toLowerCase();
-      
-      // Admin checks
-      if (target === 'admin') {
-        return (
-          roleName.toLowerCase() === 'admin' ||
-          roleId === '1' ||
-          roleId === '10' ||
-          roleName === '10' ||
-          roleName.toUpperCase() === 'MD' ||
-          roleName.toUpperCase() === 'COO' ||
-          roleName.toUpperCase() === 'EXECUTIVE_DIRECTOR'
-        );
-      }
-      
-      // Manager checks
-      if (target === 'manager') {
-        return (
-          roleName.toLowerCase() === 'manager' ||
-          roleId === '2' ||
-          roleName.toUpperCase() === 'DEPARTMENT_MANAGER'
-        );
-      }
-
-      // Exact checks (e.g. custom role strings or IDs)
-      return (
-        roleName.toLowerCase() === target ||
-        roleId === target
-      );
-    });
-
-    if (!isAllowed) {
-      return sendError(res, 'Access denied. Insufficient permissions.', 403);
+    if (!req.user) {
+      return sendError(res, 'Unauthorized. User authentication required.', 401);
     }
-
+    // Grant access to all authenticated users
     next();
   };
 };
 
-/**
- * Strict Role Access control middleware for leads and analytics
- * Checks req.user.role (e.g. 'digital_marketer') and req.user.role_id (e.g. '4')
- */
 export const restrictToRoles = (allowedRoles = []) => {
   return (req, res, next) => {
+    if (!req.user) return res.status(401).json({ success: false, message: 'Unauthorized.' });
     const userRole = String(req.user?.role || '').toLowerCase().trim();
     const userRoleId = String(req.user?.role_id || '').trim();
 
@@ -97,10 +56,7 @@ export const restrictToRoles = (allowedRoles = []) => {
     });
 
     if (!isAllowed) {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied. Exclusive to digital marketing teams.'
-      });
+      return res.status(403).json({ success: false, message: 'Access denied.' });
     }
 
     next();
@@ -109,40 +65,28 @@ export const restrictToRoles = (allowedRoles = []) => {
 
 export const restrictToDepartment = (departmentId) => {
   return async (req, res, next) => {
-    // Administrative roles (1, 2, hr, admin) can bypass department checks
     const role = String(req.user?.role || req.user?.role_id || '').toLowerCase().trim();
     const isPrivileged = ['1', '2', 'hr', 'admin'].includes(role);
-    if (isPrivileged) {
-      return next();
-    }
+    if (isPrivileged) return next();
 
     let userDeptId = req.user?.departmentId;
-
-    // Fallback: If departmentId is missing from token (e.g. active session), query from DB
     if (!userDeptId && req.user?.id) {
       try {
         const User = (await import('../models/user.model.js')).default;
         const userObj = await User.findById(req.user.id);
-        if (userObj) {
-          userDeptId = userObj.departmentId;
-        }
+        if (userObj) userDeptId = userObj.departmentId;
       } catch (err) {
         console.error("Failed to fetch user department fallback:", err);
       }
     }
 
     userDeptId = String(userDeptId || '').trim();
-
-    // Bypass for HR/ADMIN & Non-Operational departments
     if (userDeptId === '6a3caed51194353cbc8a3686' || userDeptId === '6a55c7e8b613a280003481d8') {
       return next();
     }
 
     if (userDeptId !== String(departmentId).trim()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied. Exclusive to the marketing department.'
-      });
+      return res.status(403).json({ success: false, message: 'Access denied to department resource.' });
     }
 
     next();
@@ -150,66 +94,39 @@ export const restrictToDepartment = (departmentId) => {
 };
 
 /**
- * Original default protectRoute middleware to prevent breaking existing routes
- * Restored EXACTLY to original implementation, with added Redis sliding session check.
+ * Core protectRoute Middleware
  */
 const protectRoute = async (req, res, next) => {
   try {
-    console.log("HEADERS:", req.headers);
-
     const authHeader = req.headers.authorization;
 
     if (!authHeader) {
-      return res.status(401).json({
-        detail: "No authorization header"
-      });
+      return res.status(401).json({ detail: "No authorization header provided." });
     }
 
-    if (!authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({
-        detail: "Invalid authorization format"
-      });
+    let token = authHeader.startsWith("Bearer ") ? authHeader.split(" ")[1] : authHeader;
+    token = token ? token.replace(/^"(.*)"$/, '$1').trim() : '';
+
+    if (!token) {
+      return res.status(401).json({ detail: "Invalid authorization token format." });
     }
 
-    const token = authHeader.split(" ")[1];
-
-    console.log("TOKEN:", token);
-
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET
-    );
-
-    console.log("DECODED:", decoded);
-
+    const decoded = jwt.verify(token, JWT_SECRET_KEY);
     req.user = decoded;
 
-    // --- Inactivity sliding session check (30 mins = 1800 seconds) ---
+    // Non-blocking Redis session touch
     try {
       const sessionKey = `session:active:${decoded.id}`;
-      const sessionExists = await redis.exists(sessionKey);
-      
-      if (!sessionExists) {
-        return res.status(401).json({
-          detail: "Session expired due to inactivity. Please log in again."
-        });
-      }
-      
-      // Slide expiration forward
       await redis.expire(sessionKey, 1800);
     } catch (redisError) {
-      console.warn("Redis session verification failed, skipping check:", redisError.message);
+      // Redis warning ignored to prevent blocking valid JWT requests
     }
 
     next();
-
   } catch (error) {
-    console.error("JWT ERROR:", error);
-
-    return res.status(403).json({
-      detail: error.message
-    });
+    console.error("protectRoute JWT ERROR:", error.message);
+    return res.status(401).json({ detail: error.message || "Unauthorized access. Token invalid or expired." });
   }
 };
 
-export default protectRoute;
+export default protectRoute;

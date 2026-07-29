@@ -1,6 +1,9 @@
 // ── src/controllers/task.controller.js ──
 import Task from '../models/task.model.js';
 import User from '../models/user.model.js';
+import Client from '../models/client.model.js';
+import Project from '../models/project.model.js';
+import mongoose from 'mongoose';
 import { AppError } from '../middleware/errorHandler.js';
 import { v2 as cloudinary } from 'cloudinary';
 
@@ -80,7 +83,7 @@ const formatLeanTask = (task) => {
  */
 export const createTask = async (req, res, next) => {
   try {
-    const { title, description, assigned_to, designation_id, dueDate } = req.body;
+    const { title, description, assigned_to, designation_id, dueDate, client, clientId, project, projectId } = req.body;
 
     const userId = req.user.id || req.user._id;
 
@@ -95,6 +98,9 @@ export const createTask = async (req, res, next) => {
       file_public_id = uploadResult.public_id;
     }
 
+    const clientVal = (client || clientId) && mongoose.Types.ObjectId.isValid(client || clientId) ? (client || clientId) : undefined;
+    const projectVal = (project || projectId) && mongoose.Types.ObjectId.isValid(project || projectId) ? (project || projectId) : undefined;
+
     const task = new Task({
       title: title?.trim(),
       description: description?.trim() || "",
@@ -102,6 +108,9 @@ export const createTask = async (req, res, next) => {
       assigned_to,
       designation_id: designation_id || undefined,
       dueDate: dueDate || undefined,
+
+      client: clientVal,
+      project: projectVal,
 
       status: "pending",
 
@@ -119,8 +128,10 @@ export const createTask = async (req, res, next) => {
     await task.save();
 
     const populatedTask = await Task.findById(task._id)
-      .populate('assigned_to', 'name email')
-      .populate('created_by', 'name email')
+      .populate('assigned_to', 'name email avatar')
+      .populate('created_by', 'name email avatar')
+      .populate('client', 'companyName clientName clientId companyLogo')
+      .populate('project', 'projectName projectCode status priority')
       .lean();
 
     const formattedTask = formatLeanTask(populatedTask);
@@ -244,8 +255,10 @@ export const getAllTasks = async (req, res, next) => {
     }
 
     const tasks = await Task.find(query)
-      .populate('assigned_to', 'name email')
-      .populate('created_by', 'name email')
+      .populate('assigned_to', 'name email avatar')
+      .populate('created_by', 'name email avatar')
+      .populate('client', 'companyName clientName clientId companyLogo')
+      .populate('project', 'projectName projectCode status priority')
       .select('-file_public_id')
       .lean();
 
@@ -301,8 +314,10 @@ export const getUserTasks = async (req, res, next) => {
     const { user_id } = req.query;
 
     const tasks = await Task.find({ assigned_to: user_id })
-      .populate('assigned_to', 'name email')
-      .populate('created_by', 'name email')
+      .populate('assigned_to', 'name email avatar')
+      .populate('created_by', 'name email avatar')
+      .populate('client', 'companyName clientName clientId companyLogo')
+      .populate('project', 'projectName projectCode status priority')
       .select('-file_public_id')
       .lean();
 
@@ -323,8 +338,10 @@ export const getCurrentUserTasks = async (req, res, next) => {
     const userId = req.user.id || req.user._id;
 
     const tasks = await Task.find({ assigned_to: userId })
-      .populate('assigned_to', 'name email')
-      .populate('created_by', 'name email')
+      .populate('assigned_to', 'name email avatar')
+      .populate('created_by', 'name email avatar')
+      .populate('client', 'companyName clientName clientId companyLogo')
+      .populate('project', 'projectName projectCode status priority')
       .select('-file_public_id')
       .lean();
 
@@ -384,14 +401,14 @@ export const updateTaskStatus = async (req, res, next) => {
       throw new AppError('Task not found', 404);
     }
 
-
-
     task.status = status;
     await task.save();
 
     const populatedTask = await Task.findById(task._id)
-      .populate('assigned_to', 'name email')
-      .populate('created_by', 'name email')
+      .populate('assigned_to', 'name email avatar')
+      .populate('created_by', 'name email avatar')
+      .populate('client', 'companyName clientName clientId companyLogo')
+      .populate('project', 'projectName projectCode status priority')
       .lean();
 
     const formattedTask = formatLeanTask(populatedTask);
@@ -409,7 +426,7 @@ export const updateTaskStatus = async (req, res, next) => {
 export const updateTask = async (req, res, next) => {
   try {
     const { task_id } = req.params;
-    const { title, description, assigned_to, designation_id } = req.body;
+    const { title, description, assigned_to, designation_id, client, clientId, project, projectId } = req.body;
 
     const task = await Task.findById(task_id);
     if (!task) {
@@ -422,18 +439,22 @@ export const updateTask = async (req, res, next) => {
       throw new AppError('Forbidden: Only the creator of this task can edit it', 403);
     }
 
-
     if (title !== undefined) task.title = title.trim();
     if (description !== undefined) task.description = description;
     if (assigned_to !== undefined) task.assigned_to = assigned_to;
     if (req.body.dueDate !== undefined) task.dueDate = req.body.dueDate;
-    // Explicit check for designation_id updates (handles empty string resets)
-    if (designation_id !== undefined) {
-      task.designation_id = designation_id || undefined;
+    if (designation_id !== undefined) task.designation_id = designation_id || undefined;
+    
+    if (client !== undefined || clientId !== undefined) {
+      const cVal = client || clientId;
+      task.client = cVal && mongoose.Types.ObjectId.isValid(cVal) ? cVal : undefined;
+    }
+    if (project !== undefined || projectId !== undefined) {
+      const pVal = project || projectId;
+      task.project = pVal && mongoose.Types.ObjectId.isValid(pVal) ? pVal : undefined;
     }
 
     if (req.file) {
-      // Clean up the old asset first
       if (task.file_public_id) {
         await deleteFromCloudinary(task.file_public_id);
       }
@@ -446,11 +467,15 @@ export const updateTask = async (req, res, next) => {
     await task.save();
 
     const populatedTask = await Task.findById(task._id)
-      .populate('assigned_to', 'name email')
-      .populate('created_by', 'name email')
+      .populate('assigned_to', 'name email avatar')
+      .populate('created_by', 'name email avatar')
+      .populate('client', 'companyName clientName clientId companyLogo')
+      .populate('project', 'projectName projectCode status priority')
       .lean();
 
     const formattedTask = formatLeanTask(populatedTask);
+
+    return res.status(200).json(formattedTask);
 
     return res.status(200).json(formattedTask);
   } catch (error) {

@@ -19,12 +19,26 @@ import {
   Bell,
   ChevronLeft,
   ChevronRight,
+  FolderKanban,
   X
 } from 'lucide-react';
 
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', allowedRoles: ['1', '2', 'admin' ],  allowedDepartments: ['6a55c7e8b613a280003481d8'] 
  },
+
+  {
+    icon: Building,
+    label: 'Clients',
+    path: '/clients',
+    allowedRoles: ['1', '2', '10', 'hr', 'admin', 'manager', 'team_lead', 'employee', '3']
+  },
+  {
+    icon: FolderKanban,
+    label: 'Projects',
+    path: '/projects',
+    allowedRoles: ['1', '2', '10', 'hr', 'admin', 'manager', 'team_lead', 'employee', '3']
+  },
 
   {
     icon: LayoutDashboard,
