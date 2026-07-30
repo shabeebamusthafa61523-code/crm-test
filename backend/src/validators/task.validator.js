@@ -20,6 +20,18 @@ export const createTaskSchema = z.object({
     .optional()
     .or(z.literal(''))
     .transform(val => val === '' ? undefined : val),
+  client: z
+    .string()
+    .optional()
+    .or(z.literal(''))
+    .or(z.literal(null))
+    .transform(val => val === '' || val === null ? undefined : val),
+  project: z
+    .string()
+    .optional()
+    .or(z.literal(''))
+    .or(z.literal(null))
+    .transform(val => val === '' || val === null ? undefined : val),
   dueDate: z
     .string()
     .optional()
@@ -38,6 +50,18 @@ export const updateTaskSchema = z.object({
     .or(z.literal(''))
     .or(z.literal(null))
     .transform(val => val === '' ? undefined : val),
+  client: z
+    .string()
+    .optional()
+    .or(z.literal(''))
+    .or(z.literal(null))
+    .transform(val => val === '' || val === null ? undefined : val),
+  project: z
+    .string()
+    .optional()
+    .or(z.literal(''))
+    .or(z.literal(null))
+    .transform(val => val === '' || val === null ? undefined : val),
   dueDate: z
     .string()
     .optional()

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, Clock, CheckCircle2, Eye, Layout, X, 
   Trash2, Edit3, Save, Upload, Image as ImageIcon, 
-  Loader2, Camera, ShieldCheck, User, Target, Info
+  Loader2, Camera, ShieldCheck, User, Target, Info, Building, FolderKanban
 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
 import ConfirmModal from '../components/ConfirmModal';
@@ -222,11 +222,18 @@ console.log("HEADERS:", getAuthHeaders());
                               {/* Left Accent Bar */}
                               <div className={`absolute left-0 top-6 bottom-6 w-[3px] rounded-r-full transition-all duration-300 group-hover:top-4 group-hover:bottom-4 ${isUrgent ? 'bg-rose-500' : COLUMN_META[statusKey].color}`} />
 
-                              <div className="flex items-center gap-2 mb-3">
-                                <div className="h-1.5 w-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)] animate-pulse" />
-                                <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                                  {designations.find(d => String(d.id) === String(task.designation_id))?.name || "General"}
-                                </span>
+                              <div className="flex items-center justify-between gap-2 mb-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="h-1.5 w-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)] animate-pulse" />
+                                  <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                    {designations.find(d => String(d.id) === String(task.designation_id))?.name || "General"}
+                                  </span>
+                                </div>
+                                {task.project && (
+                                  <span className="text-[9px] font-extrabold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800/60 truncate max-w-[130px]">
+                                    {typeof task.project === 'object' ? (task.project.projectName || task.project.projectCode) : 'Project'}
+                                  </span>
+                                )}
                               </div>
 
                               <h3 className="text-slate-800 dark:text-slate-200 font-bold text-[14px] leading-snug mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-300">{task.title}</h3>
@@ -305,10 +312,32 @@ console.log("HEADERS:", getAuthHeaders());
 const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) => {
   const { showToast } = useToast();
 
-  const [form, setForm] = useState({ title: '', description: '', assigned_to: '', designation_id: '', image: null, dueDate: '' });
-
+  const [form, setForm] = useState({ title: '', description: '', assigned_to: '', designation_id: '', image: null, dueDate: '', client: '', project: '' });
+  const [clientsList, setClientsList] = useState([]);
+  const [clientProjects, setClientProjects] = useState([]);
+  const [allProjects, setAllProjects] = useState([]);
   const [preview, setPreview] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/v1/clients?limit=100`, { headers: getAuthHeaders() })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.success) setClientsList(data.data.clients || []);
+      })
+      .catch(err => console.error("Failed to load clients in task modal", err));
+
+    fetch(`${API_BASE}/v1/projects?limit=100`, { headers: getAuthHeaders() })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.success) {
+          const list = data.data.projects || [];
+          setAllProjects(list);
+          setClientProjects(list);
+        }
+      })
+      .catch(err => console.error("Failed to load projects in task modal", err));
+  }, [getAuthHeaders]);
 
   const handleImage = (e) => {
     const file = e.target.files[0];
@@ -326,8 +355,6 @@ const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) 
 
   const fd = new FormData();
 
- 
-
   fd.append('title', form.title);
   fd.append('description', form.description || '');
   fd.append('assigned_to', form.assigned_to);
@@ -335,6 +362,12 @@ const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) 
   fd.append('status', 'pending');
   if (form.dueDate) {
     fd.append('dueDate', form.dueDate);
+  }
+  if (form.client) {
+    fd.append('client', form.client);
+  }
+  if (form.project) {
+    fd.append('project', form.project);
   }
 
   if (form.image) {
@@ -412,6 +445,61 @@ const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) 
             <div className="space-y-1">
               <label className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.2em] ml-1">Due Date</label>
               <input type="date" className="w-full bg-white border border-slate-200 px-3 py-2 rounded-xl text-slate-900 text-sm font-semibold outline-none focus:border-indigo-500/50" value={form.dueDate} onChange={e => setForm({...form, dueDate: e.target.value})} />
+            </div>
+          </div>
+
+          {/* Client & Project Selection Section (Feature 1) */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.2em] ml-1">Client</label>
+              <select
+                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl text-slate-900 dark:text-slate-100 text-xs font-bold outline-none"
+                value={form.client}
+                onChange={async (e) => {
+                  const clientId = e.target.value;
+                  setForm(prev => ({ ...prev, client: clientId, project: '' }));
+                  if (clientId) {
+                    try {
+                      const res = await fetch(`${API_BASE}/v1/projects?client=${clientId}&limit=100`, { headers: getAuthHeaders() });
+                      const d = await res.json();
+                      if (d && d.success) setClientProjects(d.data.projects || []);
+                    } catch (err) { console.error("Failed to fetch client projects", err); }
+                  } else {
+                    setClientProjects(allProjects);
+                  }
+                }}
+              >
+                <option value="">Select Client (Optional)</option>
+                {clientsList.map(c => (
+                  <option key={c._id || c.id} value={c._id || c.id}>
+                    {c.companyName} ({c.clientId})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.2em] ml-1">Project</label>
+              <select
+                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl text-slate-900 dark:text-slate-100 text-xs font-bold outline-none cursor-pointer"
+                value={form.project}
+                onChange={e => {
+                  const projId = e.target.value;
+                  const selectedProj = clientProjects.find(p => String(p._id || p.id) === String(projId));
+                  let parentClient = form.client;
+                  if (selectedProj && selectedProj.client) {
+                    parentClient = typeof selectedProj.client === 'object' ? (selectedProj.client._id || selectedProj.client.id) : selectedProj.client;
+                  }
+                  setForm({ ...form, project: projId, client: parentClient });
+                }}
+              >
+                <option value="">Select Active Project (Optional)</option>
+                {clientProjects.map(p => (
+                  <option key={p._id || p.id} value={p._id || p.id}>
+                    {p.projectName} ({p.projectCode})
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -527,10 +615,28 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
     return currentUserId && creatorId && String(currentUserId).trim() === creatorId;
   }, [task, currentUserId]);
 
+  const [clientsList, setClientsList] = useState([]);
+  const [projectsList, setProjectsList] = useState([]);
+
+  useEffect(() => {
+    if (!API_BASE || !getAuthHeaders) return;
+    fetch(`${API_BASE}/v1/clients?limit=100`, { headers: getAuthHeaders() })
+      .then(res => res.json())
+      .then(d => d?.success && setClientsList(d.data.clients || []))
+      .catch(() => {});
+
+    fetch(`${API_BASE}/v1/projects?limit=100`, { headers: getAuthHeaders() })
+      .then(res => res.json())
+      .then(d => d?.success && setProjectsList(d.data.projects || []))
+      .catch(() => {});
+  }, [getAuthHeaders, API_BASE]);
+
   useEffect(() => { 
     if (task) { 
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      setEditForm({ ...task, status: task.status || "pending" }); 
+      const rawClient = typeof task.client === 'object' ? (task.client._id || task.client.id) : (task.client || task.client_id || '');
+      const rawProject = typeof task.project === 'object' ? (task.project._id || task.project.id) : (task.project || task.project_id || '');
+      setEditForm({ ...task, status: task.status || "pending", client: rawClient, project: rawProject }); 
       setIsEditing(false); 
       setNewFile(null);
     } 
@@ -547,6 +653,15 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
     fd.append('description', editForm.description || '');
     fd.append('assigned_to', editForm.assigned_to);
     fd.append('designation_id', editForm.designation_id);
+
+    if (editForm.client) {
+      const cid = typeof editForm.client === 'object' ? (editForm.client._id || editForm.client.id) : editForm.client;
+      if (cid) fd.append('client', cid);
+    }
+    if (editForm.project) {
+      const pid = typeof editForm.project === 'object' ? (editForm.project._id || editForm.project.id) : editForm.project;
+      if (pid) fd.append('project', pid);
+    }
 
     if (newFile) fd.append('file', newFile);
     if (editForm.dueDate) fd.append('dueDate', editForm.dueDate);
@@ -706,12 +821,62 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
                     onChange={e => setEditForm({...editForm, description: e.target.value})} 
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="text-[9px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest mb-1 block ml-1">Client</label>
+                    <select
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-slate-900 dark:text-slate-100 text-xs font-bold outline-none cursor-pointer"
+                      value={typeof editForm.client === 'object' ? (editForm.client._id || editForm.client.id) : (editForm.client || '')}
+                      onChange={e => setEditForm({ ...editForm, client: e.target.value })}
+                    >
+                      <option value="">Select Client (Optional)</option>
+                      {clientsList.map(c => (
+                        <option key={c._id || c.id} value={c._id || c.id}>
+                          {c.companyName} ({c.clientId})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[9px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest mb-1 block ml-1">Project</label>
+                    <select
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-slate-900 dark:text-slate-100 text-xs font-bold outline-none cursor-pointer"
+                      value={typeof editForm.project === 'object' ? (editForm.project._id || editForm.project.id) : (editForm.project || '')}
+                      onChange={e => setEditForm({ ...editForm, project: e.target.value })}
+                    >
+                      <option value="">Select Active Project (Optional)</option>
+                      {projectsList.map(p => (
+                        <option key={p._id || p.id} value={p._id || p.id}>
+                          {p.projectName} ({p.projectCode})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="space-y-3">
                 <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight leading-tight">
                   {task.title}
                 </h2>
+                
+                {/* CLIENT & PROJECT BADGES */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold border border-slate-200 dark:border-slate-700">
+                    <Building className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>
+                      Client: {typeof task.client === 'object' && task.client ? (task.client?.companyName || task.client?.clientName) : (clientsList.find(c => String(c._id || c.id) === String(task.client || task.client_id))?.companyName || (task.client || 'General Client'))}
+                    </span>
+                  </div>
+
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-indigo-200 dark:border-indigo-800/60">
+                    <FolderKanban className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>
+                      Project: {typeof task.project === 'object' && task.project ? (task.project?.projectName || task.project?.projectCode) : (projectsList.find(p => String(p._id || p.id) === String(task.project || task.project_id))?.projectName || (task.project || 'Standalone Task'))}
+                    </span>
+                  </div>
+                </div>
+
                 <div className="p-3 bg-slate-50 dark:bg-slate-950/40 border-y border-r border-slate-100 dark:border-slate-800 border-l-2 border-l-indigo-500 rounded-r-xl">
                   <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed font-medium">
                     {task.description || 'No briefing recorded.'}
