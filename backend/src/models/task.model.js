@@ -36,9 +36,19 @@ const taskSchema = new mongoose.Schema({
   file_public_id: {
     type: String
   },
- designation_id: {
-  type: String
-},
+  designation_id: {
+    type: String
+  },
+  client: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Client',
+    default: null
+  },
+  project: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Project',
+    default: null
+  },
   dueDate: {
     type: Date
   }
