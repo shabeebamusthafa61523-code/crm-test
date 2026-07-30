@@ -40,6 +40,7 @@ import AiReport from './pages/AiReport';
 import CommonDashboard from './pages/CommonDashboard';
 import BasicReportPage from './pages/BasicReportPage';
 import NotificationPage from './pages/NotificationPage';
+import PerformanceDashboard from './pages/PerformanceDashboard';
 
 // Client & Project Management Module Pages
 import ClientsPage from './pages/ClientsPage';
@@ -190,6 +191,7 @@ function App() {
         <Route path="/common-dashboard" element={<ProtectedRoute><MainLayout><CommonDashboard /></MainLayout></ProtectedRoute>} />
         <Route path="/basic-report" element={<ProtectedRoute><MainLayout><BasicReportPage /></MainLayout></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute><MainLayout><NotificationPage /></MainLayout></ProtectedRoute>} />
+        <Route path="/performance-dashboard" element={<ProtectedRoute><MainLayout><PerformanceDashboard /></MainLayout></ProtectedRoute>} />
 
         {/* Client & Project Management Module Routes */}
         <Route path="/clients" element={<ProtectedRoute><MainLayout><RestrictedRoute><ClientsPage /></RestrictedRoute></MainLayout></ProtectedRoute>} />
