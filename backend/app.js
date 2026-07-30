@@ -1,7 +1,7 @@
+import 'dotenv/config';
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -16,8 +16,6 @@ import apiRoutes from './src/routes/api.js';
 import aiRoutes from './src/routes/ai.routes.js';
 import Designation from './src/models/designation.model.js';
 import Department from './src/modules/departments/department.model.js';
-
-dotenv.config();
 const app = express();
 
 const __filename = fileURLToPath(import.meta.url);

@@ -19,6 +19,7 @@ import videographerReportRoutes from './videographerReport.routes.js';
 import employeeReportPDFRoutes from './employeeReportPDF.routes.js';
 import notificationRoutes from './notification.routes.js';
 import clientLeadRoutes from './clientLead.routes.js';
+import performanceRoutes from './performance.routes.js';
 import clientRoutes from './client.routes.js';
 import projectRoutes from './project.routes.js';
 
@@ -47,5 +48,6 @@ router.use('/academic-counselor-reports', academicCounselorReportRoutes);
 router.use('/videographer-reports', videographerReportRoutes);
 router.use('/employee-reports', employeeReportPDFRoutes);
 router.use('/notifications', notificationRoutes);
+router.use('/performance', performanceRoutes);
 
 export default router;

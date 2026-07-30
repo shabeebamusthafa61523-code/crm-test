@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
 import ConfirmModal from '../components/ConfirmModal';
+import PerformanceTab from '../components/PerformanceTab';
 const API_BASE = import.meta.env.VITE_API_URL;
 const ROLES = [
   { id: "1", name: "hr" },
@@ -1319,7 +1320,7 @@ const EditModal = ({ user, onClose, refresh, getAuthHeaders, designations, onDes
 
 // --- VIEW DOSSIER MODAL ---
 const ViewModal = ({ user, getDesignationName, getDepartmentName, onClose }) => {
-  // Local state to track image loading errors for this single view instance
+  const [activeModalTab, setActiveModalTab] = useState('dossier'); // 'dossier' | 'performance'
   const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
@@ -1347,87 +1348,116 @@ const ViewModal = ({ user, getDesignationName, getDepartmentName, onClose }) => 
     >
       <motion.div
         initial={{ y: -30, scale: 0.97 }} animate={{ y: 0, scale: 1 }} exit={{ y: -30, scale: 0.97 }}
-        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-3xl rounded-2xl shadow-2xl"
+        className={`bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full ${activeModalTab === 'performance' ? 'max-w-6xl' : 'max-w-3xl'} rounded-3xl shadow-2xl transition-all duration-300`}
       >
         {/* ── Modal Header ── */}
         <div className="px-6 pt-5 pb-4 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-lg font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight">Employee <span className="text-indigo-600 dark:text-indigo-400">Details</span></h2>
-              {/* <p className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mt-0.5">Personnel Dossier</p> */}
+              <h2 className="text-lg font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight">Employee <span className="text-indigo-600 dark:text-indigo-400">File</span></h2>
             </div>
             <button onClick={onClose} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 transition-colors">
               <X size={18}/>
             </button>
           </div>
-          <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {(user.avatar || user.profile_image) && !imgError ? (
-              <img
-                src={user.avatar || user.profile_image}
-                alt={user.name}
-                className="w-10 h-10 rounded-xl object-cover"
-                onError={() => setImgError(true)}
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center">
-                <User size={18} className="text-white" />
+          
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              {(user.avatar || user.profile_image) && !imgError ? (
+                <img
+                  src={user.avatar || user.profile_image}
+                  alt={user.name}
+                  className="w-10 h-10 rounded-xl object-cover"
+                  onError={() => setImgError(true)}
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center">
+                  <User size={18} className="text-white" />
+                </div>
+              )}
+              <div>
+                <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 leading-none">{user.name}</h3>
+                <p className="text-[10px] text-indigo-500 dark:text-indigo-400 mt-0.5 uppercase tracking-widest font-semibold">{getDesignationName(user)}</p>
               </div>
-            )}
-            <div>
-              <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 leading-none">{user.name}</h3>
-              <p className="text-[10px] text-indigo-500 dark:text-indigo-400 mt-0.5 uppercase tracking-widest font-semibold">{getDesignationName(user)}</p>
+            </div>
+
+            {/* Sub-Tab Selector */}
+            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-950 p-1 rounded-xl">
+              <button
+                onClick={() => setActiveModalTab('dossier')}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                  activeModalTab === 'dossier'
+                    ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                Personnel Details
+              </button>
+              <button
+                onClick={() => setActiveModalTab('performance')}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                  activeModalTab === 'performance'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                Performance & KPI
+              </button>
             </div>
           </div>
-          <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${meta.color}`}>
-            {statusKey}
-          </span>
-          </div>
         </div>
 
-        {/* ── Contact Row ── */}
-        <div className="flex items-center gap-6 px-6 py-3 bg-slate-50 dark:bg-slate-950/40 border-b border-slate-100 dark:border-slate-800 text-xs text-slate-500">
-          <span className="flex items-center gap-1.5"><Mail size={12} className="text-slate-400" />{user.email || 'N/A'}</span>
-          {user.phone && <span className="flex items-center gap-1.5"><Phone size={12} className="text-slate-400" />{user.phone}</span>}
-        </div>
-
-        {/* ── Details Grid ── */}
-        <div className="p-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-5">
-          {[
-            { label: 'Employee ID',      value: user.employeeId },
-            { label: 'System Role',      value: user.role,            upper: true },
-            { label: 'Department',       value: getDepartmentName(user) },
-            { label: 'Rep. Manager',     value: user.reportingManager || 'Unassigned' },
-            { label: 'Monthly Salary',   value: `₹${user.salary || '0'}` },
-            { label: 'Joining Date',     value: user.joining_date ? new Date(user.joining_date).toLocaleDateString() : 'N/A' },
-            { label: 'Identity Type',    value: user.identityType,    upper: true },
-            { label: 'ID Number',        value: user.identityNumber },
-          ].map(({ label, value, upper }) => (
-            <div key={label}>
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{label}</p>
-              <p className={`text-xs font-semibold text-slate-700 dark:text-slate-200 ${upper ? 'uppercase' : ''}`}>{value || 'N/A'}</p>
+        {activeModalTab === 'dossier' ? (
+          <>
+            {/* ── Contact Row ── */}
+            <div className="flex items-center gap-6 px-6 py-3 bg-slate-50 dark:bg-slate-950/40 border-b border-slate-100 dark:border-slate-800 text-xs text-slate-500">
+              <span className="flex items-center gap-1.5"><Mail size={12} className="text-slate-400" />{user.email || 'N/A'}</span>
+              {user.phone && <span className="flex items-center gap-1.5"><Phone size={12} className="text-slate-400" />{user.phone}</span>}
             </div>
-          ))}
-          <div className="col-span-2 sm:col-span-3 lg:col-span-4">
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Residential Address</p>
-            <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">{user.address || 'N/A'}</p>
-          </div>
-        </div>
 
-        {/* ── Password Footer ── */}
-        <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950/40 rounded-b-2xl">
-          <div>
-            <p className="text-[9px] font-black uppercase tracking-widest text-indigo-500 dark:text-lime-400">Initial System Password</p>
-            <p className="text-[10px] text-slate-400 mt-0.5">First 3 letters of name + last 3 digits of phone</p>
+            {/* ── Details Grid ── */}
+            <div className="p-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-5">
+              {[
+                { label: 'Employee ID',      value: user.employeeId },
+                { label: 'System Role',      value: user.role,            upper: true },
+                { label: 'Department',       value: getDepartmentName(user) },
+                { label: 'Rep. Manager',     value: user.reportingManager || 'Unassigned' },
+                { label: 'Monthly Salary',   value: `₹${user.salary || '0'}` },
+                { label: 'Joining Date',     value: user.joining_date ? new Date(user.joining_date).toLocaleDateString() : 'N/A' },
+                { label: 'Identity Type',    value: user.identityType,    upper: true },
+                { label: 'ID Number',        value: user.identityNumber },
+              ].map(({ label, value, upper }) => (
+                <div key={label}>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{label}</p>
+                  <p className={`text-xs font-semibold text-slate-700 dark:text-slate-200 ${upper ? 'uppercase' : ''}`}>{value || 'N/A'}</p>
+                </div>
+              ))}
+              <div className="col-span-2 sm:col-span-3 lg:col-span-4">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Residential Address</p>
+                <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">{user.address || 'N/A'}</p>
+              </div>
+            </div>
+
+            {/* ── Password Footer ── */}
+            <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950/40 rounded-b-2xl">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-widest text-indigo-500 dark:text-lime-400">Initial System Password</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">First 3 letters of name + last 3 digits of phone</p>
+              </div>
+              <div className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg font-mono text-sm font-bold tracking-wider text-slate-800 dark:text-slate-100 select-all shadow-sm">
+                {implicitPassword}
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="p-6">
+            <PerformanceTab user={user} />
           </div>
-          <div className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg font-mono text-sm font-bold tracking-wider text-slate-800 dark:text-slate-100 select-all shadow-sm">
-            {implicitPassword}
-          </div>
-        </div>
+        )}
 
       </motion.div>
     </motion.div>
   );
-
 };
+
 export default Users;
