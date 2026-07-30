@@ -6,7 +6,8 @@ import {
   saveTeamLeadRemark,
   triggerAIReport,
   getPerformanceAnalytics,
-  getPerformanceReports
+  getPerformanceReports,
+  updatePerformanceRecord
 } from '../controllers/performance.controller.js';
 
 const router = Router();
@@ -31,5 +32,8 @@ router.get('/analytics', getPerformanceAnalytics);
 
 // Performance Reports
 router.get('/reports', getPerformanceReports);
+
+// Unified Record Update (HR Remarks, Admin Remarks, Status, Remarks)
+router.post('/update-record', updatePerformanceRecord);
 
 export default router;

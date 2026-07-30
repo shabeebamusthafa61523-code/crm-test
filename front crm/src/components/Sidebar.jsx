@@ -176,7 +176,7 @@ const menuItems = [
     icon: Award,
     label: 'KPI Analytics',
     path: '/performance-dashboard',
-    allowedRoles: ['1', '2', 'hr', 'admin']
+    allowedRoles: ['1', '2', '10', 'hr', 'admin', 'superadmin', 'manager', 'team_lead', 'teamlead', 'tl']
   },
   {
     icon: FileText,
@@ -276,8 +276,8 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
         if (item.isCommonDashboardFallback || item.isBasicReportFallback) {
           return false;
         }
-        if (item.label === 'Clients' || item.label === 'Projects' || item.label === 'Client Leads') {
-          const isAdminHrOrTeamLead = ['1', '2', '10', 'admin', 'hr', 'superadmin', 'team_lead', 'teamlead', 'manager'].includes(currentUserRole) || !!userObj.isTeamLead;
+        if (item.label === 'Clients' || item.label === 'Projects' || item.label === 'Client Leads' || item.label === 'KPI Analytics') {
+          const isAdminHrOrTeamLead = ['1', '2', '10', 'admin', 'hr', 'superadmin', 'team_lead', 'teamlead', 'manager', 'tl'].includes(currentUserRole) || !!userObj.isTeamLead;
           return isAdminHrOrTeamLead;
         }
         if (!item.allowedRoles && !item.allowedDepartments && !item.allowedDesignations) return true;
