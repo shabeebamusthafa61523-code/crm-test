@@ -15,6 +15,7 @@ import {
   BarChart3,
   FileText,
   Sparkles,
+  Award,
   Bell,
   ChevronLeft,
   ChevronRight,
@@ -170,6 +171,12 @@ const menuItems = [
     path: '/ai-report',
     allowedDesignations: ['6a2f8efea2fe388770a38987'],
     allowedRoles: ['1', '2', 'admin' ],
+  },
+  {
+    icon: Award,
+    label: 'KPI Analytics',
+    path: '/performance-dashboard',
+    allowedRoles: ['1', '2', 'hr', 'admin']
   },
   {
     icon: FileText,

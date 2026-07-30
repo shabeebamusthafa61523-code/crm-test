@@ -40,6 +40,17 @@ import AiReport from './pages/AiReport';
 import CommonDashboard from './pages/CommonDashboard';
 import BasicReportPage from './pages/BasicReportPage';
 import NotificationPage from './pages/NotificationPage';
+import PerformanceDashboard from './pages/PerformanceDashboard';
+
+// Client & Project Management Module Pages
+import ClientsPage from './pages/ClientsPage';
+import CreateClientPage from './pages/CreateClientPage';
+import ClientDetailsPage from './pages/ClientDetailsPage';
+import ProjectsPage from './pages/ProjectsPage';
+import CreateProjectPage from './pages/CreateProjectPage';
+import ProjectDetailsPage from './pages/ProjectDetailsPage';
+import VisibleWorkPage from './pages/VisibleWorkPage';
+import ProjectReportsPage from './pages/ProjectReportsPage';
 
 // Client & Project Management Module Pages
 import ClientsPage from './pages/ClientsPage';
@@ -190,6 +201,17 @@ function App() {
         <Route path="/common-dashboard" element={<ProtectedRoute><MainLayout><CommonDashboard /></MainLayout></ProtectedRoute>} />
         <Route path="/basic-report" element={<ProtectedRoute><MainLayout><BasicReportPage /></MainLayout></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute><MainLayout><NotificationPage /></MainLayout></ProtectedRoute>} />
+        <Route path="/performance-dashboard" element={<ProtectedRoute><MainLayout><PerformanceDashboard /></MainLayout></ProtectedRoute>} />
+
+        {/* Client & Project Management Module Routes */}
+        <Route path="/clients" element={<ProtectedRoute><MainLayout><RestrictedRoute><ClientsPage /></RestrictedRoute></MainLayout></ProtectedRoute>} />
+        <Route path="/clients/new" element={<ProtectedRoute><MainLayout><RestrictedRoute><CreateClientPage /></RestrictedRoute></MainLayout></ProtectedRoute>} />
+        <Route path="/clients/:id" element={<ProtectedRoute><MainLayout><RestrictedRoute><ClientDetailsPage /></RestrictedRoute></MainLayout></ProtectedRoute>} />
+        <Route path="/projects" element={<ProtectedRoute><MainLayout><RestrictedRoute><ProjectsPage /></RestrictedRoute></MainLayout></ProtectedRoute>} />
+        <Route path="/projects/new" element={<ProtectedRoute><MainLayout><RestrictedRoute><CreateProjectPage /></RestrictedRoute></MainLayout></ProtectedRoute>} />
+        <Route path="/projects/reports" element={<ProtectedRoute><MainLayout><RestrictedRoute><ProjectReportsPage /></RestrictedRoute></MainLayout></ProtectedRoute>} />
+        <Route path="/projects/:id" element={<ProtectedRoute><MainLayout><RestrictedRoute><ProjectDetailsPage /></RestrictedRoute></MainLayout></ProtectedRoute>} />
+        <Route path="/projects/:id/visible-work" element={<ProtectedRoute><MainLayout><RestrictedRoute><VisibleWorkPage /></RestrictedRoute></MainLayout></ProtectedRoute>} />
 
         {/* Client & Project Management Module Routes */}
         <Route path="/clients" element={<ProtectedRoute><MainLayout><RestrictedRoute><ClientsPage /></RestrictedRoute></MainLayout></ProtectedRoute>} />
