@@ -12,7 +12,6 @@ import {
   LogOut,
   Building,
   TrendingUp,
-  Briefcase,
   BarChart3,
   FileText,
   Sparkles,
@@ -20,13 +19,32 @@ import {
   Bell,
   ChevronLeft,
   ChevronRight,
+  FolderKanban,
+   Briefcase,
   X
 } from 'lucide-react';
 
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', allowedRoles: ['1', '2', 'admin' ],  allowedDepartments: ['6a55c7e8b613a280003481d8'] 
  },
-
+  {
+    icon: Building,
+    label: 'Clients',
+    path: '/clients',
+    allowedRoles: ['1', '2', '10', 'hr', 'admin', 'superadmin', 'manager', 'team_lead', 'teamlead']
+  },
+  {
+    icon: FolderKanban,
+    label: 'Projects',
+    path: '/projects',
+    allowedRoles: ['1', '2', '10', 'hr', 'admin', 'superadmin', 'manager', 'team_lead', 'teamlead']
+  },
+  { 
+    icon: Briefcase, 
+    label: 'Client Leads', 
+    path: '/client-leads',
+    allowedRoles: ['1', '2', '10', 'hr', 'admin', 'superadmin', 'manager', 'team_lead', 'teamlead']
+  },
   {
     icon: LayoutDashboard,
     label: 'HR Dashboard',
@@ -56,25 +74,27 @@ const menuItems = [
     allowedRoles: ['1', '2', 'hr', 'admin'],
     allowedDepartments: ['6a3caed51194353cbc8a3686']
   },
-  { 
-    icon: TrendingUp, 
-    label: 'Leads Directory', 
-    path: '/leads',
-    allowedDepartments: ['6a211b6621f80bb8da167efb'],
-    // allowedRoles: ['1', '2', 'hr', 'admin'],
-  },
+  // { 
+  //   icon: TrendingUp, 
+  //   label: 'Leads Directory', 
+  //   path: '/leads',
+  //   allowedDepartments: ['6a211b6621f80bb8da167efb'],
+  //   // allowedRoles: ['1', '2', 'hr', 'admin'],
+  // },
   { 
     icon: TrendingUp, 
     label: 'Telecaller Leads', 
     path: '/leads-telecaller',
-    allowedDesignations: ['6a27939af292348deb7d0495'],
-    allowedRoles: ['1', '2', 'hr', 'admin', 'superadmin']
+    allowedDesignations: ['6a27939af292348deb7d0495','6a2f91472df21dc234018cab'],
+    allowedRoles: ['1', 'hr', 'admin', 'superadmin']
   },
-  { 
-    icon: Briefcase, 
-    label: 'Client Leads', 
-    path: '/client-leads'
-  },
+  // { 
+  //   icon: TrendingUp, 
+  //   label: 'Lead Counselor', 
+  //   path: '/lead-counselor',
+  //   allowedDesignations: ['6a2f91472df21dc234018cab'],
+  //   // allowedRoles: ['1', '2', '3', 'hr', 'admin', 'superadmin']
+  // },
   {
     icon: BarChart3,
     label: 'Dev Dashboard',
@@ -256,27 +276,9 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
         if (item.isCommonDashboardFallback || item.isBasicReportFallback) {
           return false;
         }
-        if (item.label === 'Telecaller Leads') {
-          const desigName = String(userObj.designation || userObj.designationId?.name || '').toLowerCase();
-          const dName = String(deptName).toLowerCase();
-          if (
-            ['1', '2', 'admin', 'superadmin', 'manager', 'hr'].includes(currentUserRole) ||
-            desigName.includes('operation') || desigName.includes('ops') || desigName.includes('manager') ||
-            dName.includes('operation') || dName.includes('ops') ||
-            !!userObj.isTeamLead
-          ) {
-            return true;
-          }
-        }
-        if (item.label === 'Leads Directory' || item.label === 'Leads' || item.path === '/leads') {
-          const dName = String(userObj.department || userObj.departmentId?.name || deptName || '').toLowerCase().trim();
-          const desigName = String(userObj.designation || userObj.designationId?.name || '').toLowerCase().trim();
-          if (dName.includes('marketing') || desigName.includes('marketing')) {
-            return false;
-          }
-        }
-        if (item.label === 'Client Leads') {
-          return true;
+        if (item.label === 'Clients' || item.label === 'Projects' || item.label === 'Client Leads') {
+          const isAdminHrOrTeamLead = ['1', '2', '10', 'admin', 'hr', 'superadmin', 'team_lead', 'teamlead', 'manager'].includes(currentUserRole) || !!userObj.isTeamLead;
+          return isAdminHrOrTeamLead;
         }
         if (!item.allowedRoles && !item.allowedDepartments && !item.allowedDesignations) return true;
         const roleMatch = item.allowedRoles && item.allowedRoles.includes(currentUserRole);
