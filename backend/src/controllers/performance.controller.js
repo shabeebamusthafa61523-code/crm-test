@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import User from '../models/user.model.js';
 import Attendance from '../models/attendance.model.js';
 import Task from '../models/task.model.js';
@@ -5,11 +6,70 @@ import PerformanceReview from '../models/performanceReview.model.js';
 import KPIScore from '../models/kpiScore.model.js';
 import PerformanceRemark from '../models/performanceRemark.model.js';
 import PerformanceHistory from '../models/performanceHistory.model.js';
-import { calculateEmployeeKPI } from '../services/kpiEngine.service.js';
+import { calculateEmployeeKPI, getGradeFromScore } from '../services/kpiEngine.service.js';
 import { generateEmployeePerformanceReport } from '../services/ai.service.js';
 import { sendSuccess, sendError } from '../utils/response.helper.js';
 import notificationService from '../services/notification.service.js';
 import { recordAudit } from '../middleware/audit.middleware.js';
+
+/**
+ * Helper to build user query scoped strictly to Team Lead department unless Admin/HR
+ */
+const buildDepartmentUserQuery = async (reqUser) => {
+  let loggedUser = null;
+  if (reqUser?.id || reqUser?._id) {
+    loggedUser = await User.findById(reqUser.id || reqUser._id);
+  }
+
+  const roleName = String(loggedUser?.role || reqUser?.role || '').toLowerCase().trim();
+  const roleId = String(loggedUser?.role_id || reqUser?.role_id || '').trim();
+
+  const isUserAdminOrHr = (
+    ['1', '2', 'admin', 'hr', 'superadmin'].includes(roleId) ||
+    ['admin', 'hr', 'superadmin', 'md', 'coo'].includes(roleName)
+  );
+
+  const query = { status: { $ne: 'inactive' } };
+
+  // If user is not Admin/HR (e.g. Team Lead), scope strictly to their department
+  if (!isUserAdminOrHr && loggedUser) {
+    query._id = { $ne: loggedUser._id }; // Exclude team lead themselves
+
+    const deptId = loggedUser.departmentId;
+    const deptName = loggedUser.department;
+
+    let deptDocName = '';
+    if (deptId) {
+      try {
+        const Department = (await import('../modules/departments/department.model.js')).default;
+        const deptObj = await Department.findById(deptId);
+        if (deptObj && (deptObj.name || deptObj.department_name)) {
+          deptDocName = deptObj.name || deptObj.department_name;
+        }
+      } catch (e) {}
+    }
+
+    const deptMatchConditions = [];
+    if (deptId && mongoose.Types.ObjectId.isValid(String(deptId))) {
+      deptMatchConditions.push({ departmentId: new mongoose.Types.ObjectId(deptId) });
+      deptMatchConditions.push({ departmentId: String(deptId) });
+    }
+    if (deptName) {
+      deptMatchConditions.push({ department: { $regex: `^${deptName.trim()}$`, $options: 'i' } });
+    }
+    if (deptDocName && deptDocName.trim() !== deptName?.trim()) {
+      deptMatchConditions.push({ department: { $regex: `^${deptDocName.trim()}$`, $options: 'i' } });
+    }
+
+    if (deptMatchConditions.length > 0) {
+      query.$or = deptMatchConditions;
+    } else {
+      query._id = null; // No department assigned, return empty list
+    }
+  }
+
+  return { query, isTeamLead: !isUserAdminOrHr, loggedUser };
+};
 
 /**
  * Get comprehensive performance details for an employee
@@ -369,12 +429,37 @@ export const getPerformanceAnalytics = async (req, res) => {
   try {
     const month = req.query.month || new Date().toISOString().slice(0, 7);
 
-    // Fetch all active employees
-    const users = await User.find({ status: 'active' })
-      .populate('departmentId', 'name')
+    const { query: userQuery } = await buildDepartmentUserQuery(req.user);
+
+    const users = await User.find(userQuery)
+      .populate('departmentId', 'name department_name')
       .populate('designationId', 'name');
 
-    const kpiScores = await KPIScore.find({ month }).populate('employeeId', 'name email department designation');
+    // Fetch existing KPI scores for the month
+    const existingKpiScores = await KPIScore.find({ month });
+    const kpiMap = new Map(existingKpiScores.map(k => [k.employeeId ? k.employeeId.toString() : '', k]));
+
+    // Compute or retrieve KPI scores for all active users
+    const kpiScores = [];
+    for (const u of users) {
+      const uIdStr = u._id.toString();
+      let kScore = kpiMap.get(uIdStr);
+      if (!kScore) {
+        try {
+          kScore = await calculateEmployeeKPI(u._id, month);
+        } catch (e) {
+          kScore = {
+            overallScore: 75,
+            grade: 'Good'
+          };
+        }
+      }
+      kpiScores.push({
+        user: u,
+        overallScore: kScore.overallScore || 75,
+        grade: kScore.grade || 'Good'
+      });
+    }
 
     // Aggregate statistics
     let highestPerformer = null;
@@ -383,38 +468,47 @@ export const getPerformanceAnalytics = async (req, res) => {
     const deptScoresMap = {};
     const employeesNeedingImprovement = [];
 
-    kpiScores.forEach(k => {
-      totalScoreSum += k.overallScore;
+    kpiScores.forEach(item => {
+      const { user, overallScore, grade } = item;
+      totalScoreSum += overallScore;
 
-      if (!highestPerformer || k.overallScore > highestPerformer.overallScore) {
-        highestPerformer = k;
+      if (!highestPerformer || overallScore > highestPerformer.score) {
+        highestPerformer = {
+          name: user.name,
+          score: overallScore,
+          grade
+        };
       }
-      if (!lowestPerformer || k.overallScore < lowestPerformer.overallScore) {
-        lowestPerformer = k;
+      if (!lowestPerformer || overallScore < lowestPerformer.score) {
+        lowestPerformer = {
+          name: user.name,
+          score: overallScore,
+          grade
+        };
       }
 
-      if (k.overallScore < 70) {
+      if (overallScore < 60) {
         employeesNeedingImprovement.push({
-          id: k.employeeId?._id || k.employeeId,
-          name: k.employeeId?.name || 'Employee',
-          score: k.overallScore,
-          grade: k.grade
+          id: user._id,
+          name: user.name,
+          score: overallScore,
+          grade
         });
       }
 
-      const deptName = k.employeeId?.departmentId?.name || 'General';
+      const deptName = user.departmentId?.name || user.departmentId?.department_name || user.department || 'General';
       if (!deptScoresMap[deptName]) {
         deptScoresMap[deptName] = { sum: 0, count: 0 };
       }
-      deptScoresMap[deptName].sum += k.overallScore;
+      deptScoresMap[deptName].sum += overallScore;
       deptScoresMap[deptName].count += 1;
     });
 
-    const averageKPI = kpiScores.length > 0 ? Math.round(totalScoreSum / kpiScores.length) : 82;
+    const averageKPI = users.length > 0 ? Math.round(totalScoreSum / users.length) : 0;
 
     // Top Department
-    let topDepartment = 'Development';
-    let topDeptAvg = 0;
+    let topDepartment = 'N/A';
+    let topDeptAvg = -1;
     Object.entries(deptScoresMap).forEach(([dept, data]) => {
       const avg = data.sum / data.count;
       if (avg > topDeptAvg) {
@@ -425,18 +519,10 @@ export const getPerformanceAnalytics = async (req, res) => {
 
     const analyticsData = {
       month,
-      totalEvaluated: kpiScores.length || users.length,
+      totalEvaluated: users.length,
       averageKPI,
-      highestPerformer: highestPerformer ? {
-        name: highestPerformer.employeeId?.name || 'Top Performer',
-        score: highestPerformer.overallScore,
-        grade: highestPerformer.grade
-      } : { name: 'Lead Architect', score: 96, grade: 'Outstanding' },
-      lowestPerformer: lowestPerformer ? {
-        name: lowestPerformer.employeeId?.name || 'Staff Member',
-        score: lowestPerformer.overallScore,
-        grade: lowestPerformer.grade
-      } : { name: 'Junior Associate', score: 65, grade: 'Needs Improvement' },
+      highestPerformer: highestPerformer || { name: 'N/A', score: 0, grade: 'N/A' },
+      lowestPerformer: lowestPerformer || { name: 'N/A', score: 0, grade: 'N/A' },
       topDepartment,
       topTeamLead: 'Lead Technical Officer',
       employeesNeedingImprovement,
@@ -464,20 +550,63 @@ export const getPerformanceReports = async (req, res) => {
   try {
     const { type = 'monthly', month = new Date().toISOString().slice(0, 7) } = req.query;
 
-    const reviews = await PerformanceReview.find({ month })
-      .populate('employeeId', 'name email employeeId department designation')
-      .populate('hrRemarkId')
-      .populate('teamLeadRemarkId');
+    const { query: userQuery } = await buildDepartmentUserQuery(req.user);
 
-    const reportsList = reviews.map(r => ({
-      employeeName: r.employeeId?.name || 'Employee',
-      employeeId: r.employeeId?.employeeId || 'EMP',
-      department: r.employeeId?.department || 'Operations',
-      kpiScore: r.overallKPIScore || 80,
-      grade: r.grade || 'Good',
-      status: r.status,
-      aiSummary: r.aiSummary ? r.aiSummary.slice(0, 200) + '...' : 'Pending AI Analysis'
-    }));
+    // 1. Fetch users matching userQuery
+    const users = await User.find(userQuery)
+      .populate('departmentId', 'name department_name')
+      .populate('designationId', 'name');
+
+    // 2. Fetch existing PerformanceReview records for the month
+    const reviews = await PerformanceReview.find({ month });
+    const reviewMap = new Map(reviews.map(r => [r.employeeId ? r.employeeId.toString() : '', r]));
+
+    // 3. Fetch existing KPIScore records for the month
+    const kpiScores = await KPIScore.find({ month });
+    const kpiMap = new Map(kpiScores.map(k => [k.employeeId ? k.employeeId.toString() : '', k]));
+
+    // 4. Map users into the reports record list
+    const reportsList = [];
+    for (const u of users) {
+      const uIdStr = u._id.toString();
+      const review = reviewMap.get(uIdStr);
+      const kpi = kpiMap.get(uIdStr);
+
+      let score = review?.overallKPIScore || kpi?.overallScore;
+      let grade = review?.grade || kpi?.grade;
+
+      if (score === undefined || score === null) {
+        try {
+          const computed = await calculateEmployeeKPI(u._id, month);
+          score = computed.overallScore;
+          grade = computed.grade;
+        } catch (e) {
+          score = 0;
+          grade = getGradeFromScore(0);
+        }
+      }
+
+      const deptName = u.departmentId?.name || u.departmentId?.department_name || u.department || 'Operations';
+      const desigName = u.designationId?.name || u.designation || 'Staff';
+
+      reportsList.push({
+        _id: u._id,
+        employeeName: u.name || 'Employee',
+        avatar: u.avatar || u.profile_image || '',
+        employeeId: u.employeeId || `EMP-${String(u._id).slice(-4).toUpperCase()}`,
+        department: deptName,
+        designation: desigName,
+        kpiScore: score,
+        grade: grade,
+        status: review?.status || grade || 'Good',
+        hrRating: review?.hrRating || 5,
+        hrRemark: review?.hrRemark || '',
+        tlRating: review?.tlRating || 5,
+        tlRemark: review?.tlRemark || '',
+        remarks: review?.remarks || '',
+        aiSummary: review?.aiSummary ? review.aiSummary.slice(0, 200) + '...' : 'Verified KPI Record'
+      });
+    }
 
     return sendSuccess(res, `Performance report (${type}) retrieved`, {
       type,
@@ -488,5 +617,92 @@ export const getPerformanceReports = async (req, res) => {
   } catch (error) {
     console.error('Error fetching performance reports:', error);
     return sendError(res, error.message || 'Failed to fetch performance reports', 500);
+  }
+};
+
+/**
+ * Update individual Performance Evaluation Record (HR Rating & Remarks, TL Rating & Remarks, Status, Remarks)
+ */
+export const updatePerformanceRecord = async (req, res) => {
+  try {
+    const {
+      employeeId,
+      month = new Date().toISOString().slice(0, 7),
+      hrRating,
+      hrRemark,
+      tlRating,
+      tlRemark,
+      remarks,
+      status
+    } = req.body;
+
+    if (!employeeId) {
+      return sendError(res, 'Employee ID is required', 400);
+    }
+
+    const updateFields = {
+      employeeId,
+      month,
+      reviewedBy: req.user.id
+    };
+
+    if (hrRating !== undefined) updateFields.hrRating = Number(hrRating);
+    if (hrRemark !== undefined) updateFields.hrRemark = hrRemark;
+    if (tlRating !== undefined) updateFields.tlRating = Number(tlRating);
+    if (tlRemark !== undefined) updateFields.tlRemark = tlRemark;
+    if (remarks !== undefined) updateFields.remarks = remarks;
+    if (status !== undefined) updateFields.status = status;
+
+    const review = await PerformanceReview.findOneAndUpdate(
+      { employeeId, month },
+      updateFields,
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    if (hrRemark !== undefined || hrRating !== undefined) {
+      await PerformanceRemark.findOneAndUpdate(
+        { employeeId, month, type: 'HR' },
+        {
+          employeeId,
+          reviewerId: req.user.id,
+          month,
+          type: 'HR',
+          overallRating: hrRating !== undefined ? Number(hrRating) : 5,
+          performanceRemark: hrRemark || ''
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+    }
+
+    if (tlRemark !== undefined || tlRating !== undefined) {
+      await PerformanceRemark.findOneAndUpdate(
+        { employeeId, month, type: 'TEAM_LEAD' },
+        {
+          employeeId,
+          reviewerId: req.user.id,
+          month,
+          type: 'TEAM_LEAD',
+          overallRating: tlRating !== undefined ? Number(tlRating) : 5,
+          performanceRemark: tlRemark || ''
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+    }
+
+    // Recalculate overall KPI score and grade incorporating updated ratings
+    const updatedKPI = await calculateEmployeeKPI(employeeId, month);
+
+    review.overallKPIScore = updatedKPI.overallScore;
+    review.grade = updatedKPI.grade;
+    await review.save();
+
+    return sendSuccess(res, 'Evaluation record updated successfully', {
+      review,
+      kpiScore: updatedKPI.overallScore,
+      grade: updatedKPI.grade
+    });
+  } catch (error) {
+    console.error('Error updating performance record:', error);
+    return sendError(res, error.message || 'Failed to update performance record', 500);
   }
 };

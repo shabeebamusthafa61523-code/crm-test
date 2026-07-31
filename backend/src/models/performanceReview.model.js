@@ -14,8 +14,8 @@ const performanceReviewSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['draft', 'submitted', 'completed'],
-    default: 'draft'
+    enum: ['draft', 'submitted', 'completed', 'Very Bad', 'Bad', 'Good', 'Better', 'Excellent', 'Needs Improvement'],
+    default: 'Good'
   },
   overallKPIScore: {
     type: Number,
@@ -23,8 +23,8 @@ const performanceReviewSchema = new mongoose.Schema({
   },
   grade: {
     type: String,
-    enum: ['Outstanding', 'Excellent', 'Very Good', 'Good', 'Needs Improvement', 'Critical'],
-    default: 'Needs Improvement'
+    enum: ['Outstanding', 'Excellent', 'Very Good', 'Good', 'Better', 'Bad', 'Very Bad', 'Needs Improvement', 'Critical'],
+    default: 'Good'
   },
   hrRemarkId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -37,6 +37,26 @@ const performanceReviewSchema = new mongoose.Schema({
   kpiScoreId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'KPIScore'
+  },
+  hrRating: {
+    type: Number,
+    default: 5
+  },
+  hrRemark: {
+    type: String,
+    default: ''
+  },
+  tlRating: {
+    type: Number,
+    default: 5
+  },
+  tlRemark: {
+    type: String,
+    default: ''
+  },
+  remarks: {
+    type: String,
+    default: ''
   },
   aiSummary: {
     type: String,
