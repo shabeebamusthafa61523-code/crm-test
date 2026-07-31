@@ -1134,7 +1134,10 @@ const [activePriority, setActivePriority] = useState('all');
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div>
                           <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                            {lead.leadName}
+                            <span
+                              className="cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                              onClick={() => { setSelectedLead(lead); fetchLeadDetails(lead.id || lead._id); setIsViewOpen(true); }}
+                            >{lead.leadName}</span>
                           </h3>
                           {lead.companyName && !lead.companyName.toLowerCase().includes('software development leads form') && (
                             <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
@@ -1356,7 +1359,10 @@ const [activePriority, setActivePriority] = useState('all');
                       <tr key={lead.id || lead._id} className={getRowClass(lead.interestedService)}>
                         {/* Name & Company */}
                         <td className="px-6 py-4.5">
-                          <div className="font-semibold text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <div
+                            className="font-semibold text-xs text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5 cursor-pointer hover:underline"
+                            onClick={() => { setSelectedLead(lead); fetchLeadDetails(lead.id || lead._id); setIsViewOpen(true); }}
+                          >
                             {lead.leadName}
                           </div>
                           {lead.companyName && (

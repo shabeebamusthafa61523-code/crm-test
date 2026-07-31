@@ -656,7 +656,7 @@ export const updatePerformanceRecord = async (req, res) => {
     const review = await PerformanceReview.findOneAndUpdate(
       { employeeId, month },
       updateFields,
-      { upsert: true, new: true, setDefaultsOnInsert: true }
+      { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
     );
 
     if (hrRemark !== undefined || hrRating !== undefined) {
@@ -670,7 +670,7 @@ export const updatePerformanceRecord = async (req, res) => {
           overallRating: hrRating !== undefined ? Number(hrRating) : 5,
           performanceRemark: hrRemark || ''
         },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
+        { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
       );
     }
 
@@ -685,7 +685,7 @@ export const updatePerformanceRecord = async (req, res) => {
           overallRating: tlRating !== undefined ? Number(tlRating) : 5,
           performanceRemark: tlRemark || ''
         },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
+        { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
       );
     }
 

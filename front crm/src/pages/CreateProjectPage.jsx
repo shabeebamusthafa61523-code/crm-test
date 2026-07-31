@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FolderKanban, ArrowLeft, Save, ShieldAlert, Code, Bookmark, X, Loader2, CheckCircle2 } from 'lucide-react';
 import { createProject, fetchActiveEmployees, fetchDepartments } from '../services/projectService';
 import { getClients } from '../services/clientService';
@@ -7,6 +7,10 @@ import EmployeeMultiSelect from '../components/EmployeeMultiSelect';
 
 const CreateProjectPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const prefilledClientId = searchParams.get('clientId') || '';
+  const prefilledClientName = decodeURIComponent(searchParams.get('clientName') || '');
+
   const [submitting, setSubmitting] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [draftSaved, setDraftSaved] = useState(false);
@@ -38,6 +42,13 @@ const CreateProjectPage = () => {
   useEffect(() => {
     loadDropdownData();
   }, []);
+
+  // Auto-select client once list is loaded from URL params
+  useEffect(() => {
+    if (prefilledClientId && clients.length > 0) {
+      setFormData(prev => ({ ...prev, client: prefilledClientId }));
+    }
+  }, [prefilledClientId, clients]);
 
   const getEmployeeTitle = (emp) => {
     if (!emp) return '';
@@ -198,20 +209,27 @@ const CreateProjectPage = () => {
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Client Account *</label>
-                <select
-                  required
-                  name="client"
-                  value={formData.client}
-                  onChange={handleChange}
-                  className="px-4 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold focus:outline-hidden transition-all"
-                >
-                  <option value="">Select Target Client Account...</option>
-                  {clients.map(c => (
-                    <option key={c._id || c.id} value={c._id || c.id}>
-                      {c.companyName} ({c.clientId})
-                    </option>
-                  ))}
-                </select>
+                {prefilledClientId ? (
+                  <div className="px-4 py-2.5 text-xs rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 font-bold flex items-center justify-between">
+                    <span>🔗 {prefilledClientName || 'Selected Client'}</span>
+                    <span className="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-extrabold">Auto-linked</span>
+                  </div>
+                ) : (
+                  <select
+                    required
+                    name="client"
+                    value={formData.client}
+                    onChange={handleChange}
+                    className="px-4 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold focus:outline-hidden transition-all"
+                  >
+                    <option value="">Select Target Client Account...</option>
+                    {clients.map(c => (
+                      <option key={c._id || c.id} value={c._id || c.id}>
+                        {c.companyName} ({c.clientId})
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
             </div>
           </div>
@@ -294,9 +312,9 @@ const CreateProjectPage = () => {
                 >
                   <option value="Web Development">Web Development</option>
                   <option value="Mobile App">Mobile App</option>
-                  <option value="UI/UX Design">UI/UX Design</option>
+                  {/* <option value="UI/UX Design">UI/UX Design</option> */}
                   <option value="Digital Marketing">Digital Marketing</option>
-                  <option value="Cloud Infrastructure">Cloud Infrastructure</option>
+                  {/* <option value="Cloud Infrastructure">Cloud Infrastructure</option> */}
                 </select>
               </div>
 

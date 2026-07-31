@@ -673,33 +673,6 @@ export default function ClientLeads() {
 
         <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={() => setIsFilterOpen(!isFilterOpen)}
-            className={`px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition border ${
-              isFilterOpen ? 'bg-indigo-50 text-indigo-600 border-indigo-200 dark:bg-indigo-950/40 dark:border-indigo-800' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800'
-            }`}
-          >
-            <SlidersHorizontal size={14} />
-            <span>Filters</span>
-          </button>
-
-          <div className="bg-slate-200/60 dark:bg-slate-800 p-1 rounded-xl flex items-center gap-1">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-1.5 rounded-lg text-xs font-bold transition ${viewMode === 'list' ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
-              title="List View"
-            >
-              <LayoutList size={15} />
-            </button>
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-1.5 rounded-lg text-xs font-bold transition ${viewMode === 'grid' ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
-              title="Grid View"
-            >
-              <LayoutGrid size={15} />
-            </button>
-          </div>
-
-          <button
             onClick={() => setIsImportOpen(true)}
             className="px-3.5 py-2.5 bg-slate-900 dark:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition cursor-pointer"
           >
@@ -745,8 +718,8 @@ export default function ClientLeads() {
         </div>
       </div>
 
-      {/* Search & Filter Container */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800/80 p-4 mb-6 shadow-sm">
+      {/* Search & Filter Container (just above the table) */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 mb-6 shadow-sm flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
           <div className="relative w-full sm:w-96">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
@@ -755,8 +728,39 @@ export default function ClientLeads() {
               placeholder="Search by name, phone, email, company, city..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none"
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border-none rounded-xl text-xs outline-none focus:ring-1 focus:ring-indigo-500"
             />
+          </div>
+
+          <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+            <button
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
+                isFilterOpen
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                  : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'
+              }`}
+            >
+              <SlidersHorizontal size={14} />
+              <span>Filters</span>
+            </button>
+
+            <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex items-center gap-1">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${viewMode === 'list' ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                title="List View"
+              >
+                <LayoutList size={15} />
+              </button>
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${viewMode === 'grid' ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                title="Grid View"
+              >
+                <LayoutGrid size={15} />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -894,7 +898,10 @@ export default function ClientLeads() {
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <div>
-                      <h4 className="font-bold text-sm text-slate-900 dark:text-white">{lead.leadName}</h4>
+                      <h4
+                        className="font-bold text-sm text-slate-900 dark:text-white cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                        onClick={() => { setSelectedLead(lead); fetchLeadDetails(lead.id || lead._id); setIsViewOpen(true); }}
+                      >{lead.leadName}</h4>
                       {lead.companyName && (
                         <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5 font-medium">
                           <Briefcase size={11} /> {lead.companyName}
@@ -1042,7 +1049,10 @@ export default function ClientLeads() {
                   return (
                     <tr key={lead.id || lead._id} className={getRowClass(lead.interestedService)}>
                       <td className="px-6 py-4.5">
-                        <div className="font-semibold text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <div
+                          className="font-semibold text-xs text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5 cursor-pointer hover:underline"
+                          onClick={() => { setSelectedLead(lead); fetchLeadDetails(lead.id || lead._id); setIsViewOpen(true); }}
+                        >
                           {lead.leadName}
                         </div>
                         {lead.companyName && (

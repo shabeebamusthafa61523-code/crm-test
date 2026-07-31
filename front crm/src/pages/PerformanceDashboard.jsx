@@ -271,10 +271,10 @@ const PerformanceDashboard = () => {
             <div className="flex flex-wrap gap-2">
               {[
                 { id: 'monthly', label: 'Monthly Report' },
-                { id: 'quarterly', label: 'Quarterly Review' },
-                { id: 'annual', label: 'Annual Review' },
-                { id: 'top', label: 'Top Performers' },
-                { id: 'improvement', label: 'Improvement List' }
+                // { id: 'quarterly', label: 'Quarterly Review' },
+                // { id: 'annual', label: 'Annual Review' },
+                // { id: 'top', label: 'Top Performers' },
+                // { id: 'improvement', label: 'Improvement List' }
               ].map(t => (
                 <button
                   key={t.id}
@@ -298,7 +298,7 @@ const PerformanceDashboard = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 py-2.5 pl-9 pr-3 rounded-xl text-xs font-medium outline-none focus:border-indigo-500"
               />
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <div size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             </div>
           </div>
 
@@ -313,7 +313,6 @@ const PerformanceDashboard = () => {
                   <th className="py-3.5 px-4 min-w-[180px]">{isTeamLead ? 'TL Remarks' : 'HR Remarks'}</th>
                   <th className="py-3.5 px-4 min-w-[150px]">Performance Status</th>
                   <th className="py-3.5 px-4 min-w-[160px]">General Remarks</th>
-                  <th className="py-3.5 px-4 text-center">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
@@ -414,29 +413,12 @@ const PerformanceDashboard = () => {
                           />
                         </td>
 
-                        {/* Auto-Save Status Indicator */}
-                        <td className="py-3.5 px-4 text-center">
-                          {isSaving ? (
-                            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-indigo-500">
-                              <Loader2 size={13} className="animate-spin" />
-                              Saving…
-                            </span>
-                          ) : savedRowId === row._id ? (
-                            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-emerald-500">
-                              <CheckCircle2 size={13} />
-                              Saved
-                            </span>
-                          ) : (
-                            <span className="text-[10px] font-semibold text-slate-300 dark:text-slate-600">Auto</span>
-                          )}
-                        </td>
-
                       </tr>
                     );
                   })
                 ) : (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-slate-400">
+                    <td colSpan={6} className="py-12 text-center text-slate-400">
                       No employee evaluation records discovered for {month}.
                     </td>
                   </tr>
