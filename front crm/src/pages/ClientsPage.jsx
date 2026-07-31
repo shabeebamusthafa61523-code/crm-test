@@ -28,6 +28,7 @@ const ClientsPage = () => {
   const [priorityFilter, setPriorityFilter] = useState('');
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('desc');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   // Pagination States
   const [page, setPage] = useState(1);
@@ -171,83 +172,117 @@ const ClientsPage = () => {
       </div>
 
       {/* Filters & Search Toolbar */}
-      <div className="p-4 rounded-3xl bg-white/70 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800/80 backdrop-blur-md flex flex-col lg:flex-row gap-3 items-center justify-between shadow-xs">
-        <div className="relative w-full lg:w-96">
-          <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search company, client, ID, email, industry..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            className="w-full pl-10 pr-4 py-2.5 text-xs rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-          />
+      <div className="p-4 rounded-3xl bg-white/70 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800/80 backdrop-blur-md flex flex-col gap-4 shadow-xs">
+        <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+          <div className="relative w-full sm:w-96">
+            <div className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search company, client, ID, email, industry..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              className="w-full pl-10 pr-4 py-2.5 text-xs rounded-2xl bg-slate-50 dark:bg-slate-800/60 border-none text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+            <button
+              type="button"
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              className={`px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer relative ${
+                isFilterOpen || (statusFilter || typeFilter || priorityFilter || (sortBy !== 'createdAt'))
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              <span>Filters & Sort</span>
+              {[statusFilter, typeFilter, priorityFilter, sortBy !== 'createdAt' ? sortBy : ''].filter(Boolean).length > 0 && (
+                <span className="w-4 h-4 rounded-full bg-white text-indigo-600 text-[10px] font-black flex items-center justify-center">
+                  {[statusFilter, typeFilter, priorityFilter, sortBy !== 'createdAt' ? sortBy : ''].filter(Boolean).length}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
-          {/* Status Filter */}
-          <select
-            value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            className="px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold focus:outline-hidden"
-          >
-            <option value="">All Statuses</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-            <option value="On Hold">On Hold</option>
-            <option value="Lead">Lead</option>
-            <option value="Archived">Archived</option>
-          </select>
+        {/* Collapsible Filter & Sort Panel */}
+        {isFilterOpen && (
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 w-full items-end">
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Status</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold focus:outline-hidden cursor-pointer"
+              >
+                <option value="">All Statuses</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+                <option value="On Hold">On Hold</option>
+                <option value="Lead">Lead</option>
+                <option value="Archived">Archived</option>
+              </select>
+            </div>
 
-          {/* Client Type Filter */}
-          <select
-            value={typeFilter}
-            onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}
-            className="px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold focus:outline-hidden"
-          >
-            <option value="">All Types</option>
-            <option value="Enterprise">Enterprise</option>
-            <option value="SMB">SMB</option>
-            <option value="Startup">Startup</option>
-            <option value="Retainer">Retainer</option>
-            <option value="One-Time">One-Time</option>
-          </select>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Client Type</label>
+              <select
+                value={typeFilter}
+                onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}
+                className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold focus:outline-hidden cursor-pointer"
+              >
+                <option value="">All Types</option>
+                <option value="Enterprise">Enterprise</option>
+                <option value="SMB">SMB</option>
+                <option value="Startup">Startup</option>
+                <option value="Retainer">Retainer</option>
+                <option value="One-Time">One-Time</option>
+              </select>
+            </div>
 
-          {/* Priority Filter */}
-          <select
-            value={priorityFilter}
-            onChange={(e) => { setPriorityFilter(e.target.value); setPage(1); }}
-            className="px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold focus:outline-hidden"
-          >
-            <option value="">All Priorities</option>
-            <option value="VIP">VIP</option>
-            <option value="High">High</option>
-            <option value="Medium">Medium</option>
-            <option value="Low">Low</option>
-          </select>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Priority</label>
+              <select
+                value={priorityFilter}
+                onChange={(e) => { setPriorityFilter(e.target.value); setPage(1); }}
+                className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold focus:outline-hidden cursor-pointer"
+              >
+                <option value="">All Priorities</option>
+                <option value="VIP">VIP</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
+            </div>
 
-          {/* Sort By Select */}
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold focus:outline-hidden"
-          >
-            <option value="createdAt">Newest First</option>
-            <option value="oldest">Oldest First</option>
-            <option value="company">Company Name A-Z</option>
-            <option value="revenue">Highest Revenue</option>
-            <option value="priority">Priority Tier</option>
-          </select>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Sort By</label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold focus:outline-hidden cursor-pointer"
+              >
+                <option value="createdAt">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="company">Company Name A-Z</option>
+                <option value="revenue">Highest Revenue</option>
+                <option value="priority">Priority Tier</option>
+              </select>
+            </div>
 
-          {/* Reset Filters Button */}
-          <button
-            type="button"
-            onClick={handleResetFilters}
-            className="px-3 py-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            Reset
-          </button>
-        </div>
+            <div>
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="w-full px-3 py-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                Reset Filters
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main Clients View Display (Grid or Table) */}

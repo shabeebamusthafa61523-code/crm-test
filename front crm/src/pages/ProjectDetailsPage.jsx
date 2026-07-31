@@ -82,7 +82,7 @@ const ProjectDetailsPage = () => {
     );
   }
 
-  const { project, milestones = [], activities = [], comments = [], documents = [], tasks = [] } = data;
+  const { project, activities = [], comments = [], documents = [], tasks = [] } = data;
 
   // Task metrics calculation
   const totalTasksCount = tasks.length;
@@ -201,7 +201,7 @@ const ProjectDetailsPage = () => {
         {[
           { id: 'overview', label: 'Overview & Details', icon: FolderKanban },
           { id: 'team', label: `Grouped Team Members (${(project.assignedEmployees || []).length})`, icon: Users },
-          { id: 'milestones', label: `Milestones (${milestones.length})`, icon: CheckCircle2 },
+          // { id: 'milestones', label: `Milestones (${milestones.length})`, icon: CheckCircle2 },
           { id: 'timeline', label: 'Activity Log', icon: Clock }
         ].map((tab) => {
           const Icon = tab.icon;

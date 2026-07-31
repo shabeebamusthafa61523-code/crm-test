@@ -31,6 +31,10 @@ const kpiScoreSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  statusScore: {
+    type: Number,
+    default: 0
+  },
   deptReportScore: {
     type: Number,
     default: 0
@@ -45,8 +49,8 @@ const kpiScoreSchema = new mongoose.Schema({
   },
   grade: {
     type: String,
-    enum: ['Outstanding', 'Excellent', 'Very Good', 'Good', 'Needs Improvement', 'Critical'],
-    default: 'Needs Improvement'
+    enum: ['Outstanding', 'Excellent', 'Better', 'Very Good', 'Good', 'Bad', 'Very Bad', 'Needs Improvement', 'Critical'],
+    default: 'Good'
   },
   weights: {
     attendance: { type: Number, default: 20 },

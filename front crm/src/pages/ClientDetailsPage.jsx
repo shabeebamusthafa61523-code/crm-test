@@ -51,7 +51,7 @@ const ClientDetailsPage = () => {
     );
   }
 
-  const { client, projects = [], documents = [], activities = [] } = data;
+  const { client, projects = [], activities = [] } = data;
 
   return (
     <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto">
@@ -93,7 +93,7 @@ const ClientDetailsPage = () => {
 
         <div className="flex items-center gap-3 w-full md:w-auto justify-end">
           <Link
-            to="/projects/new"
+            to={`/projects/new?clientId=${client._id || client.id}&clientName=${encodeURIComponent(client.companyName || '')}`}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/20 transition-all hover:scale-[1.02]"
           >
             <Plus className="w-4 h-4" />
@@ -107,7 +107,7 @@ const ClientDetailsPage = () => {
         {[
           { id: 'overview', label: 'Overview & Info', icon: Building },
           { id: 'projects', label: `Projects (${projects.length})`, icon: FolderKanban },
-          { id: 'documents', label: `Documents (${documents.length})`, icon: FileText },
+          // { id: 'documents', label: `Documents (${documents.length})`, icon: FileText },
           { id: 'timeline', label: 'Activity Timeline', icon: Clock }
         ].map((tab) => {
           const Icon = tab.icon;
@@ -240,14 +240,14 @@ const ClientDetailsPage = () => {
             Client Activity Log
           </h2>
 
-          <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {activities.length === 0 ? (
-              <span className="text-xs text-slate-400">No activity recorded yet.</span>
+              <span className="text-xs text-slate-400 col-span-2">No activity recorded yet.</span>
             ) : (
               activities.map((act) => (
-                <div key={act._id || act.id} className="flex gap-3 text-xs border-b border-slate-100 dark:border-slate-800 pb-3">
+                <div key={act._id || act.id} className="flex gap-3 text-xs bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-2xl p-3">
                   <div className="w-2 h-2 rounded-full bg-indigo-500 mt-1.5 shrink-0" />
-                  <div className="flex flex-col">
+                  <div className="flex flex-col gap-0.5">
                     <span className="font-bold text-slate-800 dark:text-slate-200">{act.title}</span>
                     <span className="text-slate-400 text-[10px]">{new Date(act.createdAt).toLocaleString()}</span>
                   </div>

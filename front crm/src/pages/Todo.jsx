@@ -444,7 +444,7 @@ const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) 
             </div>
             <div className="space-y-1">
               <label className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.2em] ml-1">Due Date</label>
-              <input type="date" className="w-full bg-white border border-slate-200 px-3 py-2 rounded-xl text-slate-900 text-sm font-semibold outline-none focus:border-indigo-500/50" value={form.dueDate} onChange={e => setForm({...form, dueDate: e.target.value})} />
+              <input type="date" min={new Date().toISOString().split('T')[0]} className="w-full bg-white border border-slate-200 px-3 py-2 rounded-xl text-slate-900 text-sm font-semibold outline-none focus:border-indigo-500/50" value={form.dueDate} onChange={e => setForm({...form, dueDate: e.target.value})} />
             </div>
           </div>
 
@@ -960,6 +960,7 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
               {isEditing ? (
                 <input 
                   type="date"
+                  min={new Date().toISOString().split('T')[0]}
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-xl text-gray-500 dark:text-gray-400 text-[11px] font-bold outline-none"
                   value={editForm.dueDate ? new Date(editForm.dueDate).toISOString().split('T')[0] : ''}
                   onChange={e => setEditForm({...editForm, dueDate: e.target.value})} 

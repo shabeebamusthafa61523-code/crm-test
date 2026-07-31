@@ -131,12 +131,12 @@ const ProjectsPage = () => {
               }`}
             >
               <LayoutGrid className="w-4 h-4" />
-              <span>Kanban Cards</span>
+              <span>Grid View</span>
             </button>
           </div>
 
           <div className="relative flex-1 md:w-80">
-            <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
+            <div className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
             <input
               type="text"
               placeholder="Search project name, code, client, tech..."

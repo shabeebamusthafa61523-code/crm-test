@@ -62,15 +62,17 @@ export const calculateEmployeeKPI = async (employeeId, monthStr) => {
     reportScore = 80;
   }
 
-  // 4. Fetch Ratings (HR Rating 12.5% Weight, Team Lead Rating 12.5% Weight)
+  // 4. Fetch Ratings & Status (HR Rating 15%, TL Rating 15%, Performance Status 10%)
   let hrRating = 5;
   let tlRating = 5;
+  let evalStatus = 'Good';
   try {
     const PerformanceReview = (await import('../models/performanceReview.model.js')).default;
     const review = await PerformanceReview.findOne({ employeeId, month: monthStr });
     if (review) {
       if (review.hrRating !== undefined && review.hrRating !== null) hrRating = review.hrRating;
       if (review.tlRating !== undefined && review.tlRating !== null) tlRating = review.tlRating;
+      if (review.status) evalStatus = review.status;
     } else {
       const hrRemarkObj = await PerformanceRemark.findOne({ employeeId, month: monthStr, type: 'HR' });
       const tlRemarkObj = await PerformanceRemark.findOne({ employeeId, month: monthStr, type: 'TEAM_LEAD' });
@@ -79,16 +81,28 @@ export const calculateEmployeeKPI = async (employeeId, monthStr) => {
     }
   } catch (e) {}
 
-  const hrRatingScore = Math.min(100, Math.max(0, hrRating * 10));
-  const managerRatingScore = Math.min(100, Math.max(0, tlRating * 10));
+  const STATUS_SCORES = {
+    'Very Bad': 20,
+    'Bad': 40,
+    'Good': 60,
+    'Better': 80,
+    'Excellent': 100,
+    'Needs Improvement': 40,
+    'Outstanding': 100
+  };
 
-  // 5. Weighted Sum: Tasks (30%), Reports (25%), Attendance (20%), HR Rating (12.5%), TL Rating (12.5%)
+  const hrRatingScore = Math.min(100, Math.max(0, Number(hrRating) * 10));
+  const managerRatingScore = Math.min(100, Math.max(0, Number(tlRating) * 10));
+  const statusScore = STATUS_SCORES[evalStatus] || 60;
+
+  // 5. Weighted Sum: Tasks (25%), Reports (20%), Attendance (15%), HR Rating (15%), TL Rating (15%), Status (10%)
   const weights = {
-    task: 30,
-    reports: 25,
-    attendance: 20,
-    hrRating: 12.5,
-    tlRating: 12.5
+    task: 25,
+    reports: 20,
+    attendance: 15,
+    hrRating: 15,
+    tlRating: 15,
+    status: 10
   };
 
   const overallScore = Math.min(100, Math.round(
@@ -96,7 +110,8 @@ export const calculateEmployeeKPI = async (employeeId, monthStr) => {
     (reportScore * (weights.reports / 100)) +
     (attendanceScore * (weights.attendance / 100)) +
     (hrRatingScore * (weights.hrRating / 100)) +
-    (managerRatingScore * (weights.tlRating / 100))
+    (managerRatingScore * (weights.tlRating / 100)) +
+    (statusScore * (weights.status / 100))
   ));
 
   const grade = getGradeFromScore(overallScore);
@@ -111,6 +126,7 @@ export const calculateEmployeeKPI = async (employeeId, monthStr) => {
     deptReportScore: reportScore,
     hrRatingScore,
     managerRatingScore,
+    statusScore,
     overallScore,
     grade,
     weights,

@@ -14,7 +14,7 @@ const performanceReviewSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['draft', 'submitted', 'completed', 'Very Bad', 'Bad', 'Good', 'Better', 'Excellent', 'Needs Improvement'],
+    enum: ['draft', 'submitted', 'completed', 'Very Bad', 'Bad', 'Good', 'Better', 'Excellent', 'Needs Improvement', 'Active Evaluation', 'Pending Review'],
     default: 'Good'
   },
   overallKPIScore: {
