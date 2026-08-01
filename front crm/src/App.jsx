@@ -41,6 +41,7 @@ import CommonDashboard from './pages/CommonDashboard';
 import BasicReportPage from './pages/BasicReportPage';
 import NotificationPage from './pages/NotificationPage';
 import PerformanceDashboard from './pages/PerformanceDashboard';
+import UserPermissionsPage from './pages/UserPermissionsPage';
 
 
 
@@ -166,6 +167,7 @@ function App() {
         <Route path="/attendance" element={<ProtectedRoute><MainLayout><Attendance /></MainLayout></ProtectedRoute>} />
         <Route path="/todo" element={<ProtectedRoute><MainLayout><RestrictedRoute><Todo /></RestrictedRoute></MainLayout></ProtectedRoute>} />
         <Route path="/users" element={<ProtectedRoute><MainLayout><RestrictedRoute><Users /></RestrictedRoute></MainLayout></ProtectedRoute>} />
+        <Route path="/permissions/:userId" element={<ProtectedRoute><MainLayout><RestrictedRoute><UserPermissionsPage /></RestrictedRoute></MainLayout></ProtectedRoute>} />
         <Route path="/leads" element={<ProtectedRoute><MainLayout><RestrictedRoute><Leads /></RestrictedRoute></MainLayout></ProtectedRoute>} />
         <Route path="/leads-telecaller" element={<ProtectedRoute><MainLayout><RestrictedRoute><LeadsTelecaller /></RestrictedRoute></MainLayout></ProtectedRoute>} />
         <Route path="/client-leads" element={<ProtectedRoute><MainLayout><RestrictedRoute><ClientLeads /></RestrictedRoute></MainLayout></ProtectedRoute>} />

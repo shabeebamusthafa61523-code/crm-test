@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, Search, Edit3, Trash2, Eye, X, Mail, Phone, 
   Briefcase, Folder, UserCheck, ShieldAlert, Image as ImageIcon,
-  Loader2, User, ChevronRight, CheckCircle2, AlertTriangle, Shield, BarChart3
+  Loader2, User, ChevronRight, CheckCircle2, AlertTriangle, Shield, BarChart3,
+  ShieldCheck, KeyRound, Lock
 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
 import ConfirmModal from '../components/ConfirmModal';
@@ -11,15 +13,268 @@ import PerformanceTab from '../components/PerformanceTab';
 import PerformanceDashboard from './PerformanceDashboard';
 const API_BASE = import.meta.env.VITE_API_URL;
 const ROLES = [
+  { id: "0", name: "superadmin" },
   { id: "1", name: "hr" },
   { id: "2", name: "admin" },
   { id: "3", name: "employee" }
+];
+
+const ALL_SIDEBAR_ITEMS = [
+  { label: 'Dashboard', path: '/dashboard', category: 'General' },
+  { label: 'Clients', path: '/clients', category: 'Management' },
+  { label: 'Projects', path: '/projects', category: 'Management' },
+  { label: 'Client Leads', path: '/client-leads', category: 'Leads' },
+  { label: 'Telecaller Leads', path: '/leads-telecaller', category: 'Leads' },
+  { label: 'Users', path: '/users', category: 'Management' },
+  { label: 'Departments', path: '/departments', category: 'Management' },
+  { label: 'Task Assign', path: '/todo', category: 'Operations' },
+  { label: 'KPI Analytics', path: '/performance-dashboard', category: 'Analytics' },
+  { label: 'AI Reports', path: '/ai-report', category: 'Analytics' },
+  { label: 'Attendance', path: '/attendance', category: 'HR' },
+  { label: 'Student Attendance', path: '/student-attendance', category: 'HR' },
+  { label: 'Employee Reports', path: '/employee-reports', category: 'Reports' },
+  { label: 'Team Reports', path: '/team-reports', category: 'Reports' },
+  { label: 'HR Dashboard', path: '/hr-dashboard', category: 'Dashboards' },
+  { label: 'Lead Dashboard', path: '/lead-dashboard', category: 'Dashboards' },
+  { label: 'Marketing Dashboard', path: '/marketing-dashboard', category: 'Dashboards' },
+  { label: 'Dev Dashboard', path: '/developer-dashboard', category: 'Dashboards' },
+  { label: 'GD Dashboard', path: '/graphic-designer-dashboard', category: 'Dashboards' },
+  { label: 'Video Dashboard', path: '/videographer-dashboard', category: 'Dashboards' },
+  { label: 'Developer Report', path: '/developer-report', category: 'Reports' },
+  { label: 'Graphic Designer Report', path: '/graphic-designer-report', category: 'Reports' },
+  { label: 'Videographer Report', path: '/videographer-report', category: 'Reports' },
+  { label: 'Academic Counselor Report', path: '/academic-counselor-report', category: 'Reports' },
+  { label: 'HOD R&D Report', path: '/hod-rd-report', category: 'Reports' },
+  { label: 'HR Shift Report', path: '/hr-report', category: 'Reports' },
+  { label: 'Ops Shift Report', path: '/ops-report', category: 'Reports' },
+  { label: 'Accountant Shift Report', path: '/accountant-report', category: 'Reports' },
+  { label: 'Marketing Shift Report', path: '/marketing-report', category: 'Reports' },
+  { label: 'Notifications', path: '/notifications', category: 'General' }
 ];
 
 const STATUS_META = {
   active: { label: 'Active', color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-400', dot: 'bg-emerald-500' },
   inactive: { label: 'Inactive', color: 'bg-amber-500/10 text-amber-600 border-amber-500/20 dark:bg-amber-500/20 dark:text-amber-400', dot: 'bg-amber-500' },
   blocked: { label: 'Blocked', color: 'bg-rose-500/10 text-rose-500 border-rose-500/20 dark:bg-rose-500/20 dark:text-rose-400', dot: 'bg-rose-500' }
+};
+
+const PermissionModal = ({ isOpen, onClose, user, onSave, showToast, getAuthHeaders }) => {
+  const [selectedPermissions, setSelectedPermissions] = useState([]);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setSelectedPermissions(user.permissions || []);
+      setIsSuperAdmin(Boolean(user.isSuperAdmin || user.role === 'superadmin'));
+    }
+  }, [user]);
+
+  if (!isOpen || !user) return null;
+
+  const togglePermission = (label) => {
+    setSelectedPermissions(prev => 
+      prev.includes(label) ? prev.filter(p => p !== label) : [...prev, label]
+    );
+  };
+
+  const handleSelectAll = () => {
+    setSelectedPermissions(ALL_SIDEBAR_ITEMS.map(i => i.label));
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedPermissions([]);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const userId = user.id || user._id;
+      const res = await fetch(`${API_BASE}/v1/users/${userId}/permissions`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify({
+          permissions: selectedPermissions,
+          isSuperAdmin,
+          role: isSuperAdmin ? 'superadmin' : (user.role === 'superadmin' ? 'admin' : user.role)
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast("Sidebar permissions updated successfully!", "success");
+
+        // If editing self, update localStorage.user and notify app
+        const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+        const currentUserId = currentUser._id || currentUser.id;
+        if (String(currentUserId) === String(userId)) {
+          const updatedLocalUser = {
+            ...currentUser,
+            permissions: selectedPermissions,
+            isSuperAdmin,
+            role: isSuperAdmin ? 'superadmin' : currentUser.role
+          };
+          localStorage.setItem('user', JSON.stringify(updatedLocalUser));
+          window.dispatchEvent(new Event('storage'));
+        }
+
+        onSave();
+        onClose();
+      } else {
+        showToast(data.message || "Failed to update permissions.", "error");
+      }
+    } catch (err) {
+      console.error("Error saving permissions:", err);
+      showToast("Error updating permissions.", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Group items by category
+  const categories = [...new Set(ALL_SIDEBAR_ITEMS.map(i => i.category))];
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[6000] bg-slate-900/50 backdrop-blur-sm flex justify-center items-center p-4 overflow-y-auto"
+    >
+      <motion.div 
+        initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden my-6"
+      >
+        {/* Header */}
+        <div className="p-6 bg-gradient-to-r from-indigo-600 via-purple-600 to-violet-600 text-white flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-white/10 rounded-2xl backdrop-blur-md">
+              <ShieldCheck size={24} className="text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg font-black tracking-tight">{user.name}</h2>
+              <p className="text-xs text-indigo-100 font-bold uppercase tracking-wider">Configure Sidebar Access & Permissions</p>
+            </div>
+          </div>
+          <button 
+            onClick={onClose}
+            className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition cursor-pointer"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Super Admin Access Toggle */}
+        <div className="p-6 bg-indigo-50/50 dark:bg-slate-950/40 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 border border-indigo-500/20 rounded-2xl shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className={`p-2.5 rounded-xl ${isSuperAdmin ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
+                <Shield size={20} />
+              </div>
+              <div>
+                <span className="font-extrabold text-sm text-slate-900 dark:text-slate-100 block">Grant Super Admin Access</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">Super Admins have unrestricted access to all pages, settings, and sidebar items across the platform.</span>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer shrink-0">
+              <input 
+                type="checkbox" 
+                checked={isSuperAdmin}
+                onChange={(e) => setIsSuperAdmin(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-hidden rounded-full peer dark:bg-slate-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:after:border-slate-600 peer-checked:bg-emerald-500"></div>
+            </label>
+          </div>
+        </div>
+
+        {/* Sidebar Menu Item Permissions List */}
+        <div className="p-6 max-h-[50vh] overflow-y-auto space-y-6">
+          <div className="flex justify-between items-center">
+            <span className="text-xs font-black uppercase tracking-widest text-slate-400">Individual Sidebar Page Access</span>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={handleSelectAll}
+                disabled={isSuperAdmin}
+                className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline disabled:opacity-40 cursor-pointer"
+              >
+                Select All
+              </button>
+              <span className="text-slate-300">|</span>
+              <button 
+                onClick={handleDeselectAll}
+                disabled={isSuperAdmin}
+                className="text-[11px] font-bold text-slate-500 hover:underline disabled:opacity-40 cursor-pointer"
+              >
+                Deselect All
+              </button>
+            </div>
+          </div>
+
+          {isSuperAdmin && (
+            <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center gap-2.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold">
+              <CheckCircle2 size={16} />
+              <span>Super Admin mode enabled — All sidebar pages are automatically accessible to this user.</span>
+            </div>
+          )}
+
+          {categories.map(cat => {
+            const catItems = ALL_SIDEBAR_ITEMS.filter(i => i.category === cat);
+            return (
+              <div key={cat} className="space-y-3">
+                <h4 className="text-[11px] font-black uppercase tracking-wider text-indigo-500 dark:text-indigo-400">{cat}</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {catItems.map(item => {
+                    const isChecked = isSuperAdmin || selectedPermissions.includes(item.label);
+                    return (
+                      <label 
+                        key={item.label}
+                        className={`flex items-center justify-between p-3 rounded-2xl border transition cursor-pointer ${
+                          isChecked 
+                            ? 'bg-indigo-50/70 dark:bg-indigo-950/30 border-indigo-500/30 text-indigo-900 dark:text-indigo-100 font-bold' 
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                        } ${isSuperAdmin ? 'opacity-60 pointer-events-none' : ''}`}
+                      >
+                        <span className="text-xs font-bold">{item.label}</span>
+                        <input 
+                          type="checkbox"
+                          checked={isChecked}
+                          disabled={isSuperAdmin}
+                          onChange={() => togglePermission(item.label)}
+                          className="w-4 h-4 text-indigo-600 rounded-md border-slate-300 focus:ring-indigo-500 cursor-pointer"
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Footer */}
+        <div className="p-6 bg-slate-50 dark:bg-slate-950/40 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
+          <button 
+            type="button"
+            onClick={onClose}
+            className="px-5 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button 
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="px-6 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/20 transition active:scale-95 disabled:opacity-50 cursor-pointer flex items-center gap-2"
+          >
+            {saving && <Loader2 size={14} className="animate-spin" />}
+            <span>Save Permissions</span>
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
 };
 
 const Users = () => {
@@ -34,11 +289,19 @@ const Users = () => {
   const [deleteUserConfirm, setDeleteUserConfirm] = useState({ isOpen: false, id: null, name: '' });
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
+  const [isPermissionOpen, setIsPermissionOpen] = useState(false);
+  const [permissionUser, setPermissionUser] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [designations, setDesignations] = useState([]);
   const [departments, setDepartments] = useState([]);
   const { showToast } = useToast();
+  const navigate = useNavigate();
   const [imgErrors, setImgErrors] = useState({});
+
+  const handlePermissionClick = (user) => {
+    const userId = user.id || user._id;
+    navigate(`/permissions/${userId}`);
+  };
 
   const getAuthHeaders = useCallback(() => {
     const rawToken = localStorage.getItem('token');
@@ -408,10 +671,15 @@ const pagedUsers = filteredUsers.slice((currentPage - 1) * ITEMS_PER_PAGE, curre
       {getDesignationName(user)}
     </span>
   </div>
-  <span className="text-[10px] font-black uppercase text-indigo-500 tracking-widest bg-indigo-500/10 px-2 py-0.5 rounded inline-block">
-    {/* Maps role IDs (like 1, 2, 3) to their string name ('hr', 'admin', 'employee') */}
-    {ROLES.find(r => String(r.id) === String(user.roleId || user.role))?.name || user.role || 'employee'}
-  </span>
+  {user.isSuperAdmin || user.role === 'superadmin' ? (
+    <span className="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 tracking-widest bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded inline-flex items-center gap-1">
+      <Shield size={10} /> Super Admin
+    </span>
+  ) : (
+    <span className="text-[10px] font-black uppercase text-indigo-500 tracking-widest bg-indigo-500/10 px-2 py-0.5 rounded inline-block">
+      {ROLES.find(r => String(r.id) === String(user.roleId || user.role))?.name || user.role || 'employee'}
+    </span>
+  )}
 </td>
 
                         {/* Department / Manager */}
@@ -451,6 +719,13 @@ const pagedUsers = filteredUsers.slice((currentPage - 1) * ITEMS_PER_PAGE, curre
                               title="Edit records"
                             >
                               <Edit3 size={14} />
+                            </button>
+                            <button 
+                              onClick={() => handlePermissionClick(user)}
+                              className="p-2.5 bg-indigo-50 hover:bg-indigo-600 hover:text-white dark:bg-indigo-950/40 dark:hover:bg-indigo-600 text-indigo-600 dark:text-indigo-400 rounded-xl transition-all duration-300 cursor-pointer shadow-sm active:scale-90"
+                              title="Manage Sidebar Access & Super Admin Permissions"
+                            >
+                              <ShieldCheck size={14} />
                             </button>
                             <button 
                               onClick={() => handleDeleteUser(user.id || user._id, user.name)}
@@ -576,6 +851,18 @@ const pagedUsers = filteredUsers.slice((currentPage - 1) * ITEMS_PER_PAGE, curre
         confirmText="Yes, Delete"
         cancelText="Cancel"
         type="danger"
+      />
+
+      <PermissionModal
+        isOpen={isPermissionOpen}
+        onClose={() => {
+          setIsPermissionOpen(false);
+          setPermissionUser(null);
+        }}
+        user={permissionUser}
+        onSave={fetchUsers}
+        showToast={showToast}
+        getAuthHeaders={getAuthHeaders}
       />
     </div>
   );

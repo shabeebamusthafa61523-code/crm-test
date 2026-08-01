@@ -267,7 +267,9 @@ export const userController = {
         salary: u.salary,
         address: u.address,
         identityType: u.identityType,
-        identityNumber: u.identityNumber
+        identityNumber: u.identityNumber,
+        permissions: u.permissions || [],
+        isSuperAdmin: u.isSuperAdmin || u.role === 'superadmin'
         });
       });
 
@@ -344,7 +346,9 @@ export const userController = {
           salary: user.salary,
           address: user.address,
           identityType: user.identityType,
-          identityNumber: user.identityNumber
+          identityNumber: user.identityNumber,
+          permissions: user.permissions || [],
+          isSuperAdmin: user.isSuperAdmin || user.role === 'superadmin'
         }
       });
 
@@ -848,6 +852,55 @@ export const userController = {
       return sendSuccess(res, {
         status: 200,
         message: 'Password successfully updated.'
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * PUT /api/v1/users/:id/permissions
+   */
+  updatePermissions: async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { permissions, isSuperAdmin, role } = req.body;
+
+      const user = await User.findById(id);
+      if (!user) {
+        throw new AppError('Employee profile not found.', 404);
+      }
+
+      if (permissions !== undefined && Array.isArray(permissions)) {
+        user.permissions = permissions;
+      }
+      if (isSuperAdmin !== undefined) {
+        user.isSuperAdmin = Boolean(isSuperAdmin);
+        if (user.isSuperAdmin) {
+          user.role = 'superadmin';
+          user.role_id = '0';
+        }
+      }
+      if (role !== undefined && role) {
+        user.role = role;
+        if (role === 'superadmin') {
+          user.isSuperAdmin = true;
+          user.role_id = '0';
+        }
+      }
+
+      await user.save();
+
+      return sendSuccess(res, {
+        status: 200,
+        message: 'Employee sidebar permissions updated successfully.',
+        data: {
+          id: user._id,
+          name: user.name,
+          role: user.role,
+          permissions: user.permissions,
+          isSuperAdmin: user.isSuperAdmin
+        }
       });
     } catch (error) {
       next(error);

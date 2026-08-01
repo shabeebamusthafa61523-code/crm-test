@@ -238,6 +238,24 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
 
       const userObj = JSON.parse(savedUser);
       const currentUserRole = String(userObj.role_id || userObj.roleId || userObj.role || '').toLowerCase().trim();
+      const isSuperAdminUser = currentUserRole === 'superadmin' || currentUserRole === '0' || userObj.isSuperAdmin === true;
+
+      // 1. Super Admin access: Full access to all sidebar items
+      if (isSuperAdminUser) {
+        return menuItems.filter(item => !item.isCommonDashboardFallback && !item.isBasicReportFallback);
+      }
+
+      // 2. Custom Sidebar Permissions set by Super Admin for this user
+      if (Array.isArray(userObj.permissions) && userObj.permissions.length > 0) {
+        const allowedSet = userObj.permissions.map(p => String(p).toLowerCase().trim());
+        const customVisible = menuItems.filter(item => {
+          if (item.isCommonDashboardFallback || item.isBasicReportFallback) return false;
+          return allowedSet.includes(item.label.toLowerCase().trim()) || allowedSet.includes(item.path.toLowerCase().trim());
+        });
+        if (customVisible.length > 0) {
+          return customVisible;
+        }
+      }
       
       const deptName = userObj.department || userObj.departmentId?.name || '';
       const isNonOperational = String(deptName).toLowerCase().trim() === 'non-operational';
