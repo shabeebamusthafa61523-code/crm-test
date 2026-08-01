@@ -51,7 +51,17 @@ const taskSchema = new mongoose.Schema({
   },
   dueDate: {
     type: Date
-  }
+  },
+  attachments: [{
+    url: { type: String },
+    name: { type: String },
+    public_id: { type: String },
+    fileType: { type: String, default: 'file' }
+  }],
+  links: [{
+    title: { type: String },
+    url: { type: String }
+  }]
 }, {
   timestamps: true,
   toJSON: {

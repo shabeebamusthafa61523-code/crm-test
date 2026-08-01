@@ -4,24 +4,47 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, Clock, CheckCircle2, Eye, Layout, X, 
   Trash2, Edit3, Save, Upload, Image as ImageIcon, 
-  Loader2, Camera, ShieldCheck, User, Target, Info, Building, FolderKanban
+  Loader2, Camera, ShieldCheck, User, Target, Info, Building, FolderKanban,
+  Paperclip, Link2, ExternalLink, FileText
 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
 import ConfirmModal from '../components/ConfirmModal';
 
 const API_BASE = import.meta.env.VITE_API_URL;// --- UTILS & CONSTANTS ---
 const getTaskImageUrl = (path) => {
-
   if (!path) return null;
+  if (typeof path === 'object') {
+    path = path.url || path.file || path.image || path.path || null;
+    if (!path) return null;
+  }
+  if (typeof path !== 'string') return null;
 
-  if (path.startsWith("http")) {
+  // Cloudinary PDF handling: convert .pdf to .png viewable URL so Cloudinary streams it on screen cleanly
+  if (path.includes('res.cloudinary.com')) {
+    let cleanUrl = path
+      .replace('/raw/upload/', '/image/upload/')
+      .replace('/image/upload/fl_inline/', '/image/upload/');
+      
+    if (/\.pdf$/i.test(cleanUrl)) {
+      cleanUrl = cleanUrl.replace(/\.pdf$/i, '.png');
+    }
+    return cleanUrl;
+  }
+
+  if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("data:") || path.startsWith("blob:")) {
     return path;
   }
 
+  const cleanPath = path.replace(/^\//, '');
+  if (cleanPath.startsWith('uploads') || cleanPath.startsWith('files')) {
+    const backendHost = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '').replace('/api', '');
+    return `${backendHost}/${cleanPath}`;
+  }
+
   const fileName = path.split(/[\\/]/).pop();
-
-  return `https://res.cloudinary.com/davmqgfsq/image/upload/v1776844261/tasks/${fileName}`;
-
+  if (fileName.startsWith('http')) return fileName;
+  const cleanFileName = fileName.replace(/\.pdf$/i, '.png');
+  return `https://res.cloudinary.com/davmqgfsq/image/upload/v1776844261/tasks/${cleanFileName}`;
 };
 
 const COLUMN_META = {
@@ -45,6 +68,7 @@ const Todo = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
+  const [previewFile, setPreviewFile] = useState(null);
   
   // Determine current user ID from localStorage or JWT token
   const getCurrentUserId = () => {
@@ -231,7 +255,7 @@ console.log("HEADERS:", getAuthHeaders());
                                 </div>
                                 {task.project && (
                                   <span className="text-[9px] font-extrabold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800/60 truncate max-w-[130px]">
-                                    {typeof task.project === 'object' ? (task.project.projectName || task.project.projectCode) : 'Project'}
+                                    {typeof task.project === 'object' && task.project ? (task.project.projectName || task.project.projectCode) : 'Project'}
                                   </span>
                                 )}
                               </div>
@@ -252,7 +276,7 @@ console.log("HEADERS:", getAuthHeaders());
                                   </div>
                                   <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 tracking-wide truncate max-w-[120px]">
                                     {
-                                      typeof task.assigned_to === "object"
+                                      (task.assigned_to && typeof task.assigned_to === "object")
                                         ? task.assigned_to?.name
                                         : users.find(
                                             u => String(u.id || u._id) === String(task.assigned_to)
@@ -301,7 +325,11 @@ console.log("HEADERS:", getAuthHeaders());
             getAuthHeaders={getAuthHeaders}
             API_BASE={API_BASE} // <--- ADD THIS LINE
             DESIGNATIONS={designations} 
+            onPreviewFile={(f) => setPreviewFile(f)}
           />
+        )}
+        {previewFile && (
+          <DocPreviewModal file={previewFile} onClose={() => setPreviewFile(null)} />
         )}
       </AnimatePresence>
     </div>
@@ -312,11 +340,16 @@ console.log("HEADERS:", getAuthHeaders());
 const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) => {
   const { showToast } = useToast();
 
-  const [form, setForm] = useState({ title: '', description: '', assigned_to: '', designation_id: '', image: null, dueDate: '', client: '', project: '' });
+  const [form, setForm] = useState({ title: '', description: '', assigned_to: '', designation_id: '', dueDate: '', client: '', project: '' });
+  const [attachedFiles, setAttachedFiles] = useState([]);
+  const [attachedLinks, setAttachedLinks] = useState([]);
+  const [linkTitle, setLinkTitle] = useState('');
+  const [linkUrl, setLinkUrl] = useState('');
+  const [showLinkInput, setShowLinkInput] = useState(false);
+
   const [clientsList, setClientsList] = useState([]);
   const [clientProjects, setClientProjects] = useState([]);
   const [allProjects, setAllProjects] = useState([]);
-  const [preview, setPreview] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -339,40 +372,62 @@ const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) 
       .catch(err => console.error("Failed to load projects in task modal", err));
   }, [getAuthHeaders]);
 
-  const handleImage = (e) => {
-    const file = e.target.files[0];
-    if (file) { 
-      setForm({ ...form, image: file }); 
-      setPreview(URL.createObjectURL(file)); 
+  const handleMultiFiles = (e) => {
+    const selected = Array.from(e.target.files);
+    if (selected.length > 0) {
+      setAttachedFiles(prev => [...prev, ...selected]);
     }
+    e.target.value = '';
+  };
+
+  const removeFile = (index) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddLink = (e) => {
+    e.preventDefault();
+    if (!linkUrl.trim()) return;
+    let formattedUrl = linkUrl.trim();
+    if (!/^https?:\/\//i.test(formattedUrl)) {
+      formattedUrl = `https://${formattedUrl}`;
+    }
+    const newLink = {
+      title: linkTitle.trim() || formattedUrl,
+      url: formattedUrl
+    };
+    setAttachedLinks(prev => [...prev, newLink]);
+    setLinkTitle('');
+    setLinkUrl('');
+    setShowLinkInput(false);
+  };
+
+  const removeLink = (index) => {
+    setAttachedLinks(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
 
-  e.preventDefault();
+    const fd = new FormData();
+    fd.append('title', form.title);
+    fd.append('description', form.description || '');
+    fd.append('assigned_to', form.assigned_to);
+    fd.append('designation_id', form.designation_id);
+    fd.append('status', 'pending');
+    if (form.dueDate) fd.append('dueDate', form.dueDate);
+    if (form.client) fd.append('client', form.client);
+    if (form.project) fd.append('project', form.project);
 
-  setIsSubmitting(true);
+    // Append multiple files
+    attachedFiles.forEach(f => {
+      fd.append('file', f);
+    });
 
-  const fd = new FormData();
-
-  fd.append('title', form.title);
-  fd.append('description', form.description || '');
-  fd.append('assigned_to', form.assigned_to);
-  fd.append('designation_id', form.designation_id);
-  fd.append('status', 'pending');
-  if (form.dueDate) {
-    fd.append('dueDate', form.dueDate);
-  }
-  if (form.client) {
-    fd.append('client', form.client);
-  }
-  if (form.project) {
-    fd.append('project', form.project);
-  }
-
-  if (form.image) {
-    fd.append('file', form.image);
-  }
+    // Append links as JSON
+    if (attachedLinks.length > 0) {
+      fd.append('links', JSON.stringify(attachedLinks));
+    }
 
   // DEBUG
   for (let pair of fd.entries()) {
@@ -424,17 +479,97 @@ const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) 
         </header>
 
         <form onSubmit={handleSubmit} className="space-y-3">
-          {/* Compact image upload field */}
-          <div className="group relative flex items-center gap-3 w-full border border-dashed border-slate-200 hover:border-indigo-500 rounded-xl px-3 py-2.5 bg-slate-50 transition-all cursor-pointer">
-            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer w-full" onChange={handleImage} />
-            {preview ? (
-              <img src={preview} className="w-8 h-8 rounded-lg object-cover shrink-0" alt="preview" />
-            ) : (
-              <Camera size={15} className="text-indigo-400 group-hover:text-indigo-600 shrink-0 transition-colors" />
+          {/* Multi-Attachments & Multi-Links Section */}
+          <div className="space-y-2.5 bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.2em] flex items-center gap-1.5">
+                <Paperclip size={12} /> Attachments & Links ({attachedFiles.length + attachedLinks.length})
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowLinkInput(prev => !prev)}
+                className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <Link2 size={12} /> + Add External Link
+              </button>
+            </div>
+
+            {/* Multi-file selection input */}
+            <div className="group relative flex items-center gap-3 w-full border border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 rounded-xl px-3 py-2.5 bg-white dark:bg-slate-800 transition-all cursor-pointer">
+              <input 
+                type="file" 
+                multiple 
+                className="absolute inset-0 opacity-0 cursor-pointer w-full z-10" 
+                onChange={handleMultiFiles} 
+              />
+              <Upload size={15} className="text-indigo-500 shrink-0" />
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold truncate">
+                Upload files / images — Select multiple files or images
+              </span>
+            </div>
+
+            {/* Render Selected File Chips */}
+            {attachedFiles.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {attachedFiles.map((f, idx) => {
+                  const isImg = f.type?.startsWith('image/');
+                  return (
+                    <div key={idx} className="flex items-center gap-2 bg-white dark:bg-slate-800 px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
+                      {isImg ? (
+                        <img src={URL.createObjectURL(f)} className="w-5 h-5 rounded-md object-cover" alt="thumb" />
+                      ) : (
+                        <FileText size={13} className="text-indigo-500" />
+                      )}
+                      <span className="text-[10px] font-bold text-slate-700 dark:text-slate-200 truncate max-w-[140px]">{f.name}</span>
+                      <button type="button" onClick={() => removeFile(idx)} className="text-slate-400 hover:text-rose-500 p-0.5 cursor-pointer">
+                        <X size={12} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             )}
-            <span className="text-[11px] text-slate-400 font-medium truncate">
-              {preview ? (form.image?.name || 'Image selected') : 'Attachment / Image — Click to upload'}
-            </span>
+
+            {/* Add Link Popover Inline */}
+            {showLinkInput && (
+              <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <input 
+                    type="text" 
+                    placeholder="Link Title (e.g. Figma, Drive)" 
+                    value={linkTitle} 
+                    onChange={e => setLinkTitle(e.target.value)} 
+                    className="px-2.5 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none text-slate-900 dark:text-slate-100"
+                  />
+                  <input 
+                    type="url" 
+                    placeholder="https://example.com" 
+                    value={linkUrl} 
+                    onChange={e => setLinkUrl(e.target.value)} 
+                    className="px-2.5 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none text-slate-900 dark:text-slate-100"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button type="button" onClick={() => setShowLinkInput(false)} className="px-2.5 py-1 text-[10px] font-bold text-slate-500 cursor-pointer">Cancel</button>
+                  <button type="button" onClick={handleAddLink} className="px-3 py-1 bg-indigo-600 text-white text-[10px] font-bold rounded-lg uppercase tracking-wider cursor-pointer">Save Link</button>
+                </div>
+              </div>
+            )}
+
+            {/* Render Selected Link Chips */}
+            {attachedLinks.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {attachedLinks.map((l, idx) => (
+                  <div key={idx} className="flex items-center gap-1.5 bg-indigo-50/80 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 px-2.5 py-1 rounded-xl border border-indigo-200 dark:border-indigo-800/60 text-[10px] font-bold">
+                    <ExternalLink size={12} />
+                    <span className="truncate max-w-[150px]">{l.title}</span>
+                    <button type="button" onClick={() => removeLink(idx)} className="text-indigo-400 hover:text-rose-500 p-0.5 cursor-pointer">
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -488,7 +623,7 @@ const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) 
                   const selectedProj = clientProjects.find(p => String(p._id || p.id) === String(projId));
                   let parentClient = form.client;
                   if (selectedProj && selectedProj.client) {
-                    parentClient = typeof selectedProj.client === 'object' ? (selectedProj.client._id || selectedProj.client.id) : selectedProj.client;
+                    parentClient = (selectedProj.client && typeof selectedProj.client === 'object') ? (selectedProj.client._id || selectedProj.client.id) : selectedProj.client;
                   }
                   setForm({ ...form, project: projId, client: parentClient });
                 }}
@@ -516,7 +651,7 @@ const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) 
                   let desigId = '';
                   if (user) {
                     if (user.designationId) {
-                      desigId = typeof user.designationId === 'object'
+                      desigId = (user.designationId && typeof user.designationId === 'object')
                         ? (user.designationId._id || user.designationId.id || '')
                         : String(user.designationId);
                     } else if (user.designation) {
@@ -556,8 +691,102 @@ const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) 
   );
 };
 
+// --- LIVE IN-APP DOCUMENT PREVIEW MODAL ---
+const DocPreviewModal = ({ file, onClose }) => {
+  if (!file) return null;
+  const rawUrl = typeof file === 'string' ? file : (file.url || file.file || file.image);
+  const fileName = typeof file === 'object' && file.name ? file.name : (rawUrl ? rawUrl.split(/[\\/]/).pop() : 'Document');
+  
+  const isImage = (typeof file === 'object' && file.fileType === 'image') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(rawUrl || '');
+  const isPdf = /\.(pdf)$/i.test(rawUrl || fileName);
+  
+  let targetUrl = rawUrl;
+  if (targetUrl && targetUrl.includes('res.cloudinary.com')) {
+    targetUrl = targetUrl.replace('/raw/upload/', '/image/upload/');
+  }
+
+  // Cloudinary PDF to Image rendering URL
+  const cloudinaryJpgUrl = (targetUrl && targetUrl.includes('res.cloudinary.com') && isPdf) 
+    ? targetUrl.replace(/\.pdf$/i, '.jpg') 
+    : null;
+
+  const [useJpgFallback, setUseJpgFallback] = useState(false);
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[6000] bg-slate-950/80 backdrop-blur-md flex flex-col justify-between p-3 md:p-6"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between bg-slate-900/90 text-white px-5 py-3 rounded-2xl border border-slate-800 shadow-2xl mb-3">
+        <div className="flex items-center gap-3 truncate">
+          <div className="p-2 bg-indigo-500/20 text-indigo-400 rounded-xl">
+            {isImage || isPdf ? <ImageIcon size={18} /> : <FileText size={18} />}
+          </div>
+          <div className="truncate">
+            <h3 className="text-sm font-bold text-slate-100 truncate max-w-md">{fileName}</h3>
+            <span className="text-[10px] text-indigo-400 font-semibold tracking-wider uppercase">
+              {isImage ? 'Image Preview' : (isPdf ? 'PDF Live View' : 'Document View')}
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {isPdf && cloudinaryJpgUrl && (
+            <button
+              type="button"
+              onClick={() => setUseJpgFallback(prev => !prev)}
+              className="px-3 py-1.5 bg-indigo-600/30 border border-indigo-500/40 hover:bg-indigo-600 text-xs font-bold rounded-xl text-indigo-200 transition-colors cursor-pointer"
+            >
+              {useJpgFallback ? 'Switch to PDF View' : 'Render Page as Image'}
+            </button>
+          )}
+          <a 
+            href={targetUrl} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 text-slate-200 transition-colors"
+          >
+            <ExternalLink size={13} /> Open Raw Link
+          </a>
+          <button 
+            onClick={onClose}
+            className="p-2 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl transition-colors cursor-pointer"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      </div>
+
+      {/* Embedded Live Viewer Area */}
+      <div className="flex-1 w-full bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 flex items-center justify-center relative shadow-inner">
+        {isImage || useJpgFallback ? (
+          <img src={useJpgFallback ? cloudinaryJpgUrl : targetUrl} className="max-w-full max-h-full object-contain p-4 rounded-xl" alt={fileName} />
+        ) : isPdf ? (
+          <object 
+            data={targetUrl} 
+            type="application/pdf" 
+            className="w-full h-full min-h-[75vh] rounded-2xl border-0 bg-white"
+          >
+            <iframe 
+              src={`https://docs.google.com/viewer?url=${encodeURIComponent(targetUrl)}&embedded=true`} 
+              className="w-full h-full min-h-[75vh] rounded-2xl border-0 bg-white" 
+              title={fileName}
+            />
+          </object>
+        ) : (
+          <iframe 
+            src={`https://docs.google.com/viewer?url=${encodeURIComponent(targetUrl)}&embedded=true`} 
+            className="w-full h-full min-h-[75vh] rounded-2xl border-0 bg-white" 
+            title={fileName}
+          />
+        )}
+      </div>
+    </motion.div>
+  );
+};
+
 // --- DETAIL MODAL COMPONENT (CLEANED & INTEGRATED) ---
-const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, DESIGNATIONS, users, API_BASE }) => {
+const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, DESIGNATIONS, users, API_BASE, onPreviewFile }) => {
   const { showToast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState(null);
@@ -600,9 +829,9 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
 
       for (const val of candidates) {
         if (!val) continue;
-        const str = typeof val === 'object'
+        const str = (val && typeof val === 'object')
           ? (val._id || val.id || '').toString().trim()
-          : val.toString().trim();
+          : (val ? val.toString().trim() : '');
 
         if (str && str !== '[object Object]') {
           return str;
@@ -634,8 +863,8 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
   useEffect(() => { 
     if (task) { 
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      const rawClient = typeof task.client === 'object' ? (task.client._id || task.client.id) : (task.client || task.client_id || '');
-      const rawProject = typeof task.project === 'object' ? (task.project._id || task.project.id) : (task.project || task.project_id || '');
+      const rawClient = (task.client && typeof task.client === 'object') ? (task.client._id || task.client.id) : (task.client || task.client_id || '');
+      const rawProject = (task.project && typeof task.project === 'object') ? (task.project._id || task.project.id) : (task.project || task.project_id || '');
       setEditForm({ ...task, status: task.status || "pending", client: rawClient, project: rawProject }); 
       setIsEditing(false); 
       setNewFile(null);
@@ -655,11 +884,11 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
     fd.append('designation_id', editForm.designation_id);
 
     if (editForm.client) {
-      const cid = typeof editForm.client === 'object' ? (editForm.client._id || editForm.client.id) : editForm.client;
+      const cid = (editForm.client && typeof editForm.client === 'object') ? (editForm.client._id || editForm.client.id) : editForm.client;
       if (cid) fd.append('client', cid);
     }
     if (editForm.project) {
-      const pid = typeof editForm.project === 'object' ? (editForm.project._id || editForm.project.id) : editForm.project;
+      const pid = (editForm.project && typeof editForm.project === 'object') ? (editForm.project._id || editForm.project.id) : editForm.project;
       if (pid) fd.append('project', pid);
     }
 
@@ -752,23 +981,74 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
             <span className="text-[8px] font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-[0.3em]">Task</span>
           </div>
 
-          <div 
-            className="group relative cursor-zoom-in w-full transition-transform duration-300 hover:scale-[1.02]" 
-            onClick={() => window.open(getTaskImageUrl(task.image || task.file), '_blank')}
-          >
-            <img 
-              src={getTaskImageUrl(task.image || task.file) || 'https://placehold.co/600x800/111218/4f46e5?text=NO+IMAGE'} 
-              className="w-full rounded-xl object-cover shadow-md border border-slate-100 dark:border-slate-800 max-h-40" 
-              alt="Task " 
-            />
+          {/* Attachments & Links Gallery in Detail Modal */}
+          <div className="w-full space-y-2">
+            {task.attachments && task.attachments.length > 0 ? (
+              <div className="space-y-1.5 w-full">
+                {task.attachments.map((att, idx) => {
+                  const fileUrl = getTaskImageUrl(att);
+                  const isImg = att?.fileType === 'image' || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileUrl || att?.name || '');
+                  return (
+                    <div key={idx} className="group relative w-full">
+                      <a 
+                        href={fileUrl} 
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-indigo-600 hover:border-indigo-500/50 transition shadow-xs cursor-pointer group w-full text-left"
+                      >
+                        {isImg ? (
+                          <ImageIcon size={14} className="text-indigo-500 shrink-0 group-hover:scale-110 transition-transform" />
+                        ) : (
+                          <FileText size={14} className="text-indigo-500 shrink-0 group-hover:scale-110 transition-transform" />
+                        )}
+                        <span className="truncate flex-1 font-bold text-[11px]">{att.name || (isImg ? 'View Image' : 'View Document')}</span>
+                        <ExternalLink size={11} className="text-slate-400 group-hover:text-indigo-500 shrink-0" />
+                      </a>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              (task.image || task.file) && (
+                <a 
+                  href={getTaskImageUrl(task.image || task.file)} 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-indigo-600 hover:border-indigo-500/50 transition shadow-xs cursor-pointer group w-full text-left"
+                >
+                  <ImageIcon size={14} className="text-indigo-500 shrink-0 group-hover:scale-110 transition-transform" />
+                  <span className="truncate flex-1 font-bold text-[11px]">View Attachment</span>
+                  <ExternalLink size={11} className="text-slate-400 group-hover:text-indigo-500 shrink-0" />
+                </a>
+              )
+            )}
+
+            {/* Links List */}
+            {task.links && task.links.length > 0 && (
+              <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800 w-full">
+                <span className="text-[9px] font-black text-indigo-500 uppercase tracking-wider block">Attached Links</span>
+                {task.links.map((link, idx) => (
+                  <a
+                    key={idx}
+                    href={link.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 rounded-xl border border-indigo-200 dark:border-indigo-800/60 text-xs font-bold hover:underline truncate w-full"
+                  >
+                    <ExternalLink size={12} className="shrink-0 text-indigo-500" />
+                    <span className="truncate flex-1">{link.title || link.url}</span>
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
 
           {isEditing && (
             <label className="w-full py-2 border border-dashed border-indigo-500/30 rounded-lg flex items-center justify-center gap-2 cursor-pointer hover:bg-indigo-500/5 transition-all">
-              <input type="file" className="hidden" onChange={(e) => setNewFile(e.target.files[0])} />
+              <input type="file" multiple className="hidden" onChange={(e) => setNewFile(e.target.files[0])} />
               <Camera size={13} className="text-indigo-500" />
               <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate max-w-[120px]">
-                {newFile ? newFile.name : 'Replace File'}
+                {newFile ? newFile.name : 'Add / Replace File'}
               </span>
             </label>
           )}
@@ -826,7 +1106,7 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
                     <label className="text-[9px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest mb-1 block ml-1">Client</label>
                     <select
                       className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-slate-900 dark:text-slate-100 text-xs font-bold outline-none cursor-pointer"
-                      value={typeof editForm.client === 'object' ? (editForm.client._id || editForm.client.id) : (editForm.client || '')}
+                      value={(editForm.client && typeof editForm.client === 'object') ? (editForm.client._id || editForm.client.id) : (editForm.client || '')}
                       onChange={e => setEditForm({ ...editForm, client: e.target.value })}
                     >
                       <option value="">Select Client (Optional)</option>
@@ -841,7 +1121,7 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
                     <label className="text-[9px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest mb-1 block ml-1">Project</label>
                     <select
                       className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-slate-900 dark:text-slate-100 text-xs font-bold outline-none cursor-pointer"
-                      value={typeof editForm.project === 'object' ? (editForm.project._id || editForm.project.id) : (editForm.project || '')}
+                      value={(editForm.project && typeof editForm.project === 'object') ? (editForm.project._id || editForm.project.id) : (editForm.project || '')}
                       onChange={e => setEditForm({ ...editForm, project: e.target.value })}
                     >
                       <option value="">Select Active Project (Optional)</option>
@@ -901,7 +1181,7 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
                       let desigId = '';
                       if (user) {
                         if (user.designationId) {
-                          desigId = typeof user.designationId === 'object'
+                          desigId = (user.designationId && typeof user.designationId === 'object')
                             ? (user.designationId._id || user.designationId.id || '')
                             : String(user.designationId);
                         } else if (user.designation) {
@@ -926,7 +1206,7 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
                   </div>
                   <span className="text-slate-900 dark:text-slate-100 font-bold tracking-tight uppercase text-sm">
                     {
-                      typeof task.assigned_to === "object"
+                      (task.assigned_to && typeof task.assigned_to === "object")
                         ? task.assigned_to?.name
                         : users?.find(
                             u => String(u.id || u._id) === String(task.assigned_to)
@@ -978,22 +1258,22 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
             </div>
           </div>
 
-          <div className="mt-4 flex gap-3">
+          <div className="mt-4 flex items-center justify-end gap-2.5">
             {canModify ? (
               <>
                 {isDeleteConfirmOpen ? (
-                  <div className="flex items-center gap-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/50 px-4 py-2 rounded-2xl animate-in slide-in-from-left-2 fade-in duration-200">
+                  <div className="flex items-center gap-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/50 px-3 py-1.5 rounded-xl animate-in slide-in-from-left-2 fade-in duration-200">
                     <span className="text-xs font-bold text-red-600 dark:text-red-400">Delete task?</span>
                     <div className="flex gap-2">
                       <button 
                         onClick={() => setIsDeleteConfirmOpen(false)}
-                        className="px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                        className="px-2.5 py-1 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                       >
                         Cancel
                       </button>
                       <button 
                         onClick={handleConfirmDelete}
-                        className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-xl shadow-md shadow-red-500/20 transition-colors"
+                        className="px-2.5 py-1 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-lg shadow-md shadow-red-500/20 transition-colors"
                       >
                         Yes
                       </button>
@@ -1003,18 +1283,18 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
                   <button 
                     onClick={handleDelete}
                     disabled={isSaving || isDeleting}
-                    className="px-6 bg-red-500/10 border border-red-500/20 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all active:scale-95 disabled:opacity-50"
+                    className="px-3 py-2 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center cursor-pointer"
                   >
-                    {isDeleting ? <Loader2 className="animate-spin" size={18} /> : <Trash2 size={18} />}
+                    {isDeleting ? <Loader2 className="animate-spin" size={13} /> : <Trash2 size={13} />}
                   </button>
                 )}
                 <button 
                   onClick={isEditing ? handleUpdate : () => setIsEditing(true)} 
                   disabled={isSaving || isDeleting}
-                  className="flex-1 py-6 bg-indigo-600 text-white font-black uppercase text-[11px] tracking-[0.2em] rounded-2xl flex items-center justify-center gap-3 hover:bg-indigo-700 transition-all active:scale-95 shadow-lg disabled:opacity-50"
+                  className="px-4 py-2 bg-indigo-600 text-white font-extrabold uppercase text-[10px] tracking-[0.15em] rounded-xl flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all active:scale-95 shadow-sm disabled:opacity-50 cursor-pointer"
                 >
-                  {isSaving ? <Loader2 className="animate-spin" /> : isEditing ? <Save size={18} /> : <Edit3 size={18} />}
-                  {isEditing ? (isSaving ? "Saving..." : "Synchronize Changes") : "Edit Task"}
+                  {isSaving ? <Loader2 className="animate-spin" size={13} /> : isEditing ? <Save size={13} /> : <Edit3 size={13} />}
+                  {isEditing ? (isSaving ? "Saving..." : "Save Changes") : "Edit Task"}
                 </button>
               </>
             ) : (

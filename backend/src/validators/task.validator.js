@@ -36,8 +36,9 @@ export const createTaskSchema = z.object({
     .string()
     .optional()
     .or(z.literal(''))
-    .transform(val => val === '' ? undefined : val)
-});
+    .transform(val => val === '' ? undefined : val),
+  links: z.string().optional().or(z.array(z.any())).optional()
+}).passthrough();
 
 // Body validation for updating a task
 export const updateTaskSchema = z.object({
@@ -67,8 +68,9 @@ export const updateTaskSchema = z.object({
     .optional()
     .or(z.literal(''))
     .or(z.literal(null))
-    .transform(val => val === '' ? undefined : val)
-});
+    .transform(val => val === '' ? undefined : val),
+  links: z.string().optional().or(z.array(z.any())).optional()
+}).passthrough();
 
 // Query validation for updating task status
 export const updateStatusQuerySchema = z.object({

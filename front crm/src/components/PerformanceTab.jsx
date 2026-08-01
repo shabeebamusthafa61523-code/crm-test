@@ -17,6 +17,82 @@ const GRADE_META = {
   'Critical': { color: 'bg-rose-500/10 text-rose-500 border-rose-500/20 dark:bg-rose-500/20 dark:text-rose-400', badge: '🚨 Critical' }
 };
 
+// Color spectrum mapping based directly on Overall KPI Score or Grade
+export const getKpiColorCode = (input) => {
+  let score = -1;
+  let statusStr = '';
+
+  if (typeof input === 'number') {
+    score = input;
+  } else if (typeof input === 'object' && input !== null) {
+    score = typeof input.overallScore === 'number' ? input.overallScore : parseFloat(input.overallScore || -1);
+    statusStr = (input.grade || '').toLowerCase();
+  } else if (typeof input === 'string') {
+    statusStr = input.toLowerCase();
+    const parsed = parseFloat(input);
+    if (!isNaN(parsed)) score = parsed;
+  }
+
+  // Evaluate statusStr if score was not a valid number
+  if (score < 0 && statusStr) {
+    if (statusStr.includes('outstanding') || statusStr.includes('excellent') || statusStr.includes('better')) score = 90;
+    else if (statusStr.includes('very good') || statusStr.includes('good')) score = 75;
+    else if (statusStr.includes('average') || statusStr.includes('fair')) score = 55;
+    else if (statusStr.includes('needs improvement') || (statusStr.includes('bad') && !statusStr.includes('very bad'))) score = 35;
+    else if (statusStr.includes('very bad') || statusStr.includes('critical')) score = 15;
+    else score = 75;
+  }
+
+  if (score >= 85) {
+    return {
+      bg: 'bg-emerald-500',
+      hex: '#10b981',
+      text: 'text-emerald-600 dark:text-emerald-400',
+      border: 'border-emerald-500/30',
+      label: 'Outstanding',
+      code: 'GREEN'
+    };
+  }
+  if (score >= 70) {
+    return {
+      bg: 'bg-lime-500',
+      hex: '#84cc16',
+      text: 'text-lime-600 dark:text-lime-400',
+      border: 'border-lime-500/30',
+      label: 'Good',
+      code: 'LIME'
+    };
+  }
+  if (score >= 50) {
+    return {
+      bg: 'bg-amber-500',
+      hex: '#f59e0b',
+      text: 'text-amber-600 dark:text-amber-400',
+      border: 'border-amber-500/30',
+      label: 'Average',
+      code: 'YELLOW'
+    };
+  }
+  if (score >= 30) {
+    return {
+      bg: 'bg-orange-500',
+      hex: '#f97316',
+      text: 'text-orange-600 dark:text-orange-400',
+      border: 'border-orange-500/30',
+      label: 'Needs Improvement',
+      code: 'ORANGE'
+    };
+  }
+  return {
+    bg: 'bg-rose-500',
+    hex: '#ef4444',
+    text: 'text-rose-600 dark:text-rose-400',
+    border: 'border-rose-500/30',
+    label: 'Critical',
+    code: 'RED'
+  };
+};
+
 const PerformanceTab = ({ user }) => {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -249,15 +325,18 @@ const PerformanceTab = ({ user }) => {
             <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400">Overall KPI Score</span>
             <BarChart2 size={18} className="text-indigo-500" />
           </div>
-          <div className="flex items-baseline gap-2">
+          <div className="flex items-center gap-2.5">
             <span className="text-3xl font-black tracking-tight">{kpiScore.overallScore}%</span>
-            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${gradeMeta.color}`}>
-              {kpiScore.grade}
-            </span>
+            
+            {/* Color Dot indicator based on status text appearing here */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 shadow-2xs">
+              <span className={`w-2.5 h-2.5 rounded-full ${kpiColor.bg} animate-pulse shrink-0 ring-2 ring-white dark:ring-slate-900`} />
+              <span className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-200">{kpiScore.grade}</span>
+            </div>
           </div>
           <div className="mt-3 w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
             <div 
-              className="bg-gradient-to-r from-indigo-500 to-indigo-600 h-full rounded-full transition-all duration-700" 
+              className={`h-full rounded-full transition-all duration-700 ${kpiColor.bg}`} 
               style={{ width: `${Math.min(100, kpiScore.overallScore)}%` }}
             />
           </div>

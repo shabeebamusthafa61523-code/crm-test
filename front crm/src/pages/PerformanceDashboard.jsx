@@ -5,6 +5,7 @@ import {
   Filter, Search, CheckCircle2, ChevronRight, Zap, ArrowUpRight, Loader2
 } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
+import { getKpiColorCode } from '../components/PerformanceTab';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -347,14 +348,24 @@ const PerformanceDashboard = () => {
                           </div>
                         </td>
 
-                        {/* KPI Score & Grade */}
+                        {/* Overall KPI Score & Overall KPI Grade (Dynamic Hex Dot Color) */}
                         <td className="py-3.5 px-4">
-                          <div className="flex flex-col gap-1">
-                            <span className="font-black text-indigo-600 dark:text-indigo-400 text-xs">{row.kpiScore}%</span>
-                            <span className="inline-block px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 w-max">
-                              {row.grade}
-                            </span>
-                          </div>
+                          {(() => {
+                            const kpiColor = getKpiColorCode(row.kpiScore);
+                            const overallStatus = row.grade || kpiColor.label;
+                            return (
+                              <div className="flex flex-col gap-1">
+                                <span className="font-black text-slate-900 dark:text-slate-100 text-xs">{row.kpiScore}%</span>
+                                <div className="flex items-center gap-1.5">
+                                  <span 
+                                    className="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse ring-2 ring-white dark:ring-slate-900" 
+                                    style={{ backgroundColor: kpiColor.hex }}
+                                  />
+                                  {/* <span className="text-[10px] font-extrabold uppercase text-slate-600 dark:text-slate-300">{overallStatus}</span> */}
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </td>
 
                         {/* Rating (TL Rating for Team Leads, HR Rating for HR/Admin) with 0.5 step counter up to 10 */}
