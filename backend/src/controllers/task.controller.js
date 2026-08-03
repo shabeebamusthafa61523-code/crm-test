@@ -5,6 +5,7 @@ import Client from '../models/client.model.js';
 import Project from '../models/project.model.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { v2 as cloudinary } from 'cloudinary';
+import { sendTaskAssignmentEmail, sendTaskStatusUpdateEmail, sendNotification } from '../services/notification.service.js';
 
 // Configure Cloudinary using project environment variables
 cloudinary.config({
@@ -17,7 +18,7 @@ cloudinary.config({
 const uploadToCloudinary = (fileBuffer) => {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
-      { folder: 'crm_tasks' },
+      { folder: 'crm_tasks', resource_type: 'auto' },
       (error, result) => {
         if (error) return reject(error);
         resolve(result);
@@ -92,6 +93,8 @@ const formatLeanTask = (task) => {
     user_id,
     file,
     image,
+    attachments: (task.attachments && task.attachments.length > 0) ? task.attachments : (file ? [{ url: file, name: 'Attachment', fileType: 'file' }] : []),
+    links: task.links || [],
     client: clientVal,
     client_id: clientIdVal,
     project: projectVal,
@@ -147,19 +150,46 @@ export const syncProjectProgress = async (projectId) => {
  */
 export const createTask = async (req, res, next) => {
   try {
-    const { title, description, assigned_to, designation_id, dueDate, client, project } = req.body;
+    const { title, description, assigned_to, designation_id, dueDate, client, project, links: rawLinks } = req.body;
 
     const userId = req.user.id || req.user._id;
 
+    let attachments = [];
     let file_url;
     let file_public_id;
 
-    // Upload file to Cloudinary
-    if (req.file) {
-      const uploadResult = await uploadToCloudinary(req.file.buffer);
+    // Handle files upload (multiple images / files)
+    const filesList = req.files && req.files.length > 0 ? req.files : (req.file ? [req.file] : []);
+    if (filesList.length > 0) {
+      for (const f of filesList) {
+        try {
+          const uploadResult = await uploadToCloudinary(f.buffer, f.originalname || '');
+          const isImage = f.mimetype?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.originalname || '');
+          attachments.push({
+            url: uploadResult.secure_url,
+            name: f.originalname || 'Attachment',
+            public_id: uploadResult.public_id,
+            fileType: isImage ? 'image' : 'file'
+          });
+        } catch (err) {
+          console.error("Cloudinary file upload error:", err);
+        }
+      }
+      if (attachments.length > 0) {
+        file_url = attachments[0].url;
+        file_public_id = attachments[0].public_id;
+      }
+    }
 
-      file_url = uploadResult.secure_url;
-      file_public_id = uploadResult.public_id;
+    // Handle links array / JSON string
+    let links = [];
+    if (rawLinks) {
+      try {
+        links = typeof rawLinks === 'string' ? JSON.parse(rawLinks) : rawLinks;
+        if (!Array.isArray(links)) links = [];
+      } catch (e) {
+        links = [];
+      }
     }
 
     const task = new Task({
@@ -177,6 +207,9 @@ export const createTask = async (req, res, next) => {
       // creator
       created_by: userId,
       user_id: userId,
+
+      attachments,
+      links,
 
       // image/file
       file_url,
@@ -197,6 +230,43 @@ export const createTask = async (req, res, next) => {
       .populate('client', 'companyName clientName clientId')
       .populate('project', 'projectName projectCode status')
       .lean();
+
+    // Trigger in-app notification & email assignment to assignee
+    try {
+      if (populatedTask?.assigned_to) {
+        const assignee = populatedTask.assigned_to;
+        const assigneeId = assignee._id || assignee.id;
+        const assigneeEmail = assignee.email;
+        const assigneeName = assignee.name;
+        const creatorName = populatedTask.created_by?.name || req.user?.name || 'Manager';
+
+        // Send in-app notification
+        if (assigneeId) {
+          await sendNotification(
+            assigneeId,
+            `You have been assigned a new task: "${task.title}". Due date: ${dueDate ? new Date(dueDate).toLocaleDateString() : 'No deadline'}`,
+            'task_assigned',
+            `New Task Assigned: ${task.title}`,
+            userId,
+            creatorName
+          );
+        }
+
+        // Send task assignment email
+        if (assigneeEmail) {
+          sendTaskAssignmentEmail({
+            recipientEmail: assigneeEmail,
+            recipientName: assigneeName,
+            taskTitle: task.title,
+            taskDescription: task.description,
+            dueDate: task.dueDate,
+            creatorName
+          });
+        }
+      }
+    } catch (mailErr) {
+      console.error("Task assignment email/notification error:", mailErr);
+    }
 
     const formattedTask = formatLeanTask(populatedTask);
 
@@ -484,6 +554,38 @@ export const updateTaskStatus = async (req, res, next) => {
       .populate('project', 'projectName projectCode status')
       .lean();
 
+    // Send status update notification & email to the TASK CREATOR
+    try {
+      const creatorUser = populatedTask.created_by;
+      const creatorEmail = creatorUser?.email;
+      const updaterName = req.user?.name || populatedTask.assigned_to?.name || 'Assigned Staff';
+
+      if (creatorEmail) {
+        sendTaskStatusUpdateEmail({
+          recipientEmail: creatorEmail,
+          recipientName: creatorUser?.name || 'Task Creator',
+          taskTitle: task.title,
+          oldStatus: 'previous',
+          newStatus: status || task.status,
+          updatedByName: updaterName
+        });
+
+        const creatorId = creatorUser._id || creatorUser.id;
+        if (creatorId) {
+          await sendNotification(
+            creatorId,
+            `Task status updated to "${(status || task.status).toUpperCase()}" for "${task.title}" by ${updaterName}.`,
+            'task_status_changed',
+            `Task Status Updated: ${task.title}`,
+            req.user?.id || req.user?._id,
+            updaterName
+          );
+        }
+      }
+    } catch (statusMailErr) {
+      console.error("Task creator status email error:", statusMailErr);
+    }
+
     const formattedTask = formatLeanTask(populatedTask);
 
     return res.status(200).json(formattedTask);
@@ -533,15 +635,39 @@ export const updateTask = async (req, res, next) => {
       task.designation_id = designation_id || undefined;
     }
 
-    if (req.file) {
-      // Clean up the old asset first
-      if (task.file_public_id) {
-        await deleteFromCloudinary(task.file_public_id);
+    // Handle multi-file uploads
+    const filesList = req.files && req.files.length > 0 ? req.files : (req.file ? [req.file] : []);
+    if (filesList.length > 0) {
+      if (!task.attachments) task.attachments = [];
+      for (const f of filesList) {
+        try {
+          const uploadResult = await uploadToCloudinary(f.buffer, f.originalname || '');
+          const isImage = f.mimetype?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.originalname || '');
+          task.attachments.push({
+            url: uploadResult.secure_url,
+            name: f.originalname || 'Attachment',
+            public_id: uploadResult.public_id,
+            fileType: isImage ? 'image' : 'file'
+          });
+          if (!task.file_url) {
+            task.file_url = uploadResult.secure_url;
+            task.file_public_id = uploadResult.public_id;
+          }
+        } catch (err) {
+          console.error("Cloudinary file upload error:", err);
+        }
       }
+    }
 
-      const uploadResult = await uploadToCloudinary(req.file.buffer);
-      task.file_url = uploadResult.secure_url;
-      task.file_public_id = uploadResult.public_id;
+    if (req.body.links !== undefined) {
+      try {
+        const parsedLinks = typeof req.body.links === 'string' ? JSON.parse(req.body.links) : req.body.links;
+        if (Array.isArray(parsedLinks)) {
+          task.links = parsedLinks;
+        }
+      } catch (e) {
+        console.error("Error parsing links:", e);
+      }
     }
 
     await task.save();
@@ -556,6 +682,38 @@ export const updateTask = async (req, res, next) => {
       .populate('client', 'companyName clientName clientId')
       .populate('project', 'projectName projectCode status')
       .lean();
+
+    // Trigger notification & email to task creator on status update
+    try {
+      const creatorUser = populatedTask.created_by;
+      const creatorEmail = creatorUser?.email;
+      const updaterName = req.user?.name || populatedTask.assigned_to?.name || 'Assigned Staff';
+
+      if (req.body.status !== undefined && creatorEmail) {
+        sendTaskStatusUpdateEmail({
+          recipientEmail: creatorEmail,
+          recipientName: creatorUser?.name || 'Task Creator',
+          taskTitle: task.title,
+          oldStatus: 'previous',
+          newStatus: req.body.status,
+          updatedByName: updaterName
+        });
+
+        const creatorId = creatorUser._id || creatorUser.id;
+        if (creatorId) {
+          await sendNotification(
+            creatorId,
+            `Task status updated to "${String(req.body.status).toUpperCase()}" for "${task.title}" by ${updaterName}.`,
+            'task_status_changed',
+            `Task Status Updated: ${task.title}`,
+            req.user?.id || req.user?._id,
+            updaterName
+          );
+        }
+      }
+    } catch (updateMailErr) {
+      console.error("Task update email error:", updateMailErr);
+    }
 
     const formattedTask = formatLeanTask(populatedTask);
 

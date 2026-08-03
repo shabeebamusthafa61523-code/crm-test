@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import Notification from '../models/notification.model.js';
 import User from '../models/user.model.js';
+import { sendEmail } from '../services/notification.service.js';
 
 export const createNotification = async (req, res) => {
   try {
@@ -48,6 +49,23 @@ export const createNotification = async (req, res) => {
     }));
 
     const createdNotifications = await Notification.insertMany(notificationsToCreate);
+
+    // Trigger Email Dispatch to all recipients
+    try {
+      const recipientUsers = await User.find({ _id: { $in: recipientIds } }).select('name email');
+      for (const u of recipientUsers) {
+        if (u.email) {
+          sendEmail(
+            u.email,
+            `🔔 ${title || 'New Notification'}`,
+            `<p>Hello <strong>${u.name || 'Team Member'}</strong>,</p><p>${description.trim()}</p><p>- Sent via KOD.BRAND CRM HQ</p>`,
+            description.trim()
+          );
+        }
+      }
+    } catch (mailErr) {
+      console.error("Error triggering notification emails:", mailErr);
+    }
 
     return res.status(201).json({
       success: true,
