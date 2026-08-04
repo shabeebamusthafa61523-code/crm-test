@@ -42,6 +42,7 @@ import BasicReportPage from './pages/BasicReportPage';
 import NotificationPage from './pages/NotificationPage';
 import PerformanceDashboard from './pages/PerformanceDashboard';
 import UserPermissionsPage from './pages/UserPermissionsPage';
+import MdDashboard from './pages/MdDashboard';
 
 
 
@@ -193,6 +194,7 @@ function App() {
         <Route path="/team-reports" element={<ProtectedRoute><MainLayout><EmployeeReports /></MainLayout></ProtectedRoute>} />
         <Route path="/ai-report" element={<ProtectedRoute><MainLayout><AiReport /></MainLayout></ProtectedRoute>} />
         <Route path="/common-dashboard" element={<ProtectedRoute><MainLayout><CommonDashboard /></MainLayout></ProtectedRoute>} />
+        <Route path="/md-dashboard" element={<ProtectedRoute><MainLayout><RestrictedRoute><MdDashboard /></RestrictedRoute></MainLayout></ProtectedRoute>} />
         <Route path="/basic-report" element={<ProtectedRoute><MainLayout><BasicReportPage /></MainLayout></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute><MainLayout><NotificationPage /></MainLayout></ProtectedRoute>} />
         <Route path="/performance-dashboard" element={<ProtectedRoute><MainLayout><PerformanceDashboard /></MainLayout></ProtectedRoute>} />

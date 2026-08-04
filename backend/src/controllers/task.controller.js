@@ -150,7 +150,7 @@ export const syncProjectProgress = async (projectId) => {
  */
 export const createTask = async (req, res, next) => {
   try {
-    const { title, description, assigned_to, designation_id, dueDate, client, project, links: rawLinks } = req.body;
+    const { title, description, assigned_to, designation_id, dueDate, client, project, priority, links: rawLinks } = req.body;
 
     const userId = req.user.id || req.user._id;
 
@@ -203,6 +203,7 @@ export const createTask = async (req, res, next) => {
       project: (project && mongoose.Types.ObjectId.isValid(project)) ? new mongoose.Types.ObjectId(project) : null,
 
       status: "pending",
+      priority: (priority && ['low', 'medium', 'high'].includes(String(priority).toLowerCase())) ? String(priority).toLowerCase() : 'medium',
 
       // creator
       created_by: userId,
@@ -291,14 +292,57 @@ export const getAllTasks = async (req, res, next) => {
     const roleName = String(req.user.role || '').toLowerCase();
     const roleId = String(req.user.role_id || '');
     
-    // 1. Check if Admin or HR
-    const isAdminOrHr = (
-      roleName === 'admin' ||
-      roleName === 'hr' ||
-      roleId === '1' ||
-      roleId === '10' ||
-      ['md', 'coo', 'executive_director'].includes(roleName)
+    let userDeptName = String(req.user.department || '').toLowerCase().trim();
+    let userDeptId = String(req.user.departmentId?._id || req.user.departmentId || req.user.department_id || '').trim();
+    let userDesignationName = String(req.user.designation || '').toLowerCase().trim();
+
+    if ((!userDeptName || !userDesignationName || !userDeptId) && userId) {
+      try {
+        const currentUserObj = await User.findById(userId)
+          .populate('departmentId', 'name')
+          .populate('designationId', 'name')
+          .lean();
+
+        if (currentUserObj) {
+          if (!userDeptName) {
+            userDeptName = String(
+              currentUserObj.department ||
+              currentUserObj.departmentId?.name ||
+              ''
+            ).toLowerCase().trim();
+          }
+          if (!userDeptId) {
+            userDeptId = String(
+              currentUserObj.departmentId?._id ||
+              currentUserObj.departmentId ||
+              ''
+            ).trim();
+          }
+          if (!userDesignationName) {
+            userDesignationName = String(
+              currentUserObj.designation ||
+              currentUserObj.designationId?.name ||
+              ''
+            ).toLowerCase().trim();
+          }
+        }
+      } catch (err) {}
+    }
+
+    // Dynamic checks based on Department ID/name, Designation name, and Role
+    const isHrAdminDept = (
+      userDeptName.includes('hr') ||
+      userDeptName.includes('admin') ||
+      userDeptId === '6a3caed51194353cbc8a3686' ||
+      userDeptId === '6a55c7e8b613a280003481d8'
     );
+    const isExecutiveDesignation = ['md', 'managing director', 'coo', 'ceo', 'director', 'executive_director'].some(
+      title => userDesignationName.includes(title) || roleName.includes(title)
+    );
+    const isSuperAdmin = roleName === 'superadmin' || roleId === '0';
+
+    // Grant full task access dynamically for HR/ADMIN department, Executive designations (MD/COO/CEO), or Superadmin
+    const isAdminOrHr = isHrAdminDept || isExecutiveDesignation || isSuperAdmin;
 
     const targetUserId = req.query.user_id || req.query.userId || req.query.targetUserId;
 
@@ -410,20 +454,63 @@ export const getAllTasks = async (req, res, next) => {
  */
 export const getUserTasks = async (req, res, next) => {
   try {
+    const userId = req.user.id || req.user._id;
     const roleName = String(req.user.role || '').toLowerCase();
     const roleId = String(req.user.role_id || '');
     
-    // Check if Admin, HR, or Team Lead
-    const isAdminOrHr = (
-      roleName === 'admin' ||
-      roleName === 'hr' ||
-      roleId === '1' ||
-      roleId === '10' ||
-      ['md', 'coo', 'executive_director'].includes(roleName)
+    let userDeptName = String(req.user.department || '').toLowerCase().trim();
+    let userDeptId = String(req.user.departmentId?._id || req.user.departmentId || req.user.department_id || '').trim();
+    let userDesignationName = String(req.user.designation || '').toLowerCase().trim();
+
+    if ((!userDeptName || !userDesignationName || !userDeptId) && userId) {
+      try {
+        const currentUserObj = await User.findById(userId)
+          .populate('departmentId', 'name')
+          .populate('designationId', 'name')
+          .lean();
+
+        if (currentUserObj) {
+          if (!userDeptName) {
+            userDeptName = String(
+              currentUserObj.department ||
+              currentUserObj.departmentId?.name ||
+              ''
+            ).toLowerCase().trim();
+          }
+          if (!userDeptId) {
+            userDeptId = String(
+              currentUserObj.departmentId?._id ||
+              currentUserObj.departmentId ||
+              ''
+            ).trim();
+          }
+          if (!userDesignationName) {
+            userDesignationName = String(
+              currentUserObj.designation ||
+              currentUserObj.designationId?.name ||
+              ''
+            ).toLowerCase().trim();
+          }
+        }
+      } catch (err) {}
+    }
+
+    // Dynamic checks based on Department ID/name, Designation name, and Role
+    const isHrAdminDept = (
+      userDeptName.includes('hr') ||
+      userDeptName.includes('admin') ||
+      userDeptId === '6a3caed51194353cbc8a3686' ||
+      userDeptId === '6a55c7e8b613a280003481d8'
     );
+    const isExecutiveDesignation = ['md', 'managing director', 'coo', 'ceo', 'director', 'executive_director'].some(
+      title => userDesignationName.includes(title) || roleName.includes(title)
+    );
+    const isSuperAdmin = roleName === 'superadmin' || roleId === '0';
+
+    // Grant full task access dynamically for HR/ADMIN department, Executive designations (MD/COO/CEO), or Superadmin
+    const isAdminOrHr = isHrAdminDept || isExecutiveDesignation || isSuperAdmin;
 
     const Department = (await import('../modules/departments/department.model.js')).default;
-    const userId = req.user.id || req.user._id;
     const ledDepartments = await Department.find({ managerId: userId }).select('_id');
     const isDbTeamLead = ledDepartments.length > 0;
 
@@ -618,6 +705,9 @@ export const updateTask = async (req, res, next) => {
     if (description !== undefined) task.description = description;
     if (assigned_to !== undefined) task.assigned_to = assigned_to;
     if (req.body.status !== undefined) task.status = req.body.status;
+    if (req.body.priority !== undefined && ['low', 'medium', 'high'].includes(String(req.body.priority).toLowerCase())) {
+      task.priority = String(req.body.priority).toLowerCase();
+    }
     if (req.body.dueDate !== undefined) task.dueDate = req.body.dueDate;
     if (client !== undefined) {
       task.client = (client && mongoose.Types.ObjectId.isValid(client)) ? new mongoose.Types.ObjectId(client) : null;

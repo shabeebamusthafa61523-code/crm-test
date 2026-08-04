@@ -87,14 +87,22 @@ const Login = () => {
         localStorage.setItem('user', JSON.stringify(userObj));
         showToast('Login successful!', 'success');
 
-        // Check if user is an admin or HR (by role or designation)
+        // Check if user is MD, HR, or Admin
         const currentUserRole = String(userObj.role_id || userObj.roleId || userObj.role || '').toLowerCase().trim();
         const currentUserDesignation = String(userObj.designation || '').toLowerCase().trim();
+        const currentUserDesignationId = String(userObj.designationId?._id || userObj.designationId || userObj.designation_id || '').trim();
+
+        const isMd = currentUserDesignation.includes('md') || 
+                     currentUserDesignation.includes('managing director') || 
+                     currentUserDesignationId === '6a7187de0bdbef63c8658832' || 
+                     ['md', 'coo', 'executive_director'].includes(currentUserRole);
 
         const isAdmin = ['1', '2', 'admin'].includes(currentUserRole) || currentUserDesignation.includes('admin');
         const isHr = currentUserRole === 'hr' || currentUserDesignation.includes('hr');
 
-        if (isHr) {
+        if (isMd) {
+          navigate('/md-dashboard');
+        } else if (isHr) {
           navigate('/hr-dashboard');
         } else if (isAdmin) {
           navigate('/dashboard');

@@ -284,6 +284,7 @@ const PerformanceTab = ({ user }) => {
   }
 
   const kpiScore = performanceData?.kpiScore || { overallScore: 85, grade: 'Very Good' };
+  const kpiColor = getScoreColorConfig(kpiScore.overallScore);
   const gradeMeta = GRADE_META[kpiScore.grade] || GRADE_META['Good'];
 
   return (

@@ -31,6 +31,22 @@ const STATUS_META = {
   'Lost': { label: 'Lost', color: 'bg-rose-500/10 text-rose-500 border-rose-500/20 dark:bg-rose-500/20 dark:text-rose-400', dot: 'bg-rose-500' }
 };
 
+const STATUS_COLORS = {
+  'NEW':        { bg: '#dbeafe', text: '#1d4ed8', border: '#93c5fd' },
+  'CONTACTED':  { bg: '#e0e7ff', text: '#4338ca', border: '#a5b4fc' },
+  'FOLLOW UP':  { bg: '#fef3c7', text: '#b45309', border: '#fde68a' },
+  'INTERESTED': { bg: '#f3e8ff', text: '#6b21a8', border: '#c4b5fd' },
+  'CONVERTED':  { bg: '#d1fae5', text: '#047857', border: '#6ee7b7' },
+  'LOST':       { bg: '#ffe4e6', text: '#be123c', border: '#fecdd3' }
+};
+
+const getStatusStyle = (value) => {
+  const key = String(value || '').trim().toUpperCase();
+  const colors = STATUS_COLORS[key];
+  if (!colors) return { backgroundColor: '#f1f5f9', color: '#475569', borderColor: '#cbd5e1' };
+  return { backgroundColor: colors.bg, color: colors.text, borderColor: colors.border };
+};
+
 const PRIORITY_META = {
   'Low': { label: 'Low', color: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' },
   'Medium': { label: 'Medium', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-400' },
@@ -38,35 +54,88 @@ const PRIORITY_META = {
 };
 
 const COURSE_INTEREST_COLORS = {
-  'HOT LEAD':     { bg: '#F0FDF4', text: '#9eb827', border: '#86EFAC' },
-  'WARM LEAD':    { bg: '#F0F9FF', text: '#0369A1', border: '#7DD3FC' },
-  'COLD LEAD':    { bg: '#FEF2F2', text: '#DC2626', border: '#FCA5A5' },
-  'WRONG LEAD':   { bg: '#FEFCE8', text: '#A16207', border: '#FDE047' },
-  'RNT':          { bg: '#FAF5FF', text: '#7C3AED', border: '#C4B5FD' },
-  'SWITCHED OFF': { bg: '#FDF2F8', text: '#DB2777', border: '#F9A8D4' },
-  'CALL BACK':    { bg: '', text: '', border: '' },
+  'HOT LEAD':     { bg: '#dcfce7', text: '#15803d', border: '#86efac' },
+  'WARM LEAD':    { bg: '#e0f2fe', text: '#0369a1', border: '#7dd3fc' },
+  'COLD LEAD':    { bg: '#fee2e2', text: '#b91c1c', border: '#fca5a5' },
+  'WRONG LEAD':   { bg: '#fef9c3', text: '#a16207', border: '#fde047' },
+  'RNT':          { bg: '#f3e8ff', text: '#6b21a8', border: '#c4b5fd' },
+  'SWITCHED OFF': { bg: '#fce7f3', text: '#be185d', border: '#f9a8d4' },
+  'CALL BACK':    { bg: '#ffedd5', text: '#c2410c', border: '#fed7aa' },
+  'HIGH':         { bg: '#fee2e2', text: '#b91c1c', border: '#fca5a5' },
+  'MEDIUM':       { bg: '#e0f2fe', text: '#0369a1', border: '#7dd3fc' },
+  'LOW':          { bg: '#fef9c3', text: '#a16207', border: '#fde047' },
 };
 
 const getCourseInterestStyle = (value) => {
-  const colors = COURSE_INTEREST_COLORS[String(value || '').trim().toUpperCase()];
-  if (!colors) return {};
+  const key = String(value || '').trim().toUpperCase();
+  const colors = COURSE_INTEREST_COLORS[key];
+  if (!colors) return { backgroundColor: '#f1f5f9', color: '#475569', borderColor: '#cbd5e1' };
   return { backgroundColor: colors.bg, color: colors.text, borderColor: colors.border };
 };
 
-const getRowClass = (interestedService) => {
-  const service = String(interestedService || '').trim().toUpperCase();
-  if (service === 'HOT LEAD') {
-    return 'bg-green-200 dark:bg-green-900/60 hover:bg-green-300 dark:hover:bg-green-800/70 text-green-950 dark:text-green-100 transition-all duration-200 border-b border-green-300 dark:border-green-800';
-  }
-  if (service === 'WARM LEAD') {
-    return 'bg-sky-200 dark:bg-sky-900/60 hover:bg-sky-300 dark:hover:bg-sky-800/70 text-sky-950 dark:text-sky-100 transition-all duration-200 border-b border-sky-300 dark:border-sky-800';
-  }
-  if (service === 'COLD LEAD') {
-    return 'bg-red-200 dark:bg-red-900/60 hover:bg-red-300 dark:hover:bg-red-800/70 text-red-950 dark:text-red-100 transition-all duration-200 border-b border-red-300 dark:border-red-800';
-  }
-  if (service === 'WRONG LEAD') {
-    return 'bg-yellow-200 dark:bg-yellow-900/60 hover:bg-yellow-300 dark:hover:bg-yellow-800/70 text-yellow-950 dark:text-yellow-100 transition-all duration-200 border-b border-yellow-300 dark:border-yellow-800';
-  }
+const INTEREST_OPTIONS = [
+  { value: '', label: 'Select' },
+  { value: 'HOT LEAD', label: 'HOT LEAD' },
+  { value: 'WARM LEAD', label: 'WARM LEAD' },
+  { value: 'COLD LEAD', label: 'COLD LEAD' },
+  { value: 'HIGH', label: 'HIGH' },
+  { value: 'MEDIUM', label: 'MEDIUM' },
+  { value: 'LOW', label: 'LOW' },
+  { value: 'RNT', label: 'RNT' },
+  { value: 'SWITCHED OFF', label: 'SWITCHED OFF' },
+  { value: 'WRONG LEAD', label: 'WRONG LEAD' },
+  { value: 'CALL BACK', label: 'CALL BACK' },
+];
+
+const InterestDropdown = ({ value, onChange, disabled }) => {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef(null);
+
+  React.useEffect(() => {
+    const handleClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const style = getCourseInterestStyle(value);
+  const label = INTEREST_OPTIONS.find(o => o.value === value)?.label || value || 'Select';
+
+  return (
+    <div ref={ref} className="relative inline-block w-full min-w-[150px]">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => !disabled && setOpen(!open)}
+        className="w-full flex items-center justify-between gap-1 border rounded-lg px-3 py-1.5 text-xs font-bold outline-none cursor-pointer shadow-sm transition-all duration-200 disabled:opacity-75 disabled:cursor-not-allowed"
+        style={style}
+      >
+        <span className="truncate">{label}</span>
+        <ChevronDown size={14} className={`shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl py-1 max-h-60 overflow-auto">
+          {INTEREST_OPTIONS.map((opt) => {
+            const optStyle = opt.value ? getCourseInterestStyle(opt.value) : {};
+            const isSelected = opt.value === value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => { onChange(opt.value); setOpen(false); }}
+                className={`w-full text-left px-3 py-1.5 text-xs font-bold transition-colors duration-150 ${isSelected ? 'ring-1 ring-inset ring-slate-400' : 'hover:brightness-95'}`}
+                style={opt.value ? { backgroundColor: optStyle.backgroundColor, color: optStyle.color } : {}}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const getRowClass = () => {
   return 'hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all duration-200 border-b border-slate-200/60 dark:border-slate-800';
 };
 
@@ -187,6 +256,11 @@ const [activePriority, setActivePriority] = useState('all');
   }, [currentUser]);
 
   const canEditLead = useMemo(() => {
+    if (isAdmin) return false;
+    return true;
+  }, [isAdmin]);
+
+  const canDeleteLead = useMemo(() => {
     if (isAdmin) return false;
     return true;
   }, [isAdmin]);
@@ -377,39 +451,45 @@ const [activePriority, setActivePriority] = useState('all');
   };
 
   const handleInlineUpdate = async (leadId, fieldName, value) => {
-    if (!canEditLead && !(fieldName === 'assignedTo' && canEditAssignedTo)) {
-      showToast('Admin accounts are restricted from editing leads.', 'warning');
+    if (isAdmin) {
+      showToast('Admins are not permitted to edit telecaller leads (view-only access).', 'error');
       return;
     }
+    // Optimistic state update: change dropdown color instantly on selection
+    const extraFields = fieldName === 'interestedService' ? { courseIntrests: value, courseInterests: value } : {};
+    setLeads(prevLeads => prevLeads.map(l => {
+      const lId = l.id || l._id;
+      if (lId === leadId) {
+        if (fieldName === 'assignedTo') {
+          const matchedStaff = staff.find(s => String(s.id || s._id) === String(value));
+          return { ...l, assignedTo: matchedStaff || value };
+        }
+        return { ...l, [fieldName]: value, ...extraFields };
+      }
+      return l;
+    }));
+
     try {
       const res = await fetch(`${API_BASE}/v1/leads/update`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
           id: leadId,
-          [fieldName]: value
+          [fieldName]: value,
+          ...extraFields
         })
       });
       const data = await res.json();
       if (res.ok || data.success) {
         showToast('Lead updated successfully!', 'success');
-        setLeads(prevLeads => prevLeads.map(l => {
-          const lId = l.id || l._id;
-          if (lId === leadId) {
-            if (fieldName === 'assignedTo') {
-              const matchedStaff = staff.find(s => String(s.id || s._id) === String(value));
-              return { ...l, assignedTo: matchedStaff || value };
-            }
-            return { ...l, [fieldName]: value };
-          }
-          return l;
-        }));
       } else {
         showToast(data.message || 'Failed to update lead.', 'error');
+        fetchLeads();
       }
     } catch (error) {
       console.error(error);
       showToast('Failed to update lead.', 'error');
+      fetchLeads();
     }
   };
 
@@ -542,10 +622,18 @@ const [activePriority, setActivePriority] = useState('all');
   }, [activeTab, searchQuery, cityFilter, dateFrom, dateTo, sortOrder, staffFilter]);
 
   const handleDeleteLead = (id, name) => {
+    if (isAdmin) {
+      showToast('Admins are not permitted to delete telecaller leads (view-only access).', 'error');
+      return;
+    }
     setDeleteConfirm({ isOpen: true, id, name });
   };
 
   const handleConfirmDelete = async () => {
+    if (isAdmin) {
+      showToast('Admins are not permitted to delete telecaller leads (view-only access).', 'error');
+      return;
+    }
     const { id, name } = deleteConfirm;
     setDeleteConfirm({ isOpen: false, id: null, name: '' });
     try {
@@ -701,13 +789,15 @@ const [activePriority, setActivePriority] = useState('all');
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => setIsImportOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium text-xs rounded-xl transition-all duration-300 cursor-pointer"
-            >
-              <FileSpreadsheet size={16} />
-              Import Excel
-            </button>
+            {!isAdmin && (
+              <button
+                onClick={() => setIsImportOpen(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium text-xs rounded-xl transition-all duration-300 cursor-pointer"
+              >
+                <FileSpreadsheet size={16} />
+                Import Excel
+              </button>
+            )}
             <button
               onClick={handleExportExcel}
               className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium text-xs rounded-xl transition-all duration-300 cursor-pointer"
@@ -722,13 +812,15 @@ const [activePriority, setActivePriority] = useState('all');
               <FileText size={16} />
               Export PDF
             </button>
-            <button
-              onClick={() => setIsCreateOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 transition-all duration-300 cursor-pointer"
-            >
-              <Plus size={16} />
-              Add Lead
-            </button>
+            {!isAdmin && (
+              <button
+                onClick={() => setIsCreateOpen(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 transition-all duration-300 cursor-pointer"
+              >
+                <Plus size={16} />
+                Add Lead
+              </button>
+            )}
           </div>
         </div>
 
@@ -1335,7 +1427,7 @@ const [activePriority, setActivePriority] = useState('all');
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Campaign/platform</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Assigned To</th>
-                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Course Interest</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Interest</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Source</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Leads Received</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">1st Followup</th>
@@ -1356,7 +1448,7 @@ const [activePriority, setActivePriority] = useState('all');
                     const priorityMeta = PRIORITY_META[lead.priority] || { label: lead.priority, color: 'bg-slate-100 text-slate-600' };
 
                     return (
-                      <tr key={lead.id || lead._id} className={getRowClass(lead.interestedService)}>
+                      <tr key={lead.id || lead._id} className={getRowClass()}>
                         {/* Name & Company */}
                         <td className="px-6 py-4.5">
                           <div
@@ -1410,12 +1502,12 @@ const [activePriority, setActivePriority] = useState('all');
                           </div>
                         </td>
                         {/* Status */}
-                        <td className="px-6 py-4.5 text-xs">
+                        <td className="px-6 py-4.5 text-xs font-semibold min-w-[170px]">
                           <select
                             value={lead.status || ''}
                             onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'status', e.target.value)}
                             disabled={!canEditLead}
-                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
+                            className="w-full min-w-[150px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer shadow-sm disabled:opacity-75 disabled:cursor-not-allowed"
                           >
                             <option value="" disabled>Select</option>
                             <option value="New">New</option>
@@ -1427,12 +1519,12 @@ const [activePriority, setActivePriority] = useState('all');
                           </select>
                         </td>
                         {/* Assigned To */}
-                        <td className="px-6 py-4.5 text-xs">
+                        <td className="px-6 py-4.5 text-xs font-semibold min-w-[170px]">
                           {canEditAssignedTo ? (
                             <select
                               value={typeof lead.assignedTo === 'object' ? (lead.assignedTo?._id || lead.assignedTo?.id || '') : (lead.assignedTo || '')}
                               onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'assignedTo', e.target.value)}
-                              className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer min-w-[130px]"
+                              className="w-full min-w-[150px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer shadow-sm"
                             >
                               <option value="">Unassigned</option>
                               {departmentStaff.map(member => (
@@ -1448,33 +1540,30 @@ const [activePriority, setActivePriority] = useState('all');
                             </span>
                           )}
                         </td>
-                        {/* Course Interest */}
-                        <td className="px-6 py-4.5 text-xs font-semibold">
-                          <select
-                            value={lead.interestedService || ''}
-                            onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'interestedService', e.target.value)}
-                            disabled={!canEditLead}
-                            className="border rounded-lg px-2 py-1 text-xs font-bold focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
-                            style={lead.interestedService ? getCourseInterestStyle(lead.interestedService) : {}}
-                          >
-                            <option value="">Select</option>
-                            <option value="HOT LEAD" style={{ backgroundColor: '#F0FDF4', color: '#9eb827' }}> HOT LEAD</option>
-                            <option value="WARM LEAD" style={{ backgroundColor: '#F0F9FF', color: '#0369A1' }}>WARM LEAD</option>
-                            <option value="COLD LEAD" style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}> COLD LEAD</option>
-                            <option value="RNT" style={{ backgroundColor: '#FAF5FF', color: '#7C3AED' }}>RNT</option>
-                            <option value="SWITCHED OFF" style={{ backgroundColor: '#FDF2F8', color: '#DB2777' }}>SWITCHED OFF</option>
-                            <option value="WRONG LEAD" style={{ backgroundColor: '#FEFCE8', color: '#A16207' }}>WRONG LEAD</option>
-                            <option value="CALL BACK"> CALL BACK</option>
-                          </select>
+                        <td className="px-6 py-4.5 text-xs font-semibold min-w-[170px]">
+                          {canEditLead ? (
+                            <InterestDropdown
+                              value={lead.interestedService || lead.courseIntrests || lead.courseInterests || ''}
+                              onChange={(val) => handleInlineUpdate(lead.id || lead._id, 'interestedService', val)}
+                              disabled={!canEditLead}
+                            />
+                          ) : (
+                            <span
+                              className="inline-block px-3 py-1.5 rounded-lg text-xs font-bold border shadow-sm"
+                              style={getCourseInterestStyle(lead.interestedService || lead.courseIntrests || lead.courseInterests)}
+                            >
+                              {lead.interestedService || lead.courseIntrests || lead.courseInterests || '—'}
+                            </span>
+                          )}
                         </td>
 
                         {/* Source */}
-                        <td className="px-6 py-4.5 text-xs">
+                        <td className="px-6 py-4.5 text-xs font-semibold min-w-[170px]">
                           <select
                             value={lead.source || ''}
                             onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'source', e.target.value)}
                             disabled={!canEditLead}
-                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
+                            className="w-full min-w-[150px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer shadow-sm disabled:opacity-75 disabled:cursor-not-allowed"
                           >
                             <option value="" disabled>Select</option>
                             <option value="REFERENCE">REFERENCE</option>
@@ -1634,13 +1723,15 @@ const [activePriority, setActivePriority] = useState('all');
                                 </button>
                               </>
                             )}
-                            <button
-                              onClick={() => handleDeleteLead(lead.id || lead._id, lead.leadName)}
-                              className="p-2 text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-150 cursor-pointer"
-                              title="Delete Lead"
-                            >
-                              <Trash2 size={15} />
-                            </button>
+                            {canDeleteLead && (
+                              <button
+                                onClick={() => handleDeleteLead(lead.id || lead._id, lead.leadName)}
+                                className="p-2 text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-150 cursor-pointer"
+                                title="Delete Lead"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

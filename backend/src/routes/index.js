@@ -22,6 +22,7 @@ import clientLeadRoutes from './clientLead.routes.js';
 import performanceRoutes from './performance.routes.js';
 import clientRoutes from './client.routes.js';
 import projectRoutes from './project.routes.js';
+import mdDashboardRoutes from './mdDashboard.routes.js';
 
 const router = Router();
 
@@ -37,6 +38,7 @@ router.use('/client-leads', clientLeadRoutes);
 router.use('/clients', clientRoutes);
 router.use('/projects', projectRoutes);
 router.use('/analytics', analyticsRoutes);
+router.use('/md-dashboard', mdDashboardRoutes);
 router.use('/developer-reports', developerReportRoutes);
 router.use('/hr-reports', hrReportRoutes);
 router.use('/ops-reports', opsReportRoutes);
