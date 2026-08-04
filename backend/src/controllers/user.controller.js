@@ -164,50 +164,52 @@ export const userController = {
         status
       } = req.query;
 
-      const whereClause = { role_id: { $ne: '10' } };
-
-      if (department) {
-        whereClause.$or = [
-          { departmentId: department },
-          { department: { $regex: department, $options: 'i' } }
-        ];
-      }
+      const conditions = [];
 
       if (role) {
-        if (role === 'student' || role === '10') {
-          whereClause.role_id = '10';
+        const roleLower = String(role).toLowerCase().trim();
+        if (roleLower === 'student' || roleLower === '10' || roleLower === '4') {
+          conditions.push({
+            $or: [
+              { role: { $regex: /^student$/i } },
+              { role_id: '10' },
+              { role_id: 10 },
+              { role_id: '4' },
+              { role_id: 4 }
+            ]
+          });
         } else {
-          whereClause.role = role;
-          delete whereClause.role_id;
+          conditions.push({ role: role });
         }
+      } else {
+        // Exclude students by default when listing staff members
+        conditions.push({ role_id: { $ne: '10' } });
+      }
+
+      if (department) {
+        conditions.push({
+          $or: [
+            { departmentId: department },
+            { department: { $regex: department, $options: 'i' } }
+          ]
+        });
       }
 
       if (status !== undefined && status !== '') {
-        whereClause.status = status;
+        conditions.push({ status: status });
       }
 
       if (search) {
-        whereClause.$or = [
-          {
-            name: {
-              $regex: search,
-              $options: 'i'
-            }
-          },
-          {
-            email: {
-              $regex: search,
-              $options: 'i'
-            }
-          },
-          {
-            employeeId: {
-              $regex: search,
-              $options: 'i'
-            }
-          }
-        ];
+        conditions.push({
+          $or: [
+            { name: { $regex: search, $options: 'i' } },
+            { email: { $regex: search, $options: 'i' } },
+            { employeeId: { $regex: search, $options: 'i' } }
+          ]
+        });
       }
+
+      const whereClause = conditions.length > 0 ? { $and: conditions } : {};
 
       const isPaginationRequested = req.query.page !== undefined || req.query.limit !== undefined;
 

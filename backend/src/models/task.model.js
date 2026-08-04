@@ -30,6 +30,11 @@ const taskSchema = new mongoose.Schema({
     enum: ['pending', 'current', 'preview', 'done'],
     default: 'pending'
   },
+  priority: {
+    type: String,
+    enum: ['low', 'medium', 'high'],
+    default: 'medium'
+  },
   file_url: {
     type: String
   },

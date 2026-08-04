@@ -30,7 +30,7 @@ import { useNavigate } from "react-router-dom";
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
-const Dashboard = () => {
+const Dashboard = ({ isEmbedded = false, mdData = null }) => {
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [tasks, setTasks] = useState([]);
@@ -224,8 +224,22 @@ const Dashboard = () => {
       parsedUser.user_id = storedUserId;
       setUser(parsedUser);
 
-      // Check if user has administrative/privileged role
+      // Check if user is MD -> redirect to MD Dashboard
       const currentUserRole = String(parsedUser.role_id || parsedUser.roleId || parsedUser.role || '').toLowerCase().trim();
+      const currentUserDesignation = String(parsedUser.designation || '').toLowerCase().trim();
+      const currentUserDesignationId = String(parsedUser.designationId?._id || parsedUser.designationId || parsedUser.designation_id || '').trim();
+
+      const isMd = currentUserDesignation.includes('md') || 
+                   currentUserDesignation.includes('managing director') || 
+                   currentUserDesignationId === '6a7187de0bdbef63c8658832' || 
+                   ['md', 'coo', 'executive_director'].includes(currentUserRole);
+
+      if (isMd && !isEmbedded) {
+        navigate('/md-dashboard', { replace: true });
+        return;
+      }
+
+      // Check if user has administrative/privileged role
       let currentUserDept = '';
       if (parsedUser.departmentId) {
         if (typeof parsedUser.departmentId === 'object' && parsedUser.departmentId._id) {
@@ -234,7 +248,8 @@ const Dashboard = () => {
           currentUserDept = String(parsedUser.departmentId).trim();
         }
       }
-      const privileged = ['1', '2', 'hr', 'admin'].includes(currentUserRole) || 
+      const privileged = isEmbedded ||
+                         ['1', '2', 'hr', 'admin'].includes(currentUserRole) || 
                          currentUserDept === '6a3caed51194353cbc8a3686' || 
                          currentUserDept === '6a55c7e8b613a280003481d8';
       setIsAdmin(privileged);
@@ -1064,7 +1079,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* DEPARTMENT GLOBAL FILTER PILLS */}
+        {/* DEPARTMENT & EXECUTIVE VIEW FILTER PILLS */}
         <div className="flex items-center gap-2.5 overflow-x-auto pb-3.5 scrollbar-none border-b border-slate-100 dark:border-slate-800/80">
           <button
             onClick={() => setGlobalDepartment("all")}
@@ -1074,21 +1089,68 @@ const Dashboard = () => {
                 : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-350 dark:hover:border-slate-700"
             }`}
           >
-            All Departments
+            Admin Dashboard
           </button>
-          {uniqueDepartments.map(dept => (
-            <button
-              key={dept}
-              onClick={() => setGlobalDepartment(dept)}
-              className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
-                globalDepartment.toLowerCase() === dept.toLowerCase()
-                  ? "bg-indigo-700 text-white shadow-md shadow-indigo-800/20"
-                  : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-350 dark:hover:border-slate-700"
-              }`}
-            >
-              {dept}
-            </button>
-          ))}
+          
+          <button
+            onClick={() => setGlobalDepartment("Sales & Growth")}
+            className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
+              globalDepartment.toLowerCase() === "sales & growth"
+                ? "bg-indigo-700 text-white shadow-md shadow-indigo-600/20"
+                : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-350 dark:hover:border-slate-700"
+            }`}
+          >
+            Sales & Growth
+          </button>
+
+          <button
+            onClick={() => setGlobalDepartment("Academy")}
+            className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
+              globalDepartment.toLowerCase() === "academy"
+                ? "bg-indigo-700 text-white shadow-md shadow-indigo-600/20"
+                : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-350 dark:hover:border-slate-700"
+            }`}
+          >
+            Academy
+          </button>
+
+          <button
+            onClick={() => setGlobalDepartment("HR Analytics")}
+            className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
+              globalDepartment.toLowerCase() === "hr analytics" || globalDepartment.toLowerCase() === "hr/admin" || globalDepartment.toLowerCase() === "hr"
+                ? "bg-indigo-700 text-white shadow-md shadow-indigo-600/20"
+                : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-350 dark:hover:border-slate-700"
+            }`}
+          >
+            HR Analytics
+          </button>
+
+          <button
+            onClick={() => setGlobalDepartment("Daily Task Tracker")}
+            className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
+              globalDepartment.toLowerCase() === "daily task tracker"
+                ? "bg-indigo-700 text-white shadow-md shadow-indigo-600/20"
+                : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-350 dark:hover:border-slate-700"
+            }`}
+          >
+            Daily Task Tracker
+          </button>
+
+          {uniqueDepartments
+            .filter(dept => !["sales & growth", "academy", "hr analytics", "daily task tracker", "hr/admin", "hr"].includes(dept.toLowerCase()))
+            .map(dept => (
+              <button
+                key={dept}
+                onClick={() => setGlobalDepartment(dept)}
+                className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
+                  globalDepartment.toLowerCase() === dept.toLowerCase()
+                    ? "bg-indigo-700 text-white shadow-md shadow-indigo-800/20"
+                    : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-350 dark:hover:border-slate-700"
+                }`}
+              >
+                {dept}
+              </button>
+            ))}
         </div>
 
         {/* METRICS GRID */}

@@ -54,6 +54,33 @@ const COLUMN_META = {
   done: { label: 'Completed', icon: CheckCircle2, color: 'bg-[#b7d333]', glow: 'shadow-[#b7d333]/20' }
 };
 
+const PRIORITY_META = {
+  high: { 
+    label: 'High Priority',
+    shortLabel: 'High', 
+    color: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30', 
+    dot: 'bg-rose-500',
+    style: { backgroundColor: 'rgba(244, 63, 94, 0.15)', color: '#f43f5e', borderColor: 'rgba(244, 63, 94, 0.4)' },
+    dotStyle: { backgroundColor: '#f43f5e' }
+  },
+  medium: { 
+    label: 'Medium Priority', 
+    shortLabel: 'Medium',
+    color: 'bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/30', 
+    dot: 'bg-sky-500',
+    style: { backgroundColor: 'rgba(2, 132, 199, 0.18)', color: '#0284c7', borderColor: 'rgba(2, 132, 199, 0.45)' },
+    dotStyle: { backgroundColor: '#0284c7' }
+  },
+  low: { 
+    label: 'Low Priority', 
+    shortLabel: 'Low',
+    color: 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/30', 
+    dot: 'bg-yellow-500',
+    style: { backgroundColor: 'rgba(234, 179, 8, 0.18)', color: '#ca8a04', borderColor: 'rgba(234, 179, 8, 0.45)' },
+    dotStyle: { backgroundColor: '#eab308' }
+  }
+};
+
 const DEFAULT_DESIGNATIONS = [
   { id: "1", name: "HR Manager" }, { id: "2", name: "Graphic Designer" },
   { id: "3", name: "Digital Marketer" }, { id: "4", name: "React Developer" },
@@ -235,6 +262,9 @@ console.log("HEADERS:", getAuthHeaders());
                           return diffDays <= 1; // Today, tomorrow, or overdue
                         };
                         const isUrgent = task.dueDate && statusKey !== 'done' && checkIsUrgent(task.dueDate);
+                        const prioKey = String(task.priority || 'medium').toLowerCase();
+                        const prioMeta = PRIORITY_META[prioKey] || PRIORITY_META.medium;
+
                         return (
                         <Draggable key={task.id.toString()} draggableId={task.id.toString()} index={index}>
                           {(p, s) => (
@@ -248,7 +278,11 @@ console.log("HEADERS:", getAuthHeaders());
 
                               <div className="flex items-center justify-between gap-2 mb-3">
                                 <div className="flex items-center gap-2">
-                                  <div className="h-1.5 w-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)] animate-pulse" />
+                                  {/* Priority Badge Button */}
+                                  <span style={prioMeta.style} className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border ${prioMeta.color}`}>
+                                    <span style={prioMeta.dotStyle} className={`w-1.5 h-1.5 rounded-full ${prioMeta.dot} animate-pulse`} />
+                                    {prioMeta.shortLabel || prioKey}
+                                  </span>
                                   <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                                     {designations.find(d => String(d.id) === String(task.designation_id))?.name || "General"}
                                   </span>
@@ -340,7 +374,7 @@ console.log("HEADERS:", getAuthHeaders());
 const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) => {
   const { showToast } = useToast();
 
-  const [form, setForm] = useState({ title: '', description: '', assigned_to: '', designation_id: '', dueDate: '', client: '', project: '' });
+  const [form, setForm] = useState({ title: '', description: '', assigned_to: '', designation_id: '', dueDate: '', client: '', project: '', priority: 'medium' });
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [attachedLinks, setAttachedLinks] = useState([]);
   const [linkTitle, setLinkTitle] = useState('');
@@ -415,6 +449,8 @@ const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) 
     fd.append('assigned_to', form.assigned_to);
     fd.append('designation_id', form.designation_id);
     fd.append('status', 'pending');
+    fd.append('priority', form.priority || 'medium');
+    if (form.dueDate) fd.append('dueDate', form.dueDate);
     if (form.dueDate) fd.append('dueDate', form.dueDate);
     if (form.client) fd.append('client', form.client);
     if (form.project) fd.append('project', form.project);
@@ -572,10 +608,22 @@ const CreateModal = ({ onClose, users, refresh, getAuthHeaders, designations }) 
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1">
               <label className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.2em] ml-1">Title</label>
               <input required className="w-full bg-white border border-slate-200 px-3 py-2 rounded-xl text-slate-900 text-sm font-semibold outline-none focus:border-indigo-500/50" placeholder="Task title" value={form.title} onChange={e => setForm({...form, title: e.target.value})} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.2em] ml-1">Priority</label>
+              <select
+                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl text-slate-900 dark:text-slate-100 text-xs font-bold outline-none cursor-pointer"
+                value={form.priority || 'medium'}
+                onChange={e => setForm({ ...form, priority: e.target.value })}
+              >
+                <option value="high">🔴 High</option>
+                <option value="medium">🔷 Medium</option>
+                <option value="low">🟡 Low</option>
+              </select>
             </div>
             <div className="space-y-1">
               <label className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.2em] ml-1">Due Date</label>
@@ -882,6 +930,7 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
     fd.append('description', editForm.description || '');
     fd.append('assigned_to', editForm.assigned_to);
     fd.append('designation_id', editForm.designation_id);
+    if (editForm.priority) fd.append('priority', editForm.priority);
 
     if (editForm.client) {
       const cid = (editForm.client && typeof editForm.client === 'object') ? (editForm.client._id || editForm.client.id) : editForm.client;
@@ -1060,25 +1109,57 @@ const DetailModal = ({ task, currentUserId, onClose, onUpdate, getAuthHeaders, D
           </button>
 
           <div>
-            {/* STATUS */}
+            {/* STATUS & PRIORITY */}
             <div className="mb-3">
               {isEditing ? (
-                <select
-                  value={editForm.status}
-                  onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                  className="w-full appearance-none bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-slate-900 dark:text-slate-100 text-xs font-black uppercase tracking-[0.15em] outline-none focus:border-indigo-500/50 cursor-pointer"
-                >
-                  <option value="pending">PENDING</option>
-                  <option value="current">CURRENT</option>
-                  <option value="preview">PREVIEW</option>
-                  <option value="done">COMPLETED</option>
-                </select>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[9px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest mb-1 block ml-1">Status</label>
+                    <select
+                      value={editForm.status}
+                      onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                      className="w-full appearance-none bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-slate-900 dark:text-slate-100 text-xs font-black uppercase tracking-[0.15em] outline-none focus:border-indigo-500/50 cursor-pointer"
+                    >
+                      <option value="pending">PENDING</option>
+                      <option value="current">CURRENT</option>
+                      <option value="preview">PREVIEW</option>
+                      <option value="done">COMPLETED</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[9px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest mb-1 block ml-1">Priority</label>
+                    <select
+                      value={editForm.priority || 'medium'}
+                      onChange={(e) => setEditForm({ ...editForm, priority: e.target.value })}
+                      className="w-full appearance-none bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-slate-900 dark:text-slate-100 text-xs font-black uppercase tracking-[0.15em] outline-none focus:border-indigo-500/50 cursor-pointer"
+                    >
+                      <option value="high">🔴 HIGH PRIORITY</option>
+                      <option value="medium">🔷 MEDIUM PRIORITY</option>
+                      <option value="low">🟡 LOW PRIORITY</option>
+                    </select>
+                  </div>
+                </div>
               ) : (
-                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${statusConfig[task.status]?.activeClass || 'bg-slate-500/10 border-slate-500/20 text-slate-600'}`}>
-                  <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${statusConfig[task.status]?.dot || 'bg-slate-500'}`} />
-                  <span className="font-black uppercase text-[10px] tracking-widest">
-                    {statusConfig[task.status]?.label || task.status}
-                  </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${statusConfig[task.status]?.activeClass || 'bg-slate-500/10 border-slate-500/20 text-slate-600'}`}>
+                    <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${statusConfig[task.status]?.dot || 'bg-slate-500'}`} />
+                    <span className="font-black uppercase text-[10px] tracking-widest">
+                      {statusConfig[task.status]?.label || task.status}
+                    </span>
+                  </div>
+
+                  {(() => {
+                    const prioKey = String(task.priority || 'medium').toLowerCase();
+                    const meta = PRIORITY_META[prioKey] || PRIORITY_META.medium;
+                    return (
+                      <div style={meta.style} className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${meta.color}`}>
+                        <div style={meta.dotStyle} className={`w-1.5 h-1.5 rounded-full animate-pulse ${meta.dot}`} />
+                        <span className="font-black uppercase text-[10px] tracking-widest">
+                          {meta.label}
+                        </span>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>

@@ -25,8 +25,7 @@ import {
 } from 'lucide-react';
 
 const menuItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', allowedRoles: ['1', '2', 'admin' ],  allowedDepartments: ['6a55c7e8b613a280003481d8'] 
- },
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', allowedRoles: ['1', '2', '10', 'admin', 'superadmin', 'MD', 'COO', 'EXECUTIVE_DIRECTOR'], allowedDepartments: ['6a55c7e8b613a280003481d8', '6a3caed51194353cbc8a3686'] },
   {
     icon: Building,
     label: 'Clients',
@@ -86,7 +85,7 @@ const menuItems = [
     label: 'Telecaller Leads', 
     path: '/leads-telecaller',
     allowedDesignations: ['6a27939af292348deb7d0495','6a2f91472df21dc234018cab'],
-    allowedRoles: ['1', 'hr', 'admin', 'superadmin']
+    allowedRoles: ['1', '2', 'hr', 'admin', 'superadmin']
   },
   // { 
   //   icon: TrendingUp, 
@@ -326,6 +325,19 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
           // Insert after Dashboard or at correct position
           visible.push(fallbackReport);
         }
+      }
+
+      const desigName = String(userObj.designation || userObj.designationId?.name || '').toLowerCase().trim();
+      const desigId = String(userObj.designationId?._id || userObj.designationId || userObj.designation_id || '').trim();
+      const isMd = desigName.includes('md') || desigName.includes('managing director') || desigId === '6a7187de0bdbef63c8658832' || ['md', 'coo', 'executive_director'].includes(currentUserRole);
+
+      if (isMd) {
+        return visible.map(item => {
+          if (item.label === 'Dashboard') {
+            return { ...item, path: '/md-dashboard' };
+          }
+          return item;
+        });
       }
 
       return visible;

@@ -91,17 +91,33 @@ const StudentAttendance = () => {
   const fetchStudents = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/user/?role=student&limit=${PAGE_SIZE}&page=${currentPage}`, { headers: getHeaders() });
+      const cleanBase = (API_BASE || '/api').replace(/\/$/, '');
+      const endpoint = cleanBase.endsWith('/v1')
+        ? `${cleanBase}/users?role=student&limit=500`
+        : `${cleanBase}/v1/users?role=student&limit=500`;
+
+      const res = await fetch(endpoint, { headers: getHeaders() });
       
-      if (!res.ok) return;
+      if (!res.ok) {
+        // Fallback to legacy endpoint
+        const fallbackRes = await fetch(`${cleanBase}/user/?role=student&limit=500`, { headers: getHeaders() });
+        if (!fallbackRes.ok) return;
+        const fbData = await fallbackRes.json();
+        const fbUsers = fbData?.users || fbData?.data?.users || fbData?.data || fbData?.results || [];
+        setStudents(fbUsers);
+        setTotalStudents(fbData?.pagination?.total || fbData?.total || fbUsers.length);
+        await syncAttendance();
+        return;
+      }
       
       const responseData = await res.json();
-      const allUsers = responseData?.users || responseData?.data?.users || responseData?.data || responseData?.results || [];
+      const allUsers = responseData?.users || responseData?.data?.users || responseData?.data || responseData?.results || (Array.isArray(responseData) ? responseData : []);
       
-      const studentList = allUsers.filter(u => {
-        const roleId = u.role_id ?? u.role ?? u.role?.id ?? u.role?.role_id;
-        return String(roleId) === STUDENT_ROLE_ID || String(roleId).toLowerCase() === 'student';
-      });
+      const studentList = Array.isArray(allUsers) ? allUsers.filter(u => {
+        const rawRole = u.role_id ?? u.role ?? u.role?.id ?? u.role?.role_id;
+        const roleId = String(rawRole || '').toLowerCase();
+        return roleId === '10' || roleId === '4' || roleId === 'student';
+      }) : [];
 
       setStudents(studentList);
       setTotalStudents(responseData?.pagination?.total || responseData?.total || studentList.length);
@@ -111,7 +127,7 @@ const StudentAttendance = () => {
     } finally {
       setLoading(false);
     }
-  }, [getHeaders, currentPage, syncAttendance]);
+  }, [getHeaders, syncAttendance]);
 
   useEffect(() => {
     fetchStudents();
