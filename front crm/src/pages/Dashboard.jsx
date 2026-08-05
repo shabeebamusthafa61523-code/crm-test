@@ -465,6 +465,9 @@ const Dashboard = ({ isEmbedded = false, mdData = null }) => {
 
   // Processed user todo performance list (filtered by department and sorted)
   const processedUserTodoPerformance = useMemo(() => {
+    // Departments that belong to MD view only — excluded from admin Operational Task Analytics
+    const MD_ONLY_DEPTS = ["academy", "hr analytics", "hr/admin", "hr", "daily task tracker"];
+
     let list = allUsers.map(u => {
       const userIdStr = String(u.id || u._id || "").trim();
       const userTasks = tasks.filter(t => {
@@ -492,6 +495,12 @@ const Dashboard = ({ isEmbedded = false, mdData = null }) => {
         const deptName = u.departmentId?.name || u.department || "";
         return deptName.toLowerCase().trim() === globalDepartment.toLowerCase().trim();
       });
+    } else if (!isEmbedded) {
+      // Admin "all" view: exclude MD-only departments from Operational Task Analytics
+      list = list.filter(u => {
+        const deptName = (u.departmentId?.name || u.department || "").toLowerCase().trim();
+        return !MD_ONLY_DEPTS.includes(deptName);
+      });
     }
 
     // Sort by selected criteria
@@ -504,7 +513,8 @@ const Dashboard = ({ isEmbedded = false, mdData = null }) => {
     }
 
     return list;
-  }, [allUsers, tasks, globalDepartment, userPerformanceSort]);
+  }, [allUsers, tasks, globalDepartment, userPerformanceSort, isEmbedded]);
+
 
   // SVG Bar Chart Generator for User Todo Performance (Premium Edition)
   const renderUserTodoPerformanceChart = () => {
@@ -1123,53 +1133,46 @@ const Dashboard = ({ isEmbedded = false, mdData = null }) => {
           >
             Admin Dashboard
           </button>
-          
-          <button
-            onClick={() => setGlobalDepartment("Sales & Growth")}
-            className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
-              globalDepartment.toLowerCase() === "sales & growth"
-                ? "bg-indigo-700 text-white shadow-md shadow-indigo-600/20"
-                : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-350 dark:hover:border-slate-700"
-            }`}
-          >
-            Sales & Growth
-          </button>
 
-          <button
-            onClick={() => setGlobalDepartment("Academy")}
-            className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
-              globalDepartment.toLowerCase() === "academy"
-                ? "bg-indigo-700 text-white shadow-md shadow-indigo-600/20"
-                : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-350 dark:hover:border-slate-700"
-            }`}
-          >
-            Academy
-          </button>
+          {/* MD-only tabs — only shown when accessed via MdDashboard */}
+          {isEmbedded && (
+            <>
+              <button
+                onClick={() => setGlobalDepartment("Academy")}
+                className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
+                  globalDepartment.toLowerCase() === "academy"
+                    ? "bg-indigo-700 text-white shadow-md shadow-indigo-600/20"
+                    : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-350 dark:hover:border-slate-700"
+                }`}
+              >
+                Academy
+              </button>
 
-          <button
-            onClick={() => setGlobalDepartment("HR Analytics")}
-            className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
-              globalDepartment.toLowerCase() === "hr analytics" || globalDepartment.toLowerCase() === "hr/admin" || globalDepartment.toLowerCase() === "hr"
-                ? "bg-indigo-700 text-white shadow-md shadow-indigo-600/20"
-                : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-350 dark:hover:border-slate-700"
-            }`}
-          >
-            HR Analytics
-          </button>
+              <button
+                onClick={() => setGlobalDepartment("HR Analytics")}
+                className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
+                  globalDepartment.toLowerCase() === "hr analytics" || globalDepartment.toLowerCase() === "hr/admin" || globalDepartment.toLowerCase() === "hr"
+                    ? "bg-indigo-700 text-white shadow-md shadow-indigo-600/20"
+                    : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-350 dark:hover:border-slate-700"
+                }`}
+              >
+                HR Analytics
+              </button>
 
-          <button
-            onClick={() => setGlobalDepartment("Daily Task Tracker")}
-            className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
-              globalDepartment.toLowerCase() === "daily task tracker"
-                ? "bg-indigo-700 text-white shadow-md shadow-indigo-600/20"
-                : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-350 dark:hover:border-slate-700"
-            }`}
-          >
-            Daily Task Tracker
-          </button>
+              <button
+                onClick={() => setGlobalDepartment("Daily Task Tracker")}
+                className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
+                  globalDepartment.toLowerCase() === "daily task tracker"
+                    ? "bg-indigo-700 text-white shadow-md shadow-indigo-600/20"
+                    : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-350 dark:hover:border-slate-700"
+                }`}
+              >
+                Daily Task Tracker
+              </button>
+            </>
+          )}
 
           {uniqueDepartments
-            .filter(dept => !["sales & growth", "academy", "hr analytics", "daily task tracker", "hr/admin", "hr"].includes(dept.toLowerCase()))
             .map(dept => (
               <button
                 key={dept}
@@ -1240,6 +1243,7 @@ const Dashboard = ({ isEmbedded = false, mdData = null }) => {
         </div>
 
         {/* CHARTS SECTION 1 - SVG TIMELINE & LEAD STAGE FUNNEL */}
+        {!["academy", "hr analytics", "hr/admin", "daily task tracker"].includes(globalDepartment.toLowerCase()) && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* UNIFIED DEPARTMENT & USER TODO ANALYTICS CONSOLE (Full-Width Premium Dashboard Card) */}
           <div className="lg:col-span-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm flex flex-col justify-between">
@@ -1294,6 +1298,8 @@ const Dashboard = ({ isEmbedded = false, mdData = null }) => {
             </div>
           </div>
         </div>
+        )}
+
 
         {/* CHARTS SECTION 2 - LEADS FUNNEL, MARKETING SOURCES, AND OPERATOR PERFORMANCE */}
         {showLeadsArea && (
