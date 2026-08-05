@@ -244,6 +244,8 @@ export const login = async (req, res) => {
         status: user.status || "active",
         joining_date: user.joining_date,
         isTeamLead,
+        permissions: user.permissions || [],
+        isSuperAdmin: Boolean(user.isSuperAdmin || user.role === 'superadmin' || user.role_id === '0'),
         createdAt: user.createdAt,
         updatedAt: user.updatedAt
       }

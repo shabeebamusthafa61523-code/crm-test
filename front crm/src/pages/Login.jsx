@@ -56,7 +56,15 @@ const Login = () => {
         body: JSON.stringify(loginData),
       });
 
-      const result = await response.json();
+      let result = {};
+      try {
+        result = await response.json();
+      } catch (jsonErr) {
+        if (!response.ok) {
+          showToast(`Server Connection Error (${response.status}: ${response.statusText || 'Bad Gateway'}). Please ensure the backend server is running.`, 'error');
+          return;
+        }
+      }
 
       if (response.ok && result.token) {
         // 1. Save the token

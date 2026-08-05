@@ -299,7 +299,7 @@ const PerformanceDashboard = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 py-2.5 pl-9 pr-3 rounded-xl text-xs font-medium outline-none focus:border-indigo-500"
               />
-              <div size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             </div>
           </div>
 

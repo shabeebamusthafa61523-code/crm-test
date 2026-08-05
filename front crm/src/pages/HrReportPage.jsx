@@ -2842,7 +2842,7 @@ const HrReportPage = () => {
 
             {/* Footer buttons */}
             <div className="flex flex-wrap items-center justify-start sm:justify-end gap-3 border-t border-slate-100 dark:border-slate-800 pt-5 w-full">
-              <button
+              {/* <button
                 type="button"
                 onClick={() => setIsWeeklyModalOpen(true)}
                 className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-semibold text-sm transition-all"
@@ -2857,7 +2857,7 @@ const HrReportPage = () => {
               >
                 <Calendar size={16} />
                 Monthly Report
-              </button>
+              </button> */}
 
               
 
