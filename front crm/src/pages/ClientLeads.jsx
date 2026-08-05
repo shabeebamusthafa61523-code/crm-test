@@ -165,6 +165,8 @@ export default function ClientLeads() {
 
   const [leads, setLeads] = useState([]);
   const [staff, setStaff] = useState([]);
+  // Debounce timer ref for remarks inline update
+  const remarksDebounceRef = React.useRef({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all');
@@ -209,6 +211,9 @@ export default function ClientLeads() {
       d.setDate(d.getDate() - 30);
       setDateFrom(d.toISOString().split('T')[0]);
       setDateTo(todayStr);
+    } else if (preset === 'custom') {
+      setDateFrom('');
+      setDateTo('');
     }
   };
   const [sortOrder, setSortOrder] = useState('desc');
@@ -570,12 +575,37 @@ export default function ClientLeads() {
         return;
       }
 
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+      // Robust CSV field parser that handles quoted fields containing commas
+      const parseCsvLine = (line) => {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') {
+            if (inQuotes && line[i + 1] === '"') {
+              current += '"'; // escaped quote
+              i++;
+            } else {
+              inQuotes = !inQuotes;
+            }
+          } else if (ch === ',' && !inQuotes) {
+            result.push(current.trim());
+            current = '';
+          } else {
+            current += ch;
+          }
+        }
+        result.push(current.trim());
+        return result;
+      };
+
+      const headers = parseCsvLine(lines[0]).map(h => h.toLowerCase());
       const parsedLeads = [];
 
       for (let i = 1; i < lines.length; i++) {
         if (!lines[i].trim()) continue;
-        const values = lines[i].split(',').map(v => v.trim());
+        const values = parseCsvLine(lines[i]);
         const leadObj = {};
         headers.forEach((h, idx) => {
           if (h.includes('name')) leadObj.leadName = values[idx];
@@ -966,7 +996,7 @@ export default function ClientLeads() {
         /* Grid View Mode */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {paginatedLeads.map(lead => {
-            const statusMeta = STATUS_META[lead.status] || { label: lead.status, color: 'bg-slate-100 text-slate-600' };
+            const statusMeta = STATUS_META[lead.status] || { label: lead.status, color: 'bg-slate-100 text-slate-600 border-slate-200' };
 
             return (
               <div key={lead.id || lead._id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-4 shadow-sm hover:shadow-md transition flex flex-col justify-between">
@@ -1121,7 +1151,7 @@ export default function ClientLeads() {
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {paginatedLeads.map((lead) => {
-                  const statusMeta = STATUS_META[lead.status] || { label: lead.status, color: 'bg-slate-100 text-slate-600' };
+                  const statusMeta = STATUS_META[lead.status] || { label: lead.status, color: 'bg-slate-100 text-slate-600 border-slate-200' };
                   return (
                     <tr key={lead.id || lead._id} className={getRowClass()}>
                       <td className="px-6 py-4.5">
@@ -1303,14 +1333,23 @@ export default function ClientLeads() {
 
                       {/* Remarks */}
                       <td className="px-6 py-4.5 text-xs">
-                        <textarea
-                          rows={1}
-                          value={lead.remarks || ''}
-                          onChange={(e) => handleInlineUpdate(lead.id || lead._id, 'remarks', e.target.value)}
-                          disabled={!canEditLead}
-                          className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 outline-none cursor-pointer min-w-[150px] disabled:opacity-75 disabled:cursor-not-allowed"
-                          placeholder="Remarks..."
-                        />
+                         <textarea
+                           rows={1}
+                           defaultValue={lead.remarks || ''}
+                           onChange={(e) => {
+                             const leadId = lead.id || lead._id;
+                             const val = e.target.value;
+                             if (remarksDebounceRef.current[leadId]) {
+                               clearTimeout(remarksDebounceRef.current[leadId]);
+                             }
+                             remarksDebounceRef.current[leadId] = setTimeout(() => {
+                               handleInlineUpdate(leadId, 'remarks', val);
+                             }, 800);
+                           }}
+                           disabled={!canEditLead}
+                           className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-200 outline-none cursor-pointer min-w-[150px] disabled:opacity-75 disabled:cursor-not-allowed"
+                           placeholder="Remarks..."
+                         />
                       </td>
 
                       <td className="px-6 py-4.5 text-xs font-semibold min-w-[170px]">
