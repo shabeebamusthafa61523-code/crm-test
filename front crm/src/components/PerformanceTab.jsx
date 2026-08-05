@@ -11,9 +11,12 @@ const API_BASE = import.meta.env.VITE_API_URL;
 const GRADE_META = {
   'Outstanding': { color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-400', badge: '🏆 Outstanding' },
   'Excellent': { color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:bg-indigo-500/20 dark:text-indigo-400', badge: '⭐ Excellent' },
+  'Better': { color: 'bg-lime-500/10 text-lime-600 border-lime-500/20 dark:bg-lime-500/20 dark:text-lime-400', badge: '🚀 Better' },
   'Very Good': { color: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20 dark:bg-cyan-500/20 dark:text-cyan-400', badge: '👍 Very Good' },
   'Good': { color: 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:bg-blue-500/20 dark:text-blue-400', badge: '✅ Good' },
   'Needs Improvement': { color: 'bg-amber-500/10 text-amber-600 border-amber-500/20 dark:bg-amber-500/20 dark:text-amber-400', badge: '⚠️ Needs Improvement' },
+  'Bad': { color: 'bg-orange-500/10 text-orange-600 border-orange-500/20 dark:bg-orange-500/20 dark:text-orange-400', badge: '⚠️ Bad' },
+  'Very Bad': { color: 'bg-rose-500/10 text-rose-500 border-rose-500/20 dark:bg-rose-500/20 dark:text-rose-400', badge: '🚨 Very Bad' },
   'Critical': { color: 'bg-rose-500/10 text-rose-500 border-rose-500/20 dark:bg-rose-500/20 dark:text-rose-400', badge: '🚨 Critical' }
 };
 
@@ -284,7 +287,7 @@ const PerformanceTab = ({ user }) => {
   }
 
   const kpiScore = performanceData?.kpiScore || { overallScore: 85, grade: 'Very Good' };
-  const kpiColor = getScoreColorConfig(kpiScore.overallScore);
+  const kpiColor = getKpiColorCode(kpiScore.overallScore);
   const gradeMeta = GRADE_META[kpiScore.grade] || GRADE_META['Good'];
 
   return (

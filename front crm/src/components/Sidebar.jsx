@@ -21,6 +21,7 @@ import {
   ChevronRight,
   FolderKanban,
    Briefcase,
+  ShieldCheck,
   X
 } from 'lucide-react';
 
@@ -74,6 +75,13 @@ const menuItems = [
     label: 'Users', 
     path: '/users', 
     allowedRoles: ['1', '2', 'hr', 'admin'],
+    allowedDepartments: ['6a3caed51194353cbc8a3686']
+  },
+  { 
+    icon: ShieldCheck, 
+    label: 'Sidebar Permissions', 
+    path: '/users', 
+    allowedRoles: ['0', 'superadmin', '1', '2', 'admin'],
     allowedDepartments: ['6a3caed51194353cbc8a3686']
   },
   // { 
@@ -251,11 +259,24 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
       // 2. Custom Sidebar Permissions set by Super Admin for this user
       if (Array.isArray(userObj.permissions) && userObj.permissions.length > 0) {
         const allowedSet = userObj.permissions.map(p => String(p).toLowerCase().trim());
-        const customVisible = menuItems.filter(item => {
-          if (item.isCommonDashboardFallback || item.isBasicReportFallback) return false;
+        let customVisible = menuItems.filter(item => {
           return allowedSet.includes(item.label.toLowerCase().trim()) || allowedSet.includes(item.path.toLowerCase().trim());
         });
         if (customVisible.length > 0) {
+          // Fallback dashboard: if user has no dashboard in custom permissions
+          const hasDashboard = customVisible.some(item => item.label.toLowerCase().includes('dashboard'));
+          if (!hasDashboard) {
+            const fallbackDashboard = menuItems.find(item => item.isCommonDashboardFallback);
+            if (fallbackDashboard) customVisible.unshift(fallbackDashboard);
+          }
+
+          // Fallback report: if user has no report page in custom permissions
+          const hasReport = customVisible.some(item => item.label.toLowerCase().includes('report'));
+          if (!hasReport) {
+            const fallbackReport = menuItems.find(item => item.isBasicReportFallback);
+            if (fallbackReport) customVisible.push(fallbackReport);
+          }
+
           return customVisible;
         }
       }
@@ -326,11 +347,10 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
       }
 
       // Fallback report: if user has no other report page in visible items
-      const hasOtherReport = visible.some(item => item.label.toLowerCase().includes('report') && item.label !== 'Employee Reports' && item.label !== 'Team Reports');
+      const hasOtherReport = visible.some(item => item.label.toLowerCase().includes('report'));
       if (!hasOtherReport) {
         const fallbackReport = menuItems.find(item => item.isBasicReportFallback);
         if (fallbackReport) {
-          // Insert after Dashboard or at correct position
           visible.push(fallbackReport);
         }
       }
