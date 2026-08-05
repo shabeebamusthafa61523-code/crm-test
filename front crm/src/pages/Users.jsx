@@ -298,7 +298,27 @@ const Users = () => {
   const navigate = useNavigate();
   const [imgErrors, setImgErrors] = useState({});
 
+  const isHr = useMemo(() => {
+    try {
+      const savedUser = localStorage.getItem('user');
+      if (savedUser) {
+        const userObj = JSON.parse(savedUser);
+        const role = String(userObj.role_id || userObj.roleId || userObj.role || '').toLowerCase().trim();
+        const designation = String(userObj.designation || '').toLowerCase().trim();
+        const designationId = String(userObj.designationId?._id || userObj.designationId || userObj.designation_id || '').trim();
+        return role === 'hr' || designation.includes('hr') || designationId === '6a2f8efea2fe388770a38987';
+      }
+    } catch (e) {
+      console.error("Error checking HR role in Users:", e);
+    }
+    return false;
+  }, []);
+
   const handlePermissionClick = (user) => {
+    if (isHr) {
+      showToast("HR users cannot manage permissions.", "warning");
+      return;
+    }
     const userId = user.id || user._id;
     navigate(`/permissions/${userId}`);
   };
@@ -720,13 +740,15 @@ const pagedUsers = filteredUsers.slice((currentPage - 1) * ITEMS_PER_PAGE, curre
                             >
                               <Edit3 size={14} />
                             </button>
-                            <button 
-                              onClick={() => handlePermissionClick(user)}
-                              className="p-2.5 bg-indigo-50 hover:bg-indigo-600 hover:text-white dark:bg-indigo-950/40 dark:hover:bg-indigo-600 text-indigo-600 dark:text-indigo-400 rounded-xl transition-all duration-300 cursor-pointer shadow-sm active:scale-90"
-                              title="Manage Sidebar Access & Super Admin Permissions"
-                            >
-                              <ShieldCheck size={14} />
-                            </button>
+                            {!isHr && (
+                              <button 
+                                onClick={() => handlePermissionClick(user)}
+                                className="p-2.5 bg-indigo-50 hover:bg-indigo-600 hover:text-white dark:bg-indigo-950/40 dark:hover:bg-indigo-600 text-indigo-600 dark:text-indigo-400 rounded-xl transition-all duration-300 cursor-pointer shadow-sm active:scale-90"
+                                title="Manage Sidebar Access & Super Admin Permissions"
+                              >
+                                <ShieldCheck size={14} />
+                              </button>
+                            )}
                             <button 
                               onClick={() => handleDeleteUser(user.id || user._id, user.name)}
                               className="p-2.5 bg-slate-100 hover:bg-rose-500 hover:text-white dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-xl transition-all duration-300 cursor-pointer shadow-sm active:scale-90"

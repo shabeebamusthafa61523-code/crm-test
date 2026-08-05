@@ -98,7 +98,7 @@ const Login = () => {
                      ['md', 'coo', 'executive_director'].includes(currentUserRole);
 
         const isAdmin = ['1', '2', 'admin'].includes(currentUserRole) || currentUserDesignation.includes('admin');
-        const isHr = currentUserRole === 'hr' || currentUserDesignation.includes('hr');
+        const isHr = currentUserRole === 'hr' || currentUserDesignation.includes('hr') || currentUserDesignationId === '6a2f8efea2fe388770a38987';
 
         if (isMd) {
           navigate('/md-dashboard');

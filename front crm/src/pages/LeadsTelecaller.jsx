@@ -251,8 +251,34 @@ const [activePriority, setActivePriority] = useState('all');
     if (!currentUser) return false;
     const roleId = String(currentUser.role_id || currentUser.roleId || currentUser.role || '').toLowerCase().trim();
     const designation = String(currentUser.designation || currentUser.designationId?.name || currentUser.designation_id || '').toLowerCase().trim();
-    const isOps = designation.includes('operation') || designation.includes('ops');
-    return (['1', '2', 'admin', 'superadmin'].includes(roleId) || designation.includes('admin')) && !isOps;
+    const deptName = String(currentUser.department || currentUser.departmentId?.name || '').toLowerCase().trim();
+
+    let desigId = '';
+    if (currentUser.designationId) {
+      if (typeof currentUser.designationId === 'object' && currentUser.designationId._id) {
+        desigId = String(currentUser.designationId._id).trim();
+      } else {
+        desigId = String(currentUser.designationId).trim();
+      }
+    } else if (currentUser.designation_id) {
+      desigId = String(currentUser.designation_id).trim();
+    }
+
+    let userDeptId = '';
+    if (currentUser.departmentId) {
+      if (typeof currentUser.departmentId === 'object' && currentUser.departmentId._id) {
+        userDeptId = String(currentUser.departmentId._id).trim();
+      } else {
+        userDeptId = String(currentUser.departmentId).trim();
+      }
+    }
+
+    const isOps = designation.includes('operation') || designation.includes('ops') || deptName.includes('operation') || deptName.includes('ops');
+
+    const isAdminUser = (['1', '2', 'admin', 'superadmin'].includes(roleId) || designation.includes('admin') || deptName.includes('admin') || userDeptId === '6a3caed51194353cbc8a3686') && !isOps;
+    const isHrUser = roleId === 'hr' || designation.includes('hr') || deptName.includes('hr') || desigId === '6a2f8efea2fe388770a38987' || userDeptId === '6a3caed51194353cbc8a3686';
+
+    return isAdminUser || isHrUser;
   }, [currentUser]);
 
   const canEditLead = useMemo(() => {
@@ -352,7 +378,7 @@ const [activePriority, setActivePriority] = useState('all');
       designationId = String(currentUser.designation_id).trim();
     }
 
-    const allowedDepts = ['6a26a7d72a56a1f9c49da8a3', '6a27f394558c220a47fff02e'];
+    const allowedDepts = ['6a26a7d72a56a1f9c49da8a3', '6a27f394558c220a47fff02e', '6a3caed51194353cbc8a3686'];
     const allowedDesigs = ['6a27939af292348deb7d0495'];
 
     return allowedDepts.includes(departmentId) || allowedDesigs.includes(designationId);

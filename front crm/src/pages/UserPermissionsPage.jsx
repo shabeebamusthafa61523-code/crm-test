@@ -84,10 +84,28 @@ const UserPermissionsPage = () => {
   }, [userId, getAuthHeaders, showToast]);
 
   useEffect(() => {
+    try {
+      const savedUser = localStorage.getItem('user');
+      if (savedUser) {
+        const userObj = JSON.parse(savedUser);
+        const role = String(userObj.role_id || userObj.roleId || userObj.role || '').toLowerCase().trim();
+        const designation = String(userObj.designation || '').toLowerCase().trim();
+        const designationId = String(userObj.designationId?._id || userObj.designationId || userObj.designation_id || '').trim();
+        const isHr = role === 'hr' || designation.includes('hr') || designationId === '6a2f8efea2fe388770a38987';
+        if (isHr) {
+          showToast("HR users cannot edit permissions.", "error");
+          navigate('/users', { replace: true });
+          return;
+        }
+      }
+    } catch (e) {
+      console.error("Error checking HR status in UserPermissionsPage:", e);
+    }
+
     if (userId) {
       fetchUser();
     }
-  }, [userId, fetchUser]);
+  }, [userId, fetchUser, navigate, showToast]);
 
   const togglePermission = (label) => {
     if (isSuperAdmin) return;
