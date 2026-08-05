@@ -1121,6 +1121,7 @@ export default function ClientLeads() {
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {paginatedLeads.map((lead) => {
+                  const statusMeta = STATUS_META[lead.status] || { label: lead.status, color: 'bg-slate-100 text-slate-600' };
                   return (
                     <tr key={lead.id || lead._id} className={getRowClass()}>
                       <td className="px-6 py-4.5">
