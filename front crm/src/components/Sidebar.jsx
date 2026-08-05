@@ -20,8 +20,14 @@ import {
   ChevronLeft,
   ChevronRight,
   FolderKanban,
-   Briefcase,
+  Briefcase,
   ShieldCheck,
+  Wallet,
+  PlusCircle,
+  DollarSign,
+  BookOpen,
+  Tag,
+  ChevronDown,
   X
 } from 'lucide-react';
 
@@ -195,6 +201,18 @@ const menuItems = [
     path: '/ops-report',
     allowedDesignations: ['6a2f91472df21dc234018cab'],
     // allowedRoles: ['1', '2', 'hr', 'admin']
+  },
+  {
+    icon: Wallet,
+    label: 'Accounts',
+    path: '/accounts',
+    children: [
+      { icon: Tag, label: 'Expense Categories', path: '/accounts/categories' },
+      { icon: PlusCircle, label: 'Add Expense', path: '/accounts/expenses' },
+      { icon: DollarSign, label: 'Salary Payment', path: '/accounts/salary' },
+      { icon: BookOpen, label: 'Cash Book', path: '/accounts/cash-book' },
+      { icon: BarChart3, label: 'Expense Report', path: '/accounts/reports' }
+    ]
   },
   {
     icon: FileText,
@@ -429,8 +447,9 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
               icon={<item.icon size={20} />} 
               label={item.label} 
               to={item.path} 
-              active={activePath === item.path} 
+              active={activePath === item.path || (item.children && item.children.some(c => activePath === c.path))} 
               isCollapsed={isCollapsed}
+              childrenItems={item.children}
             />
           ))}
         </div>
@@ -484,19 +503,39 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
 
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
           {visibleMenuItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={() => setIsMobileOpen(false)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-                activePath === item.path
-                  ? 'bg-indigo-600 text-white font-medium shadow-md shadow-indigo-500/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200'
-              }`}
-            >
-              <item.icon size={20} className="shrink-0" />
-              <span className="text-sm font-medium">{item.label}</span>
-            </Link>
+            <React.Fragment key={item.path}>
+              <Link
+                to={item.children ? item.children[0].path : item.path}
+                onClick={() => setIsMobileOpen(false)}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
+                  activePath === item.path || (item.children && item.children.some(c => activePath === c.path))
+                    ? 'bg-indigo-600 text-white font-medium shadow-md shadow-indigo-500/20'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+              >
+                <item.icon size={20} className="shrink-0" />
+                <span className="text-sm font-medium">{item.label}</span>
+              </Link>
+              {item.children && (
+                <div className="pl-6 space-y-1 my-1">
+                  {item.children.map(child => (
+                    <Link
+                      key={child.path}
+                      to={child.path}
+                      onClick={() => setIsMobileOpen(false)}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs ${
+                        activePath === child.path
+                          ? 'text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950/40'
+                          : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      <child.icon size={14} />
+                      <span>{child.label}</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </React.Fragment>
           ))}
         </div>
 
@@ -520,7 +559,15 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
   );
 };
 
-const NavItem = ({ icon, label, to, active, isLogout, isCollapsed, onClick }) => {
+const NavItem = ({ icon, label, to, active, isLogout, isCollapsed, onClick, childrenItems }) => {
+  const location = useLocation();
+  const [isOpen, setIsOpen] = useState(() => {
+    if (childrenItems && childrenItems.some(c => location.pathname.startsWith(c.path))) {
+      return true;
+    }
+    return false;
+  });
+
   const [isHovered, setIsHovered] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const itemRef = useRef(null);
@@ -535,6 +582,113 @@ const NavItem = ({ icon, label, to, active, isLogout, isCollapsed, onClick }) =>
     }
     setIsHovered(true);
   };
+
+  const isParentActive = active || (childrenItems && childrenItems.some(c => location.pathname.startsWith(c.path)));
+
+  if (childrenItems && childrenItems.length > 0) {
+    return (
+      <div className="w-full space-y-1 select-none">
+        <div
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={() => setIsHovered(false)}
+          ref={itemRef}
+          className="relative w-full flex items-center justify-between group"
+        >
+          <Link
+            to={to}
+            onClick={(e) => {
+              setIsOpen(true);
+              if (onClick) onClick(e);
+            }}
+            className={`flex-1 flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 
+              ${isParentActive 
+                ? 'text-white bg-indigo-600 shadow-md shadow-indigo-500/15 font-semibold' 
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 font-medium'
+              }`}
+          >
+            <span className="flex items-center justify-center shrink-0">
+              {icon}
+            </span>
+            <span className={`text-sm transition-all duration-200 whitespace-nowrap overflow-hidden ${isCollapsed ? 'opacity-0 w-0' : 'opacity-100 w-auto'}`}>
+              {label}
+            </span>
+          </Link>
+
+          {!isCollapsed && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsOpen(!isOpen);
+              }}
+              className={`p-2 rounded-xl transition-colors ${
+                isParentActive
+                  ? 'text-white/80 hover:text-white'
+                  : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+              }`}
+              title={isOpen ? "Collapse Submenu" : "Expand Submenu"}
+            >
+              <ChevronDown size={16} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+          )}
+        </div>
+
+        {/* Floating label badge when collapsed */}
+        <AnimatePresence>
+          {isHovered && isCollapsed && (
+            <PortalTooltip>
+              <motion.span 
+                initial={{ opacity: 0, x: -10, y: '-50%' }}
+                animate={{ opacity: 1, x: 0, y: '-50%' }}
+                exit={{ opacity: 0, x: -10, y: '-50%' }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
+                style={{
+                  position: 'fixed',
+                  top: `${coords.top}px`,
+                  left: `${coords.left}px`,
+                }}
+                className="fixed pointer-events-none z-[9999] px-3 py-1.5 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-[11px] font-semibold rounded-lg shadow-md border border-slate-200 dark:border-slate-800 whitespace-nowrap -translate-y-1/2"
+              >
+                {label}
+                <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-1.5 h-1.5 bg-white dark:bg-slate-900 rotate-45 border-l border-b border-slate-200 dark:border-slate-800" />
+              </motion.span>
+            </PortalTooltip>
+          )}
+        </AnimatePresence>
+
+        {/* Child Items */}
+        <AnimatePresence>
+          {isOpen && !isCollapsed && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="pl-3 space-y-1 border-l-2 border-slate-100 dark:border-slate-800 ml-4 mt-1"
+            >
+              {childrenItems.map(child => {
+                const childActive = location.pathname === child.path;
+                const ChildIcon = child.icon;
+                return (
+                  <Link
+                    key={child.path}
+                    to={child.path}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                      childActive
+                        ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 font-bold'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                    }`}
+                  >
+                    <ChildIcon size={14} className="shrink-0" />
+                    <span className="truncate">{child.label}</span>
+                  </Link>
+                );
+              })}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
 
   return (
     <Link 
