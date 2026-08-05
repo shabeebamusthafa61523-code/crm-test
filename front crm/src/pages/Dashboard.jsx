@@ -271,6 +271,16 @@ const Dashboard = ({ isEmbedded = false, mdData = null }) => {
         return;
       }
 
+      // Check if user is HR -> redirect to HR Dashboard
+      const isHr = currentUserRole === 'hr' || 
+                   currentUserDesignation.includes('hr') || 
+                   currentUserDesignationId === '6a2f8efea2fe388770a38987';
+
+      if (isHr && !isEmbedded) {
+        navigate('/hr-dashboard', { replace: true });
+        return;
+      }
+
       // Check if user has administrative/privileged role
       let currentUserDept = '';
       if (parsedUser.departmentId) {
@@ -281,7 +291,7 @@ const Dashboard = ({ isEmbedded = false, mdData = null }) => {
         }
       }
       const privileged = isEmbedded ||
-                         ['1', '2', 'hr', 'admin'].includes(currentUserRole) || 
+                         ['1', '2', 'admin'].includes(currentUserRole) || 
                          currentUserDept === '6a3caed51194353cbc8a3686' || 
                          currentUserDept === '6a55c7e8b613a280003481d8';
       setIsAdmin(privileged);

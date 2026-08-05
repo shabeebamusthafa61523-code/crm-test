@@ -26,25 +26,7 @@ import {
 
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', allowedRoles: ['1', '2', '10', 'admin', 'superadmin', 'MD', 'COO', 'EXECUTIVE_DIRECTOR'], allowedDepartments: ['6a55c7e8b613a280003481d8', '6a3caed51194353cbc8a3686'] },
-  {
-    icon: Building,
-    label: 'Clients',
-    path: '/clients',
-    allowedRoles: ['1', '2', '10', 'hr', 'admin', 'superadmin', 'manager', 'team_lead', 'teamlead']
-  },
-  {
-    icon: FolderKanban,
-    label: 'Projects',
-    path: '/projects',
-    allowedRoles: ['1', '2', '10', 'hr', 'admin', 'superadmin', 'manager', 'team_lead', 'teamlead']
-  },
-  { 
-    icon: Briefcase, 
-    label: 'Client Leads', 
-    path: '/client-leads',
-    allowedRoles: ['1', '2', '10', 'hr', 'admin', 'superadmin', 'manager', 'team_lead', 'teamlead']
-  },
-  {
+   {
     icon: LayoutDashboard,
     label: 'HR Dashboard',
     path: '/hr-dashboard',
@@ -65,6 +47,27 @@ const menuItems = [
     // allowedRoles: ['1', '2', '3', 'hr', 'admin', 'marketing'],
     allowedDepartments: [ '6a211b6621f80bb8da167efb']
   },
+  
+  
+  {
+    icon: Building,
+    label: 'Clients',
+    path: '/clients',
+    allowedRoles: ['1', '2', '10', 'hr', 'admin', 'superadmin', 'manager', 'team_lead', 'teamlead']
+  },
+  {
+    icon: FolderKanban,
+    label: 'Projects',
+    path: '/projects',
+    allowedRoles: ['1', '2', '10', 'hr', 'admin', 'superadmin', 'manager', 'team_lead', 'teamlead']
+  },
+  { 
+    icon: Briefcase, 
+    label: 'Client Leads', 
+    path: '/client-leads',
+    allowedRoles: ['1', '2', '10', 'hr', 'admin', 'superadmin', 'manager', 'team_lead', 'teamlead']
+  },
+ 
 
   { 
     icon: Users, 
@@ -85,7 +88,8 @@ const menuItems = [
     label: 'Telecaller Leads', 
     path: '/leads-telecaller',
     allowedDesignations: ['6a27939af292348deb7d0495','6a2f91472df21dc234018cab'],
-    allowedRoles: ['1', '2', 'hr', 'admin', 'superadmin']
+    allowedRoles: ['1', '2', 'hr', 'admin', 'superadmin'],
+    allowedDepartments: ['6a3caed51194353cbc8a3686']
   },
   // { 
   //   icon: TrendingUp, 
@@ -286,8 +290,12 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
         if (item.excludeRoles && item.excludeRoles.includes(currentUserRole)) {
           return false;
         }
-        // Show Team Reports page only for department team leads
+        // Show Team Reports page only for non-HR department team leads
         if (item.isTeamLeadOnly) {
+          const desigName = String(userObj.designation || userObj.designationId?.name || '').toLowerCase().trim();
+          const desigId = String(userObj.designationId?._id || userObj.designationId || userObj.designation_id || '').trim();
+          const isHrUser = currentUserRole === 'hr' || desigName.includes('hr') || desigId === '6a2f8efea2fe388770a38987';
+          if (isHrUser) return false;
           return !!userObj.isTeamLead;
         }
         if (item.isCommonDashboardFallback || item.isBasicReportFallback) {
@@ -330,6 +338,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
       const desigName = String(userObj.designation || userObj.designationId?.name || '').toLowerCase().trim();
       const desigId = String(userObj.designationId?._id || userObj.designationId || userObj.designation_id || '').trim();
       const isMd = desigName.includes('md') || desigName.includes('managing director') || desigId === '6a7187de0bdbef63c8658832' || ['md', 'coo', 'executive_director'].includes(currentUserRole);
+      const isHr = currentUserRole === 'hr' || desigName.includes('hr') || desigId === '6a2f8efea2fe388770a38987';
 
       if (isMd) {
         return visible.map(item => {
@@ -338,6 +347,16 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
           }
           return item;
         });
+      }
+
+      if (isHr) {
+        const filtered = visible.filter(item => item.label !== 'Dashboard' && item.label !== 'Team Reports');
+        const hasHrDash = filtered.some(item => item.label === 'HR Dashboard' || item.path === '/hr-dashboard');
+        if (!hasHrDash) {
+          const hrDashItem = menuItems.find(item => item.path === '/hr-dashboard');
+          if (hrDashItem) filtered.unshift(hrDashItem);
+        }
+        return filtered;
       }
 
       return visible;
