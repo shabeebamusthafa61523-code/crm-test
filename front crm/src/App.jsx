@@ -43,6 +43,7 @@ import NotificationPage from './pages/NotificationPage';
 import PerformanceDashboard from './pages/PerformanceDashboard';
 import UserPermissionsPage from './pages/UserPermissionsPage';
 import MdDashboard from './pages/MdDashboard';
+import AccountsPage from './pages/AccountsPage';
 
 
 
@@ -200,6 +201,14 @@ function App() {
         <Route path="/basic-report" element={<ProtectedRoute><MainLayout><BasicReportPage /></MainLayout></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute><MainLayout><NotificationPage /></MainLayout></ProtectedRoute>} />
         <Route path="/performance-dashboard" element={<ProtectedRoute><MainLayout><PerformanceDashboard /></MainLayout></ProtectedRoute>} />
+
+        {/* Accounts Department Module Routes */}
+        <Route path="/accounts" element={<ProtectedRoute><MainLayout><AccountsPage /></MainLayout></ProtectedRoute>} />
+        <Route path="/accounts/categories" element={<ProtectedRoute><MainLayout><AccountsPage /></MainLayout></ProtectedRoute>} />
+        <Route path="/accounts/expenses" element={<ProtectedRoute><MainLayout><AccountsPage /></MainLayout></ProtectedRoute>} />
+        <Route path="/accounts/salary" element={<ProtectedRoute><MainLayout><AccountsPage /></MainLayout></ProtectedRoute>} />
+        <Route path="/accounts/cash-book" element={<ProtectedRoute><MainLayout><AccountsPage /></MainLayout></ProtectedRoute>} />
+        <Route path="/accounts/reports" element={<ProtectedRoute><MainLayout><AccountsPage /></MainLayout></ProtectedRoute>} />
 
         {/* Client & Project Management Module Routes */}
         <Route path="/clients" element={<ProtectedRoute><MainLayout><RestrictedRoute><ClientsPage /></RestrictedRoute></MainLayout></ProtectedRoute>} />
